@@ -37,7 +37,8 @@ Offline mode/service worker, new features.
    - full-bleed charcoal hero with a large abstract ring motif (inline SVG built from the template
      geometry: concentric rings at low opacity)
    - title "Biathlete Harness"
-   - primary CTA **Start session** (→ `/sessions/new`), secondary **Continue last session** (most recent).
+   - primary CTA = the M10 quick-start button (`quickStartLabel` / `quickStart`): straight into the camera
+   - secondary **All sessions** (→ `/sessions`).
 4. `AppNav`: bottom bar on < 768 px, top bar otherwise. The current route is highlighted. Hidden on the capture
    screen, which is full-screen.
 5. States: skeletons for lists; empty states ("No sessions yet — start one after your next range visit");

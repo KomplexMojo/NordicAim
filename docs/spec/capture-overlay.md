@@ -5,7 +5,10 @@ Browser helpers are in `src/lib/capture/camera.ts` (client-only). The UI is in `
 
 ## 1. User flow
 
-1. From a session, tap **Capture target**.
+1. **Quick start** (landing page and `/sessions`): one primary button. If a session with `sessionDate` = today
+   (local) exists, it reads **Capture (today's session)** and opens that session's capture screen. Otherwise it
+   reads **Start & capture**, creates `Session <YYYY-MM-DD>` for today, and opens its capture screen directly.
+   From an existing session page, **Capture target** does the same for that session.
 2. Pick **Template** (`Sighting` | `Precision`, segmented control) and **Position** (`Prone` | `Standing` |
    `Both`). Remember the last choice per session in `localStorage` (wrap in try/catch).
 3. The camera starts with the chosen template's overlay centred in the viewfinder. A label chip says:

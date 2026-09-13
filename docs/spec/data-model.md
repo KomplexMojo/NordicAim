@@ -160,8 +160,22 @@ export const TargetPhoto = z.object({
 - `declaredRounds(c)`: see geometry-scoring §7. Throws if incomplete.
 - `defaultCategorization(template, position)`: precision or sighting → prone {roundsProne 10}, standing
   {roundsStanding 10}; both → {5, 5} (from `BIATHLON_50M.defaults`).
-- `nextStatus(photo, analysis)`: uncategorized → categorized (complete categorization) → calibrated
-  (analysis.calibration set) → reviewed (only set explicitly by the owner).
+- `nextStatus(categorization, analysis, result)` → `PhotoStatus`. **Always computed by the server** on every
+  categorization PATCH and analysis PUT. Clients never set it. First match wins:
+  1. categorization incomplete → `uncategorized`
+  2. `analysis?.calibration` is null → `categorized`
+  3. `result` is null or `result.all.identified === 0` → `calibrated`
+  4. any subset has `overcount > 0` → `calibrated`
+  5. `totalMissing` = Σ `subset.missing` over `result.subsets`; if `totalMissing === 0` → `reviewed`
+     (auto-review: the shot count matches the declared rounds)
+  6. `analysis.acceptedMissingCount !== null && totalMissing <= analysis.acceptedMissingCount` → `reviewed`
+     (the owner tapped "Accept with N missing")
+  7. otherwise → `calibrated`
+
+  Vectors: precision golden fixture with a calibration → `reviewed`; same with P8 multiplicity 1 and
+  `acceptedMissingCount` null → `calibrated`; with `acceptedMissingCount` 1 → `reviewed`; accepted 1 but P8
+  and P9 removed (missing 3) → `calibrated`; an extra 11th shot → `calibrated` (over-count, even if accepted);
+  calibration null → `categorized`; position `both` with roundsStanding null → `uncategorized`.
 
 ## 4. Analysis (`analysis.ts`) → `sessions/<sid>/photos/<pid>/analysis.json`
 
@@ -182,6 +196,7 @@ export const TargetAnalysis = z.object({
   calibration: Calibration.nullable(),     // in WORKING image px
   shots: z.array(Shot),
   pinnedMode: MissingMode.nullable(),
+  acceptedMissingCount: z.number().int().min(1).nullable(), // owner accepted this many unaccounted rounds (see nextStatus)
   updatedAt: UtcIso,
   computed: z.object({ engineVersion: z.string(), result: AnalysisResultSchema }).nullable(), // cache
 });
@@ -252,9 +267,9 @@ Errors: `{ "error": { "code": "<snake_case>", "message": "<human text>" } }` wit
 | GET · PATCH · DELETE `/api/sessions/:sid` | M04 | PATCH `{ name?, notes?, sessionDate? }` |
 | POST `/api/sessions/:sid/photos` | M04, M09 | multipart: `file`, `origin`, `clientLocal`, `clientOffset`, `capture?` (JSON), `categorization?` (JSON) → photo (max 25 MB) |
 | GET `/api/sessions/:sid/photos` | M04 | photo[] |
-| GET · PATCH · DELETE `/api/sessions/:sid/photos/:pid` | M04, M10 | PATCH `{ categorization?, lighting?, sheet?, status? }` |
+| GET · PATCH · DELETE `/api/sessions/:sid/photos/:pid` | M04, M10 | PATCH `{ categorization?, lighting?, sheet? }` (status is recomputed, never accepted) |
 | GET `/api/sessions/:sid/photos/:pid/working` · `/thumb` | M04 | image/jpeg, `Cache-Control: private, no-store` |
-| GET · PUT `/api/sessions/:sid/photos/:pid/analysis` | M11 | PUT `{ calibration, shots, pinnedMode }` → analysis with computed |
+| GET · PUT `/api/sessions/:sid/photos/:pid/analysis` | M11 | PUT `{ calibration, shots, pinnedMode, acceptedMissingCount }` → `{ analysis, status }` |
 | POST `/api/sessions/:sid/photos/:pid/analysis/auto-calibrate` | M12 | → `{ calibration }` (not saved) |
 | POST `/api/sessions/:sid/photos/:pid/analysis/auto-detect` | M13 | → `{ shots }` (not saved) |
 | GET `/api/sessions/:sid/photos/:pid/diagram?variant=full\|cell&format=svg\|png` | M11 | image |

@@ -24,11 +24,11 @@ New features and fixes beyond small bugs found during verification (bigger issue
 
 ## Steps
 1. `journey.spec.ts` (Pixel 7, logged in):
-   1. create session
+   1. from the landing page tap **Start & capture** (quick start opens the camera directly)
    2. capture precision via `?fakeCamera=precision` (Prone) and sighting via `?fakeCamera=sighting` (Both 5/5)
    3. review each: accept auto-calibrate, run auto-detect, accept all, and if the scores differ from the fixture,
       replace the shots with the fixture shots through the API (the test is about flow, not CV accuracy)
-   4. mark reviewed
+   4. confirm each target's status chip shows **Reviewed** automatically once its shot count matches the declared rounds
    5. Composite tab: build → dimensions 1440×2160
    6. share (open-image path) → share recorded
    7. discard sources → rebuild still works

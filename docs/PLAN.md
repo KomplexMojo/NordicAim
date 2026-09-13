@@ -103,6 +103,8 @@ A **phone-first web app on the owner's own small server**, reached privately ove
 | E12 | Seeded demo session (`pnpm seed:demo`) | M11 |
 | E13 | Shooting trends harness (precision per position, sighting hit rate, ES MOA, MPI drift) usable without Garmin | M17 |
 | E14 | Docker + Tailscale deployment, backups, `check:privacy` in CI | M01, M19 |
+| E15 | Quick start straight into the camera (REV-8) | M10, M18 |
+| E16 | Auto-review with "Accept with N missing" (REV-9) | M02, M11 |
 
 ## 6. Risks
 

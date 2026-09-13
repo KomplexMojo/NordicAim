@@ -14,6 +14,8 @@
 | REV-5 | **Photos are taken inside the app with a live template overlay.** A sighting target shows the sighting overlay; a precision target shows the precision overlay. The user lines up the printed target with the overlay to centre the image. | "Ideally we would have a template overlay when the user is taking the photo … This will allow the user to centre the image correctly." |
 | REV-6 | The overlay alignment also becomes the **initial calibration** for each photo (centre and scale), which the user or CV then refines. | Follows from REV-5. Removes most perspective and centring error before analysis. |
 | REV-7 | Source photos stay on the **owner's own server** and are never sent to Garmin, Strava, or any third party. The only image that leaves is the composite, via the owner's own share action. | Adapts the design's "sources never uploaded" rule to a hosted app. |
+| REV-8 | **Quick start**: one button goes straight into the camera, creating today's session if needed or reusing it if it exists. | Owner-approved tweak: one tap fewer at the range. |
+| REV-9 | **Auto-review**: a target becomes *reviewed* automatically when its categorization is complete, it is calibrated, and its shot count matches the declared rounds. If rounds are unaccounted for, one tap ("Accept with N missing") marks it reviewed. Over-counts are never reviewed. | Owner-approved tweak: removes the separate "Mark reviewed" step. |
 
 ## What this supersedes in `DESIGN.md`
 

@@ -45,6 +45,12 @@ Scoring math (M03), file I/O (M04), UI.
 - `Shot` rejects multiplicity 0, and rejects `positionOverrides` whose length ≠ multiplicity.
 - `BiathlonSession` parses the example JSON in data-model §8.
 - `Calibration` rejects `axisRatio` 0.2 and `angleDeg` 180.
+- `nextStatus` with hand-built minimal `result` stubs (only `all.identified` and `subsets[].missing` /
+  `subsets[].overcount` are read), using a complete categorization and a non-null calibration unless stated:
+  identified 10 & missing 0 → `reviewed`; missing 1 & accepted null → `calibrated`; missing 1 & accepted 1 →
+  `reviewed`; missing 3 & accepted 1 → `calibrated`; overcount 1 & accepted 5 → `calibrated`; identified 0 →
+  `calibrated`; result null → `calibrated`; calibration null → `categorized`; incomplete categorization →
+  `uncategorized`. (M11 re-tests this against real `analyzeTarget` output.)
 
 ## Acceptance
 ```bash
