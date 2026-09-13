@@ -1,0 +1,30 @@
+{
+  "note": "Shots traced (mm, origin target centre, +y up) from docs/reference/example-diagram-precision.png. Golden parity fixture: see docs/spec/geometry-scoring.md section 9.1.",
+  "template": "precision",
+  "categorization": { "template": "precision", "position": "prone", "roundsProne": 10, "roundsStanding": null },
+  "shots": [
+    { "id": "P1", "xMm": 1.4, "yMm": -0.8, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "P2", "xMm": -7.6, "yMm": -9.4, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "P3", "xMm": -11.0, "yMm": -13.4, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "P4", "xMm": -5.4, "yMm": -15.4, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "P5", "xMm": -15.6, "yMm": -18.9, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "P6", "xMm": -10.4, "yMm": -22.3, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "P7", "xMm": -25.0, "yMm": -23.9, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "P8", "xMm": -20.6, "yMm": -26.5, "multiplicity": 2, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": true },
+    { "id": "P9", "xMm": -30.1, "yMm": -28.4, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false }
+  ],
+  "expected": {
+    "tally": [0, 0, 0, 0, 0, 1, 3, 2, 2, 1, 1],
+    "identifiedTotal": 72,
+    "maxPossible": 100,
+    "xCount": 1,
+    "identified": 10,
+    "missing": 0,
+    "range": { "optimistic": 72, "pessimistic": 72, "averaged": 72 },
+    "extremeSpreadMm": 41.881,
+    "extremeSpreadMoa": 2.8795,
+    "extremeSpreadMrad": 0.8376,
+    "mpi": { "xMm": -14.49, "yMm": -18.55 },
+    "tolerances": { "extremeSpreadMm": 0.001, "angular": 0.0005, "mpi": 1e-6 }
+  }
+}

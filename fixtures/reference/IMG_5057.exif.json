@@ -1,0 +1,30 @@
+{
+  "note": "EXIF extracted 2026-09-13 from fixtures/private/IMG_5057.HEIC via sharp.metadata().exif + exif-reader. GPS values deliberately removed (repo is public); gpsPresent records that the original has GPS.",
+  "file": "IMG_5057.HEIC",
+  "template": "sighting",
+  "exif": {
+    "captureLocal": "2026-08-24T19:30:09",
+    "captureOffset": "-07:00",
+    "captureUtc": "2026-08-25T02:30:09.000Z",
+    "gpsPresent": true,
+    "gps": null,
+    "gpsImgDirection": 2.1612529748504534,
+    "make": "Apple",
+    "model": "iPhone 16 Pro Max",
+    "lens": "iPhone 16 Pro Max back triple camera 2.22mm f/2.2",
+    "brightnessValue": 5.568700362668135,
+    "iso": 64,
+    "exposureTimeSec": 0.010101010101010102,
+    "fNumber": 2.2,
+    "flashRaw": 16,
+    "flashFired": false,
+    "whiteBalance": "auto",
+    "widthPx": 3024,
+    "heightPx": 4032
+  },
+  "expected": {
+    "workingSize": { "widthPx": 2250, "heightPx": 3000 },
+    "thumbSize": { "widthPx": 360, "heightPx": 480 },
+    "lightingSuggestion": { "label": "daylight", "confidence": 0.9 }
+  }
+}

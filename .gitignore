@@ -8,3 +8,14 @@ __pycache__/
 dist/
 build/
 coverage/
+
+# Private originals (contain GPS) — never commit
+fixtures/private/
+
+# Local app workspace / exports if pointed inside the repo
+.workspace/
+test-results/
+playwright-report/
+.next/
+next-env.d.ts
+*.tsbuildinfo

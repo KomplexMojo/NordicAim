@@ -1,0 +1,26 @@
+{
+  "note": "Shots traced (mm, origin target centre, +y up) from docs/reference/example-diagram-sighting.png. Golden parity fixture: see docs/spec/geometry-scoring.md section 9.2.",
+  "template": "sighting",
+  "categorization": { "template": "sighting", "position": "prone", "roundsProne": 10, "roundsStanding": null },
+  "shots": [
+    { "id": "S1", "xMm": 5.0, "yMm": 12.5, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "S2", "xMm": 7.5, "yMm": 9.0, "multiplicity": 4, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": true },
+    { "id": "S3", "xMm": 11.0, "yMm": 6.5, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "S4", "xMm": 14.0, "yMm": 4.0, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "S5", "xMm": 27.5, "yMm": -2.5, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "S6", "xMm": 8.0, "yMm": -6.0, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false },
+    { "id": "S7", "xMm": 1.5, "yMm": -12.0, "multiplicity": 1, "positionOverrides": null, "source": "manual", "confidence": null, "cluster": false }
+  ],
+  "expected": {
+    "prone": { "hits": 9, "misses": 1, "clean": 9 },
+    "standingIfRecategorized": { "hits": 10, "misses": 0 },
+    "identified": 10,
+    "missing": 0,
+    "extremeSpreadMm": 27.681,
+    "extremeSpreadMoa": 1.9032,
+    "extremeSpreadMrad": 0.5536,
+    "mpi": { "xMm": 9.7, "yMm": 3.85 },
+    "meanRadiusMm": 8.624,
+    "tolerances": { "extremeSpreadMm": 0.001, "angular": 0.0005, "mpi": 1e-6, "meanRadiusMm": 0.001 }
+  }
+}
