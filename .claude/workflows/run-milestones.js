@@ -105,6 +105,48 @@ const FINAL_SCHEMA = {
 
 const uniq = (list) => [...new Set(list)]
 
+// Fallback instructions, used only when the custom agent types in .claude/agents/ are not loaded
+// (agent definitions are read at session start, so a session that created them cannot use them yet).
+// Keep these in sync with .claude/agents/milestone-implementer.md and milestone-reviewer.md.
+const IMPLEMENTER_INSTRUCTIONS = [
+  'ROLE: milestone implementer for advanced-shooting-analysis. You implement ONE milestone.',
+  '- Read the milestone file completely, then only the spec sections under "Read first". AGENTS.md rules and hard invariants apply in full.',
+  '- Implement every step and file with the exact names, signatures, paths and formats from the specs. Never invent constants; if the spec is silent or ambiguous, add it to the milestone "Open questions" and report it.',
+  '- Write every listed test and a unit test for every spec test vector the milestone touches (exact values and tolerances).',
+  '- Run `pnpm check` (once M01 created it) and every Acceptance command that does not need a human; fix failures.',
+  '- Fill the milestone "Completion notes" truthfully (commands, results, deviations).',
+  '- ORCHESTRATION OVERRIDES: do NOT commit, push, or set Status to "done"; do NOT perform human-required steps (return them as concrete humanChecks); nothing from docs/BACKLOG.md; no unrelated refactors or unapproved dependencies.',
+  '- If you cannot complete the milestone at all, return status "blocked" with a specific reason.',
+].join('\n')
+
+const REVIEWER_INSTRUCTIONS = [
+  'ROLE: independent, skeptical milestone reviewer for advanced-shooting-analysis. STRICTLY READ-ONLY: never create, edit or delete files (running tests/commands is fine). The implementer report is a claim, not evidence.',
+  'Checklist:',
+  '1. `git status` / `git diff` including untracked files; nothing under fixtures/private/.',
+  '2. Every milestone step and file exists; names, signatures, paths, store names, routes and string formats match the specs exactly.',
+  '3. Every spec test vector the milestone touches has a unit test with the exact expected value and tolerance; spot-check at least three against the spec.',
+  '4. Run `pnpm check` and every Acceptance command that does not need a human; record results.',
+  '5. AGENTS.md invariants: no backlog features, no runtime network calls, share rule, repo privacy, pure/adapter split, IndexedDB transaction rule, never overwrite manual edits, mm units with +y up, determinism, fake camera and test hooks gated by VITE_FAKE_CAMERA.',
+  '6. Scope: nothing out of scope, no unrelated refactors, no unapproved dependencies. 7. Completion notes match what you observed.',
+  'Verdict "pass" only with no blocker/major issues and all runnable acceptance commands passing. For each issue give severity, file, detail and expected behaviour with the spec reference.',
+].join('\n')
+
+let customAgentTypesAvailable = true
+
+async function runAgent(agentType, fallbackInstructions, prompt, opts) {
+  if (customAgentTypesAvailable) {
+    try {
+      return await agent(prompt, { ...opts, agentType })
+    } catch (err) {
+      const message = String((err && err.message) || err)
+      if (!message.includes('not found')) throw err
+      customAgentTypesAvailable = false
+      log(`custom agent type ${agentType} is not loaded in this session; using built-in agents with embedded instructions`)
+    }
+  }
+  return await agent(`${fallbackInstructions}\n\n---\n\n${prompt}`, opts)
+}
+
 function selectPrompt(only) {
   return [
     'You are the selector for the run-milestones workflow in the advanced-shooting-analysis repo. Do not modify any file.',
@@ -219,10 +261,9 @@ for (let i = 0; i < maxMilestones; i++) {
   const rec = { id: sel.id, title: sel.title, reviewRounds: 0, fixRounds: 0, humanChecks: [], openQuestions: [] }
 
   phase('Implement')
-  let impl = await agent(implementPrompt(sel), {
+  let impl = await runAgent('milestone-implementer', IMPLEMENTER_INSTRUCTIONS, implementPrompt(sel), {
     label: `implement ${sel.id}`,
     phase: 'Implement',
-    agentType: 'milestone-implementer',
     model: sel.implementerModel,
     effort: sel.implementerEffort,
     schema: IMPL_SCHEMA,
@@ -239,10 +280,9 @@ for (let i = 0; i < maxMilestones; i++) {
   for (;;) {
     rec.reviewRounds++
     phase('Review')
-    review = await agent(reviewPrompt(sel, impl, rec.reviewRounds), {
+    review = await runAgent('milestone-reviewer', REVIEWER_INSTRUCTIONS, reviewPrompt(sel, impl, rec.reviewRounds), {
       label: `review ${sel.id} (round ${rec.reviewRounds})`,
       phase: 'Review',
-      agentType: 'milestone-reviewer',
       model: sel.reviewerModel,
       effort: sel.reviewerEffort,
       schema: REVIEW_SCHEMA,
@@ -250,10 +290,9 @@ for (let i = 0; i < maxMilestones; i++) {
     if (!review || review.verdict === 'pass' || rec.fixRounds >= 2) break
     rec.fixRounds++
     phase('Implement')
-    impl = await agent(fixPrompt(sel, review, rec.fixRounds), {
+    impl = await runAgent('milestone-implementer', IMPLEMENTER_INSTRUCTIONS, fixPrompt(sel, review, rec.fixRounds), {
       label: `fix ${sel.id} (round ${rec.fixRounds})`,
       phase: 'Implement',
-      agentType: 'milestone-implementer',
       model: sel.implementerModel,
       effort: sel.implementerEffort,
       schema: IMPL_SCHEMA,
