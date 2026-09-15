@@ -48,3 +48,22 @@ section here after each milestone that has them.
 - [ ] After pushing, open https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics on an iPhone in real
       Safari and confirm the diagram-raster row passes — this exercises the SecurityError data-URL fallback in
       `svgToPng`, which the e2e run doesn't reach.
+
+## M07 — Capture screen with template overlay
+
+- [ ] Push to `main`, wait for the "Deploy to GitHub Pages" workflow, then on the iPhone open
+      https://komplexmojo.github.io/advanced-shooting-analysis/ both in Safari and as a Home Screen app
+      (Share → Add to Home Screen), following `docs/DEVICE-TESTING.md`.
+- [ ] Tap **New session**: confirm the camera permission prompt appears, the live picture is from the rear camera, and
+      the screen doesn't dim or lock past the Auto-Lock time.
+- [ ] Pick **Precision + Prone**: confirm the overlay is centred and stays centred after rotating to landscape and back.
+      Switch away and back to the app and confirm the camera restarts (and the wake lock is re-acquired) — this can
+      only be checked on a real device.
+- [ ] In a Safari tab, add `?debug=1` to the capture URL and confirm the chip's larger resolution number is at least 1920.
+- [ ] Line up a precision target's black aiming mark with the thick circle and capture: on the review screen the circle
+      should sit on the disc edge within about 3 mm by eye; tap **Use photo** and confirm the badge count goes up by
+      one. Repeat with the sighting sheet and Sighting position.
+- [ ] Confirm the native-camera fallback (take/save a photo, badge +1) and **Import from Photos** with two photos
+      including one HEIC (shows "Importing 1 of 2…", badge +2, correct count after Done).
+- [ ] Paste the Safari-tab and Home Screen report blocks from `docs/DEVICE-TESTING.md` §4 into
+      `docs/milestones/M07-capture-screen.md` → Completion notes; record any failure under Open questions.

@@ -70,7 +70,54 @@ Completion notes. Agents: *safe for any tier* to write the doc only.
 - Test hooks and the fake camera must not exist in the Pages build.
 
 ## Open questions
-_(add here)_
+- **Default picks (non-blocking).** The spec doesn't say which template/position is selected before the owner picks. Implemented:
+  nothing selected on a session's first visit; the shutter stays disabled (with a "Pick a template and position" hint) until both are
+  picked, then the picks are remembered in `asa.capture.<sessionId>`.
+- **Categorization for native-camera/Photos imports (non-blocking).** §1.8 doesn't say. Implemented: `defaultCategorization(template,
+  position)` when both are picked on the capture screen, else `emptyCategorization()`; M09's metadata screen lets the owner fix it.
+- **Size slider persistence and step (non-blocking).** Step 4 says "persist" after listing the slider; the spec key only names template and
+  position. `outerDiameterFraction` is stored in the same `asa.capture.<sessionId>` JSON; slider step is 0.01 (UI granularity only,
+  clamped to [0.50, 0.95]).
+- **Session date is UTC (for M09).** The temporary **New session** button calls M04's `createSession`, whose `sessionDate` is
+  `now.toISOString().slice(0, 10)` (UTC). capture-overlay §1.1's quick start compares against *today (local)*; in the evening west of
+  UTC these differ. M09 should pass a local `sessionDate`.
 
 ## Completion notes
-_(fill in when done)_
+**Implemented (2026-09-15, orchestrated run; not committed, Status left `in-progress` for the reviewer/finalizer).**
+
+Files: `src/lib/capture/camera.ts`, `wake-lock-browser.ts`, `fake-camera.ts`, plus two small helpers not in the Files list —
+`src/lib/capture/prefs-browser.ts` (localStorage picks, try/catch, zod-validated) and `src/lib/capture/messages.ts` (label chips,
+camera-error and ingest-error strings; keeps strings/pure logic out of components). `src/lib/app/services.tsx`
+(`ServicesProvider`, `useServices`, `loadAppServices` → `{ ctx: ServiceContext, imageTools: browserImageTools, renderTools:
+browserRenderTools }`). `src/lib/testing/test-hooks-browser.ts` (`installTestHooks` → `window.__asaTest.listPhotos/getAnalysis`).
+Components `src/components/capture/{CaptureScreen,CameraView,OverlaySvg,TemplatePositionPicker,CaptureReview,CaptureFallbacks,SizeSlider}.tsx`,
+routes `src/routes/capture/CapturePage.tsx` and `src/routes/metadata/MetadataStubPage.tsx`, `src/app/router.tsx`, `src/main.tsx`,
+temporary **New session** button on `src/routes/home/HomePage.tsx`, `docs/DEVICE-TESTING.md`. Tests: `tests/e2e/capture.spec.ts`,
+`tests/unit/capture/camera.test.ts`, `tests/unit/capture/prefs.test.ts`.
+
+Commands and results:
+- `pnpm check` → pass (typecheck, lint 0 errors / 4 pre-existing warnings in `components/ui` and `cv/opencv.ts`, vitest 34 files /
+  285 tests, privacy check 15 images).
+- `pnpm test:e2e` → 10/10 pass (mobile-chromium + mobile-webkit): smoke ×2, precision+prone capture, sighting+both 5/5, Photos import.
+- `VITE_BASE=/advanced-shooting-analysis/ vite build` (to a scratch dir) → the bundle contains none of `FAKE CAMERA`, `__asaTest`,
+  `installTestHooks`, `startFakeCamera`, `captureStream`, `fake-camera`, `test-hooks` (the fake camera, its chip, and the test hooks are
+  all behind `import.meta.env.VITE_FAKE_CAMERA === '1'` and tree-shaken).
+- Visual check in Playwright (iPhone 15 viewport, `fakeCamera=precision&debug=1`): overlay centred, label chip, FAKE CAMERA and debug chips,
+  review image with the anchor circle at the same place on the frame as the live overlay.
+
+Notes and deviations for the reviewer:
+- e2e asserts beyond the milestone: frame 1080×1920, `outerDiameterFraction` 0.85, prior `cx` 540 / `cy` 960 (±1e-3; the overlay centre
+  maps to the frame centre under a centred cover fit), `source 'overlay'`, `anchorDiameterMm` 112.4 / 115.
+- The spec's §3.4 vectors were already unit-tested in M06 (`tests/unit/capture/overlay.test.ts`); M07 adds unit tests for the §2
+  constraints and OverconstrainedError retry, the error-code mapping, `stopCamera`, `acquireWakeLock` (missing/failed → null),
+  `trackSettings` filtering, and the §1.3 label strings.
+- `trackSettings` keeps string, boolean, and **finite** number values (NaN/Infinity dropped because `CaptureInfo` uses `z.number()`).
+- Test hooks install via a dynamic import, so e2e waits for `window.__asaTest` before calling it.
+- Camera and wake lock live in `CameraView`: started when the document is visible, stopped/released on `visibilitychange → hidden` and
+  on unmount, restarted when visible again. Layout recomputes on `loadedmetadata`, video `resize`, `ResizeObserver`, `orientationchange`.
+- `maybeRequestPersistence` runs after a successful ingest in its own try/catch so a persistence failure never re-shows a saved photo's
+  review. An ingest failure shows a toast and keeps the review.
+- Diagnostics stays outside `ServicesProvider` so it still runs if IndexedDB can't open. `<Toaster>` is mounted next to the router.
+
+**Owner device checklist (human required):** not yet done — follow `docs/DEVICE-TESTING.md` in Safari and from the Home Screen and
+paste both report blocks here.
