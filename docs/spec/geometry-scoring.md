@@ -176,8 +176,8 @@ normalised to `[0, 180)`. Centre = `mpi`.
 
 **Vectors**
 - ES of `(0,0),(3,4)` = 5. ES of a single unit = `null`. ES of `(1,1)×3` = `null`.
-- `angular(25)` → moa 1.718873 (±1e-5), mrad 0.500000 (±1e-6). `angular(27.7)` → moa 1.904507, mrad 0.554.
-  `angular(41.9)` → moa 2.880834, mrad 0.838.
+- `angular(25)` → moa 1.718873 (±1e-5), mrad 0.500000 (±1e-6). `angular(27.7)` → moa 1.904512 (±1e-6), mrad 0.554.
+  `angular(41.9)` → moa 2.880832 (±1e-6), mrad 0.838. (Corrected 2026-09-15; earlier text had 1.904507 / 2.880834.)
 - 1 MOA at 50 m ≈ 14.5444 mm: `angular(14.5444).moa` ≈ 1.0000 (±1e-4).
 - Ellipse of `(-1,0),(1,0),(0,2),(0,-2)` → centre (0,0), rx 2.828427, ry 1.414214, angle 90.
 - Ellipse of `(1,1),(2,2),(3,3)` → angle 45, ry 0 → still returned (ry = 0 is allowed; only the all-zero case is null).

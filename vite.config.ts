@@ -9,6 +9,8 @@ const CSP = [
   "default-src 'self'",
   "img-src 'self' blob: data:",
   "media-src 'self' blob:",
+  // No 'unsafe-eval': OpenCV.js runs in a module Web Worker, which this page's meta CSP does not govern
+  // (verified in WebKit and Chromium by tests/e2e-prod). See docs/spec/privacy-storage-hosting.md §3.
   "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",

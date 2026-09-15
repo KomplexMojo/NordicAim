@@ -35,7 +35,17 @@ worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; f
 object-src 'none'; base-uri 'self'; form-action 'self'
 ```
 
-If OpenCV.js fails to initialise under this CSP on iOS Safari (M01 diagnostics), add `'unsafe-eval'` to `script-src` and record why.
+**OpenCV and the CSP (investigated 2026-09-15).** OpenCV.js (Emscripten embind) calls `new Function()` while initialising,
+so it cannot run on the **page** under this CSP. It runs in the **module Web Worker** (`src/workers/cv.worker.ts`), which this
+page-level meta CSP does not govern. That is verified on the production build in WebKit and Chromium with and without
+`'unsafe-eval'`. **Do not add `'unsafe-eval'`, and never load OpenCV on the main thread.**
+
+The owner's iPhone `cv-worker` failure (`|this| is not a Promise`) had a different cause: production bundler interop wrapped
+OpenCV's exported Promise in a fake Promise-like object. The fix is `src/lib/cv/opencv-entry.ts` plus the hardened
+`loadOpenCv()`; see M01 Completion notes.
+
+**Regression guard:** `pnpm test:e2e:prod` (`playwright.prod.config.ts`, `tests/e2e-prod/`) runs the diagnostics page against the
+production build, in CI too.
 
 ## 4. Hosting on GitHub Pages
 

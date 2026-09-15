@@ -32,3 +32,6 @@ jobs:
 
       - name: E2E tests
         run: pnpm test:e2e
+
+      - name: E2E tests against the production build (CSP, service worker, bundling)
+        run: pnpm test:e2e:prod

@@ -218,3 +218,26 @@ resulting deviations). `pnpm approve-builds --all` was run once to approve `esbu
    device, or record it as an Open question. (`storage-persist` failing under Playwright's headless automation,
    as observed above, is expected and not itself a signal about real Safari behavior — the real-device run is
    what determines whether that check needs follow-up.)
+
+### Owner device report (2026-09-15, iPhone Home Screen app)
+
+User agent: `Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.1 Mobile/15E148 Safari/604.1`. Summary: **12 pass · 1 fail · 1 n/a**.
+
+| Check | Result | Detail |
+|---|---|---|
+| secure-context | pass | isSecureContext=true |
+| camera-api | pass | getUserMedia=true |
+| share-files | pass | canShare(files)=true |
+| storage-persist | pass | persisted=true |
+| storage-estimate | pass | usage=0.8MB quota=39321.6MB |
+| wake-lock | pass | wakeLock=true |
+| offscreen-canvas | pass | OffscreenCanvas=true |
+| indexeddb | pass | roundtrip 1MB ArrayBuffer ok=true |
+| **cv-worker** | **fail** | `|this| is not a Promise` |
+| svg-raster | pass | path=object-url rgb=255,0,0 |
+| heic-decode | pass | naturalWidth=300 |
+| ingest-pipeline | pass | working=1200x1600 thumb=360x480 |
+| standalone | pass | standalone=true |
+| user-agent | n/a | (above) |
+
+**cv-worker follow-up (root cause and fix, 2026-09-15):** reproduced on the production build in WebKit ("|this| is not a Promise") and Chromium ("Promise.prototype.then called on incompatible receiver"). The dev server passed because it bundles OpenCV differently. **Cause:** Vite 8 / rolldown compiled `await import('@techstark/opencv-js')` to `import(chunk).then(e => interop(e.default))`. The interop helper wraps OpenCV's exported Promise in an object inheriting from `Promise.prototype`, and adopting it from the `.then` callback calls `Promise.prototype.then` on a non-Promise. **Fix:** `src/lib/cv/opencv-entry.ts` imports OpenCV statically and exposes it through a plain function, and `loadOpenCv()` (`resolveOpenCv`) unwraps `.default` before awaiting and only awaits genuine Promises. Unit tests: `tests/unit/cv/opencv-loader.test.ts`. Production regression test: `pnpm test:e2e:prod` (also in CI). The CSP was **not** the cause: the worker passes with and without `'unsafe-eval'`, so the strict CSP is kept (privacy-storage-hosting §3). The owner needs to re-run diagnostics on the iPhone after deploy to confirm. The Safari-tab (non-standalone) report is still to come.

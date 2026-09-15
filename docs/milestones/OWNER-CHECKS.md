@@ -17,17 +17,20 @@ section here after each milestone that has them.
       _Done 2026-09-15 via `gh api` (build_type=workflow); deploy run 34988887060 succeeded and the site returns 200._
 - [ ] On the iPhone, open https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics in Safari, then Add to
       Home Screen and open it from there.
-- [ ] Tap **Copy report** in both, and paste both reports into `docs/milestones/M01-scaffold.md` → Completion notes.
+- [x] Tap **Copy report** in both, and paste both reports into `docs/milestones/M01-scaffold.md` → Completion notes.
+      _Home Screen report recorded 2026-09-15 (12 pass, 1 fail: cv-worker). Safari-tab report still optional._
 - [ ] Any `fail` on `cv-worker`, `svg-raster`, `heic-decode`, `indexeddb`, or `share-files` on the real phone: record it
       under M01 Open questions and tell Claude. (`storage-persist` failed only under headless automation; the phone result is what counts.)
+- [ ] **Re-run diagnostics on the iPhone** after the OpenCV loader fix deploys and confirm `cv-worker` passes (cause was bundler interop wrapping OpenCV's Promise; see M01 Completion notes).
 - [x] Decide on the non-blocking M01 open questions: keep the shadcn "radix-nova" preset and its extra self-hosted
       dependencies (Geist font, radix-ui, lucide-react, next-themes, tw-animate-css, class-variance-authority), or trim them.
       _Owner decision 2026-09-15: **keep**. Recorded in PLAN.md D1._
 
 ## M03 — Scoring engine
 
-- [ ] Fix the MOA values for angular(27.7) and angular(41.9) in `geometry-scoring.md` §6 (true values 1.904512 and
+- [x] Fix the MOA values for angular(27.7) and angular(41.9) in `geometry-scoring.md` §6 (true values 1.904512 and
       2.880832), then tighten `tests/unit/scoring/groups.test.ts` to 1e-6.
+      _Done 2026-09-15: spec corrected and test tightened to 1e-6._
 - [ ] Decide what an over-counted sighting subset's `range.*.misses` should be — it is currently `declared - hits`,
       which can go negative.
 - [ ] Confirm top-level `SightingOutcome.misses` means identified-only misses, confirm the pessimistic tie-break

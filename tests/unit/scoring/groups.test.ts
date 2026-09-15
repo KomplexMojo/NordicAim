@@ -95,21 +95,17 @@ describe('scoring/groups angular', () => {
     expect(a.mrad).toBeCloseTo(0.5, 6);
   });
 
-  // geometry-scoring.md §7 (top of file): default test tolerance is 1e-6 unless a vector states
-  // otherwise. mrad is tested at that default (toBeCloseTo(x, 6), diff < 5e-7). moa is NOT tested at
-  // the default: the true value (computed by hand, see the M03 Open questions) is
-  // 1.9045116623044323, which differs from the spec's stated 1.904507 by ~4.66e-6 — over the 1e-6
-  // default. That mismatch is recorded as an Open question rather than silently loosened; the ±5e-6
-  // tolerance used below (toBeCloseTo(x, 5)) is stated explicitly here as the deviation.
-  it('angular(27.7) -> moa 1.904507 (tested to ±5e-6, see Open questions), mrad 0.554 (default 1e-6)', () => {
+  // geometry-scoring.md §6 values corrected 2026-09-15 (1.904512 / 2.880832), so both moa and mrad are tested at the
+  // default 1e-6 tolerance (toBeCloseTo(x, 6) checks |diff| < 5e-7).
+  it('angular(27.7) -> moa 1.904512, mrad 0.554', () => {
     const a = angular(27.7, DISTANCE_MM)!;
-    expect(a.moa).toBeCloseTo(1.904507, 5);
+    expect(a.moa).toBeCloseTo(1.904512, 6);
     expect(a.mrad).toBeCloseTo(0.554, 6);
   });
 
-  it('angular(41.9) -> moa 2.880834 (tested to ±5e-6, see Open questions), mrad 0.838 (default 1e-6)', () => {
+  it('angular(41.9) -> moa 2.880832, mrad 0.838', () => {
     const a = angular(41.9, DISTANCE_MM)!;
-    expect(a.moa).toBeCloseTo(2.880834, 5);
+    expect(a.moa).toBeCloseTo(2.880832, 6);
     expect(a.mrad).toBeCloseTo(0.838, 6);
   });
 

@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
     "check:privacy": "node scripts/check-privacy.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:privacy"
   },
