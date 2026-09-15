@@ -11,6 +11,7 @@ const CHECK_IDS = [
   'indexeddb',
   'cv-worker',
   'svg-raster',
+  'diagram-raster',
   'heic-decode',
   'ingest-pipeline',
   'standalone',
@@ -30,7 +31,7 @@ test('diagnostics page runs every check', async ({ page }) => {
     await expect(page.locator(`tr[data-check-id="${id}"]`)).toBeVisible({ timeout: 15000 });
   }
 
-  for (const id of ['indexeddb', 'cv-worker', 'svg-raster', 'ingest-pipeline']) {
+  for (const id of ['indexeddb', 'cv-worker', 'svg-raster', 'diagram-raster', 'ingest-pipeline']) {
     await expect(page.locator(`tr[data-check-id="${id}"]`)).toHaveAttribute('data-status', 'pass');
   }
 

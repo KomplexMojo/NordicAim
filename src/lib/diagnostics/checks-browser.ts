@@ -1,6 +1,13 @@
 import { getCvClient } from '@/workers/cv-client';
+import { BIATHLON_50M } from '@/lib/defaults/biathlon';
+import type { Shot } from '@/lib/domain/analysis';
+import type { Categorization } from '@/lib/domain/photo';
 import { detectFormat } from '@/lib/media/format';
 import { makeWorkingImages } from '@/lib/media/image-browser';
+import { renderDiagramSvg, type DiagramInput } from '@/lib/render/diagram';
+import { svgToPng } from '@/lib/render/rasterize-browser';
+import { analyzeTarget } from '@/lib/scoring/analyze';
+import precisionFixture from '@fixtures/sample-shots-precision.json';
 
 import type { DiagnosticResult } from './summarize';
 
@@ -238,6 +245,27 @@ function loadHtmlImage(blob: Blob): Promise<HTMLImageElement> {
   });
 }
 
+async function checkDiagramRaster(): Promise<DiagnosticResult> {
+  return safeCheck('diagram-raster', 'Diagram rasterisation', async () => {
+    const fixture = precisionFixture as unknown as { template: 'precision'; categorization: Categorization; shots: Shot[] };
+    const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots: fixture.shots });
+    const input: DiagramInput = {
+      template: 'precision',
+      result,
+      shots: fixture.shots,
+      positionLabel: 'Prone',
+      captureLocal: null,
+      lighting: 'daylight',
+      holeDiameterMm: BIATHLON_50M.holeDiameterMm,
+    };
+    const svg = renderDiagramSvg(input, 'full');
+    const png = await svgToPng(svg, 1500, 1700);
+    const img = await loadHtmlImage(png);
+    const ok = img.naturalWidth === 1500 && img.naturalHeight === 1700;
+    return { status: ok ? 'pass' : 'fail', detail: `decoded=${img.naturalWidth}x${img.naturalHeight}` };
+  });
+}
+
 async function checkStandalone(): Promise<DiagnosticResult> {
   return safeCheck('standalone', 'Standalone display', async () => {
     const nav = navigator as Navigator & { standalone?: boolean };
@@ -266,6 +294,7 @@ export async function runDiagnostics(): Promise<DiagnosticResult[]> {
     checkIndexedDb(),
     checkCvWorker(),
     checkSvgRaster(),
+    checkDiagramRaster(),
     checkHeicDecode(),
     checkIngestPipeline(),
     checkStandalone(),

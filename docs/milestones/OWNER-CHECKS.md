@@ -36,3 +36,15 @@ section here after each milestone that has them.
 - [ ] Confirm top-level `SightingOutcome.misses` means identified-only misses, confirm the pessimistic tie-break
       (smallest `shotId` among units tied for the largest `radialMm`), and confirm the `both` all-subset warnings come
       from combined declared vs. identified. All three are recorded in the M03 Open questions.
+
+## M05 — Diagram renderer
+
+- [ ] Compare the generated samples to the mockups: open `docs/reference/generated/sample-{sighting,precision}-{full,cell}.png`
+      next to `docs/reference/example-diagram-{sighting,precision}.png` on a real screen/device and confirm the visual
+      match is acceptable (layout, target geometry, and panels). This is optional — M05 has no owner gate — since it was
+      already visually checked in-session and the remaining differences are the documented REV-22/23/24 decisions
+      (8 px shot dots, the in-target "115 mm" zone label placed outside the halo, and outlined/relocated x&lt;k&gt;/MPI
+      labels) plus real computed text replacing the mockup's placeholder copy.
+- [ ] After pushing, open https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics on an iPhone in real
+      Safari and confirm the diagram-raster row passes — this exercises the SecurityError data-URL fallback in
+      `svgToPng`, which the e2e run doesn't reach.

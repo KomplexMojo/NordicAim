@@ -77,15 +77,20 @@ Layout (px):
    - **Sighting**: centre (750, 720), s = 8 px/mm; halo r 62.5 fill `haloFill` stroke `panelBorder` 1.5; disc r 57.5 fill `discSighting`
      stroke `#232A33` 3; guide r 55 stroke `guideOnDark` 2 dash `18 14`; prone disc r 22.5 fill white stroke `#232A33` 2; guide r 20
      stroke `accent` 2 dash `14 10`; centre dot r 0.6 mm.
+     Zone labels (class `zone-label`, `full` only, 14 px): "45 mm" at (cx + 22.5·s + 10, cy − 8) `guideOnDark`; "115 mm" at
+     (cx + 400, cy − 434) `accentText` (owner decision REV-22).
    - **Precision**: centre (790, 690), s = 6.35 px/mm; halo r 82.7 white stroke `panelBorder` 1.5; ring lines n = 1…3 stroke
      `ringOnLight` 2.5; black disc r 56.2 `discPrecision`; ring lines n = 4…10 `ringOnDark` 2; inner ten r 2.5 `ringOnDark` 1.5 dash
      `4 3`; labels (class `ring-label`) n = 1…9 at x = cx + ((r_n + r_{n+1})/2)·s, y = cy + 6, 17 bold, `ringOnDark` if midpoint < 56.2
      else `textPrimary`; "10" at (cx + 1.5·s, cy − 3·s) 13 px.
 6. **Group ellipse** (non-null): at the MPI, rx = rxMm·s, ry = ryMm·s, stroke `ellipse` 2, `transform="rotate(${-angleDeg} X Y)"`
    (negative: CCW target angle → clockwise SVG rotation).
-7. **Shots** (class `shot`): one circle per `Shot`, r = max(7, (holeDiameterMm/2)·s), × 1.25 if multiplicity > 1; fill by the position
-   of unit 0; white stroke 2. `x<k>` label 15 bold `accentText` at (X + 10, Y − 14) when k > 1.
-8. **MPI** (`all` subset): ±14 px lines stroke `mpi` 2.5, circle r 6, "MPI" 15 bold at (X + 18, Y − 8).
+7. **Shots** (class `shot`): one circle per `Shot`, fixed display marker r = 8 px (not the true hole size, so tight groups stay
+   readable; REV-22), × 1.25 if multiplicity > 1; fill by the position
+   of unit 0; white stroke 2. `x<k>` label 15 bold `accentText` when k > 1, preferred position (X + 10, Y − 14), placed per item 11.
+8. **MPI** (`all` subset): ±14 px lines stroke `mpi` 2.5, circle r 6, "MPI" 15 bold `mpi`, preferred position (X + 18, Y − 8), placed per item 11.
+   The `x<k>` and "MPI" labels carry a white outline (`stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"
+   paint-order="stroke"`) so they stay legible on the black precision disc and over shots (REV-23).
 9. **Precision RESULTS panel** (48, 210, 272, 510) rx 10:
    - "RESULTS" 18 at (68, 244); `<declared> shots` 13 at (68, 268)
    - rows (class `results-row`) n = 10…0 at y = 304 + 28·i: number right-aligned x 96; `x<count>` or `-` at x 108
@@ -109,6 +114,16 @@ Layout (px):
       5. `Group size: <es> mm · <moa> MOA · <mrad> MRAD @ 50 m`
       6. `MPI offset: …`
       7. (both) `Prone: <total>/<max> · Standing: <total>/<max>`
+11. **Marker label placement** (`label-placement.ts`, both variants; REV-24). Labels are drawn after the shots and the MPI marker:
+    "MPI" first, then `x<k>` in shot order. Text origin (x, y) = left edge, baseline.
+    - Label box: left x − 2, right x + 0.62·size·chars + 2, top y − 0.75·size − 2, bottom y + 0.25·size + 2.
+    - Obstacles: every shot circle at its drawn r + 1, the MPI marker as a circle r 14 px, and labels already placed.
+    - Candidates, in order: the preferred position; then for gap g = 4, 12, 20 px around the anchor circle (x, y, r) — the shot
+      circle (r + 1) or the MPI circle (r 14) — with d = r/√2, w = 0.62·size·chars, a = 0.75·size: NE (x+d+g, y−d−g),
+      E (x+r+g, y+0.35·size), SE (x+d+g, y+d+g+a), S (x−w/2, y+r+g+a), SW (x−d−g−w, y+d+g+a), W (x−r−g−w, y+0.35·size),
+      NW (x−d−g−w, y−d−g), N (x−w/2, y−r−g).
+    - Skip candidates whose box leaves the label area (full x 8–1500, y 180–1230; cell x 8–720, y 60–664). Take the first with
+      no collisions; if none is clear, the one with the fewest (earliest wins ties); if none fits the area, the preferred position.
 
 Expose line builders as pure functions: `sightingFooterLines`, `precisionFooterLines`, `cellCaption`, `targetHeadline` (used by
 result cards: precision `72 / 100 · X 1`, or `66–76 / 100` when missing; sighting `9/10 hits @ 45 mm`; both: `Prone … · Standing …`).
@@ -118,8 +133,8 @@ result cards: precision `72 / 100 · X 1`, or `66–76 / 100` when missing; sigh
 
 ## 4. `cell` variant (720 × 720)
 
-- Target centre (360, 350); s = 300 / haloRadiusMm (sighting 4.8, precision ≈ 3.6276). Same target, ellipse, shots (min r 5), MPI.
-  Precision ring labels omitted when s < 4.
+- Target centre (360, 350); s = 300 / haloRadiusMm (sighting 4.8, precision ≈ 3.6276). Same target, ellipse, shots (r 5 px), MPI.
+  Precision ring labels omitted when s < 4; sighting zone labels omitted.
 - Chip (20, 20, 16 + 9·chars, 36) rx 18 `panel`; 15 bold uppercase `<TEMPLATE> <slot> · <POSITION>`.
 - Caption band (0, 668, 720, 52) `panel`; centred 17 px at y 700:
   - sighting `<hits>/<declared> hit @ <45|115> mm · ES <es> mm · <moa> MOA` (both: `P <h>/<d> · S <h>/<d>`)

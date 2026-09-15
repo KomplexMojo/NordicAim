@@ -18,7 +18,8 @@
     "test:e2e": "playwright test",
     "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
     "check:privacy": "node scripts/check-privacy.mjs",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:privacy"
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:privacy",
+    "render:samples": "tsx scripts/render-samples.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

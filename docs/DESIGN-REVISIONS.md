@@ -14,6 +14,14 @@
 - **Not part of the product:** Apple Health; any Garmin connection or upload (attaching the summary image in Garmin Connect is manual).
 - **Everything else** is post-MVP, listed in [`BACKLOG.md`](BACKLOG.md).
 
+## 2026-09-15: diagram readability
+
+| ID | Decision | Supersedes | Owner's words / reason |
+|---|---|---|---|
+| REV-22 | **Diagram shot markers are small fixed-size dots** (full 8 px, cell 5 px), not drawn at the true 5.6 mm hole size. **Sighting diagrams show the "45 mm" and "115 mm" labels on the target** (full variant). Scoring still uses the true hole size. | rendering-composite §3 item 7 (true-size markers) | "use smaller shot dots and restore the mm labels" — true-size markers overlapped in tight groups and hid the x<k> and MPI labels. |
+| REV-23 | **Diagram `x<k>` and "MPI" labels have a white outline** so they are legible on the black precision disc and where they overlap shots. | rendering-composite §3 items 7–8 (plain coloured labels) | "fix the precision label contrast too" — blue/red labels were nearly invisible on black. |
+| REV-24 | **Diagram `x<k>` and "MPI" labels are placed clear of shots**, the MPI marker and each other, trying the spec position first and then nearby positions (deterministic). | rendering-composite §3 items 7–8 (fixed label offsets) | "move the labels clear of the shots too" — in tight groups, especially the small summary-image square, labels sat on top of shots. |
+
 ## 2026-09-15: future requirement
 
 | ID | Decision | Status | Owner's words / reason |
