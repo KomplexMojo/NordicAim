@@ -23,3 +23,13 @@ section here after each milestone that has them.
 - [x] Decide on the non-blocking M01 open questions: keep the shadcn "radix-nova" preset and its extra self-hosted
       dependencies (Geist font, radix-ui, lucide-react, next-themes, tw-animate-css, class-variance-authority), or trim them.
       _Owner decision 2026-09-15: **keep**. Recorded in PLAN.md D1._
+
+## M03 — Scoring engine
+
+- [ ] Fix the MOA values for angular(27.7) and angular(41.9) in `geometry-scoring.md` §6 (true values 1.904512 and
+      2.880832), then tighten `tests/unit/scoring/groups.test.ts` to 1e-6.
+- [ ] Decide what an over-counted sighting subset's `range.*.misses` should be — it is currently `declared - hits`,
+      which can go negative.
+- [ ] Confirm top-level `SightingOutcome.misses` means identified-only misses, confirm the pessimistic tie-break
+      (smallest `shotId` among units tied for the largest `radialMm`), and confirm the `both` all-subset warnings come
+      from combined declared vs. identified. All three are recorded in the M03 Open questions.
