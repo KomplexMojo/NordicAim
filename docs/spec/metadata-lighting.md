@@ -153,7 +153,8 @@ Rules (first match wins; reason codes in brackets):
 | 4d | bv null (dawn/dusk) | `mixed`, 0.3, [`twilight-hour`] |
 
 In-app captures have no EXIF, so they always use rows 4a–4d. On ingest, `lighting = suggestion.label` and
-`lightingConfirmed = false`; the categorize UI asks the owner to confirm or override.
+`lightingConfirmed = false`. The Add metadata screen shows the suggestion prefilled; the owner may change it, and tapping
+**Analyze** sets `lightingConfirmed = true` (analysis-pipeline §1).
 
 **Vectors**
 

@@ -182,7 +182,7 @@ normalised to `[0, 180)`. Centre = `mpi`.
 - Ellipse of `(-1,0),(1,0),(0,2),(0,-2)` → centre (0,0), rx 2.828427, ry 1.414214, angle 90.
 - Ellipse of `(1,1),(2,2),(3,3)` → angle 45, ry 0 → still returned (ry = 0 is allowed; only the all-zero case is null).
 
-**Sight-correction hint** (only if `clickValueMm` is set): `moveRightMm = -mpi.x`, `moveUpMm = -mpi.y`;
+**Sight-correction hint (post-MVP, backlog B8; do not implement in the MVP)** (only if `clickValueMm` is set): `moveRightMm = -mpi.x`, `moveUpMm = -mpi.y`;
 clicks = `round(|move| / clickValueMm)`; words: `R`/`L` and `U`/`D`. Example: mpi (9.7, 3.85), click 6 →
 "move group 9.7 mm left, 3.9 mm down (≈2 L, 1 D)". Pure function `sightCorrection(mpi, clickValueMm)`.
 

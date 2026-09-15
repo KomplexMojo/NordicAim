@@ -1,55 +1,62 @@
 # Design revisions (owner decisions)
 
 `DESIGN.md` is kept verbatim. This file records the product owner's later decisions. **Where this file and
-`DESIGN.md` disagree, this file wins; within this file, a later revision wins over an earlier one.**
-`PLAN.md` explains the reasoning.
+`DESIGN.md` disagree, this file wins; within this file, a later revision wins.** `PLAN.md` explains the reasoning.
 
-## Current platform summary (as of 2026-09-14)
+## Current scope summary: MVP (as of 2026-09-14)
 
-- **Phase 1:** an installable web app that runs **entirely on the owner's iPhone**. Its code is served as
-  static files from GitHub Pages; all processing and storage happen on the phone, and it works offline.
-- **Phase 2:** the same app wrapped with **Capacitor** and installed personally through Xcode, adding
-  Apple Health workouts and native Photos saving.
-- No backend server and no Garmin login in either phase.
+- **What the user does:** 1) take picture(s) of the targets, 2) add metadata, 3) receive the analysis.
+- **What happens behind the scenes:** review the image → overlay it on the target template → pull photo metadata →
+  incorporate the user's metadata → generate the analysis. **Scoring is the core of the analysis**: precision ring scores
+  /100 with X count and tally, sighting hits/misses per zone, the `both` split, and ranges for unaccounted rounds. Also group
+  size (mm, MOA, MRAD), MPI offset, per-target diagrams, and one session summary image to share.
+- **Platform:** an installable web app that runs **entirely on the iPhone**, served as static files from GitHub Pages. No server.
+- **Not part of the product:** Apple Health; any Garmin connection or upload (attaching the summary image in Garmin Connect is manual).
+- **Everything else** is post-MVP, listed in [`BACKLOG.md`](BACKLOG.md).
 
-## 2026-09-14
+## 2026-09-14: MVP scope
 
-| ID | Decision | Supersedes | Reason |
+| ID | Decision | Supersedes | Owner's words / reason |
 |---|---|---|---|
-| REV-10 | **Runs entirely on the phone.** Installable web app (Add to Home Screen): camera, CV, scoring, diagrams, composite, and storage all on-device, working offline. | REV-1, REV-7 | Owner asked to evaluate running entirely on the phone, then approved it. No server to run, maximum privacy, works at the range without signal. |
-| REV-11 | **Static hosting on GitHub Pages** from this public repo. It hosts code only, never data. | REV-1 | Free and simple; the app has no secrets. |
-| REV-12 | **No Garmin connection in Phase 1.** Phase 2 reads workouts from **Apple Health** (Garmin Connect writes workouts there). | REV-3 | No supported Garmin API for personal use, and a browser can't use the unofficial one. Apple Health gives workout context without a Garmin login. |
-| REV-13 | **Phase 2 wraps the app with Capacitor** (mainstream web-to-native runtime), installed on the owner's iPhone via Xcode. No App Store publishing. The paid Apple Developer Program is recommended so installs don't expire weekly. | — | Adds native features (Apple Health, direct Photos save) while reusing the Phase 1 code. The owner confirmed Capacitor is mainstream enough. |
-| REV-14 | **Backups are a core feature**: export/import to Files or iCloud Drive via the share sheet, with reminders. | — | On-device browser storage can be lost (for example, deleting the Home Screen app). Backups also move data into the Phase 2 app. |
+| REV-15 | **MVP user experience is three steps**: take picture(s), add metadata, receive analysis. | — | "The overall user UX for an MVP, take picture(s), add metadata, receive analysis." |
+| REV-16 | **The analysis pipeline is automatic**: review image, overlay on template, pull photo metadata, incorporate user metadata, generate analysis. The user doesn't calibrate or place shots by default. An optional **Adjust shots** screen exists for when detection is wrong. | REV-6 (now automatic; the overlay prior is still used) | "Behind the scenes, review image, overlay it on the target template, pull photo metadata, incorporate user metadata, generate analysis." The Adjust screen remains because overlapping holes can't always be detected. |
+| REV-17 | **No Apple Health integration** in any phase. | REV-12 (Phase 2 part), REV-13 | "There doesn't need to be any integration with apple health." |
+| REV-18 | **Pipeline status replaces auto-review**: a target is *analyzed* or *needs attention* (with plain-language reasons). Unaccounted rounds are shown as a score range, with no Accept step. | REV-9 | Simpler for the three-step MVP. |
+| REV-20 | **Scoring is part of the analysis and part of the core MVP**: ISSF ring scoring for precision (/100, Inner Circle = 10, 1st Ring = 10, 2nd Ring = 9), zone hits/misses for sighting, multiplicity, the `both` split, and missing-round ranges. It is never deferred. | — | "The scoring is part of the analysis. It is part of the core MVP." |
+| REV-19 | **Deferred to the backlog**: backups/restore, sequence player, harness trends, keep/discard sources, composite slot picker, extra sheet fields, torch and tilt indicator, sight-correction hint, Capacitor native shell. | REV-13, REV-14 (deferred, not cancelled) | Not needed for the MVP flow. |
 
-## 2026-09-13
+## Earlier revisions and their status
 
-| ID | Decision | Status |
+| ID | Decision (short) | Status |
 |---|---|---|
-| REV-1 | Hosted web app on a small self-hosted server | **Superseded** by REV-10/11 |
-| REV-2 | **Audience: single user** (the owner) for now | Active |
-| REV-3 | Garmin optional, own account only | **Superseded** by REV-12 |
-| REV-4 | **Attaching the composite to a Garmin activity is manual** in the Garmin Connect mobile app, after the app shares or saves the image | Active |
-| REV-5 | **Photos are taken in the app with a live template overlay** (sighting or precision) to centre and align the target | Active |
-| REV-6 | The overlay alignment becomes the **initial calibration**; the user or CV refines it | Active |
-| REV-7 | Source photos stay on the owner's own server | **Superseded** by REV-10: source photos stay **on the phone**, leaving it only inside a backup the owner exports |
-| REV-8 | **Quick start**: one button goes straight into the camera, creating or reusing today's session | Active |
-| REV-9 | **Auto-review**: reviewed when categorized, calibrated, and the shot count matches the declared rounds; "Accept with N missing" otherwise; over-counts never reviewed | Active |
+| REV-1 | Hosted server web app | Superseded by REV-10/11 |
+| REV-2 | Single user (the owner) | **Active** |
+| REV-3 | Optional Garmin connection | Superseded (no Garmin connection) |
+| REV-4 | Attaching the image to a Garmin activity is manual in Garmin Connect | **Active** |
+| REV-5 | Capture inside the app with a live template overlay | **Active** |
+| REV-6 | Overlay alignment becomes the initial calibration | Folded into REV-16 (used as the prior for automatic alignment) |
+| REV-7 | Photos on the owner's server | Superseded: photos never leave the phone |
+| REV-8 | Quick start straight into the camera | **Active** |
+| REV-9 | Auto-review with "Accept with N missing" | Superseded by REV-18 |
+| REV-10 | Runs entirely on the phone | **Active** |
+| REV-11 | Static hosting on GitHub Pages | **Active** |
+| REV-12 | No Garmin in Phase 1; Apple Health in Phase 2 | Garmin part active; Apple Health part superseded by REV-17 |
+| REV-13 | Phase 2 Capacitor shell | Deferred to backlog (no Apple Health) |
+| REV-14 | Backups as a core feature | Deferred to backlog (REV-19) |
 
-## What this supersedes in `DESIGN.md`
+## What this means for `DESIGN.md`
 
 | DESIGN.md | Now |
 |---|---|
-| Next.js app with route handlers | Vite + React single-page app, no backend (Phase 1); Capacitor shell (Phase 2) |
-| Per-session Garmin credential prompt, `garmin_mcp`, demo mode | No Garmin connection. Phase 2: Apple Health workouts. |
-| "Upload analysis composite only to Garmin" | Share or save the composite; attach manually in Garmin Connect (REV-4) |
-| Multi-select Garmin activities, EXIF-based activity alignment | Phase 2: workouts from Apple Health, suggested from in-app capture times |
-| "Source photo workspace" on disk | On-device IndexedDB storage plus owner-exported backups |
-| Import photos first | Capture in-app with the overlay first; import from Photos is a fallback |
+| Next.js app with route handlers, Garmin via `garmin_mcp`, credentials, demo mode | On-phone web app; no Garmin connection |
+| "Upload analysis composite only to Garmin" | Share or save the summary image; attach manually in Garmin Connect |
+| Multi-activity sessions, EXIF activity alignment | A session is simply one outing's photos; no activities |
+| CV review with interactive correction as a main step | Automatic pipeline; optional Adjust shots |
+| Composite picker for more than 4 photos | Automatic selection (most recent 2 sighting + 2 precision); picker in backlog |
+| Sequence player, harness | Backlog |
 
 ## Unchanged from `DESIGN.md`
 
 Both templates and their geometry; template × position independence; the `both` furthest-from-centre rule;
-multiplicity; the optimistic/pessimistic/averaged range; derived diagrams; the composite (≤2 sighting +
-≤2 precision + analysis); the sequence player; the harness (shooting metrics; workout load in Phase 2); derived
-lighting with override; keep/discard sources; winter-range visual direction.
+multiplicity; the optimistic/pessimistic/averaged range; derived diagrams in the style of the owner's examples; the
+composite layout (≤2 sighting + ≤2 precision + analysis); derived lighting with override.

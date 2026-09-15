@@ -1,0 +1,226 @@
+# Spec: MVP user flow and the automatic analysis pipeline
+
+Implements REV-15, REV-16, REV-18. Code: `src/lib/pipeline/*`, `src/lib/domain/status.ts`, the CV worker, and the
+screens listed in §1.
+
+## 1. User flow and routes
+
+The user experience is three steps: **take picture(s) → add metadata → receive analysis**.
+
+| Route (hash) | Screen | Milestone |
+|---|---|---|
+| `#/` | Home: quick-start button + up to 5 recent sessions | M09 |
+| `#/sessions` | All sessions (name, date, target count, headline) | M09 |
+| `#/sessions/:sid` | Redirect: to `metadata` if any photo is `needs-metadata`, else to `results` | M09 |
+| `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |
+| `#/sessions/:sid/metadata` | **Step 2: add metadata** | M09 |
+| `#/sessions/:sid/results` | **Step 3: receive analysis** (summary image + target cards) | M12, M14 |
+| `#/sessions/:sid/photos/:pid` | Target detail (full diagram + all metrics) | M12 |
+| `#/sessions/:sid/photos/:pid/adjust` | Optional: adjust alignment and shots | M13 |
+| `#/diagnostics` | Device capability checks | M01 |
+
+**Step 1: take picture(s)** (spec/capture-overlay.md): quick start → pick Sighting/Precision and position → overlay →
+capture → Use photo (Stage A starts in the background) → next target → **Done** → metadata screen.
+
+**Step 2: add metadata** (`MetadataPage`):
+- Session name (default `Session <YYYY-MM-DD>`) and optional session notes.
+- One card per photo: thumbnail, a small Stage A progress indicator ("Checking photo…", "Aligning…", "Finding shots…",
+  "Ready"), and these fields:
+  - **Template** (prefilled from capture) and **Position** (prefilled)
+  - **Rounds** for prone and/or standing (defaults from `defaultCategorization`)
+  - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`
+  - **Notes** (optional)
+  - **Remove photo**.
+- **Add more photos** → capture screen.
+- Primary button **Analyze N targets**: enabled when every photo's categorization is complete. Tapping it confirms
+  lighting on every photo, sets `session.analyzeRequestedAt`, and navigates to results.
+
+**Step 3: receive analysis** (`ResultsPage`):
+- Top: **Session summary** card with the summary image, **Share**, and the "Attach in Garmin Connect" steps (M14).
+- Then one **target card** per photo in capture order:
+  - the `cell` diagram
+  - headline (precision: `72 / 100 · X 1`; sighting: `9/10 hits @ 45 mm`; `both`: per-position headlines)
+  - key metrics (group size mm · MOA · MRAD; MPI offset)
+  - range line when rounds are unaccounted
+  - status chip plus reason messages (§4)
+  - buttons **View** (target detail) and **Adjust shots**.
+- While a target is processing, its card shows a spinner with the current stage.
+
+## 2. Pipeline stages (per photo)
+
+**Stage A: automatic, starts immediately after a photo is stored (needs no user metadata)**
+
+| Step | Name (owner's wording) | What happens | Output |
+|---|---|---|---|
+| A1 | *(store)* | `ingestPhoto` saves original/working/thumb and the photo record | photo, blobs |
+| A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
+| A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
+| A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
+| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual) | `analysis.shots` (source `auto`) |
+
+**Stage B: runs when analysis has been requested for the session and the photo's metadata is complete**
+
+| Step | Name | What happens | Output |
+|---|---|---|---|
+| B1 | **Incorporate user metadata** | Read categorization and lighting | — |
+| B2 | **Generate analysis: scoring (core MVP, REV-20)** | `analyzeTarget(template, categorization, shots, profile)`: precision ring scores /100, X count, tally; sighting hits/misses/clean per zone; `both` split; missing-round ranges; group size mm/MOA/MRAD; MPI offset (geometry-scoring) | `analysis.computed` |
+| B3 | *(diagrams)* | Render `full-svg`, `full-png`, `cell-svg`; rasterise before the transaction | diagram blobs |
+| B4 | *(status)* | `photoStatus(...)` (§4), including the `template-mismatch` warning when `templateHint.template !== categorization.template && templateHint.confidence >= 0.5` | `photo.status`, `photo.reasons` |
+| B5 | *(summary)* | After all of a session's photos are settled, schedule the summary image build (§7) | artifact |
+
+## 3. Alignment rules (pure, `src/lib/pipeline/alignment.ts`)
+
+```ts
+export function chooseAlignment(input: {
+  prior: Calibration | null;          // capture.calibrationPriorFramePx scaled to working px, else null
+  detection: { calibration: Calibration; confidence: number } | null;  // from detectAnchor (already fill ≥ 0.85)
+}): { calibration: Calibration | null; method: 'cv' | 'overlay' | 'none'; confidence: number | null;
+      warnings: Array<'alignment-uncertain'> };
+```
+
+| prior | detection | Result |
+|---|---|---|
+| any | present | `cv`, the detection's calibration (`source: 'auto'`), its confidence, no warning |
+| present | null | `overlay`, the prior (`source: 'overlay'`), confidence null, warning `alignment-uncertain` |
+| null | null | `none`, calibration null, confidence null, no warning (status reports `target-not-found`) |
+
+Prior scaling: `scaleCalibration(capture.calibrationPriorFramePx, max(working.w, working.h) / max(frameWidthPx, frameHeightPx))`.
+
+**Sharpness** (pure `sharpness(cv, img)` in `src/lib/cv/sharpness.ts`): the variance of `cv.Laplacian` (`CV_64F`, ksize 1) on the gray
+image resized to longest 1200 px. `image-blurry` warning when `< BLUR_THRESHOLD` (`src/lib/cv/constants.ts`). The initial
+value is **40**, provisional: M10 records the values measured on the reference JPEGs and synthetic blurred images, and
+adjusts the constant with a note.
+
+## 4. Status and reasons (pure, `src/lib/domain/status.ts`)
+
+```ts
+export type PhotoStatus = 'needs-metadata' | 'processing' | 'ready' | 'analyzed' | 'needs-attention' | 'failed';
+export type Reason = 'target-not-found' | 'no-shots-found' | 'too-many-shots' | 'rounds-unaccounted'
+  | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch';
+export function photoStatus(input: { categorization: Categorization; analysis: TargetAnalysis; result: AnalysisResult | null })
+  : { status: PhotoStatus; reasons: Reason[] };
+```
+
+Rules, first match sets the status. Pipeline warnings are **always appended** to `reasons` (in the order
+`alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`, `processing`, and `failed`:
+1. categorization incomplete → `needs-metadata`, []
+2. `stageA === 'error' || stageB === 'error'` → `failed`, []
+3. `stageA` is `pending`/`running`, or `stageB === 'running'` → `processing`, []
+4. `stageB === 'pending'` → `ready`, [...warnings]
+5. `calibration === null` → `needs-attention`, [`target-not-found`, ...warnings]
+6. `result === null || result.all.identified === 0` → `needs-attention`, [`no-shots-found`, ...warnings]
+7. any subset `overcount > 0` → `needs-attention`, [`too-many-shots`, ...warnings]
+8. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0), ...warnings]
+
+**Vectors** (complete categorization unless stated; "done/done" = stageA done, stageB done):
+- incomplete categorization, stageA running → `needs-metadata`, []
+- stageA error → `failed`
+- stageA running → `processing`
+- stageA done, stageB pending, warnings [image-blurry] → `ready`, [image-blurry]
+- done/done, calibration null → `needs-attention`, [target-not-found]
+- done/done, identified 0 → `needs-attention`, [no-shots-found]
+- done/done, overcount 1, warnings [alignment-uncertain] → `needs-attention`, [too-many-shots, alignment-uncertain]
+- done/done, precision golden fixture (missing 0) → `analyzed`, []
+- done/done, golden with P8 multiplicity 1 (missing 1) → `analyzed`, [rounds-unaccounted]
+
+**Messages** (`reasonMessage(reason, ctx)` in `src/lib/domain/reason-messages.ts`):
+
+| Reason | Message |
+|---|---|
+| `target-not-found` | Couldn't find the target in this photo. Use Adjust to line it up. |
+| `no-shots-found` | No shots detected. Use Adjust to add them. |
+| `too-many-shots` | More shots found than the rounds you entered. Check the rounds or adjust shots. |
+| `rounds-unaccounted` | `<N>` round(s) not found (often overlapping holes) — score shown as a range. |
+| `alignment-uncertain` | Used your on-screen alignment — check the rings line up. |
+| `image-blurry` | This photo looks blurry, so results may be less accurate. |
+| `template-mismatch` | This looks like a `<sighting/precision>` target — check the template. |
+
+## 5. Triggers and runner
+
+State lives in `analysis.pipeline` (data-model §4) and `session.analyzeRequestedAt` (data-model §2).
+
+**Pure planner** (`src/lib/pipeline/plan.ts`):
+
+```ts
+export type Job = { kind: 'A'; photoId: string } | { kind: 'B'; photoId: string };
+export function planJobs(sessions: BiathlonSession[], photos: TargetPhoto[], analyses: TargetAnalysis[]): Job[];
+```
+
+1. For every photo whose `stageA` is `pending` or `running` → `A` job.
+2. For every photo in a session with `analyzeRequestedAt !== null`, categorization complete, `stageA === 'done'`, and
+   `stageB` `pending` or `running` → `B` job.
+3. Order: all A jobs by `importedAt` ascending, then all B jobs by `importedAt` ascending.
+
+Vectors:
+- two photos with stageA pending → [A p1, A p2]
+- a photo with stageA done and stageB pending in a session without analyzeRequestedAt → []
+- the same with analyzeRequestedAt set → [B]
+- categorization incomplete → no B
+- a mix → A jobs first.
+
+**Runner** (`src/lib/pipeline/runner-browser.ts`, singleton):
+- `start(ctx)` on app load: reset `running` → `pending` (interrupted jobs), then loop.
+- Loop: `planJobs` → take the **first** job → run it → repeat; idle when there are no jobs. One job at a time.
+- `notify()` is called by services after ingest, metadata changes, Analyze, and adjustments. It wakes the loop.
+- Stage A job: set `stageA 'running'` → A3–A5 (worker calls with `Comlink.transfer` of the working bytes) → one transaction
+  saves calibration, shots (only if §8 allows), pipeline fields, `stageA 'done'`, and the photo status. Catch → `stageA 'error'`,
+  `error` = first 200 chars.
+- Stage B job: set `stageB 'running'` → B2–B4 → one transaction → `stageB 'done'`. Catch → `stageB 'error'`.
+- Emits `pipeline-changed` events (`src/lib/pipeline/events.ts`, an `EventTarget`) with `{ photoId, sessionId }`. Screens re-read on these.
+- **Retry**: the failed-status UI button resets the failed stage to `pending` and calls `notify()`.
+- **Re-analysis**: once `analyzeRequestedAt` is set, any change to a photo's categorization, lighting, shots, or calibration sets
+  its `stageB = 'pending'` (services do this), so results refresh automatically.
+
+## 6. Worker API (`src/workers/cv.worker.ts`)
+
+```ts
+interface CvWorkerApi {
+  ping(): Promise<{ loadedMs: number; hasMat: boolean }>;                                   // M01
+  reviewAndAlign(workingJpeg: ArrayBuffer, prior: Calibration | null, templateHint: TemplateId | null):
+    Promise<{ detection: { calibration: Calibration; confidence: number } | null;
+              sharpness: number; templateHint: { template: TemplateId; confidence: number } | null }>; // M10
+  detectShots(workingJpeg: ArrayBuffer, calibration: Calibration, template: TemplateId, holeDiameterMm: number):
+    Promise<{ shots: Shot[] }>;                                                             // M11
+}
+```
+
+The worker decodes JPEG bytes with `createImageBitmap` → `OffscreenCanvas` → `getImageData` → `RgbaImage`, then calls pure
+functions. `reviewAndAlign` searches for both anchor sizes when `templateHint` is null (imports); it uses `capture.overlayTemplate`
+when available.
+
+## 7. Summary image auto-build
+
+- After any Stage B job finishes, if **no photo in that session is `processing`** and **at least one is `analyzed`**, schedule
+  `buildComposite(ctx, sessionId, browserRenderTools)` with a 1500 ms debounce per session (a new trigger resets the timer).
+- Slots come from `selectDefaultSlots` over `analyzed` photos (rendering-composite §5).
+- Keep the newest **3** artifacts per session; delete older `artifact:<id>:*` blobs and their `ArtifactMeta`.
+- While a rebuild is pending, the Session summary card shows "Updating summary…" over the previous image.
+
+## 8. Adjustments never get overwritten
+
+- If the user saves a calibration in Adjust, its `source` is `'manual'` and `pipeline.alignment.method = 'manual'`.
+- Stage A never runs A4 when `calibration?.source === 'manual'`, and never runs A5 when any shot has `source === 'manual'`.
+- Adjust offers **Re-detect shots** (explicit): it replaces `auto` shots with a new detection and keeps `manual` ones.
+- Saving in Adjust sets `stageB = 'pending'` and calls `notify()`.
+
+## 9. Performance budget (iPhone 16 Pro Max, measured in M15)
+
+| Operation | Budget |
+|---|---|
+| OpenCV first load in worker (cold) | ≤ 5 s |
+| Stage A per photo (after load) | ≤ 3 s |
+| Stage B per photo | ≤ 1 s |
+| Summary image build | ≤ 2 s |
+
+## 10. Test hooks (only when `VITE_FAKE_CAMERA === '1'`)
+
+`window.__asaTest`:
+- `listPhotos(sessionId)`, `getAnalysis(photoId)`
+- `setShots(photoId, shots)`: saves shots as `manual` and sets stageB pending
+- `setCalibration(photoId, cal)`: manual
+- `waitForIdle()`: resolves when the runner has no jobs
+- `loadDemo()`: creates session "Demo — reference targets" from `demo/sighting.jpg` and `demo/precision.jpg` with categorizations and
+  shots from `@fixtures/sample-shots-*.json` and calibrations from `@fixtures/seed-calibrations.json` (both `manual`), requests
+  analysis, and returns the session id.
+
+These hooks let e2e tests verify flows independently of CV accuracy.

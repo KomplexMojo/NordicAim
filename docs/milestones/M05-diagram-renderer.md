@@ -1,12 +1,13 @@
 # M05: Diagram renderer
 
-| Depends on | Tier | Size | Design todo |
+| Depends on | Tier | Size | MVP step |
 |---|---|---|---|
-| M03 | low | M | groups-moa (derived diagram export) |
+| M03 | low | M | generate analysis (diagrams) |
 
 ## Goal
-Pure SVG renderers for both templates in `full` (1500×1700) and `cell` (720×720) variants, matching the owner's
-example diagrams, plus PNG rasterisation on the phone and a Node sample script.
+Pure SVG renderers that show the **scoring** results for both templates in `full` (1500×1700) and `cell` (720×720) variants,
+matching the owner's example diagrams. Also headline and metric text builders for result cards, PNG rasterisation on the phone,
+and a Node sample script.
 
 ## Read first
 - `docs/spec/rendering-composite.md` §1–§4
@@ -16,34 +17,37 @@ example diagrams, plus PNG rasterisation on the phone and a Node sample script.
 `src/lib/render/*` (pure), `rasterize-browser.ts`, `scripts/render-samples.ts`, diagnostics row `diagram-raster`.
 
 ## Out of scope
-Composite (M13), storing diagrams (M10), UI.
+The summary image (M14), storing diagrams (M12), UI.
 
 ## Files
-- `src/lib/render/palette.ts`, `svg.ts` (`el`, `text`, `escapeXml`, `num` = max 2 dp, no trailing zeros), `fonts.ts` (the system font stack constant)
-- `src/lib/render/diagram-sighting.ts`, `diagram-precision.ts`, `diagram.ts` (`renderDiagramSvg`), `footer-lines.ts`
-  (`sightingFooterLines`, `precisionFooterLines`, `cellCaption`)
-- `src/lib/render/rasterize-browser.ts` (`svgToPng`, exported as `browserRenderTools: RenderTools`)
-- `scripts/render-samples.ts` + script `"render:samples": "tsx scripts/render-samples.ts"`
-- `docs/reference/generated/sample-{sighting,precision}-{full,cell}.png` (committed output)
+- `src/lib/render/palette.ts`, `svg.ts` (`el`, `text`, `escapeXml`, `num`), `fonts.ts` (system font stack)
+- `src/lib/render/diagram-sighting.ts`, `diagram-precision.ts`, `diagram.ts` (`renderDiagramSvg`)
+- `src/lib/render/text-lines.ts` (`sightingFooterLines`, `precisionFooterLines`, `cellCaption`, `targetHeadline`)
+- `src/lib/render/rasterize-browser.ts` (`svgToPng`, `browserRenderTools`)
+- `scripts/render-samples.ts` + `"render:samples": "tsx scripts/render-samples.ts"`
+- `docs/reference/generated/sample-{sighting,precision}-{full,cell}.png` (committed)
 - `src/lib/diagnostics/checks-browser.ts`: add `diagram-raster`
 - `tests/unit/render/*.test.ts`
 
 ## Steps
-1. SVG helpers; all numeric attributes go through `num()`, so snapshots are stable.
-2. Implement §3 (full) and §4 (cell) exactly, with the line builders as separate pure functions.
-3. `rasterize-browser.ts` per §2 (object URL path, data URL fallback on `SecurityError`).
-4. `scripts/render-samples.ts`: for each `sample-shots-*.json`, run `analyzeTarget`, then render full and cell with
-   `captureLocal` `2026-09-05T16:56:03` (precision) or `2026-08-24T19:30:09` (sighting), lighting `daylight`,
-   `clickValueMm` null, `holeDiameterMm` 5.6. Rasterise with resvg (`loadSystemFonts: true`) to `docs/reference/generated/`.
-5. Diagnostics `diagram-raster`: render the precision fixture's full SVG → `svgToPng` → decode → pass if 1500×1700.
+1. SVG helpers; all numeric attributes go through `num()`.
+2. Implement §3 and §4 exactly; the line builders are separate pure functions.
+3. `targetHeadline(result)`:
+   - precision `72 / 100 · X 1`, or `<pess>–<opt> / <max> · X <x>` when missing > 0
+   - sighting `<hits>/<declared> hits @ <45|115> mm`, or `<pessHits>–<optHits>/<declared> hits @ …` when missing > 0
+   - both: `Prone <headline> · Standing <headline>`.
+4. `rasterize-browser.ts` per §2.
+5. `render-samples.ts`: run `analyzeTarget` on each `sample-shots-*.json` → render full and cell (captureLocal from the sidecars,
+   lighting `daylight`, holeDiameterMm 5.6) → resvg → `docs/reference/generated/`.
+6. Diagnostics `diagram-raster`: precision fixture full SVG → `svgToPng` → decoded 1500×1700 → pass.
 
 ## Tests
-- Golden text checks (§3) for both fixtures.
-- Structure: precision full has 9 `class="shot"` and 11 `class="results-row"`; sighting full has 7 `shot`; the ellipse has `rotate(-`.
-- Snapshots of all four SVGs.
-- Position `both` shows the prone/standing legend; single position doesn't. The precision cell has no `ring-label`.
-- Every SVG starts with `<svg xmlns="http://www.w3.org/2000/svg"` and has `width`, `height`, and `viewBox`.
-- E2E (both projects): diagnostics `diagram-raster` pass.
+- Golden text checks (§3).
+- Structure: precision full has 9 `shot` and 11 `results-row`; sighting full has 7 `shot`; the ellipse has `rotate(-`.
+- Snapshots of the four SVGs; `both` legend present only for `both`; no `ring-label` in the precision cell; SVG root attributes present.
+- `targetHeadline`: precision fixture → `72 / 100 · X 1`; sighting fixture (prone) → `9/10 hits @ 45 mm`; precision with P8
+  multiplicity 1 → `71–76 / 100 · X 1`.
+- E2E: diagnostics `diagram-raster` pass.
 
 ## Acceptance
 ```bash
@@ -51,12 +55,12 @@ pnpm check
 pnpm render:samples
 pnpm test:e2e
 ```
-Compare the generated PNGs with the example PNGs (same layout regions). Note differences in Completion notes.
+Compare the generated PNGs with the example PNGs; note differences in Completion notes.
 
 ## Pitfalls
-- SVG y grows downward: `Y = cy - yMm*s`.
-- Escape user text (`escapeXml`).
-- No `<foreignObject>`, no external `href`s, no web fonts (these break canvas rasterisation on iOS).
+- `Y = cy - yMm*s`.
+- Escape user text.
+- No `<foreignObject>`, external hrefs, or web fonts.
 
 ## Open questions
 _(add here)_
