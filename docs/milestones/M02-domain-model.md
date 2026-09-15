@@ -53,7 +53,33 @@ pnpm check
 - Don't add fields that aren't in the spec.
 
 ## Open questions
-_(add here)_
+- `reasonMessage('template-mismatch', ctx)` with no `hintTemplate` — the §4 table shows
+  `<sighting/precision>`, implying `hintTemplate` is always supplied by the caller. Implemented a
+  literal `'sighting/precision'` fallback for the no-`hintTemplate` case since the spec doesn't say
+  what to render then; non-blocking (M09/M12, the actual callers, always pass a hint).
+- `ringRadiusMm(n)` isn't given a signature/return unit in the spec beyond "plus `getTemplate(id)` and
+  `ringRadiusMm(n)`" in the Steps. Implemented as `PRECISION_TEMPLATE.ringDiameterMm[n] / 2` (mm),
+  matching the ring-diameter formula the milestone asks to test. Non-blocking; M03/M05 (the consumers)
+  can adjust if the scoring spec needs a different shape.
 
 ## Completion notes
-_(fill in when done)_
+- Implemented `src/lib/domain/{enums,primitives,session,photo,analysis,settings,categorization,status,
+  reason-messages,index}.ts` and `src/lib/defaults/{biathlon,templates}.ts` per data-model.md §1–§5 and
+  geometry-scoring.md §1, transcribed verbatim (constants, field names, validation ranges).
+- `AnalysisResultSchema` is a permissive zod wrapper (`z.custom<SubsetResult>()` for `subsets`/`all`)
+  per the milestone's "interface plus a permissive `AnalysisResultSchema`" instruction — it validates
+  the record's top-level shape without re-deriving every scoring invariant, which belongs to M03.
+- `photoStatus` implements analysis-pipeline.md §4 rule order 1–8 exactly, with warnings appended in
+  the fixed order `alignment-uncertain, image-blurry, template-mismatch` (filtered from whatever order
+  `pipeline.warnings` happens to store).
+- Tests added: `tests/unit/domain/{categorization,schemas,status,reason-messages,analysis,settings}.test.ts`
+  and `tests/unit/defaults/templates.test.ts` — covering every vector and test case named in the
+  milestone's Tests section (ring diameter formula, `defaultCategorization`/`declaredRounds` cases
+  including the both-3/2→5 and standing-with-null-rounds-throws cases, `Shot`/`Calibration` rejection
+  cases, `BiathlonSession` parsing the data-model §8 example, all 9 `photoStatus` vectors from §4, and
+  the two named `reasonMessage` cases) plus a few incidental tests (`initialAnalysis`,
+  `defaultAppSettings`) for coverage of steps 1–2.
+- Commands run: `pnpm typecheck` (pass), `pnpm lint` (pass, 0 errors / 3 pre-existing warnings in
+  `src/components/ui/*` unrelated to this milestone), `pnpm test` (42/42 pass across 8 files),
+  `pnpm check:privacy` (pass), `pnpm check` (pass, runs all of the above).
+- No browser/Node imports were added to `src/lib/domain` (only `zod` and intra-`domain` imports).
