@@ -22,7 +22,7 @@ section here after each milestone that has them.
 - [ ] Any `fail` on `cv-worker`, `svg-raster`, `heic-decode`, `indexeddb`, or `share-files` on the real phone: record it
       under M01 Open questions and tell Claude. (`storage-persist` failed only under headless automation; the phone result is what counts.)
 - [x] **Re-run diagnostics on the iPhone** after the OpenCV loader fix deploys and confirm `cv-worker` passes (cause was bundler interop wrapping OpenCV's Promise; see M01 Completion notes).
-  _Home Screen report 2026-09-15 (iOS 18.7, Safari 26.6.1): 13 pass, 0 fail; `cv-worker` pass (hasMat=true). That app was still on a pre-M05 cached build (no `diagram-raster` row), so `diagram-raster` is re-checked with M07._
+  _2026-09-15 (iOS 18.7, Safari 26.6.1). Home Screen app: 13 pass, 0 fail, `cv-worker` pass (hasMat=true); it was still on a pre-M05 cached build, so no `diagram-raster` row. Safari tab (current build): 12 pass, 1 fail, `cv-worker` and `diagram-raster` pass; the one fail is `storage-persist` (persisted=false), expected in a Safari tab because iOS grants persistent storage only to Home Screen apps (the Home Screen app reports persisted=true)._
 - [x] Decide on the non-blocking M01 open questions: keep the shadcn "radix-nova" preset and its extra self-hosted
       dependencies (Geist font, radix-ui, lucide-react, next-themes, tw-animate-css, class-variance-authority), or trim them.
       _Owner decision 2026-09-15: **keep**. Recorded in PLAN.md D1._
@@ -44,11 +44,12 @@ section here after each milestone that has them.
       next to `docs/reference/example-diagram-{sighting,precision}.png` on a real screen/device and confirm the visual
       match is acceptable (layout, target geometry, and panels). This is optional — M05 has no owner gate — since it was
       already visually checked in-session and the remaining differences are the documented REV-22/23/24 decisions
-      (8 px shot dots, the in-target "115 mm" zone label placed outside the halo, and outlined/relocated x&lt;k&gt;/MPI
+      (8 px shot dots, the in-target "115 mm" zone label placed outside the halo, and outlined/relocated x<k>/MPI
       labels) plus real computed text replacing the mockup's placeholder copy.
-- [ ] After pushing, open https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics on an iPhone in real
+- [x] After pushing, open https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics on an iPhone in real
       Safari and confirm the diagram-raster row passes — this exercises the SecurityError data-URL fallback in
       `svgToPng`, which the e2e run doesn't reach.
+      _2026-09-15 Safari tab: `diagram-raster` pass (decoded=1500x1700). The object-URL path worked (svg-raster path=object-url), so the data-URL fallback was not needed on this device._
 
 ## M07 — Capture screen with template overlay
 
