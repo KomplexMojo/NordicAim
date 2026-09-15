@@ -14,6 +14,12 @@
 - **Not part of the product:** Apple Health; any Garmin connection or upload (attaching the summary image in Garmin Connect is manual).
 - **Everything else** is post-MVP, listed in [`BACKLOG.md`](BACKLOG.md).
 
+## 2026-09-15: future requirement
+
+| ID | Decision | Status | Owner's words / reason |
+|---|---|---|---|
+| REV-21 | **Coaching suggestions from group patterns**: when shots form an obvious pattern, the analysis suggests what could be affecting performance (for example vertical stringing → breathing routine or sling tension, tight but offset group → zero). | **Future (post-MVP)**, backlog B12, draft spec `spec/group-patterns.md` | "If there is an obvious pattern to the shots it should provide a recommendation of what could be affecting the shooter's performance." Source: Biathlon Canada Technical Coaching Manual (2010), fig. 4.43. |
+
 ## 2026-09-14: MVP scope
 
 | ID | Decision | Supersedes | Owner's words / reason |
