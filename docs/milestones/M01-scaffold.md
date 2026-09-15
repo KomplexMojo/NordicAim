@@ -150,6 +150,8 @@ pnpm test:e2e
   non-fatal) rather than failing the check, since a blocked delete does not indicate the read/write roundtrip
   itself failed. Not in the spec; flagging the interpretation.
 
+- **Owner decision (2026-09-15):** keep the shadcn `radix-nova` preset and its self-hosted dependencies; recorded as approved in `docs/PLAN.md` D1. The alias-quirk workaround and the `order: 'post'` CSP hook are accepted as implemented.
+
 ## Completion notes
 
 Implemented exactly per the Steps above (scaffold copied from `pnpm create vite@latest --template react-ts`,

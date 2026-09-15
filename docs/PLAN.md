@@ -63,7 +63,7 @@ metadata. Stage B (scoring, diagrams, summary image) runs when the user taps **A
 
 | ID | Decision | Why |
 |---|---|---|
-| D1 | **Vite + React + TypeScript SPA**, hash routing, Tailwind, shadcn/ui, zod | No backend; works on static hosting |
+| D1 | **Vite + React + TypeScript SPA**, hash routing, Tailwind, shadcn/ui, zod. shadcn uses its current `radix-nova` preset; its self-hosted dependencies are **approved** (owner, 2026-09-15): `radix-ui`, `lucide-react`, `class-variance-authority`, `tw-animate-css`, `next-themes`, `@fontsource-variable/geist` (UI text only; SVG diagrams keep the system font stack) | No backend; works on static hosting |
 | D2 | pnpm 10, Node 22 tooling; Vitest (Node + `fake-indexeddb`); Playwright (mobile Chromium + mobile WebKit) | Testable without a phone |
 | D3 | **IndexedDB via `idb`**: `sessions`, `photos`, `analyses`, `blobs` (ArrayBuffer), `settings` | Works in Safari and in tests |
 | D4 | **Pure/adapter split**: pixel algorithms take `RgbaImage`; browser adapters only convert | Same code in Node tests and on the phone |
