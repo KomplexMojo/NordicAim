@@ -45,7 +45,23 @@ pnpm check
 - No `window` or `document`.
 
 ## Open questions
-_(add here)_
+- §4 gives colors/widths for the halo, anchor/ring/guide lines, and the centre cross, but not for the four
+  `overlay-tick` marks. Implemented ticks as `#FFFFFF` stroke, width 2, non-dashed, 12 px long, to visually match
+  the anchor circle's white line — not blocking (class name/count/geometry are the only spec-checked properties;
+  no downstream milestone reads tick color/width).
+- `scaleCalibration` (`src/lib/geometry/transform.ts`) already existed from M03 with its own test in
+  `tests/unit/geometry/transform.test.ts` covering the same §3.4 vector, so M06 only imports and reuses it
+  (per step 3, "if present") rather than re-adding it; a redundant vector test was also added in
+  `tests/unit/capture/overlay.test.ts` against the value produced by `calibrationPriorFromOverlay` itself.
 
 ## Completion notes
-_(fill in when done)_
+- Implemented `src/lib/capture/overlay.ts`: `overlayCircles`, `coverTransform`, `containTransform`, `cssToFrame`,
+  `frameToCss`, `overlayLayout`, `calibrationPriorFromOverlay`, `renderOverlaySvg` — pure, no DOM/`window`/`document`.
+- `scaleCalibration` was already present in `src/lib/geometry/transform.ts` (from M03); reused as-is.
+- Added `tests/unit/capture/overlay.test.ts`: every §3.4 row, round trips for both `FitTransform`s, the §4 class
+  counts for both templates (anchor/ring/guide/mask/tick/cross/halo), the `RangeError` boundary at 0.5/0.95, and
+  two SVG snapshots at 390×844, fraction 0.85 (one per template) under `tests/unit/capture/__snapshots__/`.
+- Commands run: `pnpm check` (typecheck + lint + test + privacy) — all green. `pnpm typecheck` clean, `pnpm lint`
+  0 errors (4 pre-existing warnings, unrelated to this milestone), `pnpm test` 264/264 passed across 32 files
+  (32 = 31 prior + this new one), `pnpm check:privacy` passed (15 images, unchanged by this milestone).
+- Deviations from the spec: none identified beyond the tick styling gap noted above.
