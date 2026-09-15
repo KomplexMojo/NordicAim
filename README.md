@@ -12,7 +12,32 @@
 Behind the scenes the phone reviews each image, overlays it on the target template, pulls the photo's metadata,
 incorporates yours, and generates the analysis. Photos never leave the phone.
 
-> Status: planning complete, implementation not started. Start with [`docs/milestones/README.md`](docs/milestones/README.md).
+> Status: M01 scaffold in progress. Start with [`docs/milestones/README.md`](docs/milestones/README.md).
+
+## Development
+
+Requires Node 22 and pnpm 10 (`corepack enable` picks up the pinned `packageManager` version).
+
+```bash
+pnpm install
+pnpm dev          # http://127.0.0.1:3874
+pnpm dev:test     # same, with VITE_FAKE_CAMERA=1 (used by Playwright)
+pnpm build        # tsc -b && vite build
+pnpm preview      # http://127.0.0.1:4173
+
+pnpm check        # typecheck + lint + unit tests + privacy check (the gate for every milestone)
+pnpm typecheck
+pnpm lint
+pnpm test         # Vitest unit tests
+pnpm test:e2e     # Playwright, mobile Chromium + mobile WebKit
+pnpm check:privacy
+```
+
+Pushing to `main` deploys to GitHub Pages at `https://komplexmojo.github.io/advanced-shooting-analysis/`
+(`.github/workflows/pages.yml`). On the iPhone, open that URL in Safari, or open `#/diagnostics` directly
+(`https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics`) to run the capability checks —
+do this both in Safari and after **Add to Home Screen**, since some checks (storage persistence, share) behave
+differently as a standalone app.
 
 ## Documentation map
 

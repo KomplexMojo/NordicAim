@@ -127,7 +127,92 @@ pnpm test:e2e
 - Never bind `0.0.0.0`.
 
 ## Open questions
-_(add here)_
+
+- The current `shadcn@latest init` CLI (v4.21.0) targets a newer shadcn generation than the milestone's step 4
+  implied: it writes a `radix-nova` preset (`components.json` `style: "radix-nova"`) and pulls in
+  `@fontsource-variable/geist`, `tw-animate-css`, `class-variance-authority`, `cn`, `radix-ui`, `lucide-react`,
+  and (for the `sonner` component) `next-themes`, none of which are listed in the milestone or `docs/PLAN.md` §3.
+  All are self-hosted (no CDN/network calls) and installed non-interactively with `--template vite --base radix
+  -p nova -y`, matching the spirit of "shadcn init (Vite)" — but they are additional dependencies beyond what's
+  named in the milestone. Not blocking; flagging per golden rule 3 ("no new dependencies beyond docs/PLAN.md §3
+  or the milestone") in case the owner wants a different preset/base or to trim these.
+- The scaffolded `shadcn` CLI also wrote its component files to a literal `./@/components/ui` and `./@/lib`
+  directory instead of resolving the `@/*` alias to `src/*` (a quirk of this CLI version's alias detection). I
+  moved the generated files into `src/components/ui` and `src/lib/utils.ts` by hand and deleted the stray `@/`
+  directory; imports inside those files use bare specifiers (`"cn"`, `"radix-ui"`, etc.) so no path rewriting was
+  needed. Confirmed no `./@` directory remains and `pnpm check`/`pnpm build` both pass.
+- `docs/spec/rendering-composite.md` §2 requires SVG text to use the system font stack
+  (`-apple-system, BlinkMacSystemFont, …`) with **no web fonts**. That applies to the diagram/summary-image
+  renderer (a later milestone), not to this app shell's UI chrome — shadcn's default Geist font is only used for
+  on-screen UI text, not for any SVG. Flagging so the M05/M09/M12 implementers don't reuse the Geist font for
+  SVG text.
+- `IndexedDB.deleteDatabase` inside the `indexeddb` diagnostic check resolves on `onblocked` (treated as
+  non-fatal) rather than failing the check, since a blocked delete does not indicate the read/write roundtrip
+  itself failed. Not in the spec; flagging the interpretation.
 
 ## Completion notes
-_(fill in when done)_
+
+Implemented exactly per the Steps above (scaffold copied from `pnpm create vite@latest --template react-ts`,
+Tailwind v4 + shadcn init, all runtime/dev deps, `vite.config.ts` CSP/PWA/worker config, hash router, CV
+worker+client, all 13 diagnostics checks, `summarizeDiagnostics`, `check-privacy.mjs`, CI + Pages workflows,
+README Development section). See Open questions above for the two deviations worth the owner's attention
+(shadcn CLI's current preset/deps, and its alias-resolution quirk).
+
+One implementation note not covered by the spec: the `transformIndexHtml` CSP-injection hook had to use
+`order: 'post'` rather than `'pre'` — with Vite 8/rolldown-vite, `ctx.bundle` (the check the spec's pseudo-code
+implies for "build only") is not yet populated during the `'pre'` phase, so the CSP meta tag was silently
+dropped. `order: 'post'` injects it correctly (verified below) while leaving `pnpm dev`/`pnpm dev:test` free of
+the CSP meta tag, as required.
+
+Commands run (all pass):
+
+```
+$ pnpm install --frozen-lockfile
+Lockfile is up to date, resolution step is skipped
+
+$ pnpm check
+tsc -b --pretty false                        # 0 errors
+eslint .                                     # 0 errors, 3 warnings (shadcn-generated ui/badge.tsx,
+                                              #   ui/button.tsx, ui/toggle.tsx — react-refresh/only-export-components)
+vitest run                                   # 3 tests passed (tests/unit/diagnostics/summarize.test.ts)
+node scripts/check-privacy.mjs               # "privacy check passed (6 images)"
+
+$ pnpm build
+tsc -b && vite build                         # succeeds; dist/index.html carries the CSP meta tag
+                                              # (confirmed absent from `pnpm dev`/`pnpm dev:test` output)
+
+$ pnpm test:e2e
+playwright test                              # 4/4 passed: mobile-chromium × {home, diagnostics},
+                                              #   mobile-webkit × {home, diagnostics}
+```
+
+Diagnostics results observed under Playwright's headless mobile-chromium and mobile-webkit emulation (not the
+real iPhone — see Human required below):
+
+- **mobile-chromium** (Pixel 7 emulation, headless Chrome): pass — secure-context, camera-api, storage-estimate,
+  wake-lock, offscreen-canvas, indexeddb, cv-worker (hasMat=true, ~870ms), svg-raster (object-url path).
+  n/a — share-files (`canShare` unavailable in this Chromium build), standalone, user-agent (informational).
+  fail — storage-persist (`persisted=false`, expected under headless automation without a real persistent-storage
+  grant), heic-decode (Chromium has no native HEIC decoder — expected; iOS Safari does).
+- **mobile-webkit** (iPhone 15 emulation): pass — secure-context, camera-api, share-files, storage-estimate,
+  wake-lock, offscreen-canvas, indexeddb, cv-worker (hasMat=true, ~640ms), svg-raster (object-url path),
+  heic-decode (naturalWidth=300). n/a — standalone, user-agent. fail — storage-persist (same headless-automation
+  caveat as above).
+- Acceptance-required checks (indexeddb, cv-worker, svg-raster pass; heic-decode row exists) hold on both
+  projects, matching the milestone's Tests section.
+
+`pnpm dlx shadcn@latest init --template vite --base radix -p nova -y` then
+`pnpm dlx shadcn@latest add button card input label select dialog badge sonner separator slider sheet
+toggle-group progress textarea -y` were used non-interactively for shadcn setup (see Open questions for the
+resulting deviations). `pnpm approve-builds --all` was run once to approve `esbuild`'s postinstall script
+(records the approval in the generated `pnpm-workspace.yaml`, committed so CI gets the same behavior).
+
+**Human required (owner) — not run by this agent:**
+1. Enable Pages (Settings → Pages → Source: GitHub Actions).
+2. Push to `main`, then open `https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics` on the
+   iPhone, in Safari and as a Home Screen app.
+3. Paste both **Copy report** outputs into these Completion notes.
+4. Resolve any `fail` on `cv-worker`, `svg-raster`, `heic-decode`, `indexeddb`, or `share-files` on the real
+   device, or record it as an Open question. (`storage-persist` failing under Playwright's headless automation,
+   as observed above, is expected and not itself a signal about real Safari behavior — the real-device run is
+   what determines whether that check needs follow-up.)
