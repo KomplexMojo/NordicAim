@@ -1,4 +1,6 @@
 import { getCvClient } from '@/workers/cv-client';
+import { detectFormat } from '@/lib/media/format';
+import { makeWorkingImages } from '@/lib/media/image-browser';
 
 import type { DiagnosticResult } from './summarize';
 
@@ -196,6 +198,46 @@ async function checkHeicDecode(): Promise<DiagnosticResult> {
   });
 }
 
+async function checkIngestPipeline(): Promise<DiagnosticResult> {
+  return safeCheck('ingest-pipeline', 'Ingest pipeline', async () => {
+    const res = await fetch('dev-fixtures/precision.jpg');
+    const blob = await res.blob();
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const format = detectFormat(bytes);
+    if (format === null) return { status: 'fail', detail: 'detectFormat returned null' };
+
+    const { working, thumb } = await makeWorkingImages(blob, format);
+    const workingImg = await loadHtmlImage(working);
+    const thumbImg = await loadHtmlImage(thumb);
+
+    const ok =
+      workingImg.naturalWidth === 1200 &&
+      workingImg.naturalHeight === 1600 &&
+      thumbImg.naturalWidth === 360 &&
+      thumbImg.naturalHeight === 480;
+    return {
+      status: ok ? 'pass' : 'fail',
+      detail: `working=${workingImg.naturalWidth}x${workingImg.naturalHeight} thumb=${thumbImg.naturalWidth}x${thumbImg.naturalHeight}`,
+    };
+  });
+}
+
+function loadHtmlImage(blob: Blob): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('image failed to load'));
+    };
+    img.src = url;
+  });
+}
+
 async function checkStandalone(): Promise<DiagnosticResult> {
   return safeCheck('standalone', 'Standalone display', async () => {
     const nav = navigator as Navigator & { standalone?: boolean };
@@ -225,6 +267,7 @@ export async function runDiagnostics(): Promise<DiagnosticResult[]> {
     checkCvWorker(),
     checkSvgRaster(),
     checkHeicDecode(),
+    checkIngestPipeline(),
     checkStandalone(),
     checkUserAgent(),
   ]);
