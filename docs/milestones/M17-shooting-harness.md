@@ -2,57 +2,48 @@
 
 | Depends on | Tier | Size | Design todo |
 |---|---|---|---|
-| M11 | low | M | harness-align (shooting side; Garmin load added in M20) |
+| M10 | low | M | harness-align (shooting side; workouts in Phase 2) |
 
 ## Goal
-Per-session and cross-session shooting metrics: precision score per position, sighting hit rates, group size
-(MOA), MPI drift, lighting breakdown. Works with no Garmin data.
+Per-session and cross-session shooting metrics on the phone: precision score per position, sighting hit rates, group size
+(MOA), MPI drift, and lighting breakdown.
 
 ## Read first
-- `docs/spec/data-model.md` §4 (`AnalysisResult`), §7 (harness route)
+- `docs/spec/data-model.md` §4
 - `docs/spec/geometry-scoring.md` §6, §8
-- `docs/PLAN.md` E13
 
 ## In scope
-Pure summarisers, harness API, session Harness tab, `/harness` overview page.
+Pure summarisers, a loader service, the session Harness tab, and route `/harness`.
 
 ## Out of scope
-Garmin load (M20 adds a card), goals and targets.
+Workout load (Phase 2, M21), goals.
 
 ## Files
-- `src/lib/harness/shooting.ts` (pure): `summarizeTarget(photo, result)`, `summarizeSession(items)`, `trend(sessions)`
-- `src/app/api/harness/shooting/route.ts`
-- `src/components/harness/SessionHarness.tsx`, `TrendChart.tsx` (hand-rolled SVG line chart, no chart library)
-- `src/app/harness/page.tsx`
+- `src/lib/harness/shooting.ts` (pure: `summarizeTarget`, `summarizeSession`, `trend`)
+- `src/lib/services/harness.ts` (`loadShootingSummaries(ctx, fromDate, toDate)`)
+- `src/components/harness/SessionHarness.tsx`, `TrendChart.tsx` (hand-rolled SVG), `MpiScatter.tsx`
+- `src/routes/harness/HarnessPage.tsx`
 - `tests/unit/harness/shooting.test.ts`, `tests/e2e/harness.spec.ts`
 
 ## Steps
-1. `summarizeTarget`: per subset (prone/standing):
-   - precision: `scorePer10Shots = range.averaged / declared × 10`, so a 10-shot card's value equals its /100
-     total, rounded to 1 dp at display only
+1. `summarizeTarget(photo, result)` per subset:
+   - precision: `scorePer10Shots = range.averaged / declared × 10`
    - sighting: `hitRate = range.averaged.hits / declared`
    - plus `esMoa`, `mpiOffsetMm`, `lighting`, `captureUtc`.
-   Only reviewed photos count.
-2. `summarizeSession`: per template × position means (ignore nulls): `scorePer10Shots`, `sightingHitRate`,
-   `esMoaMean`; `mpiMean` (mean of MPI offsets) for sighting prone and standing; target counts; lighting counts.
-3. `trend(sessions)`: chronological points `{ sessionId, sessionDate, metrics }`.
-4. `GET /api/harness/shooting?from=YYYY-MM-DD&to=YYYY-MM-DD` (default last 90 days) → `{ sessions: SessionSummary[] }`.
-5. Session **Harness** tab:
-   - metric cards (Prone precision /10, Standing precision /10, Prone hit rate, Standing hit rate, ES MOA)
-   - an MPI scatter for sighting targets (small SVG, mm axes ±30)
-   - lighting chips.
-6. `/harness`: `TrendChart` lines for the precision per10 (prone and standing) and sighting hit rate
-   (prone and standing); a date-range selector; a table of sessions.
-7. Leave a clearly marked slot `<GarminLoadCard/>` placeholder, rendered only when
-   `session.garmin && featureEnabled` (M20 implements it).
+   Reviewed photos only.
+2. `summarizeSession`: per template × position means (ignore nulls), MPI mean for sighting prone/standing, counts, lighting counts.
+3. `trend(sessions)`: chronological points.
+4. `loadShootingSummaries`: sessions with `sessionDate` in range (default last 90 days), using cached `analysis.computed.result`
+   (recompute if `engineVersion` differs).
+5. **Harness tab**: metric cards (Prone precision /10 shots, Standing precision, Prone hit rate, Standing hit rate, ES MOA),
+   an MPI scatter (±30 mm), lighting chips.
+6. `/harness`: trend lines (precision prone/standing, hit rate prone/standing), a date range, a sessions table.
 
-## Tests (use the golden fixtures)
-- `summarizeTarget` on the precision fixture → prone `scorePer10Shots` **72.0**.
-- A standing subset with declared 5 and averaged total 41 → `scorePer10Shots` **82.0**.
-- Sighting fixture → prone `hitRate` 0.9; `esMoa` 1.9032 ±0.0005.
-- A session with both fixtures → the counts and means above.
-- `trend` orders by sessionDate.
-- E2E: seeded demo → Harness tab shows `72.0` and `90%`.
+## Tests
+- `summarizeTarget` on the precision fixture → prone `scorePer10Shots` **72.0**; declared 5 with averaged 41 → **82.0**.
+- Sighting fixture → prone `hitRate` **0.9**; `esMoa` 1.9032 ±0.0005.
+- Both fixtures in one session → the counts and means above; `trend` ordered by date.
+- E2E: demo → Harness tab shows `72.0` and `90%`.
 
 ## Acceptance
 ```bash
@@ -61,7 +52,7 @@ pnpm test:e2e
 ```
 
 ## Pitfalls
-- `scorePer10Shots` normalises to a 10-shot card (its /100 total), so short bouts compare fairly with full cards.
+- `scorePer10Shots` normalises to a 10-shot card (its /100 total), so short bouts compare fairly.
 
 ## Open questions
 _(add here)_

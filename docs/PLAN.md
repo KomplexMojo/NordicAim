@@ -1,8 +1,8 @@
 # Plan: Biathlete Training Harness (advanced-shooting-analysis)
 
-Revision 2, 2026-09-13. Inputs: [`DESIGN.md`](DESIGN.md) (verbatim), [`DESIGN-REVISIONS.md`](DESIGN-REVISIONS.md)
-(owner decisions: hosted web app, single user, optional Garmin, in-app capture with template overlay), the
-reference photos, the owner's example diagrams, and hands-on probing of libraries and Garmin routes.
+Revision 3, 2026-09-14. Inputs: [`DESIGN.md`](DESIGN.md) (verbatim), [`DESIGN-REVISIONS.md`](DESIGN-REVISIONS.md)
+(current platform: on-phone web app now, Capacitor later), the reference photos, the owner's example
+diagrams, and hands-on probing of libraries and platform constraints.
 
 | Layer | File(s) | Audience |
 |---|---|---|
@@ -16,183 +16,183 @@ reference photos, the owner's example diagrams, and hands-on probing of librarie
 
 ## 1. Product summary
 
-A **phone-first web app on the owner's own small server**, reached privately over HTTPS:
+**Phase 1: an installable web app that runs entirely on the iPhone.**
 
-1. After the outing, open the app on the phone and create (or continue) a **biathlon session**.
-2. For each paper target, pick **Sighting** or **Precision** and **prone / standing / both**. The camera
-   opens with that template's **overlay**. Line up the printed rings and capture.
-3. The server stores the photo. The overlay alignment gives the initial calibration, CV proposes shots,
-   and the owner corrects them (multiplicity, add/move/remove, position overrides).
-4. The app scores the target: ISSF rings /100 or sighting hit/miss, MPI, extreme spread, MOA/MRAD, the
+1. After the outing, tap **Start & capture** (creates or reuses today's session).
+2. For each paper target, pick **Sighting** or **Precision** and **prone / standing / both**. The camera shows
+   that template's **overlay**; line up the printed rings and capture.
+3. On the phone, the overlay gives the initial calibration, CV proposes shots, and the owner corrects them.
+   Targets become **reviewed automatically** once the shot count matches the declared rounds.
+4. The app scores each target: ISSF rings /100 or sighting hit/miss, MPI, extreme spread, MOA/MRAD, the
    `both` split, and a pessimistic–optimistic range when rounds are unaccounted for.
-5. The owner picks ≤2 sighting + ≤2 precision targets and builds **one composite image**, then **shares or
-   saves it** and attaches it to the activity in Garmin Connect mobile.
-6. Sources are kept or discarded on the server. The sequence player and harness show trends.
-   **Optional:** connect the owner's Garmin account to tag activities, add load metrics, and write an
-   analysis text block.
+5. The owner builds **one composite image** (≤2 sighting + ≤2 precision + analysis), shares or saves it, and
+   attaches it in Garmin Connect.
+6. Sources are kept or discarded on the phone. The sequence player and harness show trends. **Backups** export
+   to Files or iCloud Drive.
 
-## 2. Verified facts (probed 2026-09-13)
+**Phase 2: Capacitor.** The same app, installed natively via Xcode, adds Apple Health workouts (duration, HR,
+distance, energy beside shooting metrics; workout suggestions from capture times) and saves directly to Photos.
 
-| # | Fact | Consequence |
+## 2. Verified facts
+
+| # | Fact (probed 2026-09-13/14) | Consequence |
 |---|---|---|
-| F1 | Samples are iPhone 16 Pro Max HEIC. `IMG_5057` 3024×4032, 2026-08-24 19:30:09 `-07:00`, BV 5.57, ISO 64, 1/99 s, f/2.2. `IMG_5132` 4284×5712, 2026-09-05 16:56:03 `-07:00`, BV 9.71, ISO 80, 1/3425 s, f/1.78. `Flash`=16 (not fired), WB auto, GPS present. | GPS-free sidecars in `fixtures/reference/*.exif.json` |
-| F2 | `exifr` fails (`Unknown file format`) on these HEICs. | Don't use it |
-| F3 | Prebuilt `sharp` reads HEIF metadata and the EXIF buffer but **cannot decode HEIC pixels**. `heic-convert` decodes (~1.5 s / 24 MP). | Imports: pixels via `heic-convert`, EXIF via `sharp` + `exif-reader` |
-| F4 | `exif-reader` returns `DateTimeOriginal` with the **local wall clock in the UTC fields**. | spec/metadata-lighting.md §1 |
-| F5 | `sips` keeps GPS. A `sharp` re-encode strips metadata **and orientation unless `.rotate()` is called first**. | Ingest and privacy tooling call `.rotate()` |
-| F6 | `@techstark/opencv-js` (loads in ~30 ms after install) and `@resvg/resvg-js` both work in Node 22. | Server-side CV and rasterisation |
-| F7 | Precision sheet = ISSF 50 m rifle geometry (measured ring-1 ≈ 158 mm, black ≈ 113 mm vs 154.4 / 112.4). | spec/geometry-scoring.md §1.3 |
-| F8 | Sighting sheet 45 mm ring ≈ 44 mm measured. There is also an unlabelled solid inner circle, Ø ≈ 15 mm. | Listed as unscored |
-| F9 | The owner's example diagrams are internally consistent (72/100; 27.7 mm = 1.90 MOA = 0.55 MRAD; 41.9 mm = 2.88 MOA = 0.84 MRAD). Shots traced from them reproduce these exactly. | Golden fixtures `sample-shots-*.json` |
-| F10 | Garmin lets users add activity photos **only in the Connect mobile app**. No public or unofficial library uploads photos. | Manual attach (REV-4) |
-| F11 | The **Garmin Connect Developer Program is business-only** (its FAQ says "only for business use"). Third parties report new sign-ups paused. | No official route for a personal app |
-| F12 | Garmin changed its auth flow in **March 2026**. `garth` is deprecated. `python-garminconnect` 0.3.x logs in via a native engine that impersonates the iOS Connect app (TLS impersonation, bot-check workarounds). `garmin_mcp` @ `655efb8` pins `garminconnect==0.3.2`. | The Garmin feature is optional, own-account only, may break, and is more likely blocked from datacenter IPs |
-| F13 | `garmin_mcp` tools: `get_activities_by_date(start_date, end_date, activity_type="", page=0, page_size=100)`, `get_activity(activity_id)`, `get_activities(start, limit)`, `set_activity_description(activity_id, description)` (replaces the whole description). Errors are plain strings starting with `Error`. There are no GPS coordinates in the results. Auth CLI prompts `Enter MFA code: ` and writes tokens to `GARMINTOKENS` **and** `GARMINTOKENS_BASE64`. | spec/garmin-optional.md |
-| F14 | Garmin Connect writes workouts to Apple Health, but a web app cannot read Apple Health. | Not used |
+| F1 | Samples are iPhone 16 Pro Max HEIC. `IMG_5057` 3024×4032, 2026-08-24 19:30:09 `-07:00`, BV 5.57, ISO 64. `IMG_5132` 4284×5712, 2026-09-05 16:56:03 `-07:00`, BV 9.71, ISO 80. `Flash`=16 (not fired), WB auto, GPS present. | GPS-free sidecars in `fixtures/reference/*.exif.json` |
+| F2 | `exifr` fails (`Unknown file format`) on these original HEICs in Node. | EXIF from HEIC is best-effort; in-app captures don't need EXIF. JPEG EXIF via `exifr` is spec'd and tested with a GPS-free fixture. |
+| F3 | Prebuilt `sharp` can't decode HEIC pixels. `sips` keeps GPS on conversion. `sharp` re-encodes strip metadata but need `.rotate()` first. | `sharp` is dev-only (tests, scripts, privacy check). The phone decodes images natively. |
+| F4 | `@techstark/opencv-js` (loads in Node in ~30 ms) and `@resvg/resvg-js` work in Node 22. | Pure CV and render code is unit-tested in Node; the phone runs the same code (OpenCV in a Web Worker). |
+| F5 | Precision sheet = ISSF 50 m rifle geometry. The sighting sheet has an unlabelled ~15 mm inner circle. | spec/geometry-scoring.md §1 |
+| F6 | The owner's example diagrams are internally consistent (72/100; 27.7 mm = 1.90 MOA = 0.55 MRAD; 41.9 mm = 2.88 MOA = 0.84 MRAD). Traced shots reproduce them exactly. | Golden fixtures `sample-shots-*.json` |
+| F7 | Garmin lets users add activity photos **only in the Connect mobile app**. The official developer program is business-only. The unofficial login needs a server and broke in March 2026. | Manual attach (REV-4); no Garmin connection (REV-12) |
+| F8 | **WebKit storage policy**: Home Screen web apps have their own usage counter and aren't subject to Safari's 7-day eviction. Since iOS 17, quotas are based on disk size and are generous. `navigator.storage.persist()` exists. Deleting the Home Screen app deletes its data. | Request persistence; backups are core (REV-14) |
+| F9 | Web apps on iOS can use: camera (`getUserMedia`), Web Share with files, service workers/offline, IndexedDB, Web Workers + WebAssembly, OffscreenCanvas, Screen Wake Lock, DeviceOrientation (with permission), and native HEIC decoding in Safari. They **cannot** use Vision, Core ML, HealthKit, or PhotoKit. | Phase 1 feature set; Phase 2 for HealthKit/Photos |
+| F10 | **Capacitor** is mainstream: `@capacitor/core` ~15.9M npm downloads/month (Aug–Sep 2026), v8.5.2 released 2026-09-11, maintained by Ionic/OutSystems. React Native (49.3M) and Expo (32.0M) are larger, but Capacitor is the standard web-to-native wrapper. | REV-13 |
+| F11 | Apps can be installed on your own iPhone via Xcode without App Review. A free account's installs expire after 7 days; the paid program ($99/yr) avoids that. CloudKit JS needs the paid membership. | Phase 2 prerequisites |
+| F12 | This Mac has only Command Line Tools (no full Xcode). | Phase 2 needs an Xcode install |
 
 ## 3. Decisions
 
 | ID | Decision | Why |
 |---|---|---|
-| D1 | **Next.js App Router web app, mobile-first, installable (PWA manifest).** One server process on a small host. | REV-1. A web stack is the most reliable for lower-tier agents. |
-| D2 | pnpm 10, Node 22, Next.js (latest stable, exact-pinned), React, TS strict, Tailwind, shadcn/ui, zod, Vitest, Playwright. | Reproducible toolchain |
-| D3 | **Private access over Tailscale.** The app binds `127.0.0.1:3874`; a Tailscale sidecar provides HTTPS (required for the browser camera) on the tailnet only. It is never publicly exposed. | Single user. HTTPS without managing certificates or open ports. |
-| D4 | **Defence in depth:** single-user passphrase login (scrypt hash in env, HMAC session cookie), same-origin guard, strict headers, no third-party scripts, fonts, or analytics at runtime. | The server holds photos and (optionally) Garmin tokens |
-| D5 | **Storage: JSON + images** in `ASA_WORKSPACE_DIR` (Docker volume `/data`), zod-validated, atomic writes, nightly tar backup. | Simple, inspectable |
-| D6 | **In-app capture** with `getUserMedia` and an SVG template overlay (spec/capture-overlay.md). Frames are grabbed from the video to a canvas as JPEG. Fallbacks: native camera `<input capture>`, then import from Photos. | REV-5 |
-| D7 | **The overlay produces a calibration prior** stored with the photo, then scaled to the working image. | REV-6. CV only refines near the prior. |
-| D8 | **Server-side processing**: `heic-convert` (imports), `sharp`, `exif-reader` (imports), OpenCV.js, `resvg` with bundled Inter fonts. | Verified (F2–F6). Keeps the phone light. |
-| D9 | **Manual-first review**: the shot editor ships before CV. CV only proposes. | Dense overlaps are ambiguous |
-| D10 | **One SVG renderer** for UI preview, diagram exports, and the composite. | Single visual truth, snapshot tests |
-| D11 | **Publish = share or save the `CompositeArtifact`** (Web Share API with files; fallback open-image). A guided card walks through attaching it in Garmin Connect. Server code can only hand out images that are registered composites. | REV-4, REV-7 |
-| D12 | **Garmin optional track** (M20 demo + tagging, M21 live). Uses `garmin_mcp` pinned at `655efb8`, per-login temp tokens, MFA over pipes, own account only, off by default (`ASA_ENABLE_GARMIN=0`). | REV-3, F11–F13 |
-| D13 | **Fixture privacy**: the repo is public, so original HEICs live in gitignored `fixtures/private/`. Committed images are stripped and downscaled. `pnpm check:privacy` runs in CI. | Photos carry range GPS |
+| D1 | **Vite + React + TypeScript SPA** with React Router **hash routing**, Tailwind, shadcn/ui, zod. | No backend needed. Hash routes work on static hosting and inside Capacitor. Simplest stack for lower-tier agents. |
+| D2 | pnpm 10, Node 22 for tooling. Vitest (Node, with `fake-indexeddb`), Playwright (mobile Chromium + mobile WebKit projects). | Reproducible and testable without a phone |
+| D3 | **Storage: IndexedDB via `idb`**, with stores `sessions`, `photos`, `analyses`, `blobs` (bytes as `ArrayBuffer`), `settings`. | Universally supported (Safari, Capacitor WKWebView, fake-indexeddb in tests) |
+| D4 | **Pure/adapter split**: every pixel algorithm takes an `RgbaImage { data, width, height }`. Browser adapters only convert Blob ↔ canvas ↔ `RgbaImage`. | Algorithms run identically in Vitest (Node) and on the phone |
+| D5 | **CV in a Web Worker** (OpenCV.js via `@techstark/opencv-js`, RPC via Comlink). | Keeps the UI responsive |
+| D6 | **One SVG renderer** (pure strings) for previews, diagrams, and the composite. On the phone, rasterise by drawing the SVG into a canvas. Diagrams use the **system font stack** (SF Pro on iPhone), so no font embedding is needed. | One visual truth; uses Apple's own font |
+| D7 | **In-app capture with a template overlay**; calibration prior from the overlay; Screen Wake Lock during capture; optional tilt indicator. | REV-5, REV-6 |
+| D8 | **Manual-first review** (M10) before CV (M11–M12); CV only proposes; auto-review status (REV-9). | Dense overlaps are ambiguous |
+| D9 | **Share = Web Share API with the composite file** (fallback: download link), plus a guided Garmin Connect attach card. Only a stored `CompositeArtifact` can be shared. | REV-4 |
+| D10 | **PWA via `vite-plugin-pwa`** (Workbox precache, including the ~10 MB OpenCV bundle) and a manifest for Add to Home Screen. | Offline at the range |
+| D11 | **Backups**: zip (via `fflate`) of all stores and blobs; export through the share sheet (Save to Files/iCloud Drive) or download; import with skip or replace per session; reminder banner. | F8, REV-14 |
+| D12 | **Hosting: GitHub Pages** via GitHub Actions from `main`. A CSP `<meta>` restricts everything to same-origin. | REV-11 |
+| D13 | **Diagnostics page** (`#/diagnostics`) in M01, run on the owner's iPhone before any feature work: camera API, share files, persistence, wake lock, OffscreenCanvas, IndexedDB, CV worker under CSP, SVG→PNG raster, HEIC decode. | Surfaces iOS-specific risks on day one |
+| D14 | **Fixture privacy**: the repo is public, so original HEICs stay in gitignored `fixtures/private/`; committed images are metadata-free; `pnpm check:privacy` runs in CI. | Photos carry range GPS |
+| D15 | **Phase 2 via Capacitor iOS**, re-planned in detail before starting (M20–M22 are outlines with acceptance). Data moves from the PWA via backup export/import (different storage origin). | REV-13 |
 
 ## 4. Corrections and clarifications to the design
 
 | ID | Topic | Resolution |
 |---|---|---|
-| C1 | Automatic composite upload to Garmin | Not possible with any supported API (F10). Manual attach, per REV-4. |
-| C2 | GPS ranking of activities | Not available (F13). Dropped. |
+| C1 | Automatic composite upload to Garmin | Not possible (F7). Manual attach. |
+| C2 | Garmin activity tagging / GPS ranking | Removed in Phase 1. Phase 2 uses Apple Health workouts, suggested by capture time (no GPS). |
 | C3 | "Inner Circle = 10, 1st Ring = 10, 2nd Ring = 9" | ISSF 50 m rifle: inner ten Ø 5.0 (counts as X), 10-ring Ø 10.4, 9-ring Ø 26.4 |
-| C4 | Example text "optimistic edge-credit" | The touch rule always applies. Optimistic/pessimistic/averaged are only about unaccounted rounds. |
-| C5 | Sighting dotted 40/110 mm guides | hit = hole touches the solid circle; clean = hole centre inside the dotted guide (Q2) |
-| C6 | "45 mm inner solid white ring" | A white ring line on paper; the renderer stylises it as a white disc, as in the owner's example |
-| C7 | "Position agnostic" label in the example | Every diagram shows its position |
-| C8 | `both` + missing rounds | Standing takes the S furthest identified units, so missing rounds fall to prone |
-| C9 | Sighting *averaged* = "mean radial error" | Missing units are placed at the identified MPI; expected hits = hit rate × missing |
-| C10 | "N rounds marked unresolved" | missing = declared − identified; over-count is a separate warning |
-| C11 | Lighting from EXIF | In-app captures have **no EXIF**. Lighting uses local capture hour + image colour cast; EXIF brightness only for imports (spec/metadata-lighting.md §4) |
-| C12 | Garmin token handling | `GARMINTOKENS_BASE64` must point inside the temp dir (F13) |
+| C4 | Example text "optimistic edge-credit" | The touch rule always applies; optimistic/pessimistic/averaged are only about unaccounted rounds |
+| C5 | Sighting dotted 40/110 mm guides | hit = hole touches the solid circle; clean = hole centre inside the guide (Q2) |
+| C6 | "45 mm inner solid white ring" | A ring line on paper, stylised as a white disc like the owner's example |
+| C7 | "Position agnostic" in the example | Every diagram shows its position |
+| C8 | `both` + missing rounds | Standing takes the S furthest identified units; missing rounds fall to prone |
+| C9 | Sighting *averaged* = "mean radial error" | Missing units placed at the identified MPI; expected hits = hit rate × missing |
+| C10 | "N rounds marked unresolved" | missing = declared − identified; "Accept with N missing" drives auto-review; over-count is a separate state |
+| C11 | Lighting from EXIF | In-app captures have no EXIF, so lighting uses capture hour + colour cast; EXIF brightness only for imports |
+| C12 | "Garmin credentials: optional OS secure vault" | Not applicable (no Garmin connection) |
 
 ## 5. Enhancements
 
 | ID | Enhancement | Milestone |
 |---|---|---|
-| E1 | Live template overlay with size slider, dim mask, alignment hint, torch toggle | M07, M08 |
-| E2 | Calibration prior from overlay; CV searches only near it | M07, M12 |
-| E3 | Capture review screen (retake or use) and a burst workflow (stay in camera for the next target) | M08 |
-| E4 | Manual-first shot editor with zoom/pan, multiplicity stepper, per-unit position override | M11 |
-| E5 | Sheet fields (athlete name, wind, athlete condition, notes) | M10 |
-| E6 | X-count, 2σ group ellipse, mean radius, MPI offset in mm/MOA/MRAD, sight-correction hint once click value is set | M03, M06 |
-| E7 | `full` 1500×1700 and `cell` 720×720 render variants | M06 |
-| E8 | Web Share of the composite plus a guided Garmin Connect attach card; share history | M15 |
-| E9 | Composite JSON sidecar | M14 |
-| E10 | CV evaluation script: synthetic targets, owner ground truth, numeric bars | M12, M13 |
-| E11 | Dev-only fake camera (`?fakeCamera=`) for deterministic e2e tests | M08 |
-| E12 | Seeded demo session (`pnpm seed:demo`) | M11 |
-| E13 | Shooting trends harness (precision per position, sighting hit rate, ES MOA, MPI drift) usable without Garmin | M17 |
-| E14 | Docker + Tailscale deployment, backups, `check:privacy` in CI | M01, M19 |
-| E15 | Quick start straight into the camera (REV-8) | M10, M18 |
-| E16 | Auto-review with "Accept with N missing" (REV-9) | M02, M11 |
+| E1 | Live template overlay: size slider, dim mask, alignment hint, torch, wake lock; optional tilt indicator | M06, M07 |
+| E2 | Calibration prior from overlay; CV searches near it | M06, M11 |
+| E3 | Capture review (retake/use) and burst flow | M07 |
+| E4 | Manual-first shot editor: zoom/pan, multiplicity, per-unit positions | M10 |
+| E5 | Sheet fields (athlete name, wind, athlete condition, notes) | M09 |
+| E6 | X-count, 2σ group ellipse, mean radius, MPI offset, sight-correction hint | M03, M05 |
+| E7 | `full` 1500×1700 and `cell` 720×720 render variants | M05 |
+| E8 | Web Share of the composite plus guided Garmin Connect attach card | M14 |
+| E9 | Composite JSON sidecar | M13 |
+| E10 | CV evaluation script (synthetic, reference photos, owner ground truth) | M11, M12 |
+| E11 | Dev/test-only fake camera | M07 |
+| E12 | In-app **Load demo session** (reference photos + golden shots) | M10 |
+| E13 | Shooting trends harness | M17 |
+| E14 | Diagnostics page for on-device capability checks | M01 |
+| E15 | Quick start straight into the camera (REV-8) | M09, M18 |
+| E16 | Auto-review with "Accept with N missing" (REV-9) | M02, M10 |
+| E17 | Backups with reminders, storage persistence, delete-all-data | M15 |
+| E18 | Offline support and "new version available" prompt | M18 |
 
 ## 6. Risks
 
 | ID | Risk | L / I | Mitigation |
 |---|---|---|---|
-| R1 | iOS Safari camera quirks (resolution caps, orientation, PWA standalone mode) | M / M | Spec'd constraints and fallbacks; human device checklist in M08; native-camera fallback |
-| R2 | Overlay misalignment by user (tilt, distance) | M / M | Size slider, prior only (editable), CV refine; optional tilt indicator later |
-| R3 | CV accuracy on dense overlaps | H / M | Manual-first, multiplicity, range, CV only proposes |
-| R4 | Native/wasm packages in Next and Docker | M / M | `serverExternalPackages`, `/api/health` smoke test, Docker build in CI (M19) |
-| R5 | Server compromise exposes photos or tokens | L / H | Tailscale-only, passphrase, headers, temp Garmin tokens, no public port |
-| R6 | Garmin unofficial login breaks or blocks the host IP | H / L (optional) | Off by default, own account, clear errors, no auto-retry; prefer a home host if used |
-| R7 | Low-tier agents drift from spec | M / H | Numeric vectors, exact names, stop-and-ask rule, milestone gates |
-| R8 | GPS leakage via the public repo | M / M | D13 |
-| R9 | Web Share with files unsupported in some browser | L / L | Open-image fallback with long-press save instructions |
+| R1 | Data loss (app deleted, storage cleared) | M / H | Persistence request, backup reminders, export to iCloud Drive (M15) |
+| R2 | iOS Safari quirks: camera resolution/orientation, SVG→canvas raster, OpenCV under CSP, share-file types | M / M | Diagnostics on device in M01; spec'd fallbacks; device checklists in M07, M14, M18 |
+| R3 | Phone memory/canvas limits during CV and rendering | L / M | Working images ≤ 3000 px, detection at ≤ 1200 px, CV in a worker, Mats deleted |
+| R4 | CV accuracy on dense overlaps | H / M | Manual-first, multiplicity, range, CV only proposes |
+| R5 | Overlay misalignment by user | M / M | Size slider, tilt indicator, editable prior, CV refine |
+| R6 | First load size (~10 MB OpenCV) | M / L | Precached once by the service worker; CV loads lazily |
+| R7 | Low-tier agents drift from spec | M / H | Numeric vectors, exact names, stop-and-ask, milestone gates |
+| R8 | GPS leakage via the public repo | M / M | D14 |
+| R9 | Phase 2 plugin maturity (HealthKit, Photos) | M / M | Evaluation criteria and a re-plan step before M21/M22 |
 
 ## 7. Architecture
 
 ```mermaid
 flowchart LR
-  subgraph Phone["Phone browser (PWA)"]
+  subgraph Pages["GitHub Pages (static code only)"]
+    Assets[HTML / JS / wasm / icons]
+  end
+  subgraph Phone["iPhone: Home Screen web app (offline-capable)"]
+    SW[Service worker precache]
+    UI[React UI + hash router]
     Cam[Capture + template overlay]
-    Rev[Review / editor]
-    Comp[Composite + share]
+    Svc[Services: ingest, analysis, composite, share, backup]
+    Pure[Pure libs: scoring, geometry, overlay, render, harness]
+    W[CV Web Worker: OpenCV.js]
+    IDB[(IndexedDB: sessions, photos, analyses, blobs, settings)]
+    Share[Share sheet]
   end
-  subgraph Host["Small host (VPS or home machine)"]
-    TS[Tailscale sidecar HTTPS]
-    subgraph App["Next.js server 127.0.0.1:3874"]
-      MW[Auth middleware]
-      API[Route handlers]
-      WS[(Workspace /data)]
-      Media[media: ingest, EXIF, lighting]
-      Scoring[scoring: pure]
-      CV[cv: OpenCV.js]
-      Render[render: SVG to PNG]
-      Artifact[composite: CompositeArtifact]
-      Harness[harness: pure]
-      GP{{GarminProvider optional}}
-    end
-  end
-  Cam & Rev & Comp -->|HTTPS tailnet| TS --> MW --> API
-  API --> WS & Media & Scoring & CV & Render & Harness
-  Render --> Artifact -->|PNG| Comp
-  Comp -->|share sheet, owner action| GC[Garmin Connect mobile - manual attach]
-  API -.->|ASA_ENABLE_GARMIN=1| GP -.-> MCP[uvx garmin-mcp] -.-> Connect[(Garmin Connect)]
+  Assets -->|first load / updates| SW --> UI
+  UI --> Cam --> Svc
+  UI --> Svc --> Pure
+  Svc --> W
+  Svc --> IDB
+  Svc -->|composite PNG / backup zip| Share
+  Share --> Photos[(Photos)]
+  Share --> Files[(Files / iCloud Drive)]
+  Photos -.manual attach.-> GC[Garmin Connect app]
 ```
 
-Pure modules (`scoring`, `geometry`, `capture/overlay`, `alignment`, `render`, `harness`) do no I/O.
-React components talk to route handlers only and never import server modules.
+Phase 2 (Capacitor) keeps this, drops the service worker (assets are bundled in the app), and adds native
+plugins: Apple Health workouts and a Photos save.
 
 ## 8. Milestones
 
-The index with status is in [`milestones/README.md`](milestones/README.md). There are 22 milestones:
-**M01–M19 and M22 are core**, **M20–M21 are the optional Garmin track**.
-
-**Design todo coverage**
+Index with status: [`milestones/README.md`](milestones/README.md). **Phase 1: M01–M19. Phase 2: M20–M22**
+(outlined; re-plan before starting).
 
 | Design todo | Milestones |
 |---|---|
-| scaffold | M01, M02, M04, M05 |
-| garmin-auth-provider | M20, M21 (optional) |
-| workflow-link-activity | M10 (sessions), M20 (activity tagging + suggestions) |
-| sessions-categorize | M08, M09, M10 |
-| cv-scoring | M03, M11, M12, M13 |
-| groups-moa | M03, M06 |
-| garmin-diagram-upload | M14, M15 (share + manual attach) |
+| scaffold | M01, M02, M04 |
+| garmin-auth-provider | Superseded (REV-12). Phase 2 M21 (Apple Health) |
+| workflow-link-activity | M09 (sessions), M21 (workouts) |
+| sessions-categorize | M07, M08, M09 |
+| cv-scoring | M03, M10, M11, M12 |
+| groups-moa | M03, M05 |
+| garmin-diagram-upload | M13, M14 (share + manual attach), M22 (native Photos) |
 | sequence-player | M16 |
-| harness-align | M17, M20 |
-| run-demo | M18, M19, M22 |
-| **REV-5 capture overlay** | M07, M08 |
+| harness-align | M17, M21 |
+| run-demo | M18, M19 |
+| REV-5 capture overlay | M06, M07 |
+| REV-14 backups | M15 |
 
 ## 9. Open questions for the owner
 
 | ID | Question | Default if unanswered |
 |---|---|---|
-| Q1 | Keep the original HEICs out of this **public** repo (tests needing them skip)? | Keep them out |
-| Q2 | Sighting: hole touching the 45/115 mm circle = hit, and dotted 40/110 mm = clean? | Yes (C5) |
-| Q3 | Rear-sight click value in mm at 50 m for the correction hint? | Hint hidden until set |
+| Q1 | Keep original HEICs out of this public repo? | Keep them out |
+| Q2 | Sighting: hole touching 45/115 mm = hit, dotted 40/110 mm = clean? | Yes (C5) |
+| Q3 | Rear-sight click value in mm at 50 m? | Hint hidden until set |
 | Q4 | Hole diameter 5.6 mm (.22 LR)? | 5.6 mm |
-| Q5 | Composite slot default: most recent, or best score / tightest group? | Most recent, best as tie-break |
-| Q6 | Host: small VPS or a home machine? (Home is better if you enable Garmin later, because of F12.) | Either; Docker + Tailscale works for both |
-| Q7 | Is Tailscale acceptable as the private access layer (free personal plan)? | Yes |
-| Q8 | Optional analysis text block in the Garmin activity description (M21)? | Off by default |
+| Q5 | Composite slot default: most recent, or best? | Most recent, best as tie-break |
+| Q6 | OK that the app's code is publicly reachable on GitHub Pages (no data is ever there)? | Yes |
+| Q7 | Include source photos in backups by default? | Yes (toggle to exclude) |
 
-## 10. Definition of done (core)
+## 10. Definition of done (Phase 1)
 
-- `pnpm check`, `pnpm build`, `pnpm test:e2e`, and the Docker build are green in CI.
-- On the owner's iPhone over the tailnet: log in → create session → capture a precision and a sighting target
-  with the overlay → accept or correct shots → build the composite → share to Photos → attach in Garmin
-  Connect → discard sources.
-- Seeded golden shots show precision **72/100** and sighting **9 hit / 1 miss** in the diagrams and composite.
-- DESIGN delivery checklist mapped to evidence in M22.
+- `pnpm check`, `pnpm build`, and `pnpm test:e2e` are green in CI; GitHub Pages deploys from `main`.
+- On the owner's iPhone, installed to the Home Screen: diagnostics all pass → **Start & capture** → capture a
+  precision and a sighting target with the overlay → shots auto-proposed or placed → targets auto-reviewed →
+  build the composite → share to Photos → attach in Garmin Connect → export a backup to iCloud Drive → works in
+  airplane mode.
+- The demo session shows precision **72/100** and sighting **9 hit / 1 miss**.
+- DESIGN delivery checklist and REV items mapped to evidence in M19.

@@ -1,41 +1,46 @@
 # advanced-shooting-analysis
 
-**Biathlete Training Harness.** A phone-first web app, running on your own small server, for biathlon
-shooting at 50 m. You photograph paper targets **inside the app with a live template overlay** (sighting or
-precision, shot prone, standing, or both). The app scores them, and each session produces **one**
-shooting-analysis composite image, which you share and attach to your Garmin activity. Source photos never
-go to any third party.
+**Biathlete Training Harness.** An app for biathlon shooting at 50 m that runs **entirely on your iPhone**.
+Photograph paper targets **inside the app with a live template overlay** (sighting or precision, shot prone,
+standing, or both). The phone scores them, and each session produces **one** shooting-analysis image, which you
+share and attach to your Garmin activity. Photos never leave your phone except in backups you export yourself.
 
 > Status: planning complete, implementation not started. Start with [`docs/milestones/README.md`](docs/milestones/README.md).
+
+## Phases
+
+| Phase | What | How you install it |
+|---|---|---|
+| **1** | Installable web app: capture with overlay, on-device shot detection and scoring, diagrams, summary image, backups, offline | Open the GitHub Pages URL in Safari → Add to Home Screen. No App Store, no Apple account. |
+| **2** | The same app wrapped with **Capacitor**: adds Apple Health workouts (your Garmin workouts sync there) and direct saving to Photos | Installed on your own iPhone from Xcode. No App Store publishing. |
 
 ## Documentation map
 
 | Doc | What it is |
 |---|---|
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Original product design (verbatim) |
-| [`docs/DESIGN-REVISIONS.md`](docs/DESIGN-REVISIONS.md) | Owner decisions that supersede parts of the design (hosted web app, single user, optional Garmin, capture overlay) |
+| [`docs/DESIGN-REVISIONS.md`](docs/DESIGN-REVISIONS.md) | Owner decisions that supersede parts of the design (on-phone app, Capacitor later, backups, capture overlay, quick start, auto-review) |
 | [`docs/PLAN.md`](docs/PLAN.md) | Plan: verified facts, decisions, corrections, enhancements, risks, open questions |
-| [`docs/spec/`](docs/spec/) | Source-of-truth specs: geometry & scoring, data model & API, capture overlay, metadata & lighting, rendering & composite, access & deployment, optional Garmin |
-| [`docs/milestones/`](docs/milestones/README.md) | 22 milestones (20 core + 2 optional Garmin) sized for lower-reasoning agents |
+| [`docs/spec/`](docs/spec/) | Source-of-truth specs: geometry & scoring, data model & storage, capture overlay, metadata & lighting, rendering & composite, privacy/storage/hosting, Phase 2 workouts |
+| [`docs/milestones/`](docs/milestones/README.md) | 22 milestones (19 for Phase 1, 3 outlined for Phase 2) sized for lower-reasoning agents |
 | [`AGENTS.md`](AGENTS.md) | Rules for any agent implementing a milestone |
 | [`docs/reference/`](docs/reference/) | Reference target photos (metadata stripped) and the owner's example diagrams |
-| [`fixtures/reference/`](fixtures/reference/) | Golden shot fixtures, GPS-free EXIF sidecars, seed calibrations, demo Garmin activities |
+| [`fixtures/reference/`](fixtures/reference/) | Golden shot fixtures, GPS-free EXIF sidecars and sample, seed calibrations, demo workouts, HEIC test image |
 
-## Workflow (target)
+## Workflow (Phase 1)
 
 1. Finish the outing and stop the watch.
-2. On the phone, open the app (installed to the home screen, reached privately over Tailscale HTTPS) and start a session.
-3. For each target, choose **Sighting** or **Precision** and a position. Line up the printed rings with the
-   on-screen overlay, then capture.
-4. Review: the overlay gives the initial calibration, and CV proposes shots. Correct multiplicity and positions.
-5. Pick up to 2 sighting + 2 precision targets and build the composite.
-6. **Share**, save to Photos, and attach it to the activity in Garmin Connect (the only manual step).
-7. Keep or discard the source photos. Review trends in the sequence player and harness.
-
-Optional (off by default): connect your own Garmin account to tag activities, add training load to the
-harness, and write an analysis text block to the activity description.
+2. Open the app from the Home Screen and tap **Start & capture**.
+3. For each target, choose **Sighting** or **Precision** and a position, line up the printed rings with the overlay,
+   and capture.
+4. Review: the overlay sets the initial calibration and CV proposes shots. Targets are marked reviewed automatically
+   when the shot count matches.
+5. Build the summary image (up to 2 sighting + 2 precision targets plus analysis), **Share → Save Image**, and attach it
+   to the activity in Garmin Connect.
+6. Keep or discard source photos; back up to iCloud Drive when reminded.
 
 ## Privacy
 
-This repository is public. The original target photos contain GPS and live only in the gitignored
-`fixtures/private/`. `pnpm check:privacy` (added in M01) fails if any tracked image carries GPS EXIF.
+There is no server: all data stays on the phone. This repository is public and contains code only. The original
+target photos contain GPS and live only in the gitignored `fixtures/private/`. `pnpm check:privacy` (added in M01)
+fails if any tracked image carries GPS EXIF.

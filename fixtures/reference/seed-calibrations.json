@@ -1,5 +1,5 @@
 {
-  "note": "APPROXIMATE anchor-disc calibrations for the 1200x1600 metadata-free reference JPEGs in docs/reference/, estimated by eye on 2026-09-13. Used only by the demo seed (M11) and as a loose CV sanity check (M12). Owner ground truth (fixtures/reference/ground-truth/*.json, created in M11) supersedes these.",
+  "note": "APPROXIMATE anchor-disc calibrations for the 1200x1600 metadata-free reference JPEGs in docs/reference/ (also copied to public/demo/ and public/dev-fixtures/), estimated by eye on 2026-09-13. Used by the in-app demo session (M10) and as a loose CV sanity check (M11). Owner ground truth (fixtures/reference/ground-truth/*.json, created via M10) supersedes these.",
   "IMG_5057-sighting.jpg": { "cx": 610, "cy": 730, "radiusPx": 480, "axisRatio": 0.896, "angleDeg": 0, "anchorDiameterMm": 115, "source": "manual", "confidence": null },
   "IMG_5132-precision.jpg": { "cx": 620, "cy": 838, "radiusPx": 265, "axisRatio": 0.934, "angleDeg": 0, "anchorDiameterMm": 112.4, "source": "manual", "confidence": null }
 }

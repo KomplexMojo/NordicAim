@@ -1,103 +1,127 @@
 # Spec: ingest, photo metadata, capture time, image stats, lighting
 
-Implementation: `src/lib/media/{ingest,exif,capture-time,image-stats,lighting}.ts` (server) and
-`src/lib/capture/client-time.ts` (browser).
+Pure: `src/lib/media/{format,capture-time,image-stats,lighting}.ts`. Browser adapters:
+`src/lib/media/image-browser.ts`. EXIF: `src/lib/media/exif.ts` (uses `exifr`, which runs in both Node and browser).
 
-## 0. Ingest (`ingest.ts`)
+## 0. Ingest
+
+### 0.1 Format detection and sizing (pure, `format.ts`)
 
 ```ts
 export type ImageFormat = 'jpeg' | 'png' | 'heic';
-export function detectFormat(buf: Buffer): ImageFormat | null;
-// jpeg: bytes FF D8 FF ; png: 89 50 4E 47 0D 0A 1A 0A ;
-// heic: bytes 4..8 === 'ftyp' AND brand (bytes 8..12) in ['heic','heix','hevc','hevx','mif1','msf1']
-export async function makeWorkingImages(buf: Buffer, format: ImageFormat): Promise<{
-  workingJpeg: Buffer;
-  thumbJpeg: Buffer;
-  originalSize: { widthPx: number; heightPx: number };          // after auto-orientation
-  workingSize: { widthPx: number; heightPx: number; scaleFromOriginal: number };
-}>;
+export function detectFormat(bytes: Uint8Array): ImageFormat | null;
+// jpeg: FF D8 FF ; png: 89 50 4E 47 0D 0A 1A 0A ;
+// heic: bytes 4..8 === 'ftyp' AND bytes 8..12 in ['heic','heix','hevc','hevx','mif1','msf1']
+export function fitLongest(w: number, h: number, maxLongest: number): { w: number; h: number; scale: number };
+// scale = min(1, maxLongest / max(w,h)); w,h = Math.round(w*scale), Math.round(h*scale)
+export interface RgbaImage { data: Uint8ClampedArray; width: number; height: number }
 ```
 
-Pipeline: if `heic`, decode with `heic-convert` (`format: 'JPEG', quality: 0.95`) to a JPEG buffer first.
-Then `sharp(input).rotate()` (auto-orient; **must** come before any resize or re-encode), resize so the
-longest side ≤ 3000 (`withoutEnlargement`), `.jpeg({ quality: 90 })` gives `working.jpg`. The thumb uses
-longest side 480 at q80. sharp drops metadata by default, so keep it that way.
-`scaleFromOriginal = working.longest / oriented original longest`.
+Vectors:
+- `fitLongest(4032, 3024, 3000)` → {3000, 2250, 0.744048 (±1e-6)}
+- `fitLongest(1080, 1920, 3000)` → {1080, 1920, 1}
+- `fitLongest(3024, 4032, 480)` → {360, 480, 0.119048}
+- `fitLongest(1200, 1600, 480)` → {360, 480, 0.3}
+- `detectFormat`: the first 16 bytes of each format → that format; `fixtures/reference/tiny-sighting.heic` → `heic`; random bytes → `null`.
 
-Vectors: `detectFormat` on the first 16 bytes of each format → the right format; random bytes → `null`.
-Private-fixture test (skip if absent): `IMG_5057.HEIC` → working 2250×3000, thumb 360×480.
-
-## 1. EXIF for originals that have it (`exif.ts`)
+### 0.2 Browser adapter (`image-browser.ts`) → implements `ImageTools` (data-model §7)
 
 ```ts
-export async function readExif(buf: Buffer, format: ImageFormat): Promise<ExifMeta | null>;
+export async function loadImage(blob: Blob): Promise<HTMLImageElement>;
+// URL.createObjectURL → new Image() → img.src → await img.decode() → revoke URL in finally.
+// drawImage of an <img> applies EXIF orientation in current Safari/Chrome.
+export async function makeWorkingImages(blob: Blob, format: ImageFormat): Promise<...>; // ImageTools signature
+// img → fitLongest(naturalWidth, naturalHeight, 3000) → canvas → toBlob('image/jpeg', 0.9) = working
+// thumb: fitLongest(…, 480) → toBlob('image/jpeg', 0.8)
+export async function toRgba(blob: Blob, maxLongest: number): Promise<RgbaImage>; // canvas.getImageData
 ```
 
-1. `const meta = await sharp(buf).metadata()`. If `!meta.exif`, return `null` (typical for PNG and in-app captures).
-2. `const e = exifReader(meta.exif)`. Accept both key-name styles: `e.Photo ?? e.exif`, `e.Image ?? e.image`,
-   `e.GPSInfo ?? e.gps`.
-3. **Wall clock pitfall**: `DateTimeOriginal` is a `Date` whose *UTC fields* hold the local wall clock, so
-   `captureLocal = d.toISOString().slice(0, 19)`.
-4. `captureOffset = Photo.OffsetTimeOriginal ?? null` (validate `^[+-]\d{2}:\d{2}$`).
-5. `captureUtc` = `captureLocal` interpreted at `captureOffset` → ISO with `Z`; `null` if no offset.
-6. GPS: `GPSLatitude` is `[deg, min, sec]` → `deg + min/60 + sec/3600`, negated when `GPSLatitudeRef === 'S'`
-   (lon: `'W'`). `gpsPresent = lat != null`. `altM = GPSAltitude` (negate if `GPSAltitudeRef === 1`).
-7. `flashRaw = Photo.Flash`; `flashFired = (flashRaw & 1) === 1`. Value 16 means **not fired**.
-8. `whiteBalance`: 0 → `auto`, 1 → `manual`.
-9. `brightnessValue = Photo.BrightnessValue`, `iso = Photo.ISOSpeedRatings` (first element if array),
-   `exposureTimeSec = Photo.ExposureTime`, `fNumber = Photo.FNumber`, `lens = Photo.LensModel`,
-   `make/model` from `Image`, `gpsImgDirection = GPSInfo.GPSImgDirection`,
-   `widthPx/heightPx = meta.width/height`.
+- HEIC: Safari on iOS/macOS decodes HEIC natively. Other browsers fail to decode, so throw
+  `UnsupportedOnThisBrowserError('heic')` with the message "HEIC photos can only be opened in Safari on iPhone
+  or Mac". The iOS photo picker usually hands over JPEG anyway.
+- Never create a canvas larger than 16,000,000 px (working ≤ 3000 px guarantees this).
+- Canvas re-encoding produces JPEGs **without metadata**.
 
-**Vectors**: compare against the committed GPS-free sidecars `fixtures/reference/IMG_5057.exif.json` and
-`IMG_5132.exif.json` (private-fixture tests; skip if the HEIC is absent). Every non-GPS field must match
-(numbers ±1e-9). `gpsPresent` must be `true`. **Never** write `gps` values into fixtures, snapshots, or logs.
+## 1. EXIF (imports and native-camera files only, `exif.ts`)
+
+```ts
+export async function readExif(input: Blob | Uint8Array): Promise<ExifMeta | null>;
+```
+
+1. `const e = await exifr.parse(input, { tiff: true, exif: true, gps: true, reviveValues: false, translateValues: false, mergeOutput: true })`.
+   Any throw, or `e` undefined → return `null`. `exifr` fails on some iPhone HEIC originals (PLAN F2); this is expected.
+2. **Raw date strings** (because `reviveValues: false`): `DateTimeOriginal` = `"YYYY:MM:DD HH:mm:ss"` →
+   `captureLocal = "YYYY-MM-DDTHH:mm:ss"` (replace the first two `:` with `-` and the space with `T`). **Never** let a
+   library turn this into a `Date`; that applies the device timezone.
+3. `captureOffset = OffsetTimeOriginal` if it matches `^[+-]\d{2}:\d{2}$`, else null. `captureUtc = localToUtc(...)` or null.
+4. GPS: if `GPSLatitude` is an array `[d, m, s]` → `d + m/60 + s/3600`, negated when `GPSLatitudeRef === 'S'`
+   (longitude: `'W'`). `gpsPresent = lat != null`. `altM = GPSAltitude` (negate if `GPSAltitudeRef === 1`).
+5. `flashRaw = Flash`; `flashFired = (Flash & 1) === 1` (16 = **not fired**). `whiteBalance`: 0 → `auto`, 1 → `manual`.
+6. `iso = ISO ?? ISOSpeedRatings` (first element if array); `exposureTimeSec = ExposureTime`; `fNumber = FNumber`;
+   `brightnessValue = BrightnessValue`; `make = Make`; `model = Model`; `lens = LensModel`;
+   `gpsImgDirection = GPSImgDirection`; `widthPx = ExifImageWidth ?? null`; `heightPx = ExifImageHeight ?? null`.
+
+**Vectors** (`fixtures/reference/exif-sample.jpg`: a 300×400 metadata-controlled JPEG, **no GPS**, values mirroring
+`IMG_5132`):
+
+| Field | Expected |
+|---|---|
+| captureLocal / captureOffset / captureUtc | `2026-09-05T16:56:03` / `-07:00` / `2026-09-05T23:56:03.000Z` |
+| brightnessValue | 9.71442 (±1e-9) |
+| exposureTimeSec | 1/3425 (±1e-12) |
+| fNumber / iso | 1.78 / 80 |
+| flashRaw / flashFired / whiteBalance | 16 / false / `auto` |
+| make / model / lens | `Apple` / `iPhone 16 Pro Max` / `iPhone 16 Pro Max back triple camera 6.765mm f/1.78` |
+| gpsPresent / gps | false / null |
+
+Also: `readExif` on `fixtures/reference/tiny-sighting.heic` (no metadata) → `null`. Private (skip if absent):
+`readExif` on `fixtures/private/IMG_5132.HEIC` either returns `null` or matches the sidecar's non-GPS fields.
+Assert without printing GPS values.
 
 ## 2. Capture time
 
-### 2.1 Browser (`client-time.ts`)
+### 2.1 Client clock (`capture-time.ts`, pure with an injected `Date`)
 
 ```ts
-export function clientNow(d = new Date()): { clientLocal: string; clientOffset: string };
+export function clientNow(d: Date): { clientLocal: string; clientOffset: string };
 export function formatOffset(tzOffsetMinutes: number): string;
-// NOTE: Date.getTimezoneOffset() is POSITIVE west of UTC. Vectors: 420 → "-07:00"; 0 → "+00:00"; -330 → "+05:30"; -345 → "+05:45"
+// Date.getTimezoneOffset() is POSITIVE west of UTC. Vectors: 420 → "-07:00"; 0 → "+00:00"; -330 → "+05:30"; -345 → "+05:45"
 ```
 
-`clientLocal` is built from `getFullYear()`, `getMonth()+1`, `getDate()`, `getHours()`, `getMinutes()`,
-`getSeconds()` as `YYYY-MM-DDTHH:mm:ss`.
+`clientLocal` is built from `getFullYear()`, `getMonth()+1`, `getDate()`, `getHours()`, `getMinutes()`, `getSeconds()`.
 
-### 2.2 Server (`capture-time.ts`)
+### 2.2 Resolution
 
 ```ts
 export function resolveCaptureTime(input: { exif: ExifMeta | null; origin: PhotoOrigin; clientLocal: string; clientOffset: string }): CaptureTime;
-export function localToUtc(local: string, offset: string): string; // "2026-09-05T16:56:03","-07:00" → "2026-09-05T23:56:03.000Z"
+export function localToUtc(local: string, offset: string): string;
 ```
 
 Priority:
-1. `exif.captureLocal` present → `{ local, offset: exif.captureOffset ?? clientOffset, source: 'exif' }`
-2. origin `camera-overlay` or `camera-native` → client values, `source: 'client-clock'`
-3. otherwise → client values, `source: 'import-time'`
+1. `exif.captureLocal` → `{ local, offset: exif.captureOffset ?? clientOffset, source: 'exif' }`
+2. origin `camera-overlay` / `camera-native` → client values, `source: 'client-clock'`
+3. else client values, `source: 'import-time'`
 
 `utc = localToUtc(local, offset)`.
 
 Vectors: `localToUtc("2026-08-24T19:30:09","-07:00")` → `"2026-08-25T02:30:09.000Z"`;
-`localToUtc("2026-01-01T00:30:00","+05:30")` → `"2025-12-31T19:00:00.000Z"`.
+`localToUtc("2026-01-01T00:30:00","+05:30")` → `"2025-12-31T19:00:00.000Z"`;
+`localToUtc("2026-09-05T16:56:03","-07:00")` → `"2026-09-05T23:56:03.000Z"`.
 
-## 3. Image stats (`image-stats.ts`)
+## 3. Image stats (pure, `image-stats.ts`)
 
 ```ts
-export async function computeImageStats(workingJpeg: Buffer): Promise<ImageStats>;
+export function computeImageStats(img: RgbaImage): ImageStats;
 ```
 
-`sharp(buf).resize(256, 256, { fit: 'inside' }).removeAlpha().raw()`. For each pixel,
-`luma = 0.2126R + 0.7152G + 0.0722B`. `meanLuma` = mean luma. Sort by luma and take the brightest 20%
-(`ceil(0.2 × n)` pixels; ties by index). `brightMean{R,G,B}` = mean channel values of that set.
-Values are 0–255 and not rounded.
+The caller passes `await imageTools.toRgba(working, 256)`. For each pixel, `luma = 0.2126R + 0.7152G + 0.0722B`.
+`meanLuma` = mean luma. Sort pixel indices by luma descending (ties by index ascending) and take the first
+`ceil(0.2 × n)`; `brightMean{R,G,B}` = the mean channels of that set. Values are not rounded.
 
-Vector (synthetic, generated in the test with sharp): a 100×100 image, left half `rgb(250,200,150)`, right
-half `rgb(20,20,20)` → brightMean ≈ (250, 200, 150) ±1; meanLuma ≈ 110.29 ±1.
+**Vector** (build the `RgbaImage` directly in the test): 100×100, left 50 columns `rgb(250,200,150)`, right 50
+columns `rgb(20,20,20)`, alpha 255 → `brightMeanR/G/B` = **250 / 200 / 150** exactly; `meanLuma` = **113.51** (±1e-9).
 
-## 4. Lighting suggestion (`lighting.ts`)
+## 4. Lighting suggestion (pure, `lighting.ts`)
 
 ```ts
 export function estimateBrightnessValue(e: { fNumber: number | null; exposureTimeSec: number | null; iso: number | null }): number | null;
@@ -105,12 +129,13 @@ export function estimateBrightnessValue(e: { fNumber: number | null; exposureTim
 export function suggestLighting(input: { bv: number | null; flashFired: boolean | null; localHour: number | null; stats: ImageStats | null }): LightingSuggestion;
 ```
 
-Inputs: `bv = exif?.brightnessValue ?? estimateBrightnessValue(exif) ?? null`;
-`localHour = Number(captureTime.local.slice(11, 13))` or null;
-`warm = stats != null && stats.brightMeanR / Math.max(stats.brightMeanB, 1) > 1.15`;
-`nightHour(h) = h >= 21 || h < 5`; `dayHour(h) = h >= 8 && h < 18`.
+Inputs:
+- `bv = exif?.brightnessValue ?? estimateBrightnessValue(exif) ?? null`
+- `localHour = Number(captureTime.local.slice(11, 13))`, or null
+- `warm = stats != null && stats.brightMeanR / Math.max(stats.brightMeanB, 1) > 1.15`
+- `nightHour(h) = h >= 21 || h < 5`; `dayHour(h) = h >= 8 && h < 18`
 
-Rules (first match wins; `reasons` are the codes in brackets):
+Rules (first match wins; reason codes in brackets):
 
 | # | Condition | Result |
 |---|---|---|
@@ -125,10 +150,10 @@ Rules (first match wins; `reasons` are the codes in brackets):
 | 4a | bv null, localHour null | warm → `artificial` 0.4 [`warm-cast`]; else `unknown` 0 [`no-exposure`] |
 | 4b | bv null, dayHour | warm → `mixed` 0.3 [`day-hour`, `warm-cast`]; else `daylight` 0.5 [`day-hour`] |
 | 4c | bv null, nightHour | warm → `artificial` 0.5 [`night-hour`, `warm-cast`]; else `mixed` 0.3 [`night-hour`] |
-| 4d | bv null (dawn/dusk hours) | `mixed`, 0.3, [`twilight-hour`] |
+| 4d | bv null (dawn/dusk) | `mixed`, 0.3, [`twilight-hour`] |
 
-In-app captures have no EXIF, so they always go through rows 4a–4d. On import the photo is saved with
-`lighting = suggestion.label` and `lightingConfirmed = false`. The categorize UI asks the owner to confirm or override.
+In-app captures have no EXIF, so they always use rows 4a–4d. On ingest, `lighting = suggestion.label` and
+`lightingConfirmed = false`; the categorize UI asks the owner to confirm or override.
 
 **Vectors**
 

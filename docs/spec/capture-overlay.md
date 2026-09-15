@@ -1,59 +1,58 @@
 # Spec: in-app capture with template overlay
 
-Implements owner decisions REV-5 and REV-6. The pure math is in `src/lib/capture/overlay.ts` (no DOM).
-Browser helpers are in `src/lib/capture/camera.ts` (client-only). The UI is in `src/components/capture/*`.
+Implements REV-5, REV-6, REV-8. The pure math is in `src/lib/capture/overlay.ts` and `src/lib/capture/tilt.ts`
+(no DOM). Browser code is in `src/lib/capture/camera.ts`, `fake-camera.ts`, and `wake-lock-browser.ts`. The UI is
+in `src/components/capture/*`, route `#/sessions/:sessionId/capture`.
 
 ## 1. User flow
 
-1. **Quick start** (landing page and `/sessions`): one primary button. If a session with `sessionDate` = today
+1. **Quick start** (landing page and `#/sessions`): one primary button. If a session with `sessionDate` = today
    (local) exists, it reads **Capture (today's session)** and opens that session's capture screen. Otherwise it
-   reads **Start & capture**, creates `Session <YYYY-MM-DD>` for today, and opens its capture screen directly.
-   From an existing session page, **Capture target** does the same for that session.
-2. Pick **Template** (`Sighting` | `Precision`, segmented control) and **Position** (`Prone` | `Standing` |
-   `Both`). Remember the last choice per session in `localStorage` (wrap in try/catch).
-3. The camera starts with the chosen template's overlay centred in the viewfinder. A label chip says:
+   reads **Start & capture**, creates `Session <YYYY-MM-DD>` for today, and opens its capture screen. From an
+   existing session page, **Capture target** does the same for that session.
+2. Pick **Template** (`Sighting` | `Precision`) and **Position** (`Prone` | `Standing` | `Both`). Remember the last
+   choice per session in `localStorage` key `asa.capture.<sessionId>` (inside try/catch).
+3. The camera starts with the template's overlay centred. Label chip:
    - sighting: **"Align the dark disc with the thick circle"**
    - precision: **"Align the black aiming mark with the thick circle"**
-4. Optionally adjust the **size slider** (overlay outer diameter as a fraction of the viewfinder's short
-   side, 0.50–0.95, default 0.85) so the printed rings match at a comfortable distance. Torch toggle if supported.
-5. Tap the **shutter** (72 px round button) to grab a frame and show the **review screen**: the captured
-   image with the overlay drawn where it was, plus **Retake** / **Use photo**.
-6. **Use photo** uploads (with capture info, calibration prior, and prefilled categorization) and returns to
-   the live camera for the next target. A badge shows "N captured". **Done** goes back to the session.
+4. Optional **size slider** (outer overlay diameter as a fraction of the viewfinder's short side, 0.50–0.95,
+   default 0.85), torch toggle (if supported), and tilt indicator (§7, optional).
+5. **Shutter** (72 px) grabs a frame and opens the **review screen** (captured image + overlay where it was),
+   with **Retake** / **Use photo**.
+6. **Use photo** calls `ingestPhoto` (§5), then returns to the live camera for the next target; a badge shows
+   "N captured". **Done** goes to the session page.
 7. Fallbacks, in order: native camera (`<input type="file" accept="image/*" capture="environment">`,
-   `origin: 'camera-native'`, no prior), then **Import from Photos** (`accept="image/*,.heic,.heif"`,
-   `multiple`, `origin: 'import'`).
+   `origin: 'camera-native'`, no prior), then **Import from Photos** (`accept="image/*,.heic,.heif"`, `multiple`,
+   `origin: 'import'`).
 
-## 2. Camera acquisition (`camera.ts`)
+## 2. Camera, wake lock (`camera.ts`, `wake-lock-browser.ts`)
 
 ```ts
 export async function startCamera(): Promise<MediaStream>;
 // 1st try:  { audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } } }
 // on OverconstrainedError: retry { audio: false, video: { facingMode: 'environment' } }
-export function stopCamera(stream: MediaStream): void;           // stop every track
+export function stopCamera(stream: MediaStream): void;
 export async function grabFrame(video: HTMLVideoElement): Promise<{ blob: Blob; widthPx: number; heightPx: number }>;
-// canvas.width = video.videoWidth; canvas.height = video.videoHeight; drawImage(video, 0, 0); toBlob('image/jpeg', 0.92)
-export function torchSupported(track: MediaStreamTrack): boolean; // !!track.getCapabilities?.().torch
+// canvas = videoWidth × videoHeight; drawImage(video,0,0); toBlob('image/jpeg', 0.92) (null → throw)
+export function torchSupported(track: MediaStreamTrack): boolean;      // !!track.getCapabilities?.().torch
 export async function setTorch(track: MediaStreamTrack, on: boolean): Promise<void>; // applyConstraints({ advanced: [{ torch: on }] })
+
+export async function acquireWakeLock(): Promise<{ release(): Promise<void> } | null>; // navigator.wakeLock?.request('screen'), errors → null
 ```
 
 Rules:
 - `<video autoPlay playsInline muted>`. iOS needs `playsInline` and `muted`.
-- Frame size is known only after `loadedmetadata`: use `video.videoWidth/videoHeight`. Recompute the layout
-  on `resize` of the video element, on the container `ResizeObserver`, and on `orientationchange`
-  (dimensions swap).
-- Don't use the `ImageCapture` API (unavailable on iOS Safari).
-- Stop tracks on unmount and on `visibilitychange` → hidden. Restart when visible again.
-- Error mapping (show a message and offer the fallbacks):
-  `!window.isSecureContext` → `insecure_context` ("Camera needs HTTPS"); `NotAllowedError` → `permission_denied`;
-  `NotFoundError` → `no_camera`; anything else → `camera_error`.
+- Frame size is known only after `loadedmetadata`. Recompute the layout on video `resize`, container
+  `ResizeObserver`, and `orientationchange`.
+- Don't use `ImageCapture` (unavailable on iOS Safari).
+- Stop tracks and release the wake lock on unmount and on `visibilitychange` → hidden. Re-acquire both when visible.
+- Error mapping: `!window.isSecureContext` → `insecure_context`; `NotAllowedError` → `permission_denied`;
+  `NotFoundError` → `no_camera`; else `camera_error`. Show a message plus fallbacks.
 - Record `track.getSettings()` (primitive values only) as `CaptureInfo.trackSettings`.
 
 ## 3. Overlay geometry (pure, `overlay.ts`)
 
 ### 3.1 Overlay circles per template
-
-`outerDiameterMm` is the largest drawn circle; the overlay scale is defined by it.
 
 | Template | outerDiameterMm | Circles (diameter mm → style) |
 |---|---|---|
@@ -68,7 +67,7 @@ export function overlayCircles(template: TemplateId): { outerDiameterMm: number;
 
 ### 3.2 Viewfinder transforms
 
-The `<video>` fills a container of `W × H` CSS px with `object-fit: cover`. The stream frame is `Vw × Vh` px.
+The `<video>` fills a `W × H` CSS px container with `object-fit: cover`; the frame is `Vw × Vh` px.
 
 ```ts
 export interface Size { w: number; h: number }
@@ -76,34 +75,25 @@ export interface FitTransform { k: number; ox: number; oy: number } // css = fra
 export function coverTransform(container: Size, frame: Size): FitTransform;   // k = max(W/Vw, H/Vh)
 export function containTransform(container: Size, frame: Size): FitTransform; // k = min(W/Vw, H/Vh)
 // ox = (W - Vw*k)/2 ; oy = (H - Vh*k)/2
-export function cssToFrame(p: {x: number; y: number}, t: FitTransform): {x: number; y: number}; // (p - o) / k
-export function frameToCss(p: {x: number; y: number}, t: FitTransform): {x: number; y: number}; // p*k + o
+export function cssToFrame(p: { x: number; y: number }, t: FitTransform): { x: number; y: number };
+export function frameToCss(p: { x: number; y: number }, t: FitTransform): { x: number; y: number };
 ```
 
 ### 3.3 Layout and calibration prior
 
 ```ts
-export interface OverlayLayout {
-  centerCss: { x: number; y: number };   // always container centre (W/2, H/2)
-  mmToCss: number;                       // css px per mm
-  outerRadiusCss: number;
-  anchorRadiusCss: number;
-  circles: Array<{ rCss: number; style: OverlayStyle }>;
-  maskHoleRadiusCss: number;             // outerRadiusCss * 1.08
-}
+export interface OverlayLayout { centerCss: { x: number; y: number }; mmToCss: number; outerRadiusCss: number;
+  anchorRadiusCss: number; circles: Array<{ rCss: number; style: OverlayStyle }>; maskHoleRadiusCss: number }
 export function overlayLayout(container: Size, template: TemplateId, outerDiameterFraction: number): OverlayLayout;
-// outerDiameterCss = fraction * min(W, H); mmToCss = outerDiameterCss / outerDiameterMm
-
+// centre = (W/2, H/2); outerDiameterCss = fraction * min(W,H); mmToCss = outerDiameterCss / outerDiameterMm;
+// maskHoleRadiusCss = outerRadiusCss * 1.08 ; throws RangeError if fraction outside [0.5, 0.95]
 export function calibrationPriorFromOverlay(container: Size, frame: Size, template: TemplateId,
   outerDiameterFraction: number): Calibration;
-// centre = cssToFrame(centerCss, coverTransform); radiusPx = anchorRadiusCss / k;
-// axisRatio 1; angleDeg 0; anchorDiameterMm from template; source 'overlay'; confidence null
+// centre = cssToFrame(centerCss, cover); radiusPx = anchorRadiusCss / k; axisRatio 1; angleDeg 0; source 'overlay'; confidence null
 ```
 
-`scaleCalibration(cal, factor)` lives in `src/lib/geometry/transform.ts`: it multiplies `cx`, `cy`, `radiusPx`
-by `factor` and leaves everything else unchanged. The server applies it on upload with
-`factor = working.longestSide / frame.longestSide` to turn the frame-px prior into the working-image
-calibration stored in `analysis.json` (`source: 'overlay'`).
+`scaleCalibration(cal, factor)` (in `src/lib/geometry/transform.ts`) multiplies `cx`, `cy`, `radiusPx`.
+`ingestPhoto` applies it with `factor = working.longest / max(frameWidthPx, frameHeightPx)`.
 
 ### 3.4 Test vectors
 
@@ -118,58 +108,76 @@ Container `390 × 844`, frame `1080 × 1920`, fraction `0.85`.
 | `containTransform` | k 0.361111, ox 0, oy 75.333 |
 | `frameToCss({540, 960}, contain)` | {195, 422} |
 | `overlayLayout(precision)` | outerRadiusCss 165.75, mmToCss 2.147021, anchorRadiusCss 120.663 |
-| `overlayLayout(sighting)` | outerRadiusCss 165.75, mmToCss 2.882609, anchorRadiusCss 165.75 |
+| `overlayLayout(sighting)` | outerRadiusCss 165.75, mmToCss 2.882609, anchorRadiusCss 165.75, maskHoleRadiusCss 179.01 |
 | `calibrationPriorFromOverlay(precision)` | cx 540, cy 960, radiusPx 274.493, anchorDiameterMm 112.4 |
 | `calibrationPriorFromOverlay(sighting)` | cx 540, cy 960, radiusPx 377.062, anchorDiameterMm 115 |
 | `scaleCalibration({cx 540, cy 960, radiusPx 274.493}, 0.5)` | cx 270, cy 480, radiusPx 137.2465 |
-| `overlayLayout(sighting).maskHoleRadiusCss` | 179.01 |
+| `overlayLayout(sighting, fraction 0.5)` | outerRadiusCss 97.5 |
 
 ## 4. Overlay rendering (`renderOverlaySvg(layout, template, size): string`, pure)
 
-Absolutely positioned SVG covering the container, `pointer-events: none`, viewBox `0 0 W H`.
+SVG covering the container, `pointer-events: none`, viewBox `0 0 W H`:
+1. **Dim mask**: one `<path class="overlay-mask" fill="rgba(8,12,18,0.35)" fill-rule="evenodd">` made of the
+   container rect plus a circle of radius `maskHoleRadiusCss`.
+2. **Circles**: each drawn twice. First a halo (class `overlay-halo`, stroke `#0B1220`), then a line with class
+   `overlay-<style>`:
+   - `anchor`: halo width 5, line `#FFFFFF` width 3, opacity 0.9
+   - `ring`: halo 3.5, line 1.5, opacity 0.8
+   - `guide`: halo 3.5, line 1.5, `stroke-dasharray="6 6"`, opacity 0.7
+3. **Crosshair** (class `overlay-cross`): two white 1.5 px lines through the centre, half-length `anchorRadiusCss × 0.15`.
+4. **Ticks** (class `overlay-tick`): four 12 px outward white ticks on the anchor circle at 0°, 90°, 180°, 270°.
 
-1. **Dim mask**: one `<path fill="rgba(8,12,18,0.35)" fill-rule="evenodd">` made of the container rect plus a
-   circle of radius `maskHoleRadiusCss` at the centre.
-2. **Circles**: each drawn twice, halo first, then line.
-   - `anchor`: halo `#0B1220` width 5, line `#FFFFFF` width 3, opacity 0.9
-   - `ring`: halo width 3.5, line width 1.5, opacity 0.8
-   - `guide`: halo width 3.5, line width 1.5, `stroke-dasharray="6 6"`, opacity 0.7
-3. **Crosshair**: two white 1.5 px lines through the centre, half-length `anchorRadiusCss * 0.15`.
-4. **Ticks**: four 12 px outward white ticks at the anchor circle (0°, 90°, 180°, 270°).
-5. The label chip is HTML (not in the SVG), top-centre, 16 px, on `rgba(8,12,18,0.6)`.
+Counts: precision → 1 `overlay-anchor`, 4 `overlay-ring`. Sighting → 1 `overlay-anchor`, 1 `overlay-ring`,
+2 `overlay-guide`. The label chip is HTML.
 
-Snapshot-test the SVG for both templates at the §3.4 container size.
+## 5. From capture to storage
 
-## 5. Upload payload from capture
+`ingestPhoto(ctx, input, imageTools)` with:
 
-`POST /api/sessions/:sid/photos` multipart fields:
-- `file`: JPEG blob named `capture-<clientLocal with ':' replaced by '-'>.jpg`
-- `origin`: `camera-overlay`
-- `clientLocal`, `clientOffset`: from `clientNow()` (spec/metadata-lighting.md §2)
-- `capture`: JSON `CaptureInfo` (`overlayTemplate`, `outerDiameterFraction`, `frameWidthPx`, `frameHeightPx`,
-  `calibrationPriorFramePx`, `trackSettings`)
-- `categorization`: JSON `defaultCategorization(template, position)`
+```ts
+{ sessionId, blob, origin: 'camera-overlay', originalFilename: null,
+  clientLocal, clientOffset,                     // clientNow() at capture
+  capture: { overlayTemplate, outerDiameterFraction, frameWidthPx, frameHeightPx, calibrationPriorFramePx, tiltDeg, trackSettings },
+  categorization: defaultCategorization(template, position) }
+```
 
-Server (M04): stores the photo; if `capture.calibrationPriorFramePx` is set, writes the initial `analysis.json`
-with `calibration = scaleCalibration(prior, working.longest / frame.longest)` and `shots: []`.
+If `capture.calibrationPriorFramePx` is set, the initial `TargetAnalysis` gets
+`calibration = scaleCalibration(prior, workingLongest / frameLongest)`, `shots: []`, `pinnedMode: null`,
+`acceptedMissingCount: null`, `computed: null`.
 
-## 6. Dev-only fake camera
+## 6. Fake camera (dev/test only)
 
-When `process.env.NODE_ENV !== 'production'` and the page URL has `?fakeCamera=sighting|precision`:
-- Load `/dev-fixtures/<name>.jpg` (copies of `docs/reference/IMG_5057-sighting.jpg` / `IMG_5132-precision.jpg`,
-  metadata-free) into an off-screen canvas of `1080 × 1920`, drawn with `contain` fit.
-- Use `canvas.captureStream(15)` as the `MediaStream`.
-- Show a "FAKE CAMERA" chip. The production build must tree-shake this path (guard with the env check).
+Enabled only when `import.meta.env.VITE_FAKE_CAMERA === '1'` **and** the URL query (inside the hash route) has
+`fakeCamera=sighting|precision`:
+- Load `dev-fixtures/<name>.jpg` (copies of `docs/reference/IMG_5057-sighting.jpg` / `IMG_5132-precision.jpg`,
+  metadata-free) into a `1080 × 1920` canvas, drawn with contain fit.
+- Use `canvas.captureStream(15)` as the stream. Show a "FAKE CAMERA" chip.
+- The Pages workflow never sets `VITE_FAKE_CAMERA`. Guard the import with the env check so it is tree-shaken.
 
-Used by e2e tests. `?debug=1` shows a chip with `videoWidth×videoHeight` and the current `FitTransform`.
+`debug=1` in the query shows a chip with `videoWidth×videoHeight` and the current `FitTransform`.
 
-## 7. Human device checklist (M08, owner)
+## 7. Tilt indicator (optional, `tilt.ts` + UI)
 
-On the iPhone over the tailnet (Safari tab **and** home-screen app):
-1. The permission prompt appears once; the rear camera is used.
-2. The overlay stays centred in portrait; rotating does not misplace it.
-3. The `?debug=1` resolution chip shows at least 1920 on the long side.
-4. Aligning the precision sheet's black disc and capturing gives a review image with the thick circle on the
-   black disc edge (within ~3 mm visually).
-5. Same for the sighting sheet's dark disc.
-6. The torch toggle works or is hidden. The native camera fallback and Photos import both upload.
+The target hangs vertically, so the phone should be upright: ideal `beta = 90`, `gamma = 0`.
+
+```ts
+export function tiltDeg(beta: number, gamma: number): number;      // Math.hypot(beta - 90, gamma)
+export function tiltLevel(deg: number): 'good' | 'fair' | 'poor'; // ≤ 3 good, ≤ 8 fair, else poor
+```
+
+Vectors: (90, 0) → 0 `good`; (87, 4) → 5 `fair`; (80, 0) → 10 `poor`; (93, −3) → 4.243 `fair`.
+
+On iOS, call `DeviceOrientationEvent.requestPermission()` from a tap ("Enable level"). If denied or unavailable,
+hide the indicator. Store the tilt at capture in `CaptureInfo.tiltDeg`.
+
+## 8. Human device checklist (M07, owner)
+
+On the iPhone at `https://komplexmojo.github.io/advanced-shooting-analysis/`, in a Safari tab **and** as a Home
+Screen app:
+1. The camera permission prompt appears; the rear camera is used; the screen stays awake while capturing.
+2. The overlay stays centred in portrait; rotating doesn't misplace it.
+3. The `debug=1` chip shows ≥ 1920 on the long side.
+4. Aligning the precision sheet's black disc and capturing gives a review image with the thick circle on the disc
+   edge (within ~3 mm visually). Same for the sighting sheet's dark disc.
+5. The torch toggle works or is hidden. Native camera fallback and Photos import both work.
+6. Optional tilt indicator: permission prompt, and it turns green when the phone is square to the target.
