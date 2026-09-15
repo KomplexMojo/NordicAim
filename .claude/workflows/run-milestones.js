@@ -205,7 +205,7 @@ function finalizePrompt(sel, impl, humanChecks, blockingQuestions) {
     '1. Run `git status --porcelain`. If any path is under fixtures/private/, stop and return committed=false. If `pnpm check:privacy` exists, run it; if it fails, return committed=false.',
     `2. In docs/milestones/README.md set the Status of ${sel.id} to ${statusText}. Change nothing else in that table.`,
     humanChecks.length
-      ? `3. Append this section to docs/milestones/OWNER-CHECKS.md (create the file from its existing header if missing):\n\n## ${sel.id} — ${sel.title}\n\n${humanChecks.map((h) => `- [ ] ${h}`).join('\n')}\n`
+      ? `3. Append a section "## ${sel.id} — ${sel.title}" to docs/milestones/OWNER-CHECKS.md with one "- [ ] " checkbox per owner action. The raw items below come from both the implementer and the reviewer and often repeat each other: MERGE duplicates into a short, ordered, plain-language checklist (usually 3–6 items), keeping every distinct action and any exact URLs, file paths and check names.\nRaw items:\n${humanChecks.map((h) => `- ${h}`).join('\n')}\n`
       : '3. No owner checks to record for this milestone.',
     '4. Run `git add -A`, then commit with exactly this message (replace the summary placeholder with one or two sentences based on the summary below):',
     '',
