@@ -33,6 +33,21 @@ the sequence player, harness trends, and a Capacitor shell. **Apple Health and G
 8. **Tier labels matter.** Work marked **Tier: high** or **Human required** must not be attempted by a
    low-reasoning agent beyond steps explicitly marked *safe for any tier*.
 
+## Orchestrated runs (`run-milestones` workflow)
+
+When milestones are run by the `run-milestones` workflow (`.claude/workflows/run-milestones.js`):
+
+1. A **selector** picks the next ready milestone from `docs/milestones/README.md`. The *Implementer* and *Reviewer* columns set
+   each agent's model and effort.
+2. The **`milestone-implementer`** agent (`.claude/agents/`) does the work. It **does not commit, push, or mark `done`**
+   (overrides golden rules 6–7) and returns human-required steps as owner checks.
+3. The **`milestone-reviewer`** agent verifies independently (read-only). Up to 2 fix rounds.
+4. A **finalizer** records owner checks in `docs/milestones/OWNER-CHECKS.md`, sets the status, then commits `MNN: <title>` and pushes.
+5. The run stops at owner-gate milestones, blocking open questions, or a review that still fails after 2 fixes.
+
+To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the default; `mode: "step"` does one milestone;
+`only: "M03"` targets one milestone).
+
 ## Hard invariants (never violate)
 
 - **No backend, no runtime network calls** except the app's own same-origin static assets. No APIs, analytics, CDNs,
