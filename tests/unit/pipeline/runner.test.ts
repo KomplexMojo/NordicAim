@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { Calibration } from '@/lib/domain/photo';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import {
-  registerStageBHandler,
   resetRunnerForTests,
+  retryFailedStage,
   startPipelineRunner,
   waitForIdle,
 } from '@/lib/pipeline/runner-browser';
@@ -13,7 +13,7 @@ import type { ServiceContext } from '@/lib/services/context';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { putBlob } from '@/lib/store/blobs-repo';
-import { putPhotoRecord } from '@/lib/store/photos-repo';
+import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
 import { putSessionRecord } from '@/lib/store/sessions-repo';
 import type { ReviewAndAlignResult } from '@/workers/cv-client';
 
@@ -21,6 +21,7 @@ import { openTestDb } from '../../helpers/db';
 import { makeTestContext } from '../../helpers/fixtures';
 import { makeAnalysis, makeCapture, makePhoto, makePrior, makeSession } from '../../helpers/records';
 import { stubImageTools } from '../../helpers/stub-image-tools';
+import { stubRenderTools } from '../../helpers/stub-render-tools';
 
 const MEASURED: Calibration = {
   cx: 620,
@@ -98,7 +99,6 @@ async function seed(
 
 afterEach(() => {
   resetRunnerForTests();
-  registerStageBHandler(null);
 });
 
 describe('pipeline runner (analysis-pipeline §5)', () => {
@@ -106,7 +106,7 @@ describe('pipeline runner (analysis-pipeline §5)', () => {
     const { ctx, photoIds } = await seed(2);
     const cv = stubCv();
 
-    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools() });
+    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools(), renderTools: stubRenderTools() });
     await waitForIdle();
 
     expect(cv.calls).toBe(2);
@@ -121,7 +121,7 @@ describe('pipeline runner (analysis-pipeline §5)', () => {
     const { ctx, photoIds } = await seed(1, { stageA: 'running' });
     const cv = stubCv();
 
-    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools() });
+    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools(), renderTools: stubRenderTools() });
     await waitForIdle();
 
     expect(cv.calls).toBe(1);
@@ -141,7 +141,7 @@ describe('pipeline runner (analysis-pipeline §5)', () => {
     expect((await getAnalysisRecord(ctx.db, photoIds[0]!))?.pipeline.stageA).toBe('pending');
     expect(settled).toBe(false);
 
-    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools() });
+    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools(), renderTools: stubRenderTools() });
     await idle;
 
     expect(settled).toBe(true);
@@ -152,7 +152,7 @@ describe('pipeline runner (analysis-pipeline §5)', () => {
   it('picks up work added after it went idle, via pipelineHooks.notify()', async () => {
     const { ctx } = await seed(0);
     const cv = stubCv();
-    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools() });
+    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools(), renderTools: stubRenderTools() });
     await waitForIdle();
     expect(cv.calls).toBe(0);
 
@@ -174,30 +174,43 @@ describe('pipeline runner (analysis-pipeline §5)', () => {
     expect((await getAnalysisRecord(ctx.db, photo.id))?.pipeline.stageA).toBe('done');
   });
 
-  it('skips Stage B jobs until a handler is registered (M12)', async () => {
+  it('runs a Stage B job once Stage A is done and analysis has been requested (M12)', async () => {
     const { ctx, photoIds } = await seed(1, { stageA: 'done', analyzeRequested: true });
     const cv = stubCv();
 
-    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools() });
+    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools(), renderTools: stubRenderTools() });
     await waitForIdle();
-    expect((await getAnalysisRecord(ctx.db, photoIds[0]!))?.pipeline.stageB).toBe('pending');
 
-    const handled: string[] = [];
-    registerStageBHandler(async (handlerCtx, photoId) => {
-      handled.push(photoId);
-      const analysis = await getAnalysisRecord(handlerCtx.db, photoId);
-      if (analysis !== null) {
-        await putAnalysisRecord(handlerCtx.db, {
-          ...analysis,
-          pipeline: { ...analysis.pipeline, stageB: 'done' },
-        });
-      }
+    const analysis = await getAnalysisRecord(ctx.db, photoIds[0]!);
+    expect(analysis?.pipeline.stageB).toBe('done');
+    // Stage A never measured a calibration here, so Stage B has nothing to score (§4 rule 5).
+    expect(analysis?.computed).toBeNull();
+    const photo = await getPhotoRecord(ctx.db, photoIds[0]!);
+    expect(photo?.status).toBe('needs-attention');
+    expect(photo?.reasons).toEqual(['target-not-found']);
+    // Stage A was already done, so the CV worker is never asked for anything.
+    expect(cv.calls).toBe(0);
+  });
+
+  it('retryFailedStage resets a failed stage and the runner runs it again (§5)', async () => {
+    const { ctx, photoIds } = await seed(1, { stageA: 'done', analyzeRequested: true });
+    const photoId = photoIds[0]!;
+    const cv = stubCv();
+    const seeded = await getAnalysisRecord(ctx.db, photoId);
+    await putAnalysisRecord(ctx.db, {
+      ...seeded!,
+      pipeline: { ...seeded!.pipeline, stageB: 'error', error: 'render failed' },
     });
 
-    pipelineHooks.notify();
+    await startPipelineRunner(ctx, { getCvApi: () => cv.api, imageTools: stubImageTools(), renderTools: stubRenderTools() });
+    await waitForIdle();
+    expect((await getAnalysisRecord(ctx.db, photoId))?.pipeline.stageB).toBe('error');
+
+    await retryFailedStage(ctx, photoId);
     await waitForIdle();
 
-    expect(handled).toEqual([photoIds[0]]);
-    expect((await getAnalysisRecord(ctx.db, photoIds[0]!))?.pipeline.stageB).toBe('done');
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.stageB).toBe('done');
+    expect(analysis?.pipeline.error).toBeNull();
   });
 });

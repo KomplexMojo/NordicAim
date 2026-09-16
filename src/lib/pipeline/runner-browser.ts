@@ -3,27 +3,28 @@
 // drive it directly with `fake-indexeddb`.
 
 import { photoStatus } from '@/lib/domain/status';
+import { emitPipelineChanged } from '@/lib/pipeline/events';
+import type { RenderTools } from '@/lib/render/rasterize-browser';
 import type { ServiceContext } from '@/lib/services/context';
 import type { ImageTools } from '@/lib/services/ingest';
+import { AnalysisNotFoundError, PhotoNotFoundError } from '@/lib/services/photos';
 import { getAnalysisRecord, listAnalysisRecords, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { getPhotoRecord, listPhotoRecords, putPhotoRecord } from '@/lib/store/photos-repo';
 import { listSessionRecords } from '@/lib/store/sessions-repo';
 
-import { registerRunner } from './hooks';
+import { pipelineHooks, registerRunner } from './hooks';
 import { planJobs, type Job } from './plan';
 import { runStageA, type CvApi } from './stage-a';
+import { runStageB } from './stage-b';
 
 export interface RunnerDeps {
   /** Lazy so the CV worker (and OpenCV with it) is only created when a job actually needs it. */
   getCvApi: () => CvApi;
   imageTools: ImageTools;
+  renderTools: RenderTools;
 }
 
-/** M12 registers the Stage B handler; until then Stage B jobs are skipped. */
-export type StageBHandler = (ctx: ServiceContext, photoId: string) => Promise<void>;
-
 let active: { ctx: ServiceContext; deps: RunnerDeps } | null = null;
-let stageBHandler: StageBHandler | null = null;
 let busy = false;
 let wakeRequested = false;
 let idleWaiters: Array<() => void> = [];
@@ -81,7 +82,6 @@ async function nextJob(ctx: ServiceContext): Promise<Job | null> {
     listAnalysisRecords(ctx.db),
   ]);
   for (const job of planJobs(sessions, photos, analyses)) {
-    if (job.kind === 'B' && stageBHandler === null) continue;
     if (poisoned.has(jobKey(job))) continue;
     return job;
   }
@@ -92,11 +92,12 @@ async function runJob(runner: { ctx: ServiceContext; deps: RunnerDeps }, job: Jo
   try {
     if (job.kind === 'A') {
       await runStageA(runner.ctx, job.photoId, runner.deps.getCvApi(), runner.deps.imageTools);
-    } else if (stageBHandler !== null) {
-      await stageBHandler(runner.ctx, job.photoId);
+    } else {
+      // §5 / plan.ts: a `B` job only exists once that photo's Stage A is `done`.
+      await runStageB(runner.ctx, job.photoId, runner.deps.renderTools);
     }
   } catch (err) {
-    // runStageA records CV failures itself; reaching here means the job could not even be recorded.
+    // runStageA/runStageB record their own failures; reaching here means the job could not even be recorded.
     poisoned.add(jobKey(job));
     console.error(`[pipeline] ${job.kind} job failed for photo ${job.photoId}`, err);
   }
@@ -140,8 +141,48 @@ export async function startPipelineRunner(ctx: ServiceContext, deps: RunnerDeps)
   await pump();
 }
 
-export function registerStageBHandler(handler: StageBHandler | null): void {
-  stageBHandler = handler;
+/**
+ * analysis-pipeline §5 ("Retry"): the failed-status button on the results screen resets whichever
+ * stage failed to `pending`, recomputes the status, and wakes the runner. A photo that is not in
+ * `failed` is left alone.
+ */
+export async function retryFailedStage(ctx: ServiceContext, photoId: string): Promise<void> {
+  const nowIso = ctx.now().toISOString();
+  const tx = ctx.db.transaction(['photos', 'analyses'], 'readwrite');
+  const photo = await getPhotoRecord(tx, photoId);
+  const analysis = await getAnalysisRecord(tx, photoId);
+  if (photo === null || analysis === null) {
+    await tx.done;
+    throw photo === null ? new PhotoNotFoundError(photoId) : new AnalysisNotFoundError(photoId);
+  }
+
+  const { stageA, stageB } = analysis.pipeline;
+  if (stageA !== 'error' && stageB !== 'error') {
+    await tx.done;
+    return;
+  }
+
+  const next = {
+    ...analysis,
+    pipeline: {
+      ...analysis.pipeline,
+      stageA: stageA === 'error' ? ('pending' as const) : stageA,
+      stageB: stageB === 'error' ? ('pending' as const) : stageB,
+      error: null,
+    },
+    updatedAt: nowIso,
+  };
+  const { status, reasons } = photoStatus({
+    categorization: photo.categorization,
+    analysis: next,
+    result: next.computed?.result ?? null,
+  });
+  await putAnalysisRecord(tx, next);
+  await putPhotoRecord(tx, { ...photo, status, reasons });
+  await tx.done;
+
+  emitPipelineChanged({ sessionId: photo.sessionId, photoId });
+  pipelineHooks.notify();
 }
 
 /**
@@ -155,10 +196,9 @@ export function waitForIdle(): Promise<void> {
   });
 }
 
-/** Tests only: forgets the runner, its Stage B handler and any poisoned jobs. */
+/** Tests only: forgets the runner and any poisoned jobs. */
 export function resetRunnerForTests(): void {
   active = null;
-  stageBHandler = null;
   busy = false;
   wakeRequested = false;
   // Release anyone still queued, so a forgotten `waitForIdle()` cannot hang the next test.

@@ -121,3 +121,12 @@ during M10/M11 work._
       capture overlay → A3 hint → anchor diameter). Each is derived from an existing spec section, not invented.
 - [ ] Add the `splitCluster(pointsMm, k)` line to the worker API in `docs/spec/analysis-pipeline.md` §6 (Open
       question 7), or drop the method from the worker surface, so the spec and worker API agree before M13 uses it.
+
+## M12 — Analysis generation and results screen
+
+- [ ] On the iPhone: photograph a real target → Analyze → sanity-check the scores against your own count, and record discrepancies in the M12 Completion notes (feeds M13 and CV tuning). Expect the precision sheet to report `too-many-shots` / Needs attention — this is M11 open question 4 (printed ring numerals detected as shots: 19 detections / 62 units against ~10 rounds on IMG_5132-precision.jpg), restated as M12 open question 10, now visible in the UI for the first time. The sighting sheet should look roughly right, with overlapping holes merged.
+- [ ] Visually check the two new screens on a phone: results cards and target detail in portrait, 44 px tap targets (Retry, View, Adjust shots, Zoom in / Fit to width, Show the photo), and the amber/emerald status badges in dark mode — none of this is covered by the e2e assertions.
+- [ ] Decide where Retry should live: `src/lib/pipeline/runner-browser.ts` (where it is now, as `retryFailedStage`) or `src/lib/services/photos.ts`. Step 5 names no file and no service file was in scope (M12 Open question 1).
+- [ ] Ratify removing M10's `registerStageBHandler` registry in favour of the runner calling `runStageB` directly with a required `RunnerDeps.renderTools` — this replaced the M10 runner test "skips Stage B jobs until a handler is registered (M12)" with a test that a B job actually runs.
+- [ ] Decide M12 Open question 3: `geometry-scoring.md` §10 types the profile as `typeof BIATHLON_50M`, which forces an `as` cast to apply the stored `holeDiameterMm` override — a named profile type in the spec would remove it.
+- [ ] Confirm the invented wording is acceptable, since no spec states it: the processing spinner strings ("Waiting to process the photo…", "Reviewing the photo and finding shots…", "Scoring the target…", "Waiting to score…") and the sighting range line's trailing " hits" (Open question 6).

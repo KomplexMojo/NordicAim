@@ -6,9 +6,10 @@ import { CapturePage } from '@/routes/capture/CapturePage';
 import { DiagnosticsPage } from '@/routes/diagnostics/DiagnosticsPage';
 import { HomePage } from '@/routes/home/HomePage';
 import { MetadataPage } from '@/routes/metadata/MetadataPage';
-import { ResultsStubPage } from '@/routes/results/ResultsStubPage';
+import { ResultsPage } from '@/routes/results/ResultsPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { SessionsPage } from '@/routes/sessions/SessionsPage';
+import { TargetPage } from '@/routes/target/TargetPage';
 
 function ServicesLayout() {
   return (
@@ -29,7 +30,8 @@ const router = createHashRouter([
       { path: '/sessions/:sid', element: <SessionRedirect /> },
       { path: '/sessions/:sid/capture', element: <CapturePage /> },
       { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
-      { path: '/sessions/:sid/results', element: <ResultsStubPage /> },
+      { path: '/sessions/:sid/results', element: <ResultsPage /> },
+      { path: '/sessions/:sid/photos/:pid', element: <TargetPage /> },
     ],
   },
   { path: '/diagnostics', element: <DiagnosticsPage /> },

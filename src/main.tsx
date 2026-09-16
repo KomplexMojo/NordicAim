@@ -15,9 +15,11 @@ if (import.meta.env.VITE_FAKE_CAMERA === '1') {
 }
 
 // analysis-pipeline §5: the pipeline runner starts on app load, resets interrupted jobs and picks up any
-// Stage A work left over from a previous visit. The CV worker is created lazily, on the first job.
+// Stage A or Stage B work left over from a previous visit. The CV worker is created lazily, on the first job.
 void loadAppServices()
-  .then(({ ctx, imageTools }) => startPipelineRunner(ctx, { getCvApi: getCvClient, imageTools }))
+  .then(({ ctx, imageTools, renderTools }) =>
+    startPipelineRunner(ctx, { getCvApi: getCvClient, imageTools, renderTools }),
+  )
   .catch((err: unknown) => {
     console.error('[pipeline] runner failed to start', err);
   });
