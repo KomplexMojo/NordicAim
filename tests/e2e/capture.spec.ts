@@ -28,7 +28,7 @@ type HookWindow = Window & {
 
 async function createSessionViaHome(page: Page): Promise<string> {
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'New session' }).click();
+  await page.getByRole('button', { name: 'Start & capture' }).click();
   await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/capture/);
   const match = /#\/sessions\/([0-9a-f-]+)\/capture/.exec(page.url());
   if (!match?.[1]) throw new Error(`no session id in ${page.url()}`);
