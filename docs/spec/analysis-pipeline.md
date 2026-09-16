@@ -73,16 +73,24 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 ```ts
 export function chooseAlignment(input: {
   prior: Calibration | null;          // capture.calibrationPriorFramePx scaled to working px, else null
-  detection: { calibration: Calibration; confidence: number } | null;  // from detectAnchor (already fill ≥ 0.85)
+  // from detectAnchor (already fill ≥ 0.85). `outsidePrior`: a real disc was measured, but further from the
+  // overlay than the prior gate allows (M10 step 3.3) — still better evidence than the prior itself (REV-25).
+  detection: { calibration: Calibration; confidence: number; outsidePrior: boolean } | null;
 }): { calibration: Calibration | null; method: 'cv' | 'overlay' | 'none'; confidence: number | null;
       warnings: Array<'alignment-uncertain'> };
 ```
 
 | prior | detection | Result |
 |---|---|---|
-| any | present | `cv`, the detection's calibration (`source: 'auto'`), its confidence, no warning |
+| any | present, `outsidePrior: false` | `cv`, the detection's calibration (`source: 'auto'`), its confidence, no warning |
+| any | present, `outsidePrior: true` | `cv`, the detection's calibration (`source: 'auto'`), its confidence, warning `alignment-uncertain` |
 | present | null | `overlay`, the prior (`source: 'overlay'`), confidence null, warning `alignment-uncertain` |
 | null | null | `none`, calibration null, confidence null, no warning (status reports `target-not-found`) |
+
+**Never prefer the prior over a measured disc (REV-25).** The overlay prior says where the target was *aimed*, not where it
+*is*; using it for an off-centre photo silently scores the wrong part of the image. A detection that fails only the prior's
+proximity gate is still used, and the `alignment-uncertain` warning sends the photo to `needs-attention` so the owner can
+confirm or fix it in Adjust. The prior remains the fallback when no disc is found at all.
 
 Prior scaling: `scaleCalibration(capture.calibrationPriorFramePx, max(working.w, working.h) / max(frameWidthPx, frameHeightPx))`.
 
@@ -177,7 +185,7 @@ Vectors:
 interface CvWorkerApi {
   ping(): Promise<{ loadedMs: number; hasMat: boolean }>;                                   // M01
   reviewAndAlign(workingJpeg: ArrayBuffer, prior: Calibration | null, templateHint: TemplateId | null):
-    Promise<{ detection: { calibration: Calibration; confidence: number } | null;
+    Promise<{ detection: { calibration: Calibration; confidence: number; outsidePrior: boolean } | null;
               sharpness: number; templateHint: { template: TemplateId; confidence: number } | null }>; // M10
   detectShots(workingJpeg: ArrayBuffer, calibration: Calibration, template: TemplateId, holeDiameterMm: number):
     Promise<{ shots: Shot[] }>;                                                             // M11

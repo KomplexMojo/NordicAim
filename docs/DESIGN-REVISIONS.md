@@ -14,6 +14,12 @@
 - **Not part of the product:** Apple Health; any Garmin connection or upload (attaching the summary image in Garmin Connect is manual).
 - **Everything else** is post-MVP, listed in [`BACKLOG.md`](BACKLOG.md).
 
+## 2026-09-16: off-centre photos
+
+| ID | Decision | Supersedes | Owner's words / reason |
+|---|---|---|---|
+| REV-25 | **A measured target disc always beats the overlay prior.** If the disc is found but sits further from the overlay than the prior gate allows, the analysis still uses the measured disc and flags the photo `alignment-uncertain` (→ *needs attention*). The overlay prior is used only when no disc is found at all. | analysis-pipeline §3 and M10 step 3.3 (a detection outside the gate was discarded, falling back to the prior) | Owner asked what happens when a photo isn't exactly centred on the guidelines. The old rule threw away good evidence in favour of an assumption, and could score the wrong part of an off-centre photo. |
+
 ## 2026-09-15: diagram readability
 
 | ID | Decision | Supersedes | Owner's words / reason |

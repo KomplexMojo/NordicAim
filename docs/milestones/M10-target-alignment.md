@@ -35,7 +35,12 @@ Shot detection (M11), Stage B (M12).
 3. `detectAnchor(cv, img, prior | null, anchorDiameterMm | 'both')`:
    1. Blur 5×5; Otsu inverted; CLOSE with an elliptical kernel of `max(9, round(guessR × 0.08))`; external contours.
    2. For each contour ≥ 1% of the area with ≥ 5 points: `fitEllipse` (halve the axes); `fill = area / (π a b)`; reject `fill < 0.85` or `b/a < 0.6`.
-   3. With a prior: reject centre distance > 0.25·R or radius ratio outside [0.75, 1.33]; score `fill × (1 − dist/R)`. Without: `fill × area`.
+   3. Ranking (REV-25 — the prior ranks candidates, it never discards a measured disc):
+      - **With a prior**: candidates *inside* the gate (centre distance ≤ 0.25·R **and** radius ratio within [0.75, 1.33]) score
+        `fill × (1 − dist/R)`; the best one is returned with `outsidePrior: false`.
+      - If **no** candidate is inside the gate, rank every quality-passing candidate by `fill × area` (the no-prior score) and
+        return the best with `outsidePrior: true`. Only return `null` when no candidate passes step 2 at all.
+      - **Without a prior**: score `fill × area`, `outsidePrior: false` (the gate doesn't apply).
    4. Convert back to working px; `openCvAngleToSpec` helper (tested); `source 'auto'`, `confidence = fill`.
    5. When the anchor diameter is `'both'` (imports without a template), the returned `anchorDiameterMm` comes from
       `hintTemplate` (precision → 112.4, sighting → 115).
@@ -61,11 +66,14 @@ Shot detection (M11), Stage B (M12).
 ## Tests
 - `plan` and `alignment` vectors (analysis-pipeline §3, §5).
 - Anchor (synthetic, Node): precision 1200×1600 `{620, 830, 260, 0.93, 0}` with a prior offset (+20, −15) and radius 280 → centre ≤ 1.5% R,
-  radius ≤ 2%, axisRatio ± 0.02; sighting radius 450 the same; rotated 30° → angle ± 2°; blank → null.
+  radius ≤ 2%, axisRatio ± 0.02, `outsidePrior` false; sighting radius 450 the same; rotated 30° → angle ± 2°; blank → null.
+- Anchor, far off-centre (REV-25): the same precision disc with a prior whose centre is 0.6·R away → still returns the measured
+  disc (centre ≤ 1.5% R) with `outsidePrior: true`, **not** null.
 - Sharpness: the same synthetic image blurred σ = 3 → sharpness at most 1/3 of the original.
 - Template hint correct for both synthetic templates.
 - `runStageA` with a stub `cvApi`:
-  - detection present → `cv`
+  - detection present (`outsidePrior: false`) → `cv`, no warning
+  - detection present with `outsidePrior: true` → `cv` with the detection's calibration + `alignment-uncertain` (REV-25); the prior is **not** used
   - detection null with a prior → `overlay` + `alignment-uncertain`, calibration = scaled prior (frame 2400×3200, working 1200×1600 → factor 0.5)
   - no prior, no detection → `none`
   - manual calibration → the worker isn't called for alignment
