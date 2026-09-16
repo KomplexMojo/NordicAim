@@ -5,6 +5,7 @@
 
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
+import { mmToPx } from '@/lib/geometry/transform';
 import type { RgbaImage } from '@/lib/media/format';
 import { ANCHOR_DIAMETER_MM } from '@/lib/cv/anchor';
 import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
@@ -15,6 +16,22 @@ const PAPER = '#F4F2EE';
 const INK = '#181818';
 const LINE_MM = 0.35;
 
+/**
+ * M11: a fired hole is torn paper and backing — much brighter than the printed ink it sits on and
+ * much darker than the paper around it, which is exactly the pair of tests M11 step 3 applies. Gray
+ * ~166, against ink ~24 and paper ~242.
+ */
+const HOLE = '#C8A165';
+/** geometry-scoring §1.1: the .22 LR hole the profile assumes. */
+export const SYNTHETIC_HOLE_DIAMETER_MM = 5.6;
+
+export interface SyntheticHole {
+  xMm: number;
+  yMm: number;
+  /** Defaults to {@link SYNTHETIC_HOLE_DIAMETER_MM}. */
+  diameterMm?: number;
+}
+
 export interface SyntheticTargetSpec {
   template: TemplateId;
   width: number;
@@ -24,7 +41,43 @@ export interface SyntheticTargetSpec {
   radiusPx: number;
   axisRatio: number;
   angleDeg: number;
+  /** M11: bullet holes to punch through the sheet, in target mm (+x right, +y up). */
+  holesMm?: SyntheticHole[];
 }
+
+/** A hole at `radialMm` from the centre, `angleDeg` counter-clockwise from +x in target space. */
+export function polarHole(radialMm: number, angleDeg: number): SyntheticHole {
+  const theta = (angleDeg * Math.PI) / 180;
+  return { xMm: radialMm * Math.cos(theta), yMm: radialMm * Math.sin(theta) };
+}
+
+/**
+ * M11 Tests, case 1: eight separate holes on a precision sheet. Six sit in the clear gaps between
+ * printed ring lines; the two marked below are deliberately clipped by one (their centre is 2.3 mm
+ * from a ring radius, so step 4's +/-0.9 mm erase takes a cap off the blob).
+ */
+export const PRECISION_TEST_HOLES: SyntheticHole[] = [
+  polarHole(9.2, 200),
+  polarHole(17.2, 140),
+  polarHole(18.9, 40), // clipped by ring 8 (21.2 mm)
+  polarHole(25.2, 260),
+  polarHole(33.2, 20),
+  polarHole(41.2, 310),
+  polarHole(50.9, 95), // clipped by ring 3 (53.2 mm)
+  polarHole(65.2, 170), // on the white paper outside the black aiming mark
+];
+
+/**
+ * M11 Tests, case 2: four holes on a sighting sheet, two of them overlapping with their centres
+ * 3 mm apart. The overlapping pair's union is ~1.65 holes of area, which is what makes it a cluster
+ * of multiplicity 2 under step 5.
+ */
+export const SIGHTING_TEST_HOLES: SyntheticHole[] = [
+  { xMm: 12, yMm: 33 },
+  { xMm: 14.6, yMm: 34.5 }, // 3.0 mm from the one above
+  { xMm: -30, yMm: -20 },
+  { xMm: 5, yMm: -40 },
+];
 
 /** The calibration the synthetic sheet was drawn with — the ground truth for a detection test. */
 export function syntheticCalibration(spec: SyntheticTargetSpec): Calibration {
@@ -96,8 +149,32 @@ export function syntheticTargetSvg(spec: SyntheticTargetSpec): string {
     parts.push(ellipse(inner, `fill="none" stroke="${PAPER}" stroke-width="${lineWidth}"`));
   }
 
+  parts.push(holeEllipses(spec));
   parts.push('</svg>');
   return parts.join('');
+}
+
+/**
+ * Holes are placed through the app's own `mmToPx` (geometry-scoring §2.1), so a test asserting a
+ * detected position in mm is comparing against the same transform the detector inverts.
+ */
+function holeEllipses(spec: SyntheticTargetSpec): string {
+  const holes = spec.holesMm ?? [];
+  if (holes.length === 0) return '';
+
+  const cal = syntheticCalibration(spec);
+  const pxPerMm = spec.radiusPx / (cal.anchorDiameterMm / 2);
+  return holes
+    .map((hole) => {
+      const centre = mmToPx({ xMm: hole.xMm, yMm: hole.yMm }, cal);
+      const rx = ((hole.diameterMm ?? SYNTHETIC_HOLE_DIAMETER_MM) / 2) * pxPerMm;
+      const ry = rx * spec.axisRatio;
+      return (
+        `<ellipse cx="${centre.x}" cy="${centre.y}" rx="${rx}" ry="${ry}" ` +
+        `transform="rotate(${spec.angleDeg} ${centre.x} ${centre.y})" fill="${HOLE}" />`
+      );
+    })
+    .join('');
 }
 
 export function syntheticTargetRgba(spec: SyntheticTargetSpec): Promise<RgbaImage> {

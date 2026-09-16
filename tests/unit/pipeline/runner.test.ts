@@ -45,6 +45,9 @@ function stubCv(): { api: CvApi; calls: number } {
       state.calls += 1;
       return result;
     },
+    async detectShots() {
+      return { shots: [] };
+    },
   };
   return {
     api,

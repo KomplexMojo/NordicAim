@@ -103,3 +103,21 @@ during M10/M11 work._
 - [ ] Optional: **`BLUR_THRESHOLD` stays at 40.** `cv:eval` measures the lowest sharp image at 325.6 and the sharpest blurred
       one at 11.4, suggesting 61. 40 was kept as the more conservative choice (fewer false "blurry" warnings); raise it if real
       photos slip through.
+
+## M11 — Shot detection
+
+- [ ] Once M12 renders results, test shot detection on both real paper targets on the iPhone. Expect the precision
+      sheet to badly over-count (the printed ring numerals get detected as shots — see next item); the sighting sheet
+      should look roughly right, with overlapping holes merged into one cluster.
+- [ ] Decide whether to fix the precision-target over-count (Open question 4) by adding a stroke-width/elongation
+      filter, or by erasing the numeral sectors, in step 4 of `docs/milestones/M11-shot-detection.md` and
+      `docs/spec/analysis-pipeline.md` §2 (A5). As written, M12 will show `too-many-shots` on every real precision target.
+- [ ] Decide Open question 3: the ±0.9 mm erase bands around the inner-ten (2.5 mm) and ring-10 (5.2 mm) radii can
+      delete a dead-centre precision hole (leaves 8.0 mm² against the 8.6 mm² minimum), silently dropping an X. Options:
+      skip the two innermost bands, narrow them near the centre, or lower the minimum area inside ring 10. This affects
+      scoring, so settle it before M12 is accepted.
+- [ ] Ratify Open questions 1, 2 and 6 into `docs/spec/`: the definition of `outerRadiusMm` (outermost overlay
+      circle), the enumerated printed-circle radius list, and which template A5 detects against (categorization →
+      capture overlay → A3 hint → anchor diameter). Each is derived from an existing spec section, not invented.
+- [ ] Add the `splitCluster(pointsMm, k)` line to the worker API in `docs/spec/analysis-pipeline.md` §6 (Open
+      question 7), or drop the method from the worker surface, so the spec and worker API agree before M13 uses it.

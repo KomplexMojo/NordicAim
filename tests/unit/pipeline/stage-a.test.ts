@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import type { Shot } from '@/lib/domain/analysis';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
+import { defaultAppSettings } from '@/lib/domain/settings';
 import { runStageA, priorInWorkingPx, type CvApi } from '@/lib/pipeline/stage-a';
 import type { ServiceContext } from '@/lib/services/context';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -9,6 +11,7 @@ import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { putBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
 import { putSessionRecord } from '@/lib/store/sessions-repo';
+import { putSettings } from '@/lib/store/settings-repo';
 import type { ReviewAndAlignResult } from '@/workers/cv-client';
 
 import { openTestDb } from '../../helpers/db';
@@ -30,6 +33,30 @@ const MEASURED: Calibration = {
 
 const MANUAL: Calibration = { ...MEASURED, cx: 500, cy: 500, source: 'manual', confidence: null };
 
+/** What A5 would have detected. */
+const DETECTED: Shot = {
+  id: 'auto-1',
+  xMm: 1.4,
+  yMm: -0.8,
+  multiplicity: 1,
+  positionOverrides: null,
+  source: 'auto',
+  confidence: 0.92,
+  cluster: false,
+};
+
+/** A shot the user placed in Adjust: A5 must never touch it (analysis-pipeline §8). */
+const MANUAL_SHOT: Shot = {
+  id: 'm-1',
+  xMm: -7.6,
+  yMm: -9.4,
+  multiplicity: 1,
+  positionOverrides: null,
+  source: 'manual',
+  confidence: null,
+  cluster: false,
+};
+
 function review(over: Partial<ReviewAndAlignResult> = {}): ReviewAndAlignResult {
   return {
     detection: null,
@@ -39,8 +66,9 @@ function review(over: Partial<ReviewAndAlignResult> = {}): ReviewAndAlignResult 
   };
 }
 
-function stubCv(result: ReviewAndAlignResult | Error) {
+function stubCv(result: ReviewAndAlignResult | Error, shots: Shot[] = []) {
   const calls: Array<{ prior: Calibration | null; templateHint: TemplateId | null }> = [];
+  const detectCalls: Array<{ calibration: Calibration; template: TemplateId; holeDiameterMm: number }> = [];
   const api: CvApi = {
     async reviewAndAlign(workingJpeg, prior, templateHint) {
       void workingJpeg;
@@ -48,8 +76,13 @@ function stubCv(result: ReviewAndAlignResult | Error) {
       if (result instanceof Error) throw result;
       return result;
     },
+    async detectShots(workingJpeg, calibration, template, holeDiameterMm) {
+      void workingJpeg;
+      detectCalls.push({ calibration, template, holeDiameterMm });
+      return { shots };
+    },
   };
-  return { api, calls };
+  return { api, calls, detectCalls };
 }
 
 interface Seeded {
@@ -58,7 +91,15 @@ interface Seeded {
 }
 
 /** A stored photo with a 2400x3200 capture frame and a 1200x1600 working image (scale factor 0.5). */
-async function seed(opts: { withPrior?: boolean; calibration?: Calibration | null } = {}): Promise<Seeded> {
+async function seed(
+  opts: {
+    withPrior?: boolean;
+    calibration?: Calibration | null;
+    shots?: Shot[];
+    /** `null` is an import whose template the user has not set yet. */
+    template?: TemplateId | null;
+  } = {},
+): Promise<Seeded> {
   const db = await openTestDb();
   const ctx = makeTestContext(db);
   const session = makeSession();
@@ -68,8 +109,14 @@ async function seed(opts: { withPrior?: boolean; calibration?: Calibration | nul
       opts.withPrior === false
         ? null
         : makeCapture({ overlayTemplate: 'precision', calibrationPriorFramePx: makePrior() }),
+    categorization: {
+      template: opts.template === undefined ? 'precision' : opts.template,
+      position: 'prone',
+      roundsProne: 10,
+      roundsStanding: null,
+    },
   });
-  const analysis = makeAnalysis(photo.id, {}, { calibration: opts.calibration ?? null });
+  const analysis = makeAnalysis(photo.id, {}, { calibration: opts.calibration ?? null, shots: opts.shots ?? [] });
 
   await putSessionRecord(db, { ...session, photoIds: [photo.id] });
   await putPhotoRecord(db, photo);
@@ -214,5 +261,88 @@ describe('runStageA (analysis-pipeline §2 A3/A4, §5)', () => {
 
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.status).toBe('failed');
+  });
+});
+
+describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
+  const detection = { calibration: MEASURED, confidence: 0.96, outsidePrior: false };
+
+  it('replaces the shots, with the chosen calibration, template and hole diameter', async () => {
+    const { ctx, photoId } = await seed();
+    const { api, detectCalls } = stubCv(review({ detection }), [DETECTED]);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toEqual([DETECTED]);
+    expect(analysis?.pipeline.stageA).toBe('done');
+
+    expect(detectCalls).toHaveLength(1);
+    // A5 runs on the alignment A4 chose, not on the raw detection.
+    expect(detectCalls[0]?.calibration).toEqual({ ...MEASURED, source: 'auto', confidence: 0.96 });
+    expect(detectCalls[0]?.template).toBe('precision');
+    // data-model §5: the default profile override, geometry-scoring §1.1's .22 LR hole.
+    expect(detectCalls[0]?.holeDiameterMm).toBe(5.6);
+  });
+
+  it('uses the stored profile hole diameter (data-model §5)', async () => {
+    const { ctx, photoId } = await seed();
+    await putSettings(ctx.db, { ...defaultAppSettings(), profileOverrides: { holeDiameterMm: 4.5 } });
+    const { api, detectCalls } = stubCv(review({ detection }), [DETECTED]);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect(detectCalls[0]?.holeDiameterMm).toBe(4.5);
+  });
+
+  it('skips A5 when there is no calibration, leaving the shots empty', async () => {
+    const { ctx, photoId } = await seed({ withPrior: false });
+    const { api, detectCalls } = stubCv(review({ detection: null }), [DETECTED]);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect(detectCalls).toHaveLength(0);
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.calibration).toBeNull();
+    expect(analysis?.shots).toEqual([]);
+    expect(analysis?.pipeline.stageA).toBe('done');
+  });
+
+  it('never replaces shots the user placed by hand (§8)', async () => {
+    const { ctx, photoId } = await seed({ shots: [MANUAL_SHOT] });
+    const { api, detectCalls } = stubCv(review({ detection }), [DETECTED]);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect(detectCalls).toHaveLength(0);
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toEqual([MANUAL_SHOT]);
+  });
+
+  it('still detects over auto shots from a previous run', async () => {
+    const stale: Shot = { ...DETECTED, id: 'auto-9', xMm: 40, yMm: 40 };
+    const { ctx, photoId } = await seed({ shots: [stale] });
+    const { api, detectCalls } = stubCv(review({ detection }), [DETECTED]);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect(detectCalls).toHaveLength(1);
+    expect((await getAnalysisRecord(ctx.db, photoId))?.shots).toEqual([DETECTED]);
+  });
+
+  it('falls back to the template hint when the photo has no template yet', async () => {
+    const { ctx, photoId } = await seed({ withPrior: false, template: null });
+    const sightingDisc: Calibration = { ...MEASURED, anchorDiameterMm: 115 };
+    const { api, detectCalls } = stubCv(
+      review({
+        detection: { calibration: sightingDisc, confidence: 0.9, outsidePrior: false },
+        templateHint: { template: 'sighting', confidence: 0.8 },
+      }),
+      [],
+    );
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect(detectCalls[0]?.template).toBe('sighting');
   });
 });

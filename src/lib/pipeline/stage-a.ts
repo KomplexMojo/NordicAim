@@ -1,11 +1,12 @@
-// analysis-pipeline §2 (A3, A4), §5, §8. Stage A for one photo: review the image, align it on the
-// template, save the result. A5 (shot detection) is added in M11.
+// analysis-pipeline §2 (A3, A4, A5), §5, §8. Stage A for one photo: review the image, align it on
+// the template, detect the shots, save the result.
 
 import * as Comlink from 'comlink';
 
 import { BLUR_THRESHOLD } from '@/lib/cv/constants';
+import { SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
-import type { Warning } from '@/lib/domain/enums';
+import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { scaleCalibration } from '@/lib/geometry/transform';
@@ -17,12 +18,13 @@ import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo'
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
-import type { CvWorkerApi } from '@/workers/cv-client';
+import { getSettings } from '@/lib/store/settings-repo';
+import type { CvWorkerApi, ReviewAndAlignResult } from '@/workers/cv-client';
 
 import { chooseAlignment } from './alignment';
 
 /** Only the part of the worker Stage A needs, so tests can stub it. */
-export type CvApi = Pick<CvWorkerApi, 'reviewAndAlign'>;
+export type CvApi = Pick<CvWorkerApi, 'reviewAndAlign' | 'detectShots'>;
 
 export class WorkingImageMissingError extends Error {
   constructor(photoId: string) {
@@ -40,6 +42,26 @@ export function priorInWorkingPx(photo: TargetPhoto): Calibration | null {
   const workingLongest = Math.max(photo.working.widthPx, photo.working.heightPx);
   if (frameLongest <= 0) return null;
   return scaleCalibration(prior, workingLongest / frameLongest);
+}
+
+/**
+ * A5 has to know which sheet it is looking at, because the printed circles it erases (M11 step 4)
+ * and the outer radius it crops to differ per template. Nothing in the spec names a source for it,
+ * so this is the precedence Stage A uses — what the user (or the capture screen) said, then the
+ * overlay, then A3's hint, and finally the anchor size the calibration was measured against. See
+ * the M11 Open questions.
+ */
+export function shotTemplate(
+  photo: TargetPhoto,
+  hint: ReviewAndAlignResult['templateHint'],
+  calibration: Calibration,
+): TemplateId {
+  return (
+    photo.categorization.template ??
+    photo.capture?.overlayTemplate ??
+    hint?.template ??
+    (calibration.anchorDiameterMm === SIGHTING_TEMPLATE.anchor.diameterMm ? 'sighting' : 'precision')
+  );
 }
 
 /** One transaction: save the mutated analysis and the photo status it implies (data-model §7). */
@@ -70,8 +92,9 @@ async function commitAnalysis(
 }
 
 /**
- * analysis-pipeline §5. Runs A3 and A4 for one photo and records the outcome. Never throws for a CV or
- * decode failure: it records `stageA: 'error'` instead, so the runner does not retry in a loop.
+ * analysis-pipeline §5. Runs A3, A4 and A5 for one photo and records the outcome in one transaction.
+ * Never throws for a CV or decode failure: it records `stageA: 'error'` instead, so the runner does
+ * not retry in a loop.
  */
 export async function runStageA(
   ctx: ServiceContext,
@@ -98,6 +121,10 @@ export async function runStageA(
     const workingBlob = await getBlob(ctx.db, photoWorkingKey(photoId));
     if (workingBlob === null) throw new WorkingImageMissingError(photoId);
     const bytes = await workingBlob.arrayBuffer();
+    // A5 needs the same image again, and `Comlink.transfer` detaches the buffer it hands over.
+    const bytesForShots = bytes.slice(0);
+    // data-model §5: the hole diameter the touch rule and A5 use is a profile override.
+    const settings = await getSettings(ctx.db);
 
     // §8: a calibration the user saved in Adjust is never replaced, so A4 is skipped for it.
     const manual = analysis.calibration?.source === 'manual';
@@ -122,9 +149,23 @@ export async function runStageA(
     // Stage B owns `template-mismatch` (analysis-pipeline §2 B4); keep it if it was already there.
     if (analysis.pipeline.warnings.includes('template-mismatch')) warnings.push('template-mismatch');
 
+    // A5 (§2, §8): with no alignment there is nothing to measure against, and shots the user placed
+    // in Adjust are never overwritten. In both cases the stored shots are left exactly as they are.
+    const hasManualShot = analysis.shots.some((shot) => shot.source === 'manual');
+    const detected =
+      choice.calibration === null || hasManualShot
+        ? null
+        : await cvApi.detectShots(
+            Comlink.transfer(bytesForShots, [bytesForShots]),
+            choice.calibration,
+            shotTemplate(photo, review.templateHint, choice.calibration),
+            settings.profileOverrides.holeDiameterMm,
+          );
+
     await commitAnalysis(ctx, photoId, (a) => ({
       ...a,
       calibration: choice.calibration,
+      shots: detected === null ? a.shots : detected.shots,
       pipeline: {
         ...a.pipeline,
         stageA: 'done',

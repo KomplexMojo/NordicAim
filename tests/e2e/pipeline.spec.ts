@@ -4,8 +4,17 @@ interface HookPhoto {
   id: string;
 }
 
+interface HookShot {
+  id: string;
+  xMm: number;
+  yMm: number;
+  multiplicity: number;
+  source: string;
+}
+
 interface HookAnalysis {
   calibration: { cx: number; cy: number; radiusPx: number; source: string } | null;
+  shots: HookShot[];
   pipeline: {
     stageA: string;
     stageB: string;
@@ -36,7 +45,7 @@ async function createSessionViaHome(page: Page): Promise<string> {
   return match[1];
 }
 
-test('Stage A reviews and aligns a captured precision target', async ({ page }) => {
+test('Stage A reviews, aligns and finds shots on a captured precision target', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
 
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
@@ -68,4 +77,14 @@ test('Stage A reviews and aligns a captured precision target', async ({ page }) 
   expect(analysis?.calibration?.radiusPx).toBeGreaterThan(0);
   expect(analysis?.pipeline.sharpness).not.toBeNull();
   expect(analysis?.pipeline.templateHint).not.toBeNull();
+
+  // A5: the fake camera shows a real, shot-up precision sheet. This asserts that the worker's
+  // `detectShots` ran end to end and found something — accuracy on real photos is not gated here
+  // (M11 Tests), that is the owner check on the phone.
+  expect(analysis!.shots.length).toBeGreaterThan(0);
+  for (const shot of analysis!.shots) {
+    expect(shot.source).toBe('auto');
+    expect(shot.multiplicity).toBeGreaterThanOrEqual(1);
+    expect(Number.isFinite(shot.xMm) && Number.isFinite(shot.yMm)).toBe(true);
+  }
 });
