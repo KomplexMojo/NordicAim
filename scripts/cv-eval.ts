@@ -134,13 +134,31 @@ for (const ref of REFERENCE) {
   if (seed === undefined || typeof seed === 'string') continue;
 
   const img = await jpegFileToRgba(`${REPO_ROOT}${ref.path}`);
-  // Imports carry no overlay prior, so this is the hardest path: no prior, both anchor sizes.
-  const detection = detectAnchor(cv, img, null, 'both');
 
-  if (detection === null) {
-    referenceFailures += 1;
-    referenceRows.push([ref.key, '—', '—', '—', '—', 'FAIL (no detection)']);
-  } else {
+  // Both paths REV-26 covers: an import (no prior, both anchor sizes, CLOSE kernel at its floor) and a
+  // capture whose overlay was framed ~40% large, which is the kernel that merges the printed rings into
+  // the aiming mark.
+  const capturePrior: Calibration = {
+    cx: seed.cx + 20,
+    cy: seed.cy - 15,
+    radiusPx: Math.round(seed.radiusPx * 1.4),
+    axisRatio: 1,
+    angleDeg: 0,
+    anchorDiameterMm: seed.anchorDiameterMm,
+    source: 'overlay',
+    confidence: null,
+  };
+
+  for (const variant of [
+    { label: 'no prior', detection: detectAnchor(cv, img, null, 'both') },
+    { label: 'capture prior', detection: detectAnchor(cv, img, capturePrior, seed.anchorDiameterMm) },
+  ]) {
+    const detection = variant.detection;
+    if (detection === null) {
+      referenceFailures += 1;
+      referenceRows.push([ref.key, variant.label, '—', '—', '—', '—', 'FAIL (no detection)']);
+      continue;
+    }
     const cal = detection.calibration;
     const centreErr = Math.hypot(cal.cx - seed.cx, cal.cy - seed.cy) / seed.radiusPx;
     const radiusErr = Math.abs(cal.radiusPx - seed.radiusPx) / seed.radiusPx;
@@ -149,10 +167,11 @@ for (const ref of REFERENCE) {
     const hint = hintTemplate(cv, img, cal);
     referenceRows.push([
       ref.key,
+      variant.label,
       pct(centreErr),
       pct(radiusErr),
       cal.axisRatio.toFixed(3),
-      `${hint.template} (${hint.confidence.toFixed(2)})`,
+      `${hint.template} (${hint.confidence.toFixed(2)})${detection.outsidePrior ? ' · outsidePrior' : ''}`,
       ok ? 'within seed tolerance' : 'FAIL (outside seed tolerance)',
     ]);
   }
@@ -169,8 +188,8 @@ for (const ref of REFERENCE) {
 console.log('\n### Anchor detection — synthetic sheets (prior offset +20/-15 px)\n');
 console.log(table(['case', 'centre err (of R)', 'radius err', 'axisRatio', 'angle err', 'template hint', 'result'], syntheticRows));
 
-console.log(`\n### Anchor detection — reference JPEGs, no prior (seed tolerance: centre ${pct(REFERENCE_CENTRE_TOLERANCE)} of R, radius ${pct(REFERENCE_RADIUS_TOLERANCE)})\n`);
-console.log(table(['photo', 'centre err (of R)', 'radius err', 'axisRatio', 'template hint', 'vs seed'], referenceRows));
+console.log(`\n### Anchor detection — reference JPEGs (seed tolerance: centre ${pct(REFERENCE_CENTRE_TOLERANCE)} of R, radius ${pct(REFERENCE_RADIUS_TOLERANCE)})\n`);
+console.log(table(['photo', 'prior', 'centre err (of R)', 'radius err', 'axisRatio', 'template hint', 'vs seed'], referenceRows));
 
 console.log(`\n### Sharpness (blurred = Gaussian sigma ${BLUR_SIGMA})\n`);
 console.log(table(['image', 'sharp', 'blurred', 'ratio'], sharpnessRows));

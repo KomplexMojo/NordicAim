@@ -101,11 +101,18 @@ shot's mm position by ~28%. Two rules apply together:
    the **pre-CLOSE** binary, and a candidate with `fill < 0.85` is rejected. Measuring after the CLOSE is kernel-dependent and
    unsafe: a merged blob measures 0.69 at kernel 9 but **0.99** at kernel 30, which is what a capture prior produces. Measured
    pre-CLOSE, the merged blob is 0.52–0.63 and a true sighting disc is 0.962.
-2. **Nested search.** Contours are extracted with `RETR_CCOMP` so children are available. When an outer candidate fails the
-   guard, its child contours are tested with the same quality rules and ranking, and the best passing child is used. A disc found
-   this way is an ordinary detection (`source: 'auto'`), and the prior gate and `outsidePrior` apply to it as usual.
+2. **Nested search, on the pre-CLOSE binary.** When an outer candidate fails the guard, the candidates lying geometrically inside
+   its fitted ellipse are tested with the same quality rules, and the best one that passes is used. Those candidates come from the
+   **pre-CLOSE** binary: the CLOSE is precisely what welds the rings to the aiming mark, so in the CLOSEd tree the disc's boundary
+   is not a contour at all (one crescent child at kernel 9, *no* children at kernel 30). Pre-CLOSE the sheet's shapes are still
+   separate components and the mark appears as its own contour — measured 264.8 px against a seed of 265 (+0.07%) on
+   `IMG_5132-precision.jpg`. A disc found this way is an ordinary detection (`source: 'auto'`), and the prior gate and
+   `outsidePrior` apply to it as usual.
+3. **Ranking inside a nested pool uses `fill² × area`.** A printed ring line around the mark passes the guard (its interior is
+   mostly the mark) and, being larger, beats the mark on plain `fill × area` by 7.40%. Squaring the fill picks the mark and is the
+   smallest change correct on every measured case; a single-candidate pool is unaffected, since any monotone score picks it.
 
-Detection returns `null` — and the prior fallback above applies — only when neither an outer candidate nor any child passes.
+Detection returns `null` — and the prior fallback above applies — only when neither an outer candidate nor any nested candidate passes.
 
 Prior scaling: `scaleCalibration(capture.calibrationPriorFramePx, max(working.w, working.h) / max(frameWidthPx, frameHeightPx))`.
 

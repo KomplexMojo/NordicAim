@@ -78,3 +78,28 @@ during M10/M11 work._
 ## M08 — Pull photo metadata and lighting
 
 - [ ] None required for this milestone — it's pure logic plus an ingest-pipeline extension with no UI or device-specific behavior. Owner gates in README.md are only at M01, M07, M15.
+
+## M10 — Pipeline runner, image review, template alignment
+
+- [ ] **On the iPhone, capture both paper sheets and note the alignment method recorded for each** (via the stored analysis).
+      A precision sheet should now align as `cv`. A fallback to `overlay` with `alignment-uncertain` means the nested search
+      missed on real capture geometry — worth reporting, since that is exactly the case REV-26 was written to fix.
+- [ ] **Ratify (or reject) two refinements to REV-26 that measurement forced.** Both are already applied to the spec and the
+      code, so nothing is inconsistent; they are recorded here because they change rules the owner had pinned:
+      1. The nested search reads the **pre-CLOSE** binary. The original rule said the CLOSEd `RETR_CCOMP` children, which
+         cannot work: the CLOSE is what welds the rings to the mark (one crescent child at kernel 9, none at kernel 30).
+      2. Ranking in a nested pool uses `fill² × area`, not `fill × area`, which prefers a printed ring line by 7.40%. On the
+         real reference photo either formula picks the aiming mark; only the synthetic bridged fixture needs the exponent.
+- [ ] **Confirm the redrawn synthetic sighting fixture.** Round 1 drew the prone zone as a filled white disc (fill 0.845, just
+      under the 0.85 guard), which made the synthetic sighting sheet undetectable once REV-26 landed. It now draws white
+      strokes, matching `docs/reference/IMG_5057-sighting.jpg` (fill 0.988). Side effects: template-hint confidence
+      0.75 → 0.50 (still `sighting`), sharpness 284.0 → 325.6.
+- [ ] **Decide the Stage A duration readout.** M10's own acceptance asks the owner to note "how long Stage A took (shown in
+      `debug=1`)", but no step, schema field or UI in M10's scope records or displays it. That half of the acceptance cannot be
+      performed as written; adding it is a data-model plus UI decision.
+- [ ] Optional: **the median-4 tie in the template hint.** `IMG_5057-sighting.jpg` lands exactly on the tie and hints
+      `precision` at confidence 0.00. Harmless today (Stage B only warns at confidence ≥ 0.5), but the sighting sheet ideally
+      would not hint `precision` at all.
+- [ ] Optional: **`BLUR_THRESHOLD` stays at 40.** `cv:eval` measures the lowest sharp image at 325.6 and the sharpest blurred
+      one at 11.4, suggesting 61. 40 was kept as the more conservative choice (fewer false "blurry" warnings); raise it if real
+      photos slip through.

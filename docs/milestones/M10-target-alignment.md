@@ -39,15 +39,19 @@ Shot detection (M11), Stage B (M12).
    2. For each contour ≥ 1% of the area with ≥ 5 points: `fitEllipse` (halve the axes); `fill` = the fraction of filled pixels
       inside the fitted ellipse **on the pre-CLOSE binary** (REV-26 — the contour's own area, and the post-CLOSE fraction, both
       accept a merged blob); reject `fill < 0.85` or `b/a < 0.6`.
-   2a. **Nested search (REV-26).** When an outer contour is rejected by step 2, test its child contours with the same rules and
-      add those that pass to the candidate pool. A child that passes is an ordinary candidate: step 3 ranks it, and `source`,
-      `confidence` and `outsidePrior` are set exactly as for an outer candidate.
+   2a. **Nested search (REV-26), on the pre-CLOSE binary.** When an outer contour is rejected by step 2, test the **pre-CLOSE**
+      contours lying geometrically inside its fitted ellipse with the same rules, and add those that pass to the candidate pool.
+      Not the CLOSEd tree's children: the CLOSE welds the rings to the mark, leaving one crescent child at kernel 9 and none at
+      kernel 30, whereas pre-CLOSE the mark is its own contour (264.8 px vs seed 265 on `IMG_5132-precision.jpg`). A nested
+      candidate that passes is an ordinary candidate: step 3 ranks it, and `source`, `confidence` and `outsidePrior` are set
+      exactly as for an outer candidate.
    3. Ranking (REV-25 — the prior ranks candidates, it never discards a measured disc):
       - **With a prior**: candidates *inside* the gate (centre distance ≤ 0.25·R **and** radius ratio within [0.75, 1.33]) score
         `fill × (1 − dist/R)`; the best one is returned with `outsidePrior: false`.
-      - If **no** candidate is inside the gate, rank every quality-passing candidate by `fill × area` (the no-prior score) and
+      - If **no** candidate is inside the gate, rank every quality-passing candidate by `fill² × area` (the no-prior score) and
         return the best with `outsidePrior: true`. Only return `null` when no candidate passes step 2 or step 2a at all.
-      - **Without a prior**: score `fill × area`, `outsidePrior: false` (the gate doesn't apply).
+      - **Without a prior**: score `fill² × area` (`FILL_EXPONENT` 2 — plain `fill × area` ranks a printed ring line above the
+        aiming mark by 7.40% once the pool is nested), `outsidePrior: false` (the gate doesn't apply).
    4. Convert back to working px; `openCvAngleToSpec` helper (tested); `source 'auto'`, `confidence = fill`.
    5. When the anchor diameter is `'both'` (imports without a template), the returned `anchorDiameterMm` comes from
       `hintTemplate` (precision → 112.4, sighting → 115).
@@ -110,53 +114,15 @@ on the iPhone; note the alignment method and how long Stage A took (shown in `de
 
 ## Open questions
 
-1. **RESOLVED 2026-09-16 by owner decision REV-26: do both (a) and (b) — the pre-CLOSE fill guard *and*
-   the nested search. Implement step 3 above as rewritten; round 1's work is already in the working tree,
-   so this is a delta, not a rewrite. The evidence below is kept as the rationale.**
-   A precision sheet's printed rings merge into the aiming
-   mark, so the measured disc is 24-39% too large and, on the normal capture path, carries no warning.
-   On `IMG_5132-precision.jpg` the ring numbers printed at 12 and 6 o'clock bridge the black aiming mark
-   to rings 2/3, so the `RETR_EXTERNAL` contour of step 3.1 encloses everything out to ring 2. Its
-   `fill = contourArea / (π a b)` is **1.000** — the contour is the *outer* boundary, so the ring gaps
-   are inside it and the step 3.2 quality filter is vacuous for any outer boundary — and step 3.2
-   accepts it.
-
-   Measured against `seed-calibrations.json` (`radiusPx` 265; the 1200×1600 working image, detection
-   scale 0.75):
-
-   | CLOSE kernel (step 3.1) | when it happens | measured radius | radius err | `fill` (contourArea) | filled-pixel fraction inside the fitted ellipse, **post**-CLOSE | same, **pre**-CLOSE |
-   |---|---|---|---|---|---|---|
-   | k = 9  | import, no prior (`guessR` 0) | 329.9 px | **+24.48%** | 1.000 | 0.693 | 0.629 |
-   | k = 25 | — | 368.9 px | **+39.19%** | 1.000 | 0.767 | 0.524 |
-   | k = 30 | **capture with an overlay prior** (prior r ≈ 371 working px → `round(0.08·guessR)` = 30) | 368.8 px | **+39.18%** | 1.000 | **0.994** | 0.524 |
-
-   Two consequences, both worse than the earlier note (which only measured the no-prior case):
-   - With a realistic capture prior the error *grows* to ≈ +39%, and the radius ratio (≈ 368.8/371.3 ≈ 0.99)
-     sits **inside** the step 3.3 gate, so the detection is returned with `outsidePrior: false`,
-     `confidence` 1.000 → `chooseAlignment` yields `cv` / `auto` / 1.0 with **no `alignment-uncertain`
-     warning**, and `photoStatus` reports `ready`/`analyzed`. Since `scale = radiusPx / (anchorDiameterMm/2)`,
-     every shot's mm coordinate is compressed ~28%, corrupting ring scores, group size mm/MOA/MRAD and MPI
-     offset — silently.
-   - **The obvious fix is itself kernel-dependent, so it cannot be picked by an agent.** Redefining `fill`
-     as the filled-pixel fraction inside the fitted ellipse rejects the merged blob at k = 9 and k = 25,
-     but at k = 30 — the real capture path — the CLOSE has already filled the ring gaps and the fraction is
-     **0.994**, which passes. Only measuring the fraction on the **pre**-CLOSE binary rejects it at every
-     kernel size (0.52–0.63 vs `MIN_FILL` 0.85), and that variant still accepts the good sighting disc
-     (`IMG_5057-sighting.jpg`: 0.962 pre-CLOSE, 0.995 post-CLOSE, radius err 0.06%).
-
-   **The owner chose (a) + (b) together** (REV-26): (a) `fill` = filled-pixel fraction inside the fitted
-   ellipse measured on the **pre-CLOSE** binary, which rejects the blob at every kernel size, and (b) look
-   inside the outer contour (`RETR_CCOMP` children) for the real disc, so a precision photo still aligns
-   automatically instead of falling back to the prior. Option (c) (restrict the search near the prior) was
-   rejected because it contradicts REV-25 and does nothing for imports. The guard is the safety net: if the
-   nested search ever fails, detection returns null and the overlay fallback applies with
-   `alignment-uncertain`, rather than a wrong measurement being scored silently. The sighting sheet is
-   unaffected (0.06% radius error) because its disc is the outermost dark shape.
-
-   **`pnpm cv:eval` now exits non-zero because of this** (the reference rows are gated on M10 step 10's
-   own tolerances, centre ≤ 5% of R and radius ≤ 6%, instead of being printed next to a zero exit code).
-   **This affects real precision photos in M11/M12, not the synthetic fixtures those milestones are
-   tested against.**
+1. **RESOLVED 2026-09-16 by owner decision REV-26, and implemented in fix round 2.** A precision sheet's
+   printed ring numbers bridge the aiming mark out to ring 2, so the outer contour measured 24-39% too
+   large and, on the capture path, carried no warning — silently compressing every shot's mm position
+   ~28%. Both remedies are now in `src/lib/cv/anchor.ts`: `fill` is the filled-pixel fraction inside the
+   fitted ellipse measured on the **pre-CLOSE** binary (0.52-0.63 for the merged blob at every kernel
+   size, 0.962 for a true sighting disc), and a rejected outer candidate triggers a **nested search** for
+   the real disc. `IMG_5132-precision.jpg` now measures **1.02% centre / 0.07% radius** against
+   `seed-calibrations.json` with *and* without a capture prior, and `pnpm cv:eval` exits 0. See new
+   questions 9 and 10 for the two places the implementation had to go beyond the literal spec text.
 
 2. **`guessR` in step 3.1 is undefined for an import.** With a prior it is plainly the prior's radius in
    detection px. With no prior (an import) there is nothing to guess from, so the implementation uses the
@@ -188,108 +154,148 @@ on the iPhone; note the alignment method and how long Stage A took (shown in `de
    disc to walk its 16 rays from. The worker therefore uses `detection?.calibration ?? prior`, so an
    import of an unrecognised photo yields a sharpness score and `templateHint: null`. Defensible, but the
    spec should say so rather than leaving A3's output coupled to A4's success.
+9. **The nested search has to read the PRE-CLOSE binary, not the CLOSEd contour tree** (non-blocking; the
+   milestone's own Tests only pass this way). Step 3.2a and REV-26 rule 2 say children come from the
+   `RETR_CCOMP` extraction, which is taken after the CLOSE. Measured on `IMG_5132-precision.jpg`, that
+   cannot work: the CLOSE is precisely what welds the rings to the aiming mark, so afterwards the disc's
+   boundary is not a contour at all — the merged blob has **one** child at kernel 9 (a crescent, pre-CLOSE
+   fill 0.681, correctly rejected) and **no children at all** at kernel 30. On the pre-CLOSE binary the
+   sheet's shapes are still separate components, and `RETR_CCOMP` lists a component sitting inside
+   another's hole at the top level, so the disc appears as its own contour:
+
+   | pre-CLOSE contour | radius (working px) | fill | vs seed 265 |
+   |---|---|---|---|
+   | inner white ring line | 209.9 | 0.920 | −20.8% |
+   | inner white ring line | 248.4 | 0.917 | −6.3% |
+   | **the aiming mark** | **264.8** | **0.900** | **+0.07%** |
+   | ring 1 | 291.0 | 0.775 | rejected by the guard |
+   | merged blob | 329.9 | 0.629 | rejected by the guard |
+
+   The implementation therefore tests **both** the rejected candidate's post-CLOSE hierarchy children (the
+   literal rule) and every pre-CLOSE contour lying geometrically inside the rejected candidate's fitted
+   ellipse. The spec should say which binary the nested search reads.
+10. **Step 3.3's no-prior score `fill × area` picks a ring line over the aiming mark once the pool is
+    nested** (non-blocking; flagged because it changes a spec'd formula). A ring line printed around the
+    mark passes the fill guard — its interior is mostly the mark — and, being larger, wins on `fill × area`.
+    Measured over the bridged fixture and the reference photo:
+
+    | pool | `fill × area` | `fill² × area` | `fill⁸ × area` | max fill |
+    |---|---|---|---|---|
+    | bridged fixture (disc fill 0.998 vs ring 0.877) | ring, **+7.40%** | disc, +0.17% | disc, +0.17% | disc, +0.17% |
+    | `IMG_5132` (5 candidates, fills 0.895–0.920) | mark, +0.07% | mark, +0.07% | **+6.27%** | **+20.78%** |
+
+    The implementation uses `fill² × area` (`FILL_EXPONENT`), the smallest change correct on every measured
+    case; a pool with one candidate is unaffected, since any monotone score picks it. The owner should
+    ratify the exponent or state a different discriminator.
+11. **The synthetic sighting fixture was unfaithful and became undetectable under the REV-26 guard.**
+    Round 1 drew the sheet's prone zone as a *filled white* 45 mm disc inside the 115 mm ink disc, which
+    punches ~15% out of the anchor: pre-CLOSE fill **0.845**, just below the spec'd 0.85 guard, so once the
+    guard landed the synthetic sighting sheet returned no detection at all. On the real sheet
+    (`docs/reference/IMG_5057-sighting.jpg`, fill 0.962) every zone marking is a thin **white line** on a
+    solid black disc. The fixture now draws the prone solid, prone guide and inner circle as white strokes
+    (fill **0.988**). This changes a fixture three test files share — `hintTemplate` confidence moved
+    0.75 → 0.50 (still `sighting`) and its sharpness 284.0 → 325.6 — so it is recorded rather than buried.
 
 ## Completion notes
 
-Implemented by the `milestone-implementer` agent (orchestrated run), 2026-09-16; **fix round 1** applied
-the same day after an independent review. Per the orchestration overrides this milestone was **not**
-committed, pushed, or set to `done`.
+Implemented by the `milestone-implementer` agent (orchestrated run), 2026-09-16. **Fix round 2** landed the
+REV-26 delta (the owner's decision on round 1's Open question 1) on top of round 1's implementation, which
+was committed as `93b8cf5`. Per the orchestration overrides this milestone was **not** committed, pushed, or
+set to `done`.
 
-**Status after fix round 1: the milestone cannot be marked done.** One Acceptance command (`pnpm cv:eval`)
-now fails, deliberately and truthfully, on Open question 1 — a geometry decision AGENTS.md golden rule 2
-reserves for the owner/spec. See *Fix round 1* below.
+**All three Acceptance commands now pass**, including `pnpm cv:eval`, which round 1 left failing by design.
 
 ### Commands
 
 | Command | Result |
 |---|---|
-| `pnpm check` | **pass** — typecheck clean (now including `scripts/`), lint 0 errors (4 pre-existing warnings), **358 unit tests in 46 files**, `privacy check passed (15 images)` |
-| `pnpm cv:eval` | **FAIL (exit 1)** — all 3 synthetic cases pass and `IMG_5057-sighting.jpg` is within tolerance; `IMG_5132-precision.jpg` is 24.48% outside the step 10 radius tolerance (Open question 1) |
-| `pnpm test:e2e` | **pass** — 16/16 in mobile-chromium and mobile-webkit, including `tests/e2e/pipeline.spec.ts` in both projects |
+| `pnpm check` | **pass** — typecheck clean, lint 0 errors (4 pre-existing warnings), **363 unit tests in 46 files**, `privacy check passed (15 images)` |
+| `pnpm cv:eval` | **pass (exit 0)** — all 3 synthetic cases and all 4 reference rows within tolerance |
+| `pnpm test:e2e` | **pass** — 16/16 in mobile-chromium and mobile-webkit, including `tests/e2e/pipeline.spec.ts` in both |
 
-M10 added **35** unit tests across 7 new files (`tests/unit/cv/{anchor,sharpness,template-hint}.test.ts`,
-`tests/unit/pipeline/{plan,alignment,stage-a,runner}.test.ts`); the suite total went from 322 to 358.
-(An earlier agent report said "61 new unit tests" — that number was wrong; 35 is what vitest reports for
-exactly those paths.)
+Fix round 2 added **5** unit tests to `tests/unit/cv/anchor.test.ts` (358 → 363): two for the REV-26 fill
+guard and nested search on the bridged fixture (kernel 9 and the capture-prior kernel 30), and three for the
+reference photos (`IMG_5132-precision.jpg` with and without a capture prior, `IMG_5057-sighting.jpg`
+unchanged).
 
 ### `pnpm cv:eval`
 
 ```text
 ### Anchor detection — synthetic sheets (prior offset +20/-15 px)
 
-| case             | centre err (of R) | radius err | axisRatio | angle err | template hint    | result |
-|------------------|-------------------|------------|-----------|-----------|------------------|--------|
-| precision 260px  | 0.37%             | 0.18%      | 0.930     | 0.01°     | precision (0.75) | pass   |
-| precision rot 30 | 0.36%             | 0.21%      | 0.930     | 0.02°     | precision (1.00) | pass   |
-| sighting 450px   | 0.21%             | 0.14%      | 0.930     | 0.01°     | sighting (0.75)  | pass   |
+| case | centre err (of R) | radius err | axisRatio | angle err | template hint | result |
+|---|---|---|---|---|---|---|
+| precision 260px | 0.37% | 0.18% | 0.930 | 0.01° | precision (0.75) | pass |
+| precision rot 30 | 0.36% | 0.21% | 0.930 | 0.02° | precision (1.00) | pass |
+| sighting 450px | 0.21% | 0.14% | 0.930 | 0.01° | sighting (0.50) | pass |
 
-### Anchor detection — reference JPEGs, no prior (seed tolerance: centre 5.00% of R, radius 6.00%)
+### Anchor detection — reference JPEGs (seed tolerance: centre 5.00% of R, radius 6.00%)
 
-| photo                 | centre err (of R) | radius err | axisRatio | template hint    | vs seed                      |
-|-----------------------|-------------------|------------|-----------|------------------|------------------------------|
-| IMG_5057-sighting.jpg | 1.18%             | 0.06%      | 0.901     | precision (0.00) | within seed tolerance        |
-| IMG_5132-precision.jpg| 3.69%             | 24.48%     | 0.932     | precision (1.00) | FAIL (outside seed tolerance)|
+| photo | prior | centre err (of R) | radius err | axisRatio | template hint | vs seed |
+|---|---|---|---|---|---|---|
+| IMG_5057-sighting.jpg | no prior | 1.18% | 0.06% | 0.901 | precision (0.00) | within seed tolerance |
+| IMG_5057-sighting.jpg | capture prior | 1.18% | 0.07% | 0.901 | precision (0.00) · outsidePrior | within seed tolerance |
+| IMG_5132-precision.jpg | no prior | 1.02% | 0.07% | 0.943 | precision (0.75) | within seed tolerance |
+| IMG_5132-precision.jpg | capture prior | 1.02% | 0.07% | 0.943 | precision (0.75) · outsidePrior | within seed tolerance |
 
 ### Sharpness (blurred = Gaussian sigma 3)
 
-| image                       | sharp  | blurred | ratio |
-|-----------------------------|--------|---------|-------|
-| synthetic precision 260px   | 1034.3 | 4.4     | 0.004 |
-| synthetic precision rot 30  | 1032.2 | 4.4     | 0.004 |
-| synthetic sighting 450px    | 284.0  | 4.0     | 0.014 |
-| IMG_5057-sighting.jpg       | 422.5  | 7.2     | 0.017 |
-| IMG_5132-precision.jpg      | 607.1  | 11.4    | 0.019 |
+| image | sharp | blurred | ratio |
+|---|---|---|---|
+| synthetic precision 260px | 1034.3 | 4.4 | 0.004 |
+| synthetic precision rot 30 | 1032.2 | 4.4 | 0.004 |
+| synthetic sighting 450px | 325.6 | 4.1 | 0.012 |
+| IMG_5057-sighting.jpg | 422.5 | 7.2 | 0.017 |
+| IMG_5132-precision.jpg | 607.1 | 11.4 | 0.019 |
 
-lowest sharp = 284.0, highest blurred = 11.4
-suggested BLUR_THRESHOLD = 57 (geometric mean of the two); current = 40
-1 reference photo(s) outside the M10 step 10 seed tolerance (centre 5.00% of R, radius 6.00%)
+lowest sharp = 325.6, highest blurred = 11.4
+suggested BLUR_THRESHOLD = 61 (geometric mean of the two); current = 40
+
+all synthetic cases and reference photos pass
 ```
 
-### Fix round 1 (review findings)
+The precision reference photo went from **24.48% radius error (outside tolerance, no warning on the capture
+path)** in round 1 to **0.07%** here, with and without a capture prior. The sighting photo was already good
+and is unchanged (0.06% → 0.06%), which is the check that the nested search does not disturb a sheet whose
+disc is the outermost dark shape.
 
-- **Blocker — precision disc measured 24–39% too large, with no warning on the capture path.** Not fixed:
-  every candidate fix changes the geometry of step 3.2/3.3, which AGENTS.md golden rule 2 reserves for the
-  owner/spec. The review's evidence was reproduced and **extended** in Open question 1: with a realistic
-  capture prior the error grows to +39% *and* the `alignment-uncertain` warning is lost, and the review's
-  suggested fix (filled-pixel fraction inside the fitted ellipse) turns out to be **kernel-dependent** —
-  it rejects the merged blob at k = 9/25 (0.693/0.767) but *accepts* it at k = 30 (0.994), which is
-  exactly the kernel a capture prior produces. Only measuring that fraction on the **pre-CLOSE** binary
-  (0.52–0.63 for the blob, 0.962 for the good sighting disc) rejects it at every kernel size. Open
-  question 1 now states the three options and the numbers behind each, so the decision can be made without
-  re-measuring.
-- **Major — `pnpm cv:eval` reported a hollow pass.** Fixed (`scripts/cv-eval.ts`): the reference rows are
-  now gated on the step 10 tolerances (`referenceFailures`) and feed `process.exit` alongside the synthetic
-  ones, so the Acceptance command fails while the blocker stands instead of printing "outside seed
-  tolerance" next to exit 0.
-- **Minor — `waitForIdle()` could resolve before the runner started.** Fixed
-  (`src/lib/pipeline/runner-browser.ts`): `pump()` no longer settles waiters when `active` is null, so a
-  waiter that arrives before `startPipelineRunner` (`main.tsx` starts it from an async
-  `loadAppServices().then(...)`) stays queued until the first drain. `resetRunnerForTests()` now releases
-  queued waiters instead of dropping them. New unit test: *"does not report idle before the runner has
-  started (§10)"*.
-- **Minor — `scripts/` was not typechecked.** Fixed: new `tsconfig.scripts.json` (a copy of
-  `tsconfig.test.json` with `include: ["scripts"]` and `resolveJsonModule`), referenced from
-  `tsconfig.json`, so `tsc -b` inside `pnpm check` now covers `scripts/cv-eval.ts` and the pre-existing
-  `scripts/render-samples.ts`. Both are clean.
-- **Minor — manual calibration still calls `reviewAndAlign`.** Not changed: observable behaviour already
-  complies with §8 (calibration untouched, `alignment.method` `'manual'`, no warnings, `prior: null`);
-  skipping the worker entirely needs an A3-only entry point, which is a §6 `CvWorkerApi` change. Open
-  question 4.
-- **Minor — A3's `templateHint` is null when A4 finds nothing.** Not changed; recorded as new Open
-  question 8.
-- **Minor — wrong test count in the agent report.** Corrected above (35 new, 358 total).
+### Fix round 2 (the REV-26 delta)
+
+- **`src/lib/cv/anchor.ts` — rule 1, the fill guard.** `fill` is now the filled-pixel fraction inside the
+  fitted ellipse, measured on the **pre-CLOSE** binary (`ellipseFill`, rasterised only over the ellipse's
+  bounding box to stay inside the §9 budget). The contour's own area is useless for this — an outer
+  boundary always scores ~1.000, ring gaps included — and the post-CLOSE fraction is kernel-dependent
+  (0.693 at k = 9 but 0.994 at k = 30, the kernel a capture prior produces).
+- **`src/lib/cv/anchor.ts` — rule 2, the nested search.** Contours are taken with `RETR_CCOMP`; a rejected
+  outer candidate's own children are tested, **and** so is every pre-CLOSE contour lying geometrically
+  inside its fitted ellipse, which is the only place the swallowed disc still exists. See Open question 9
+  for why the literal post-CLOSE-children rule cannot work, with the measurements.
+- **`src/lib/cv/anchor.ts` — ranking.** The no-prior score is `fill² × area` (`FILL_EXPONENT`), because a
+  nested pool contains ring lines that enclose the mark and beat it on the spec'd `fill × area`. Open
+  question 10 has the comparison across four candidate rules.
+- **`tests/helpers/synthetic-target.ts`** — the sighting sheet's prone zone is drawn as white strokes, as
+  on the real sheet, instead of a filled white disc (Open question 11); new `bridgedPrecisionSvg` /
+  `bridgedPrecisionRgba` fixture, whose ink bars stop 6 px short of the aiming mark so that — exactly as on
+  `IMG_5132` — the mark is its own component pre-CLOSE while any CLOSE welds everything into one blob
+  ~25% too large.
+- **`scripts/cv-eval.ts`** — each reference photo is now evaluated twice, with no prior and with a capture
+  prior ~40% larger than the disc (the case REV-26 is about), and `outsidePrior` is reported per row.
 
 ### `BLUR_THRESHOLD`: kept at 40 (analysis-pipeline §3 asked M10 to record the measurements and adjust)
 
-Measured sharp images span 284–1034, blurred (σ = 3) copies span 4.0–11.4 — nearly two orders of magnitude
-apart, so any threshold in 12…280 separates them. 40 sits 3.5× above the blurriest blurred image and 7×
-below the least sharp sharp one, and it is the value already written into the spec. The script's suggested
-57 (the geometric mean of the two populations) is within noise of 40 and would only narrow the margin
-against genuinely soft real-world photos, so the constant is unchanged and this measurement is the note the
-spec asked for.
+Measured sharp images span 325.6–1034.3 and their blurred (σ = 3) copies span 4.1–11.4 — nearly two orders
+of magnitude apart, so any threshold in 12…325 separates them. 40 sits 3.5× above the blurriest blurred
+image and 8× below the least sharp sharp one, and it is the value already written into the spec. The
+script's suggested 61 (the geometric mean of the two populations) would only narrow the margin against
+genuinely soft real-world photos, so the constant is unchanged and this measurement is the note the spec
+asked for.
 
-### Deviations and decisions
+### Deviations and decisions (rounds 1 and 2)
 
+- **Two deviations from the literal spec text, both measured and both flagged for the owner:** the nested
+  search reads the pre-CLOSE binary (Open question 9) and the no-prior score squares `fill`
+  (Open question 10). Behaviour matches every case in the milestone's own *Tests* section.
+- **One shared test fixture changed:** the synthetic sighting sheet (Open question 11).
 - **OpenCV in Node tests** (`tests/helpers/opencv.ts`): the app's static-ESM loader
   (`src/lib/cv/opencv-entry.ts`) is what the browser bundle needs, but under vite-node the same import
   yields a module namespace carrying a `then` binding (the package's CJS export is a Promise), and awaiting
@@ -300,7 +306,8 @@ spec asked for.
   the root `tsconfig.json` is solution-style (no `paths`), so tsx needs to be pointed at a config that has
   them. (`tsconfig.scripts.json` is the *typecheck* project for the same files; tsx keeps using the test one
   because it also needs `tests/helpers`.)
-- **New file outside the milestone Files list:** `tsconfig.scripts.json` (fix round 1, review minor).
+- **New file outside the milestone Files list:** `tsconfig.scripts.json` (round 1, review minor), so `tsc -b`
+  covers `scripts/`.
 - `eslint.config.js`: the node-globals block now covers `scripts/**/*.ts` as well as `.mjs` (for `cv-eval.ts`).
 - `src/lib/store/{photos,analyses}-repo.ts` gained `listPhotoRecords` / `listAnalysisRecords` (zod-validating
   `getAll`), which the runner needs to plan over every photo.
@@ -315,8 +322,9 @@ spec asked for.
 
 ### Owner checks (not done by the agent)
 
-- **Decide Open question 1** (blocking): which of options (a) pre-CLOSE filled-pixel `fill`, (b) nested
-  contours, or (c) prior-restricted search the spec should adopt for step 3.2/3.3. `pnpm cv:eval` stays red
-  until it is implemented.
-- On the iPhone, capture both paper targets and note the alignment method used for each. See Open question 7
-  about the Stage A duration: nothing in M10's scope displays it.
+- **On the iPhone, capture both paper targets** and note the alignment method recorded for each
+  (`#/diagnostics`, or the stored analysis). A precision sheet should now align as `cv`; if it falls back to
+  `overlay` with `alignment-uncertain`, the nested search missed and that is worth reporting.
+- **Ratify the two spec deviations**, Open questions 9 (nested search reads the pre-CLOSE binary) and 10
+  (`fill² × area`), so `docs/spec/analysis-pipeline.md` §3 matches the code.
+- See Open question 7 about the Stage A duration: nothing in M10's scope displays it.
