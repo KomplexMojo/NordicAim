@@ -1,6 +1,9 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the one allowed `any` (AGENTS.md: OpenCv handle)
 export type OpenCv = any;
 
+/** An OpenCV `Mat` handle. Same untyped handle as {@link OpenCv}; named so call sites read clearly. */
+export type CvMat = OpenCv;
+
 let p: Promise<{ cv: OpenCv }> | undefined;
 
 /** True only for genuine Promise objects (not objects that merely inherit from Promise.prototype). */

@@ -19,7 +19,8 @@
     "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
     "check:privacy": "node scripts/check-privacy.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:privacy",
-    "render:samples": "tsx scripts/render-samples.ts"
+    "render:samples": "tsx scripts/render-samples.ts",
+    "cv:eval": "tsx --tsconfig tsconfig.test.json scripts/cv-eval.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

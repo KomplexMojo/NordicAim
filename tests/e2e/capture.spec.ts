@@ -81,8 +81,9 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
   expect(prior!.anchorDiameterMm).toBe(112.4);
   expect(photo.categorization).toEqual({ template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null });
 
+  // M10: the runner starts Stage A as soon as the photo is stored, so it may already be past 'pending'.
   const analysis = await getAnalysis(page, photo.id);
-  expect(analysis?.pipeline.stageA).toBe('pending');
+  expect(['pending', 'running', 'done']).toContain(analysis?.pipeline.stageA);
 
   await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));

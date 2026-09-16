@@ -46,3 +46,9 @@ export async function listPhotosBySession(dbOrTx: Executor, sessionId: string): 
   }
   return raws.map((raw) => parse(idOf(raw), raw));
 }
+
+/** Every photo in the database (the runner plans over all of them). */
+export async function listPhotoRecords(dbOrTx: Executor): Promise<TargetPhoto[]> {
+  const raws = isTx(dbOrTx) ? await dbOrTx.objectStore('photos').getAll() : await dbOrTx.getAll('photos');
+  return raws.map((raw) => parse(idOf(raw), raw));
+}

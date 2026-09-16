@@ -9,6 +9,12 @@ function isTx(x: Executor): x is AppTx {
   return 'objectStore' in x;
 }
 
+function photoIdOf(raw: unknown): string {
+  return raw !== null && typeof raw === 'object' && 'photoId' in raw && typeof raw.photoId === 'string'
+    ? raw.photoId
+    : 'unknown';
+}
+
 function parse(id: string, raw: unknown): TargetAnalysis {
   const parsed = TargetAnalysis.safeParse(raw);
   if (!parsed.success) throw new CorruptRecordError('analyses', id);
@@ -29,4 +35,10 @@ export async function putAnalysisRecord(dbOrTx: Executor, analysis: TargetAnalys
 export async function deleteAnalysisRecord(dbOrTx: Executor, photoId: string): Promise<void> {
   if (isTx(dbOrTx)) await dbOrTx.objectStore('analyses').delete(photoId);
   else await dbOrTx.delete('analyses', photoId);
+}
+
+/** Every analysis in the database (the runner plans over all of them). */
+export async function listAnalysisRecords(dbOrTx: Executor): Promise<TargetAnalysis[]> {
+  const raws = isTx(dbOrTx) ? await dbOrTx.objectStore('analyses').getAll() : await dbOrTx.getAll('analyses');
+  return raws.map((raw) => parse(photoIdOf(raw), raw));
 }
