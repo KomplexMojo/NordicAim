@@ -69,3 +69,8 @@ section here after each milestone that has them.
       including one HEIC (shows "Importing 1 of 2…", badge +2, correct count after Done).
 - [ ] Paste the Safari-tab and Home Screen report blocks from `docs/DEVICE-TESTING.md` §4 into
       `docs/milestones/M07-capture-screen.md` → Completion notes; record any failure under Open questions.
+
+_2026-09-16: the owner captured targets at the range on the evening of 2026-09-15 using the Home Screen app and reported
+that it worked as expected, then instructed the run to continue from M08. The boxes above stay unticked because the
+itemised checks and the `docs/DEVICE-TESTING.md` report blocks were not captured — revisit them if capture misbehaves
+during M10/M11 work._

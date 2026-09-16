@@ -119,5 +119,8 @@ Notes and deviations for the reviewer:
   review. An ingest failure shows a toast and keeps the review.
 - Diagnostics stays outside `ServicesProvider` so it still runs if IndexedDB can't open. `<Toaster>` is mounted next to the router.
 
-**Owner device checklist (human required):** not yet done — follow `docs/DEVICE-TESTING.md` in Safari and from the Home Screen and
-paste both report blocks here.
+**Owner device checklist (human required):** partly done. On the evening of 2026-09-15, at the range, the owner
+captured targets using the Home Screen app and reported that the camera worked as expected. The itemised
+`docs/DEVICE-TESTING.md` checks and the two report blocks were not captured, and the Safari-tab pass (including the
+`debug=1` resolution check) was not run at the range. On 2026-09-16 the owner instructed the milestone run to continue
+from M08 on that basis. Everything still unverified stays listed in `docs/milestones/OWNER-CHECKS.md`.
