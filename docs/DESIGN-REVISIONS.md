@@ -14,6 +14,12 @@
 - **Not part of the product:** Apple Health; any Garmin connection or upload (attaching the summary image in Garmin Connect is manual).
 - **Everything else** is post-MVP, listed in [`BACKLOG.md`](BACKLOG.md).
 
+## 2026-09-16: measuring the precision disc
+
+| ID | Decision | Supersedes | Owner's words / reason |
+|---|---|---|---|
+| REV-26 | **Find the aiming mark inside a merged shape, and never measure the merged shape itself.** Two rules together: (1) a candidate's fill is measured on the **pre-CLOSE** binary, which rejects a blob at every kernel size; (2) when an outer candidate is rejected, its **child** contours are searched for the real disc, and a disc found that way is an ordinary detection. The overlay prior is used only when neither passes. | M10 step 3.1–3.2 (outer contours only; fill from the contour's own area) | Owner chose "both: look inside + guard". On `IMG_5132-precision.jpg` the printed ring numbers bridge the aiming mark to ring 2, so the outer contour measured 24–39% too large and passed every check silently, compressing every shot's mm position ~28%. |
+
 ## 2026-09-16: off-centre photos
 
 | ID | Decision | Supersedes | Owner's words / reason |

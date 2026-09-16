@@ -92,6 +92,21 @@ export function chooseAlignment(input: {
 proximity gate is still used, and the `alignment-uncertain` warning sends the photo to `needs-attention` so the owner can
 confirm or fix it in Adjust. The prior remains the fallback when no disc is found at all.
 
+**Measuring the disc on a printed sheet (REV-26).** The outermost dark shape is not always the anchor disc: on the precision
+sheet the printed ring numbers at 12 and 6 o'clock can touch the aiming mark and bridge it out to ring 2, so a contour traced
+around the outside measures 24–39% too large. Since `scale = radiusPx / (anchorDiameterMm/2)`, that silently compresses every
+shot's mm position by ~28%. Two rules apply together:
+
+1. **Fill guard, measured before the CLOSE.** A candidate's `fill` is the fraction of filled pixels inside its fitted ellipse on
+   the **pre-CLOSE** binary, and a candidate with `fill < 0.85` is rejected. Measuring after the CLOSE is kernel-dependent and
+   unsafe: a merged blob measures 0.69 at kernel 9 but **0.99** at kernel 30, which is what a capture prior produces. Measured
+   pre-CLOSE, the merged blob is 0.52–0.63 and a true sighting disc is 0.962.
+2. **Nested search.** Contours are extracted with `RETR_CCOMP` so children are available. When an outer candidate fails the
+   guard, its child contours are tested with the same quality rules and ranking, and the best passing child is used. A disc found
+   this way is an ordinary detection (`source: 'auto'`), and the prior gate and `outsidePrior` apply to it as usual.
+
+Detection returns `null` — and the prior fallback above applies — only when neither an outer candidate nor any child passes.
+
 Prior scaling: `scaleCalibration(capture.calibrationPriorFramePx, max(working.w, working.h) / max(frameWidthPx, frameHeightPx))`.
 
 **Sharpness** (pure `sharpness(cv, img)` in `src/lib/cv/sharpness.ts`): the variance of `cv.Laplacian` (`CV_64F`, ksize 1) on the gray
