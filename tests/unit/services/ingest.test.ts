@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFile } from 'node:fs/promises';
 
 import { createSession, getSession } from '@/lib/services/sessions';
 import { ingestPhoto, UnsupportedFormatError } from '@/lib/services/ingest';
@@ -8,6 +9,8 @@ import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { openTestDb } from '../../helpers/db';
 import { completeCategorization, emptyCategorization, jpegBlob, makeTestContext } from '../../helpers/fixtures';
 import { stubImageTools } from '../../helpers/stub-image-tools';
+
+const FIXTURES = new URL('../../../fixtures/reference/', import.meta.url);
 
 describe('ingestPhoto', () => {
   it('stores captureTime with source client-clock for camera-overlay origin', async () => {
@@ -128,6 +131,60 @@ describe('ingestPhoto', () => {
     expect(updated?.photoIds).toEqual([photo.id]);
     expect(notifySpy).toHaveBeenCalledTimes(1);
     notifySpy.mockRestore();
+    db.close();
+  });
+
+  it('exif-sample.jpg as origin import -> source exif, utc matches, lighting daylight 0.9', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    const session = await createSession(ctx);
+    const buf = await readFile(new URL('exif-sample.jpg', FIXTURES));
+    const blob = new Blob([buf], { type: 'image/jpeg' });
+    const photo = await ingestPhoto(
+      ctx,
+      {
+        sessionId: session.id,
+        blob,
+        origin: 'import',
+        originalFilename: 'exif-sample.jpg',
+        clientLocal: '2026-09-05T12:00:00',
+        clientOffset: '-07:00',
+        capture: null,
+        categorization: emptyCategorization(),
+      },
+      stubImageTools(),
+    );
+    expect(photo.captureTime.source).toBe('exif');
+    expect(photo.captureTime.utc).toBe('2026-09-05T23:56:03.000Z');
+    expect(photo.lightingSuggestion.label).toBe('daylight');
+    expect(photo.lightingSuggestion.confidence).toBe(0.9);
+    expect(photo.lighting).toBe('daylight');
+    expect(photo.lightingConfirmed).toBe(false);
+    db.close();
+  });
+
+  it('camera-overlay without EXIF at 16:56 local with non-warm stats -> client-clock, daylight 0.5', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    const session = await createSession(ctx);
+    const photo = await ingestPhoto(
+      ctx,
+      {
+        sessionId: session.id,
+        blob: jpegBlob(),
+        origin: 'camera-overlay',
+        originalFilename: null,
+        clientLocal: '2026-09-05T16:56:00',
+        clientOffset: '-07:00',
+        capture: null,
+        categorization: emptyCategorization(),
+      },
+      stubImageTools(), // default toRgba is a flat neutral-gray image (not warm)
+    );
+    expect(photo.captureTime.source).toBe('client-clock');
+    expect(photo.lightingSuggestion.label).toBe('daylight');
+    expect(photo.lightingSuggestion.confidence).toBe(0.5);
+    expect(photo.lighting).toBe('daylight');
     db.close();
   });
 

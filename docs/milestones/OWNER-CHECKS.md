@@ -74,3 +74,7 @@ _2026-09-16: the owner captured targets at the range on the evening of 2026-09-1
 that it worked as expected, then instructed the run to continue from M08. The boxes above stay unticked because the
 itemised checks and the `docs/DEVICE-TESTING.md` report blocks were not captured — revisit them if capture misbehaves
 during M10/M11 work._
+
+## M08 — Pull photo metadata and lighting
+
+- [ ] None required for this milestone — it's pure logic plus an ingest-pipeline extension with no UI or device-specific behavior. Owner gates in README.md are only at M01, M07, M15.

@@ -2,8 +2,11 @@ import type { PhotoOrigin } from '@/lib/domain/enums';
 import { initialAnalysis } from '@/lib/domain/analysis';
 import type { CaptureInfo, Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
-import { detectFormat, type ImageFormat } from '@/lib/media/format';
+import { detectFormat, type ImageFormat, type RgbaImage } from '@/lib/media/format';
 import { resolveCaptureTime } from '@/lib/media/capture-time';
+import { readExif } from '@/lib/media/exif';
+import { computeImageStats } from '@/lib/media/image-stats';
+import { estimateBrightnessValue, suggestLighting } from '@/lib/media/lighting';
 import { photoOriginalKey, photoThumbKey, photoWorkingKey } from '@/lib/store/blob-keys';
 import { putBlob } from '@/lib/store/blobs-repo';
 import { putAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -47,6 +50,7 @@ export interface ImageTools {
     originalSize: { widthPx: number; heightPx: number };
     workingSize: { widthPx: number; heightPx: number; scaleFromOriginal: number };
   }>;
+  toRgba(blob: Blob, maxLongest: number): Promise<RgbaImage>;
 }
 
 export interface IngestPhotoInput {
@@ -79,12 +83,16 @@ export async function ingestPhoto(
   const workingBuffer = await working.arrayBuffer();
   const thumbBuffer = await thumb.arrayBuffer();
 
-  // 3. metadata (M08 fills exif/imageStats/real lighting)
-  const exif = null;
+  // 3. metadata (analysis-pipeline §2 A2, metadata-lighting §1-§4)
+  const exif = await readExif(new Uint8Array(originalBuffer));
   const captureTime = resolveCaptureTime({ exif, origin, clientLocal, clientOffset });
-  const imageStats = null;
-  const lightingSuggestion = { label: 'unknown' as const, confidence: 0, reasons: ['pending'] };
-  const lighting = 'unknown' as const;
+  const imageStats = computeImageStats(await imageTools.toRgba(working, 256));
+  const localHour = captureTime.local === null ? null : Number(captureTime.local.slice(11, 13));
+  const exposure = exif ?? { fNumber: null, exposureTimeSec: null, iso: null };
+  const bv = exif?.brightnessValue ?? estimateBrightnessValue(exposure) ?? null;
+  const suggestion = suggestLighting({ bv, flashFired: exif?.flashFired ?? null, localHour, stats: imageStats });
+  const lightingSuggestion = suggestion;
+  const lighting = suggestion.label;
   const lightingConfirmed = false;
   const notes = null;
 
