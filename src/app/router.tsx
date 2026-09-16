@@ -2,6 +2,7 @@ import { createHashRouter, Outlet, RouterProvider } from 'react-router';
 
 import { Toaster } from '@/components/ui/sonner';
 import { ServicesProvider } from '@/lib/app/services';
+import { AdjustPage } from '@/routes/adjust/AdjustPage';
 import { CapturePage } from '@/routes/capture/CapturePage';
 import { DiagnosticsPage } from '@/routes/diagnostics/DiagnosticsPage';
 import { HomePage } from '@/routes/home/HomePage';
@@ -32,6 +33,7 @@ const router = createHashRouter([
       { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
       { path: '/sessions/:sid/results', element: <ResultsPage /> },
       { path: '/sessions/:sid/photos/:pid', element: <TargetPage /> },
+      { path: '/sessions/:sid/photos/:pid/adjust', element: <AdjustPage /> },
     ],
   },
   { path: '/diagnostics', element: <DiagnosticsPage /> },

@@ -24,7 +24,7 @@ as shown (`<model> · <effort>`).
 | [M10](M10-target-alignment.md) | Pipeline runner, image review, template alignment | review image · overlay on template | M04, M06 | opus · high | opus · high | no | done |
 | [M11](M11-shot-detection.md) | Shot detection | generate analysis | M10 | opus · high | opus · high | no | done |
 | [M12](M12-analysis-results.md) | Analysis generation and results screen | **3. receive analysis** | M05, M09, M11 | opus · high | opus · high | no | done |
-| [M13](M13-adjust-shots.md) | Adjust shots (optional correction) | optional | M12 | opus · high | opus · high | no | pending |
+| [M13](M13-adjust-shots.md) | Adjust shots (optional correction) | optional | M12 | opus · high | opus · high | no | done |
 | [M14](M14-summary-image-share.md) | Session summary image and share | **3. receive analysis** | M12 | sonnet · medium | sonnet · high | no | pending |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14 | sonnet · medium | sonnet · high | yes | pending |
 

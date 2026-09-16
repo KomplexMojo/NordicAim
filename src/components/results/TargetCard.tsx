@@ -67,9 +67,11 @@ export function TargetCard({ sessionId, photo, analysis, onRetry }: TargetCardPr
               View
             </Link>
           </Button>
-          {/* Enabled by M13 (Adjust shots); the button is shown now so the card's layout is final. */}
-          <Button variant="outline" className="h-11 flex-1" disabled data-testid="adjust-shots">
-            Adjust shots
+          {/* M13: the optional correction screen (analysis-pipeline §1, §8). */}
+          <Button asChild variant="outline" className="h-11 flex-1">
+            <Link to={`/sessions/${sessionId}/photos/${photo.id}/adjust`} data-testid="adjust-shots">
+              Adjust shots
+            </Link>
           </Button>
         </div>
       </CardContent>
