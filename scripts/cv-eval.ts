@@ -1,21 +1,22 @@
 #!/usr/bin/env tsx
-// M10 step 10, M11 step 8 and M16 steps 1, 6 and 7. Node-only evaluation of the Stage A computer
+// M10 step 10, M11 step 8 and M16 (steps 5-7, R4). Node-only evaluation of the Stage A computer
 // vision: synthetic sheets with known calibrations, the committed reference JPEGs, the sharpness of
 // sharp vs blurred copies (which is how BLUR_THRESHOLD is chosen), alignment accuracy against the
-// owner's ground truth (REV-31), and shot detection by both segmentation methods (REV-32).
+// owner's ground truth (REV-31), and shot detection against the owner's labelled holes (REV-37).
 //
 // Exit code: non-zero when
 //   * a synthetic case regresses (anchor or shots), or
 //   * a reference JPEG lands outside the M10 step 10 seed tolerance (centre <= 5% of R, radius <= 6%), or
 //   * a photo with owner ground truth exceeds that same alignment tolerance (M16 step 7), or
-//   * a reference photo yields MORE detections than its declared rounds (M16 step 6).
+//   * a reference photo yields MORE detections than its declared rounds (M16 step 7), or
+//   * detection on the owner's labelled holes falls below the R4 floors (skipped when absent).
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { detectAnchor } from '../src/lib/cv/anchor.ts';
-import { BLUR_THRESHOLD, DEFAULT_DETECTION_METHOD, REGION_K, REGION_MM, REGION_REFINE_MAX } from '../src/lib/cv/constants.ts';
-import { detectShotCandidates, type DetectionMethod } from '../src/lib/cv/holes.ts';
+import { BLUR_THRESHOLD } from '../src/lib/cv/constants.ts';
+import { detectShotCandidates } from '../src/lib/cv/holes.ts';
 import { sharpness } from '../src/lib/cv/sharpness.ts';
 import { hintTemplate } from '../src/lib/cv/template-hint.ts';
 import { declaredRounds } from '../src/lib/domain/categorization.ts';
@@ -25,6 +26,7 @@ import { capShots } from '../src/lib/scoring/cap-shots.ts';
 import { loadOpenCvForTests } from '../tests/helpers/opencv.ts';
 import { blurRgba, jpegFileToRgba } from '../tests/helpers/rgba.ts';
 import { MATCH_TOLERANCE_MM, matchShots, type MatchResult } from '../tests/helpers/shot-match.ts';
+import { evaluateLabelled } from './cv-eval-labelled.ts';
 import {
   PRECISION_TEST_HOLES,
   SIGHTING_TEST_HOLES,
@@ -40,7 +42,6 @@ const SYNTHETIC_CENTRE_TOLERANCE = 0.015; // fraction of R
 const SYNTHETIC_RADIUS_TOLERANCE = 0.02;
 const REFERENCE_CENTRE_TOLERANCE = 0.05;
 const REFERENCE_RADIUS_TOLERANCE = 0.06;
-const METHODS: DetectionMethod[] = ['global', 'region'];
 
 const cv = await loadOpenCvForTests();
 let syntheticFailures = 0;
@@ -272,7 +273,6 @@ let shotFailures = 0;
 
 function shotCells(
   name: string,
-  method: string,
   truthCount: number,
   result: MatchResult,
   units: number,
@@ -281,7 +281,6 @@ function shotCells(
 ): string[] {
   return [
     name,
-    method,
     String(truthCount),
     String(result.detected),
     String(units),
@@ -322,31 +321,17 @@ for (const entry of [
   },
 ]) {
   const img = await syntheticTargetRgba({ ...entry.spec, holesMm: entry.holes });
-  for (const method of METHODS) {
-    const report = detectShotCandidates(
-      cv,
-      img,
-      syntheticCalibration(entry.spec),
-      entry.spec.template,
-      SYNTHETIC_HOLE_DIAMETER_MM,
-      { method },
-    );
-    const result = matchShots(report.candidates, entry.holes);
-    const units = report.candidates.reduce((sum, candidate) => sum + candidate.multiplicity, 0);
-
-    // Only the method that ships is gated; the other is reported for the comparison.
-    const gated = method === DEFAULT_DETECTION_METHOD;
-    const ok =
-      entry.gate === 'accuracy'
-        ? result.recall >= SHOT_RECALL_MIN &&
-          result.precision >= SHOT_PRECISION_MIN &&
-          (result.meanErrorMm ?? Number.POSITIVE_INFINITY) <= SHOT_MEAN_ERROR_MAX_MM
-        : Math.abs(units - (entry.holes.length - 1)) <= 1;
-    if (gated && !ok) shotFailures += 1;
-    shotRows.push(
-      shotCells(entry.name, method, entry.holes.length, result, units, 0, gated ? (ok ? 'pass' : 'FAIL') : 'reported'),
-    );
-  }
+  const report = detectShotCandidates(cv, img, syntheticCalibration(entry.spec), entry.spec.template, SYNTHETIC_HOLE_DIAMETER_MM);
+  const result = matchShots(report.candidates, entry.holes);
+  const units = report.candidates.reduce((sum, candidate) => sum + candidate.multiplicity, 0);
+  const ok =
+    entry.gate === 'accuracy'
+      ? result.recall >= SHOT_RECALL_MIN &&
+        result.precision >= SHOT_PRECISION_MIN &&
+        (result.meanErrorMm ?? Number.POSITIVE_INFINITY) <= SHOT_MEAN_ERROR_MAX_MM
+      : Math.abs(units - (entry.holes.length - 1)) <= 1;
+  if (!ok) shotFailures += 1;
+  shotRows.push(shotCells(entry.name, entry.holes.length, result, units, 0, ok ? 'pass' : 'FAIL'));
 }
 
 for (const ref of REFERENCE) {
@@ -369,70 +354,33 @@ for (const ref of REFERENCE) {
     { label: 'fixture shots', file: fixture },
     ...(truthFile === null ? [] : [{ label: 'owner ground truth', file: truthFile }]),
   ]) {
-    for (const method of METHODS) {
-      const report = detectShotCandidates(cv, img, calibration, ref.template, SYNTHETIC_HOLE_DIAMETER_MM, { method });
-      const shots = report.candidates.map((candidate, index) => ({
-        id: `auto-${index + 1}`,
-        xMm: candidate.xMm,
-        yMm: candidate.yMm,
-        multiplicity: candidate.multiplicity,
-        positionOverrides: null,
-        source: 'auto' as const,
-        confidence: candidate.confidence,
-        cluster: candidate.cluster,
-        areaMm2: candidate.areaMm2,
-      }));
-      const units = shots.reduce((sum, shot) => sum + shot.multiplicity, 0);
-      const dropped = capShots(shots, declared).dropped.length;
+    const report = detectShotCandidates(cv, img, calibration, ref.template, SYNTHETIC_HOLE_DIAMETER_MM);
+    const shots = report.candidates.map((candidate, index) => ({
+      id: `auto-${index + 1}`,
+      xMm: candidate.xMm,
+      yMm: candidate.yMm,
+      multiplicity: candidate.multiplicity,
+      positionOverrides: null,
+      source: 'auto' as const,
+      confidence: candidate.confidence,
+      cluster: candidate.cluster,
+      areaMm2: candidate.areaMm2,
+    }));
+    const units = shots.reduce((sum, shot) => sum + shot.multiplicity, 0);
+    const dropped = capShots(shots, declared).dropped.length;
 
-      // M16 step 6: more detections than rounds fired is a failure, whatever the truth file says.
-      const over = shots.length > declared;
-      if (over && method === DEFAULT_DETECTION_METHOD) capFailures += 1;
-      shotRows.push(
-        shotCells(
-          `${ref.key} (${source.label}, ${calLabel} calibration)`,
-          method,
-          source.file.shots.length,
-          matchShots(shots, source.file.shots),
-          units,
-          dropped,
-          over
-            ? `FAIL (> ${declared} declared)`
-            : method === DEFAULT_DETECTION_METHOD
-              ? `<= ${declared} declared`
-              : 'reported',
-        ),
-      );
-    }
+    // M16 step 7: more detections than rounds fired is a failure, whatever the truth file says.
+    const over = shots.length > declared;
+    if (over) capFailures += 1;
+    // `sample-shots-*.json` were authored as scoring vectors, not measured off these JPEGs.
+    const label = source.label === 'fixture shots' ? `${ref.key} (fixture shots — UNVERIFIED, ${calLabel} calibration)` : `${ref.key} (${source.label}, ${calLabel} calibration)`;
+    shotRows.push(
+      shotCells(label, source.file.shots.length, matchShots(shots, source.file.shots), units, dropped, over ? `FAIL (> ${declared} declared)` : `<= ${declared} declared`),
+    );
   }
 }
 
-// --- The owner's wider reference set (gitignored; skipped when absent) ----------------------------
-
-const PRIVATE_DIR = `${REPO_ROOT}fixtures/private/additional references`;
-const privateRows: string[][] = [];
-
-if (existsSync(PRIVATE_DIR)) {
-  for (const name of readdirSync(PRIVATE_DIR).filter((file) => /\.jpe?g$/i.test(file)).sort()) {
-    // The app works on a ~1200 px working image, so the eval measures the same thing.
-    const img = await jpegFileToRgba(`${PRIVATE_DIR}/${name}`, 1200);
-    const detection = detectAnchor(cv, img, null, 'both');
-    if (detection === null) {
-      privateRows.push([name, '—', 'no anchor', '—', '—', '—']);
-      continue;
-    }
-    const template = hintTemplate(cv, img, detection.calibration).template;
-    const report = detectShotCandidates(cv, img, detection.calibration, template, SYNTHETIC_HOLE_DIAMETER_MM);
-    privateRows.push([
-      name,
-      template,
-      String(report.candidates.length),
-      String(report.rejected.filter((r) => r.reason === 'glyph').length),
-      String(report.rejected.filter((r) => r.reason === 'outside-crop').length),
-      `${report.tiles?.scanned ?? 0}/${report.tiles?.withCandidates ?? 0}`,
-    ]);
-  }
-}
+const labelled = await evaluateLabelled(cv, REPO_ROOT);
 
 // --- Report -------------------------------------------------------------------------------------
 
@@ -460,24 +408,10 @@ console.log(table(['image', 'sharp', 'blurred', 'ratio'], sharpnessRows));
 console.log(
   `\n### Shot detection (greedy match <= ${MATCH_TOLERANCE_MM} mm; synthetic bar: recall >= ${SHOT_RECALL_MIN}, ` +
     `precision >= ${SHOT_PRECISION_MIN}, mean error <= ${SHOT_MEAN_ERROR_MAX_MM} mm, unit count +/-1).\n` +
-    `Shipping method: **${DEFAULT_DETECTION_METHOD}** (REGION_MM ${REGION_MM}, REGION_K ${REGION_K}, ` +
-    `REGION_REFINE_MAX ${REGION_REFINE_MAX}). A reference photo may never yield more detections than its declared rounds.\n`,
+    'A reference photo may never yield more detections than its declared rounds.\n',
 );
-console.log(
-  table(
-    ['case', 'method', 'truth', 'detected', 'units', 'recall', 'precision', 'mean err (mm)', 'cap drops', 'result'],
-    shotRows,
-  ),
-);
-
-if (privateRows.length > 0) {
-  console.log(
-    "\n### The owner's wider reference set (`fixtures/private/additional references/`, gitignored)\n\n" +
-      'Per photo, never aggregated: what the region scan kept, what the REV-27 glyph filter rejected, and\n' +
-      'what fell outside the REV-33 crop. There is no ground truth for these, so nothing here is gated.\n',
-  );
-  console.log(table(['photo', 'template', 'detections', 'glyph drops', 'outside crop', 'tiles scanned/with candidates'], privateRows));
-}
+console.log(table(['case', 'truth', 'detected', 'units', 'recall', 'precision', 'mean err (mm)', 'cap drops', 'result'], shotRows));
+for (const line of labelled.lines) console.log(line);
 
 const minSharp = Math.min(...sharpScores);
 const maxBlurred = Math.max(...blurredScores);
@@ -487,7 +421,7 @@ console.log(`suggested BLUR_THRESHOLD = ${suggested} (geometric mean of the two)
 if (maxBlurred >= BLUR_THRESHOLD) console.log('NOTE: a blurred image would NOT be flagged at the current threshold.');
 if (minSharp < BLUR_THRESHOLD) console.log('NOTE: a sharp image WOULD be flagged at the current threshold.');
 
-if (syntheticFailures > 0 || referenceFailures > 0 || shotFailures > 0 || alignmentFailures > 0 || capFailures > 0) {
+if (syntheticFailures > 0 || referenceFailures > 0 || shotFailures > 0 || alignmentFailures > 0 || capFailures > 0 || labelled.failed) {
   if (syntheticFailures > 0) console.error(`\n${syntheticFailures} synthetic anchor case(s) failed`);
   if (referenceFailures > 0) {
     console.error(
@@ -498,6 +432,7 @@ if (syntheticFailures > 0 || referenceFailures > 0 || shotFailures > 0 || alignm
   if (alignmentFailures > 0) console.error(`${alignmentFailures} photo(s) outside the alignment tolerance vs owner ground truth`);
   if (shotFailures > 0) console.error(`${shotFailures} synthetic shot-detection case(s) failed`);
   if (capFailures > 0) console.error(`${capFailures} reference photo(s) yielded more detections than the declared rounds`);
+  if (labelled.failed) console.error('detection is below the R4 recall/precision floors on the labelled holes (M16 Open questions)');
   process.exit(1);
 }
 console.log('\nall synthetic cases and reference photos pass');

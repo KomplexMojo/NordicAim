@@ -51,11 +51,13 @@ function analysisStub(opts: {
   stageB?: StageState;
   warnings?: Warning[];
   calibration?: object | null;
+  alignmentMethod?: 'cv' | 'overlay' | 'manual' | 'none';
 }) {
   const analysis = initialAnalysis('photo-1', '2026-01-01T00:00:00.000Z');
   analysis.pipeline.stageA = opts.stageA ?? 'done';
   analysis.pipeline.stageB = opts.stageB ?? 'done';
   analysis.pipeline.warnings = opts.warnings ?? [];
+  if (opts.alignmentMethod !== undefined) analysis.pipeline.alignment.method = opts.alignmentMethod;
   if (opts.calibration !== undefined) {
     // calibration shape is irrelevant to photoStatus beyond null-ness
     analysis.calibration = opts.calibration as never;
@@ -169,6 +171,36 @@ describe('photoStatus', () => {
       'image-blurry',
       'template-mismatch',
     ]);
+  });
+
+  it('done/done, alignment.method overlay -> needs-attention, [alignment-uncertain] (REV-31, rule 9)', () => {
+    const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ alignmentMethod: 'overlay', warnings: ['alignment-uncertain'] }),
+      result: resultStub({ all, subsets: [all] }),
+    });
+    expect(out).toEqual({ status: 'needs-attention', reasons: ['alignment-uncertain'] });
+  });
+
+  it('rule 9 names alignment-uncertain even when the warning is absent, and keeps the other warnings after it', () => {
+    const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ alignmentMethod: 'overlay', warnings: ['image-blurry'] }),
+      result: resultStub({ all, subsets: [all] }),
+    });
+    expect(out).toEqual({ status: 'needs-attention', reasons: ['alignment-uncertain', 'image-blurry'] });
+  });
+
+  it('done/done, alignment.method cv with warnings [alignment-uncertain] (outsidePrior) -> analyzed, [alignment-uncertain]', () => {
+    const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ alignmentMethod: 'cv', warnings: ['alignment-uncertain'] }),
+      result: resultStub({ all, subsets: [all] }),
+    });
+    expect(out).toEqual({ status: 'analyzed', reasons: ['alignment-uncertain'] });
   });
 
   it('done/done, precision golden fixture (missing 0) -> analyzed, []', () => {

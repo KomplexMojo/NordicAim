@@ -276,7 +276,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     expect((await getPhotoRecord(ctx.db, photoId))?.reasons).toEqual(['too-many-shots']);
   });
 
-  it('an overlay-fallback alignment is reported, but §4 lands on `analyzed` (REV-31, Open question 9)', async () => {
+  it('an overlay-fallback alignment lands on `needs-attention` (REV-31, analysis-pipeline §4 rule 9)', async () => {
     // The alignment Stage A's overlay fallback leaves behind (analysis-pipeline §3): the on-screen
     // overlay, not a measured disc, with the warning that says so.
     const { ctx, photoId } = await seed({
@@ -291,11 +291,9 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     expect(analysis?.pipeline.alignment.method).toBe('overlay');
     expect(analysis?.pipeline.warnings).toEqual(['alignment-uncertain']);
 
-    // M16 step 8 assumes this photo reaches `needs-attention`. It does not: §4 appends
-    // `alignment-uncertain` as a warning only, so rules 5-8 never fire and rule 9 sets `analyzed`
-    // with the reason shown. Recorded under Open question 9 rather than changed here (golden rule 2).
+    // No disc was found, so the rings are a guess: the score must not present as finished.
     const photo = await getPhotoRecord(ctx.db, photoId);
-    expect(photo?.status).toBe('analyzed');
+    expect(photo?.status).toBe('needs-attention');
     expect(photo?.reasons).toEqual(['alignment-uncertain']);
   });
 

@@ -72,7 +72,17 @@ export function photoStatus(input: PhotoStatusInput): PhotoStatusOutput {
     return { status: 'needs-attention', reasons: [...warnings] };
   }
 
-  // 9. analyzed
+  // 9. REV-31: the overlay fallback means no disc was found, so the rings sit where the owner aimed.
+  // A guess must not present as a finished score. A measured `cv` alignment with `outsidePrior` keeps
+  // its `alignment-uncertain` warning as an appended note and falls through to rule 10.
+  if (pipeline.alignment.method === 'overlay') {
+    return {
+      status: 'needs-attention',
+      reasons: ['alignment-uncertain', ...warnings.filter((w) => w !== 'alignment-uncertain')],
+    };
+  }
+
+  // 10. analyzed
   const totalMissing = result.subsets.reduce((sum, s) => sum + s.missing, 0);
   const reasons: Reason[] = [];
   if (totalMissing > 0) reasons.push('rounds-unaccounted');

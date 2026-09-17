@@ -1,0 +1,458 @@
+<!doctype html>
+<!-- M16 R5: `pnpm review:detection` fills /*__DATA__*/ below. Private: the output embeds photos. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shot Detection Review</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #171a21; --raised: #1e222b; --line: #2a303c; --text: #e6e8ec; --muted: #9aa3b2;
+    --shot: #4ade80; --glyph: #fb923c; --outside: #94a3b8; --ring: #22d3ee; --bound: #facc15; --mine: #e879f9; --bad: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 20; background: rgba(15,17,21,.96); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1400px; margin: 0 auto; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+  h1 { font-size: 17px; margin: 0; letter-spacing: .01em; }
+  .muted { color: var(--muted); }
+  .progress { font-variant-numeric: tabular-nums; }
+  .grow { flex: 1; }
+  button, .chip { font: inherit; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 6px 11px; cursor: pointer; min-height: 34px; }
+  button:hover { border-color: #3b4252; }
+  button[aria-pressed="true"] { background: #243b2d; border-color: var(--shot); color: #d9fbe5; }
+  button.primary { background: #1f3a2a; border-color: var(--shot); }
+  .group { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  label.tog { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  main { max-width: 1400px; margin: 0 auto; padding: 14px 16px 80px; }
+  .intro { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 12px; }
+  .intro ul { margin: 6px 0 0; padding-left: 18px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; display: inline-block; border-radius: 50%; border: 2.5px solid; }
+  .index { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 14px; }
+  .index a { width: 26px; height: 22px; border-radius: 5px; background: var(--raised); border: 1px solid var(--line); display: block; }
+  .index a.rated { background: #245f3c; border-color: #2f7a4c; }
+  .index a.none { opacity: .45; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 18px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; overflow: hidden; scroll-margin-top: 70px; }
+  @media (max-width: 900px) { .card { grid-template-columns: 1fr; } }
+  .viewer { padding: 10px; border-right: 1px solid var(--line); min-width: 0; }
+  @media (max-width: 900px) { .viewer { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .vtools { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 8px; }
+  .slider { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+  .slider input { width: 160px; accent-color: var(--ring); }
+  .stage { overflow: auto; max-height: 78vh; border-radius: 8px; background: #000; }
+  .canvas { position: relative; width: 100%; }
+  .canvas img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+  .canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: manipulation; }
+  .side { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .title h2 { font-size: 15px; margin: 0; }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); }
+  .badge.precision { border-color: #3b5b8a; color: #bcd4ff; }
+  .badge.sighting { border-color: #5b4a8a; color: #dccbff; }
+  .badge.none { border-color: #7a3b3b; color: #ffc9c9; }
+  .stats { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+  .stats dt { color: var(--muted); } .stats dd { margin: 0; text-align: right; }
+  .marks { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .q { display: flex; flex-direction: column; gap: 6px; }
+  .q > span { font-weight: 600; }
+  .q small { color: var(--muted); font-weight: 400; }
+  input[type=number], textarea { font: inherit; color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; width: 100%; }
+  textarea { min-height: 70px; resize: vertical; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .note { font-size: 12px; color: var(--muted); }
+  dialog { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 14px; width: min(760px, 94vw); padding: 16px; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog textarea { min-height: 50vh; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+  .hidden-card { display: none; }
+</style>
+
+<header>
+  <div class="bar">
+    <h1>Shot detection review</h1>
+    <span class="muted" id="summary"></span>
+    <span class="grow"></span>
+    <span class="progress" id="progress"></span>
+    <button id="importBtn">Carry over earlier marks</button>
+    <button class="primary" id="exportBtn">Export ratings</button>
+  </div>
+  <div class="bar" style="padding-top:0">
+    <div class="group" id="filters" role="group" aria-label="Filter photos"></div>
+    <span class="grow"></span>
+    <label class="tog"><input type="checkbox" id="showRings" checked> Rings</label>
+    <label class="tog"><input type="checkbox" id="showRejected" checked> Rejected marks</label>
+    <label class="tog"><input type="checkbox" id="showNumbers" checked> Numbers</label>
+  </div>
+</header>
+
+<main>
+  <section class="intro">
+    <strong>How to review.</strong> Each photo shows exactly what the app's detector found, drawn on the same 1200&nbsp;px image it analysed.
+    <ul>
+      <li><b>Every detection is ONE hole.</b> The <b>#1</b>, <b>#2</b>… beside a circle is only its rank (most confident first), never a shot count.</li>
+      <li>Each photo has a mode switch. In <b>Mark detections</b>, tap a green circle that is not a real hole to mark it wrong (it turns red; tap again to undo), or tap an orange ✕ that actually was a hole.</li>
+      <li>In <b>Add missed hole</b>, every tap adds a pink marker exactly where you tap — even right beside a green circle. Tap a pink marker to remove it.</li>
+      <li><b>Carry over earlier marks</b> reapplies your previous review where the positions still match: wrong-detection marks land on a detection within a hole's width, and holes you marked before that are not detected now come back as pink markers.</li>
+      <li>Then rate the rings and the detection and add a comment. Only the target the app analysed counts. Ignore holes in the backing board and any second target in the photo. Ratings save in this page as you go. Use <b>Export ratings</b> to send them back.</li>
+    </ul>
+    <div class="legend">
+      <span><i class="sw" style="border-color:var(--shot)"></i>Detected hole (#rank = confidence order, one hole each)</span>
+      <span><i class="sw" style="border-color:var(--glyph);border-radius:2px"></i>Rejected as print (numeral, stroke or paper mark)</span>
+      <span><i class="sw" style="border-color:var(--outside);border-radius:2px"></i>Rejected, weak on the black mark</span>
+      <span><i class="sw" style="border-color:var(--ring)"></i>Printed rings, from the alignment</span>
+      <span><i class="sw" style="border-color:var(--bound);border-style:dashed"></i>105 mm fallback search (only when the sheet was not found)</span>
+      <span><i class="sw" style="border-color:var(--mine)"></i>Your marks</span>
+    </div>
+  </section>
+  <nav class="index" id="index" aria-label="Jump to photo"></nav>
+  <div id="cards"></div>
+</main>
+
+<dialog id="importDlg">
+  <div class="row" style="justify-content:space-between;margin-bottom:8px">
+    <strong>Carry over earlier marks</strong>
+    <div class="row"><span class="note" id="importNote"></span><button id="importClose">Close</button></div>
+  </div>
+  <p class="note" style="margin:0 0 8px">Paste an earlier export from this page, then Apply. Or use the labels from the 2026-09-17 review if this page was built with them.</p>
+  <textarea id="importText" placeholder="Paste an export here"></textarea>
+  <div class="row" style="margin-top:8px"><button class="primary" id="importApply">Apply pasted export</button><button id="importLabels">Use the 2026-09-17 labels</button></div>
+</dialog>
+
+<dialog id="exportDlg">
+  <div class="row" style="justify-content:space-between;margin-bottom:8px">
+    <strong>Ratings export</strong>
+    <div class="row"><span class="note" id="copyNote"></span><button id="copyBtn">Copy</button><button id="closeBtn">Close</button></div>
+  </div>
+  <p class="note" style="margin:0 0 8px">Copy this and paste it into the chat. It contains your ratings and mark positions only, no images.</p>
+  <textarea id="exportText" readonly></textarea>
+</dialog>
+
+<script>
+const DATA = /*__DATA__*/null;
+const KEY = 'asa-detection-review-v2';
+const NS = 'http://www.w3.org/2000/svg';
+
+let ratings = {};
+try { ratings = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { ratings = {}; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(ratings)); } catch {} }
+function r(id) { return (ratings[id] ||= { falseRanks: [], realRejected: [], missed: [], mode: 'mark' }); }
+function isRated(p) { const x = ratings[p.id]; return !!x && (x.quality != null || (!p.anchor && x.align != null)); }
+
+const view = { filter: 'all', rings: true, rejected: true, numbers: true };
+const photos = DATA.photos;
+
+document.getElementById('summary').textContent =
+  `${photos.length} photos · ${photos.filter(p => p.anchor).length} targets found · polarity-free detector (M16 rework)`;
+
+const FILTERS = [['all', 'All'], ['precision', 'Precision'], ['sighting', 'Sighting'], ['none', 'No target found'], ['unrated', 'Unrated'], ['rated', 'Rated']];
+const filterEl = document.getElementById('filters');
+for (const [key, label] of FILTERS) {
+  const b = document.createElement('button');
+  b.textContent = label; b.dataset.key = key; b.setAttribute('aria-pressed', key === view.filter);
+  b.onclick = () => { view.filter = key; for (const x of filterEl.children) x.setAttribute('aria-pressed', x.dataset.key === key); applyFilter(); };
+  filterEl.append(b);
+}
+function matches(p) {
+  switch (view.filter) {
+    case 'precision': return p.template === 'precision';
+    case 'sighting': return p.template === 'sighting';
+    case 'none': return !p.anchor;
+    case 'unrated': return !isRated(p);
+    case 'rated': return isRated(p);
+    default: return true;
+  }
+}
+function applyFilter() { for (const p of photos) document.getElementById(`card-${p.id}`).classList.toggle('hidden-card', !matches(p)); }
+
+for (const [id, key] of [['showRings', 'rings'], ['showRejected', 'rejected'], ['showNumbers', 'numbers']]) {
+  document.getElementById(id).onchange = (e) => { view[key] = e.target.checked; photos.forEach(drawOverlay); };
+}
+
+function el(tag, attrs = {}, parent) {
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (parent) parent.append(node);
+  return node;
+}
+function ellipseFor(p, rMm, attrs, parent) {
+  const a = p.anchor, s = a.radiusPx / (a.anchorDiameterMm / 2);
+  return el('ellipse', { cx: a.cx, cy: a.cy, rx: rMm * s, ry: rMm * s * a.axisRatio, transform: `rotate(${a.angleDeg} ${a.cx} ${a.cy})`, fill: 'none', 'vector-effect': 'non-scaling-stroke', ...attrs }, parent);
+}
+
+function drawOverlay(p) {
+  const svg = document.getElementById(`svg-${p.id}`);
+  const layer = svg.querySelector('g.layer');
+  layer.replaceChildren();
+  const st = r(p.id);
+  const unit = p.width / 900; // keeps marker size readable relative to the photo
+  const hole = p.anchor ? p.holeRadiusPx : 8 * unit;
+  const fs = 17 * unit;
+
+  if (p.anchor && view.rings) {
+    for (const rm of p.radii) ellipseFor(p, rm, { stroke: 'var(--ring)', 'stroke-width': 1.2, opacity: .75 }, layer);
+    ellipseFor(p, p.anchor.anchorDiameterMm / 2, { stroke: 'var(--ring)', 'stroke-width': 2.4 }, layer);
+    if (p.sheet?.method === 'fallback') ellipseFor(p, 105, { stroke: 'var(--bound)', 'stroke-width': 1.6, 'stroke-dasharray': '7 5' }, layer);
+  }
+
+  if (view.rejected) p.rejected?.forEach((c, i) => {
+    const real = st.realRejected.includes(i);
+    const g = el('g', { class: 'hit', 'data-kind': 'rejected', 'data-i': i, style: 'cursor:pointer' }, layer);
+    el('title', {}, g).textContent = `Rejected (${REASONS[c.reason] ?? c.reason}) · score ${c.score} · elongation ${c.elong} · stroke ${c.strokeMm} mm${real ? ' · YOU: real hole' : ''}`;
+    el('circle', { cx: c.x, cy: c.y, r: hole + 5 * unit, fill: 'transparent', stroke: 'none' }, g);
+    const col = c.reason === 'mark-score' ? 'var(--outside)' : 'var(--glyph)';
+    const d = hole * 0.9;
+    el('path', { d: `M${c.x - d} ${c.y - d}L${c.x + d} ${c.y + d}M${c.x - d} ${c.y + d}L${c.x + d} ${c.y - d}`, stroke: col, 'stroke-width': 2.6, 'vector-effect': 'non-scaling-stroke', 'stroke-linecap': 'round' }, g);
+    if (real) el('circle', { cx: c.x, cy: c.y, r: hole + 4 * unit, fill: 'none', stroke: 'var(--mine)', 'stroke-width': 2.6, 'vector-effect': 'non-scaling-stroke' }, g);
+  });
+
+  p.candidates?.forEach((c) => {
+    const wrong = st.falseRanks.includes(c.rank);
+    const col = wrong ? 'var(--bad)' : 'var(--shot)';
+    const g = el('g', { class: 'hit', 'data-kind': 'shot', 'data-rank': c.rank, style: 'cursor:pointer' }, layer);
+    el('title', {}, g).textContent = `#${c.rank} (one hole) · confidence ${c.conf} · score ${c.score} · on ${c.surface} · elongation ${c.elong} · stroke ${c.strokeMm} mm · ${c.radialMm} mm from centre${c.cluster ? ' · cluster' : ''}${wrong ? ' · YOU: not a hole' : ''}`;
+    el('circle', { cx: c.x, cy: c.y, r: hole + 4 * unit, fill: 'transparent', stroke: col, 'stroke-width': 2.6, 'vector-effect': 'non-scaling-stroke' }, g);
+    if (wrong) { const d = hole + 2 * unit; el('path', { d: `M${c.x - d} ${c.y + d}L${c.x + d} ${c.y - d}`, stroke: col, 'stroke-width': 2.6, 'vector-effect': 'non-scaling-stroke' }, g); }
+    if (view.numbers) {
+      const t = el('text', { x: c.x + hole + 6 * unit, y: c.y - hole * 0.6, 'font-size': fs, 'font-weight': 700, fill: col, stroke: '#000', 'stroke-width': 3 * unit, 'paint-order': 'stroke', 'font-family': 'system-ui, sans-serif' }, g);
+      t.textContent = `#${c.rank}`;
+    }
+  });
+
+  st.missed.forEach(([x, y], i) => {
+    const g = el('g', { class: 'hit', 'data-kind': 'missed', 'data-i': i, style: 'cursor:pointer' }, layer);
+    el('title', {}, g).textContent = 'Your mark: missed hole (tap to remove)';
+    el('circle', { cx: x, cy: y, r: hole + 4 * unit, fill: 'rgba(232,121,249,.15)', stroke: 'var(--mine)', 'stroke-width': 2.6, 'vector-effect': 'non-scaling-stroke' }, g);
+    const d = hole * 0.7;
+    el('path', { d: `M${x - d} ${y}H${x + d}M${x} ${y - d}V${y + d}`, stroke: 'var(--mine)', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke' }, g);
+  });
+  updateSide(p);
+}
+
+function toggle(list, v) { const i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); }
+
+const REASONS = { glyph: 'thin printed stroke', paper: 'paper mark, not a hole', numeral: 'printed numeral', 'mark-score': 'weak on the black mark', 'outside-sheet': 'off the sheet', area: 'too small' };
+
+function onStageClick(p, e) {
+  const svg = document.getElementById(`svg-${p.id}`);
+  const st = r(p.id);
+  const hit = e.target.closest('g.hit');
+  const kind = hit?.dataset.kind;
+  if (kind === 'missed') {
+    st.missed.splice(Number(hit.dataset.i), 1);
+  } else if ((st.mode ?? 'mark') === 'add') {
+    // Add missed hole: every tap adds exactly where it lands, even beside a detection.
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const m = svg.getScreenCTM(); if (!m) return;
+    const q = pt.matrixTransform(m.inverse());
+    st.missed.push([Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10]);
+  } else if (kind === 'shot') {
+    toggle(st.falseRanks, Number(hit.dataset.rank));
+  } else if (kind === 'rejected') {
+    toggle(st.realRejected, Number(hit.dataset.i));
+  } else {
+    const note = document.getElementById(`mode-note-${p.id}`);
+    if (note) note.textContent = 'Switch to “Add missed hole” to add a marker.';
+    return;
+  }
+  st.touchedAt = new Date().toISOString();
+  save(); drawOverlay(p);
+}
+
+function updateSide(p) {
+  const st = r(p.id);
+  const n = p.candidates?.length ?? 0;
+  const f = st.falseRanks.length, rr = st.realRejected.length, m = st.missed.length;
+  const box = document.getElementById(`marks-${p.id}`);
+  if (box) box.innerHTML =
+    `<div class="stats"><dt>Marked not a hole</dt><dd>${f}</dd><dt>Rejected but real</dt><dd>${rr}</dd><dt>Missed holes added</dt><dd>${m}</dd>` +
+    `<dt><b>Holes implied by your marks</b></dt><dd><b>${n - f + rr + m}</b></dd></div>`;
+  const hint = document.getElementById(`holes-${p.id}`);
+  if (hint) hint.placeholder = `${n - f + rr + m} implied by your marks`;
+  renderProgress();
+}
+
+function segmented(p, field, options) {
+  const wrap = document.createElement('div'); wrap.className = 'group';
+  for (const [value, label] of options) {
+    const b = document.createElement('button'); b.textContent = label;
+    b.setAttribute('aria-pressed', r(p.id)[field] === value);
+    b.onclick = () => {
+      const st = r(p.id); st[field] = st[field] === value ? null : value; st.ratedAt = new Date().toISOString();
+      for (const x of wrap.children) x.setAttribute('aria-pressed', x === b && st[field] === value);
+      save(); renderProgress();
+    };
+    wrap.append(b);
+  }
+  return wrap;
+}
+
+function card(p) {
+  const st = r(p.id);
+  const c = document.createElement('article'); c.className = 'card'; c.id = `card-${p.id}`;
+  const printed = p.rejected?.filter(x => x.reason !== 'mark-score').length ?? 0;
+  const weak = p.rejected?.filter(x => x.reason === 'mark-score').length ?? 0;
+  const tmpl = p.anchor ? p.template : 'none';
+  c.innerHTML = `
+    <div class="viewer">
+      <div class="vtools">
+        <span class="slider">Photo <input type="range" min="0" max="100" value="100" aria-label="Overlay opacity"> Overlay</span>
+        <span class="group" role="group" aria-label="Zoom"><button data-z="1" aria-pressed="true">1×</button><button data-z="2">2×</button><button data-z="3">3×</button></span>
+        ${p.anchor ? `<span class="group" role="group" aria-label="Tap mode"><button data-mode="mark">Mark detections</button><button data-mode="add">Add missed hole</button></span><span class="note" id="mode-note-${p.id}"></span>` : '<span class="note">No target found, so nothing is drawn.</span>'}
+      </div>
+      <div class="stage"><div class="canvas">
+        <img alt="${p.name}" src="${p.img}" width="${p.width}" height="${p.height}">
+        <svg id="svg-${p.id}" viewBox="0 0 ${p.width} ${p.height}" preserveAspectRatio="none"><g class="layer"></g></svg>
+      </div></div>
+    </div>
+    <div class="side">
+      <div class="title"><h2>${p.name}</h2><span class="badge ${tmpl}">${p.anchor ? `${p.template} · hint ${p.templateConfidence}` : 'no target found'}</span></div>
+      <dl class="stats">
+        ${p.anchor ? `<dt>Detected holes (one each)</dt><dd><b>${p.candidates.length}</b></dd>
+        <dt>Rejected as print</dt><dd>${printed}</dd>
+        <dt>Rejected, weak on the black</dt><dd>${weak}</dd>
+        <dt>Alignment confidence</dt><dd>${p.anchor.confidence ?? '—'}</dd>
+        <dt>Paper sheet</dt><dd>${p.sheet?.method === 'fallback' ? 'not found (105 mm circle)' : 'found'}</dd>
+        ${p.numeralRotation ? `<dt>Numeral rotation</dt><dd>${p.numeralRotation.deg}°${p.numeralRotation.reliable ? '' : ' (weak)'}</dd>` : ''}` : ''}
+        <dt>Sharpness</dt><dd>${p.sharpness}</dd>
+        <dt>Processing time</dt><dd>${p.ms} ms</dd>
+      </dl>
+      ${p.anchor ? `<div class="marks" id="marks-${p.id}"></div>` : ''}
+    </div>`;
+  const side = c.querySelector('.side');
+
+  const q1 = document.createElement('div'); q1.className = 'q';
+  if (p.anchor) {
+    q1.innerHTML = '<span>Do the cyan rings sit on the printed rings?</span>';
+    q1.append(segmented(p, 'align', [['good', 'Yes'], ['close', 'Slightly off'], ['wrong', 'Wrong']]));
+  } else {
+    q1.innerHTML = '<span>Is there a usable target in this photo?</span>';
+    q1.append(segmented(p, 'align', [['target', 'Yes, it should be found'], ['no-target', 'No']]));
+  }
+  side.append(q1);
+
+  if (p.anchor) {
+    const q2 = document.createElement('div'); q2.className = 'q';
+    q2.innerHTML = '<span>Detection quality <small>1 = useless · 5 = perfect</small></span>';
+    q2.append(segmented(p, 'quality', [[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']]));
+    side.append(q2);
+
+    const q3 = document.createElement('label'); q3.className = 'q';
+    q3.innerHTML = `<span>Real holes on this target <small>your count</small></span><input type="number" min="0" max="40" inputmode="numeric" id="holes-${p.id}">`;
+    const inp = q3.querySelector('input'); inp.value = st.holes ?? '';
+    inp.oninput = () => { r(p.id).holes = inp.value === '' ? null : Number(inp.value); save(); };
+    side.append(q3);
+  }
+
+  const q4 = document.createElement('label'); q4.className = 'tog';
+  q4.innerHTML = '<input type="checkbox"> Photo shows more than one target';
+  const cb = q4.querySelector('input'); cb.checked = !!st.multi;
+  cb.onchange = () => { r(p.id).multi = cb.checked; save(); };
+  side.append(q4);
+
+  const q5 = document.createElement('label'); q5.className = 'q';
+  q5.innerHTML = '<span>Comments</span><textarea placeholder="What did it get wrong, and what would you expect?"></textarea>';
+  const ta = q5.querySelector('textarea'); ta.value = st.comment ?? '';
+  ta.oninput = () => { r(p.id).comment = ta.value; save(); };
+  side.append(q5);
+
+  if (p.anchor) {
+    const clr = document.createElement('button'); clr.textContent = 'Clear my marks on this photo';
+    clr.onclick = () => { const x = r(p.id); x.falseRanks = []; x.realRejected = []; x.missed = []; save(); drawOverlay(p); };
+    side.append(clr);
+  }
+
+  const svg = c.querySelector('svg');
+  const layer = svg.querySelector('g.layer');
+  c.querySelector('input[type=range]').oninput = (e) => { layer.style.opacity = e.target.value / 100; };
+  if (p.anchor) svg.addEventListener('click', (e) => onStageClick(p, e));
+  const modeButtons = c.querySelectorAll('[data-mode]');
+  const showMode = () => { const mode = r(p.id).mode ?? 'mark'; modeButtons.forEach((b) => b.setAttribute('aria-pressed', b.dataset.mode === mode)); svg.style.cursor = mode === 'add' ? 'copy' : 'pointer'; };
+  modeButtons.forEach((b) => b.onclick = () => { r(p.id).mode = b.dataset.mode; save(); showMode(); const note = document.getElementById(`mode-note-${p.id}`); if (note) note.textContent = ''; });
+  showMode();
+  const canvas = c.querySelector('.canvas');
+  c.querySelectorAll('[data-z]').forEach((b) => b.onclick = () => {
+    canvas.style.width = `${b.dataset.z * 100}%`;
+    c.querySelectorAll('[data-z]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  });
+  return c;
+}
+
+const cardsEl = document.getElementById('cards');
+const indexEl = document.getElementById('index');
+for (const p of photos) {
+  cardsEl.append(card(p));
+  const a = document.createElement('a'); a.href = `#card-${p.id}`; a.id = `idx-${p.id}`; a.title = p.name;
+  if (!p.anchor) a.classList.add('none');
+  indexEl.append(a);
+  drawOverlay(p);
+}
+
+function renderProgress() {
+  const done = photos.filter(isRated).length;
+  document.getElementById('progress').textContent = `${done} of ${photos.length} rated`;
+  for (const p of photos) document.getElementById(`idx-${p.id}`)?.classList.toggle('rated', isRated(p));
+}
+renderProgress();
+
+function exportPayload() {
+  const out = {};
+  for (const p of photos) {
+    const x = ratings[p.id]; if (!x) continue;
+    const empty = x.align == null && x.quality == null && x.holes == null && !x.comment && !x.multi && !x.falseRanks.length && !x.realRejected.length && !x.missed.length;
+    if (empty) continue;
+    const byRank = new Map((p.candidates ?? []).map((c) => [c.rank, c]));
+    out[p.id] = {
+      detected: p.candidates?.length ?? null, align: x.align ?? null, quality: x.quality ?? null, holes: x.holes ?? null,
+      notHoleRanks: [...x.falseRanks].sort((a, b) => a - b),
+      // Positions, so a later page can carry these marks over whatever the new ranks are.
+      notHolePx: x.falseRanks.map((k) => byRank.get(k)).filter(Boolean).map((c) => [c.x, c.y]),
+      rejectedButRealPx: x.realRejected.length ? x.realRejected.map((i) => p.rejected[i]).filter(Boolean).map((c) => [c.x, c.y]) : undefined,
+      missedPx: x.missed.length ? x.missed : undefined, multiTarget: x.multi || undefined, comment: x.comment || undefined,
+    };
+  }
+  return { review: 'asa-detection-review-v2', generatedAt: DATA.generatedAt, rated: Object.keys(out).length, photos: out };
+}
+// R5: carry earlier marks over where positions still match (within 0.8 of a hole's width).
+function carryOver(id, notHolePx, holesPx) {
+  const p = photos.find((x) => x.id === id); if (!p || !p.anchor) return 0;
+  const st = r(id); const tol = 0.8 * 2 * p.holeRadiusPx; let applied = 0;
+  const nearest = (x, y) => { let best = null, bd = Infinity; for (const c of p.candidates) { const d = Math.hypot(c.x - x, c.y - y); if (d < bd) { bd = d; best = c; } } return bd <= tol ? best : null; };
+  for (const [x, y] of notHolePx) { const c = nearest(x, y); if (c && !st.falseRanks.includes(c.rank)) { st.falseRanks.push(c.rank); applied++; } }
+  for (const [x, y] of holesPx) {
+    if (nearest(x, y)) continue; // detected now
+    if (st.missed.some(([mx, my]) => Math.hypot(mx - x, my - y) <= tol)) continue;
+    st.missed.push([x, y]); applied++;
+  }
+  return applied;
+}
+function applyImport(apply) { let n = 0; try { n = apply(); } catch (err) { document.getElementById('importNote').textContent = `Could not read it: ${err.message}`; return; } save(); photos.forEach(drawOverlay); document.getElementById('importNote').textContent = `${n} marks carried over`; }
+const importDlg = document.getElementById('importDlg');
+document.getElementById('importBtn').onclick = () => { document.getElementById('importNote').textContent = ''; document.getElementById('importLabels').disabled = !DATA.previous; importDlg.showModal(); };
+document.getElementById('importClose').onclick = () => importDlg.close();
+document.getElementById('importApply').onclick = () => applyImport(() => {
+  const data = JSON.parse(document.getElementById('importText').value);
+  let n = 0;
+  for (const [id, x] of Object.entries(data.photos ?? {})) {
+    n += carryOver(id, x.notHolePx ?? [], [...(x.missedPx ?? []), ...(x.rejectedButRealPx ?? [])]);
+    const st = r(id); if (x.comment && !st.comment) st.comment = x.comment; if (x.multiTarget) st.multi = true;
+  }
+  return n;
+});
+document.getElementById('importLabels').onclick = () => applyImport(() => {
+  let n = 0;
+  for (const [id, e] of Object.entries(DATA.previous?.entries ?? {})) {
+    if (!e.holes) continue;
+    n += carryOver(id, e.falseDetectionsPx ?? [], e.holes.map((h) => [h.xPx, h.yPx]));
+    if (e.multiTarget) r(id).multi = true;
+  }
+  return n;
+});
+
+const dlg = document.getElementById('exportDlg');
+document.getElementById('exportBtn').onclick = () => { document.getElementById('exportText').value = JSON.stringify(exportPayload(), null, 1); document.getElementById('copyNote').textContent = ''; dlg.showModal(); };
+document.getElementById('closeBtn').onclick = () => dlg.close();
+document.getElementById('copyBtn').onclick = async () => {
+  const ta = document.getElementById('exportText'); const note = document.getElementById('copyNote');
+  try { await navigator.clipboard.writeText(ta.value); note.textContent = 'Copied'; }
+  catch { ta.focus(); ta.select(); try { document.execCommand('copy'); note.textContent = 'Copied'; } catch { note.textContent = 'Select all and copy'; } }
+};
+</script>

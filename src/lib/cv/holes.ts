@@ -1,137 +1,136 @@
-// M11 steps 2-5 / M16 (REV-27, REV-28, REV-32, REV-33) / analysis-pipeline §2 (A5). Segments bullet
-// holes out of the rectified target and turns every surviving connected component into a `Shot` in
-// mm. Pure over `RgbaImage`; no DOM.
+// analysis-pipeline §2 (A5) / M11 / M16 rework (REV-34 to REV-37). Finds bullet holes in a working
+// image and returns them as `auto` shots in target mm. Pure over `RgbaImage`; no DOM.
 //
-// Three rules from the owner's 2026-09-16 review shape what is accepted:
-//   REV-27  a printed ring numeral is a thin stroke, not a hole: reject it by shape.
-//   REV-28  always assume ONE hole; the app never invents rounds the owner did not fire.
-//   REV-33  nothing outside the rectified crop is ever a candidate (the backing board is not the sheet).
+//   R3  search the paper sheet the target is printed on (sheet.ts), never the backing board
+//   R2  printed circles are erased by position; numerals are dropped by position (print-mask.ts)
+//   R1  a hole is where a hole-sized disc deviates from its background either way (hole-signal.ts)
+//       M11's area gate and REV-27's stroke/elongation filter, then per-surface acceptance
+//   REV-28  every automatic shot is ONE hole (multiplicity 1); capping is Stage A/B's job
 
 import type { Shot } from '@/lib/domain/analysis';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { CalibrationLike } from '@/lib/geometry/transform';
 import type { RgbaImage } from '@/lib/media/format';
 
-import { measureComponents, type ComponentMetrics } from './component-metrics';
-import { DEFAULT_DETECTION_METHOD, ELONGATION_MAX, STROKE_MIN_FRACTION } from './constants';
-import { buildRegions, globalHoleMask, searchRadiusMm } from './hole-mask';
-import { scanRegions, type RegionTuning, type TileStats } from './holes-region';
+import {
+  DETECTION_PX_PER_MM,
+  ELONGATION_MAX,
+  HOLE_MARK_SCORE_MIN,
+  HOLE_PAPER_CONTRAST_MIN,
+  HOLE_PAPER_ELONGATION_MAX,
+  HOLE_PAPER_SURROUND_MAX,
+  NUMERAL_KEEP_SCORE,
+  SHEET_SEARCH_CAP_MM,
+  STROKE_MIN_FRACTION,
+} from './constants';
+import { measureCandidate, type CandidateFeatures } from './hole-features';
+import { holeSignal, SURFACE_MARK } from './hole-signal';
 import type { OpenCv as OpenCvHandle } from './opencv';
-import { CANONICAL_PX_PER_MM, rectify, rectifiedToMm, type Rectified } from './rectify';
+import {
+  estimateNumeralRotation,
+  inNumeralBox,
+  printedBandMap,
+  type NumeralRotation,
+} from './print-mask';
+import { rectify, rectifiedToMm } from './rectify';
+import { findSheet, type SheetMethod } from './sheet';
 
-export {
-  DISC_DELTA,
-  DISC_INSET_MM,
-  PAPER_DELTA,
-  PAPER_OUTSET_MM,
-  RING_MASK_HALF_WIDTH_MM,
-  printedCircleRadiiMm,
-  searchRadiusMm,
-} from './hole-mask';
+export { printedCircleRadiiMm, RING_MASK_HALF_WIDTH_MM } from './print-mask';
 
 /** M11 step 5: a component smaller than this fraction of one hole is noise. */
 export const MIN_AREA_FRACTION = 0.35;
 /** M11 step 5: a component this many holes large is a merged or torn cluster. */
 export const CLUSTER_AREA_RATIO = 1.6;
-/** M11 step 5: a component less round than this is a cluster whatever its area says. */
-export const CLUSTER_CIRCULARITY = 0.65;
 /** M11 step 5: a cluster's centroid is only an approximation, so its confidence is discounted. */
 export const CLUSTER_CONFIDENCE_FACTOR = 0.6;
-/**
- * REV-28: every automatic shot is ONE hole. `cluster` is still measured, and still flags the shot and
- * discounts its confidence, but it no longer multiplies the rounds: overlapping holes stay one shot
- * until the owner says otherwise in Adjust.
- */
+/** REV-28: every automatic shot is ONE hole. */
 export const AUTO_MULTIPLICITY = 1;
 
-export type DetectionMethod = 'global' | 'region';
+export type RejectionReason = 'area' | 'glyph' | 'mark-score' | 'paper' | 'numeral' | 'outside-sheet';
 
-export interface DetectShotsOptions {
-  /** Which segmentation to run. Defaults to {@link DEFAULT_DETECTION_METHOD}. */
-  method?: DetectionMethod;
-  /** Region-scan tuning overrides, for `cv:eval`'s measurement sweep only. */
-  tuning?: RegionTuning;
-}
-
-/** One measured component that survived, or nearly survived, the gates — the unit `cv:eval` reports. */
 export interface ShotCandidate {
   xMm: number;
   yMm: number;
   radialMm: number;
-  areaPx: number;
+  surface: 'mark' | 'paper';
+  /** R1: the share of the hole disc that deviates, 0-1. */
+  score: number;
   areaMm2: number;
-  circularity: number;
-  /** REV-27: major / minor of the fitted ellipse. */
   elongation: number;
-  /** REV-27: the maximum inscribed radius, in mm. */
   strokeRadiusMm: number;
-  fill: number;
+  coreContrast: number;
+  surround: number;
   cluster: boolean;
   confidence: number;
   multiplicity: number;
 }
-
-export type RejectionReason = 'glyph' | 'outside-crop';
 
 export interface RejectedCandidate extends ShotCandidate {
   reason: RejectionReason;
 }
 
 export interface DetectionReport {
-  method: DetectionMethod;
   candidates: ShotCandidate[];
   rejected: RejectedCandidate[];
-  /** Region-scan bookkeeping; null for the global method. */
-  tiles: TileStats | null;
+  /** R3: how the search area was found. `fallback` must be reported (see M16 Open questions). */
+  sheet: { method: SheetMethod; seedCoverage: number; paperGray: number };
+  /** R2: the numeral rotation, precision sheets only. */
+  numeralRotation: NumeralRotation | null;
+  pxPerMm: number;
 }
 
 function clamp(value: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, value));
 }
 
-/** M11 step 2: the area of one clean hole in rectified px (the milestone's `· 64` is 8 px/mm squared). */
-export function holeAreaPx(holeDiameterMm: number): number {
-  return Math.PI * (holeDiameterMm / 2) ** 2 * CANONICAL_PX_PER_MM ** 2;
+/** M11 step 2: the area of one clean hole in px at `pxPerMm`. */
+export function holeAreaPx(holeDiameterMm: number, pxPerMm: number): number {
+  return Math.PI * (holeDiameterMm / 2) ** 2 * pxPerMm ** 2;
 }
 
-/**
- * REV-27's shape filter. A bullet hole is a compact blob: its fitted ellipse is not far off round and
- * a disc of nearly the hole's own radius fits inside it. A printed numeral is a thin stroke, so it
- * fails one or both tests however large its blob is.
- */
+/** REV-27: a thin stroke or a long remnant is print, not a hole. */
 export function isPrintedGlyph(
-  component: Pick<ComponentMetrics, 'elongation' | 'strokeRadiusPx'>,
+  blob: Pick<CandidateFeatures, 'elongation' | 'strokeRadiusPx'>,
   holeDiameterMm: number,
   pxPerMm: number,
 ): boolean {
-  const minStrokePx = STROKE_MIN_FRACTION * (holeDiameterMm / 2) * pxPerMm;
-  return component.elongation > ELONGATION_MAX || component.strokeRadiusPx < minStrokePx;
+  return blob.elongation > ELONGATION_MAX || blob.strokeRadiusPx < STROKE_MIN_FRACTION * (holeDiameterMm / 2) * pxPerMm;
 }
 
-/** M11 step 5 / REV-28: one measured component -> one candidate shot, always of multiplicity 1. */
-function toCandidate(component: ComponentMetrics, rect: Rectified, a1: number): ShotCandidate {
-  const { xMm, yMm } = rectifiedToMm({ x: component.x, y: component.y }, rect);
-  const k = component.areaPx / a1;
-  const cluster = k >= CLUSTER_AREA_RATIO || component.circularity < CLUSTER_CIRCULARITY;
-  return {
-    xMm,
-    yMm,
-    radialMm: Math.hypot(xMm, yMm),
-    areaPx: component.areaPx,
-    areaMm2: component.areaPx / rect.pxPerMm ** 2,
-    circularity: component.circularity,
-    elongation: component.elongation,
-    strokeRadiusMm: component.strokeRadiusPx / rect.pxPerMm,
-    fill: component.fill,
-    cluster,
-    confidence: clamp(component.circularity, 0, 1) * (cluster ? CLUSTER_CONFIDENCE_FACTOR : 1),
-    multiplicity: AUTO_MULTIPLICITY,
-  };
+/** Why a measured candidate is not a hole, or null when it is one. Order: M11 gate, REV-27, surface, R2. */
+function rejection(
+  candidate: ShotCandidate,
+  features: CandidateFeatures,
+  a1: number,
+  holeDiameterMm: number,
+  pxPerMm: number,
+  rotation: NumeralRotation | null,
+): RejectionReason | null {
+  if (features.blobAreaPx < MIN_AREA_FRACTION * a1) return 'area';
+  if (isPrintedGlyph(features, holeDiameterMm, pxPerMm)) return 'glyph';
+  if (candidate.surface === 'mark') {
+    if (candidate.score < HOLE_MARK_SCORE_MIN) return 'mark-score';
+  } else if (
+    Math.abs(features.coreContrast) < HOLE_PAPER_CONTRAST_MIN ||
+    features.surround > HOLE_PAPER_SURROUND_MAX ||
+    features.elongation > HOLE_PAPER_ELONGATION_MAX
+  ) {
+    return 'paper';
+  }
+  if (
+    rotation !== null &&
+    rotation.reliable &&
+    inNumeralBox(candidate.xMm, candidate.yMm, rotation.deg) &&
+    (candidate.surface === 'paper' || candidate.score < NUMERAL_KEEP_SCORE)
+  ) {
+    return 'numeral';
+  }
+  return null;
 }
 
 /**
- * M11 steps 1-5 with M16's gates. Returns everything the gates decided, so `pnpm cv:eval` can report
- * what was kept, what was rejected as a printed glyph, and what fell outside the crop.
+ * A5 with everything it decided, so `pnpm cv:eval` can report what was kept and why the rest went.
+ * `calibration` is in the pixel space of `img`.
  */
 export function detectShotCandidates(
   cv: OpenCvHandle,
@@ -139,75 +138,89 @@ export function detectShotCandidates(
   calibration: CalibrationLike,
   template: TemplateId,
   holeDiameterMm: number,
-  options: DetectShotsOptions = {},
 ): DetectionReport {
-  const method = options.method ?? DEFAULT_DETECTION_METHOD;
-  const rect = rectify(cv, img, calibration, template);
+  const pxPerMm = DETECTION_PX_PER_MM;
+  const rect = rectify(cv, img, calibration, template, { pxPerMm, radiusMm: SHEET_SEARCH_CAP_MM, chroma: true });
   try {
-    const maps = buildRegions(rect, calibration, template);
-    const a1 = holeAreaPx(holeDiameterMm);
-    const minAreaPx = MIN_AREA_FRACTION * a1;
-    const accept = (component: ComponentMetrics): boolean =>
-      !isPrintedGlyph(component, holeDiameterMm, rect.pxPerMm);
+    const { side } = rect;
+    const n = side * side;
+    const gray = rect.gray.data as Uint8Array;
+    const anchorRadiusMm = calibration.anchorDiameterMm / 2;
 
-    let kept: ComponentMetrics[];
-    let glyphs: ComponentMetrics[];
-    let tiles: TileStats | null = null;
+    const sheet = findSheet(cv, rect, template);
+    const bands = printedBandMap(side, pxPerMm, template, anchorRadiusMm);
+    const searchable = new Uint8Array(n);
+    for (let i = 0; i < n; i += 1) if (sheet.mask[i] === 1 && bands[i] !== 1) searchable[i] = 1;
 
-    if (method === 'region') {
-      const scan = scanRegions(cv, rect, maps, {
-        minAreaPx,
-        dedupeRadiusPx: (holeDiameterMm / 2) * rect.pxPerMm,
-        accept,
-        tuning: options.tuning,
-      });
-      kept = scan.components;
-      glyphs = scan.rejected;
-      tiles = scan.tiles;
-    } else {
-      const mask = globalHoleMask(cv, rect, maps);
-      try {
-        const components = measureComponents(cv, mask, minAreaPx);
-        kept = components.filter(accept);
-        glyphs = components.filter((component) => !accept(component));
-      } finally {
-        mask.delete();
-      }
+    const signal = holeSignal(cv, rect, searchable, anchorRadiusMm, holeDiameterMm);
+    const rotation = template === 'precision' ? estimateNumeralRotation({ gray, side, pxPerMm }) : null;
+
+    const distance = new Float32Array(n);
+    const deviatesMat = new cv.Mat(side, side, cv.CV_8UC1);
+    const distanceMat = new cv.Mat();
+    try {
+      const d = deviatesMat.data as Uint8Array;
+      for (let i = 0; i < n; i += 1) d[i] = signal.deviates[i] === 1 ? 255 : 0;
+      cv.distanceTransform(deviatesMat, distanceMat, cv.DIST_L2, 3);
+      distance.set(distanceMat.data32F as Float32Array);
+    } finally {
+      deviatesMat.delete();
+      distanceMat.delete();
     }
 
-    // REV-33: assert the crop bound rather than assume it. `buildRegions` already refuses to look
-    // outside the search area, so this can only fire if that ever changes — which is the point.
-    const limitMm = searchRadiusMm(template);
+    const holeRadiusPx = (holeDiameterMm / 2) * pxPerMm;
+    const a1 = holeAreaPx(holeDiameterMm, pxPerMm);
     const candidates: ShotCandidate[] = [];
-    const rejected: RejectedCandidate[] = glyphs.map((component) => ({
-      ...toCandidate(component, rect, a1),
-      reason: 'glyph' as const,
-    }));
-    for (const component of kept) {
-      const candidate = toCandidate(component, rect, a1);
-      if (candidate.radialMm > limitMm) {
-        rejected.push({ ...candidate, reason: 'outside-crop' });
-        continue;
-      }
-      candidates.push(candidate);
+    const rejected: RejectedCandidate[] = [];
+    for (const peak of signal.peaks) {
+      const features = measureCandidate(gray, side, signal, distance, peak, holeRadiusPx);
+      const { xMm, yMm } = rectifiedToMm(peak, rect);
+      const cluster = features.blobAreaPx / a1 >= CLUSTER_AREA_RATIO;
+      const score = clamp(peak.share, 0, 1);
+      const candidate: ShotCandidate = {
+        xMm,
+        yMm,
+        radialMm: Math.hypot(xMm, yMm),
+        surface: signal.surface[peak.y * side + peak.x] === SURFACE_MARK ? 'mark' : 'paper',
+        score,
+        areaMm2: features.blobAreaPx / pxPerMm ** 2,
+        elongation: features.elongation,
+        strokeRadiusMm: features.strokeRadiusPx / pxPerMm,
+        coreContrast: features.coreContrast,
+        surround: features.surround,
+        cluster,
+        confidence: score * (cluster ? CLUSTER_CONFIDENCE_FACTOR : 1),
+        multiplicity: AUTO_MULTIPLICITY,
+      };
+      // R3 / REV-33: assert the sheet bound rather than assume it.
+      const reason =
+        sheet.mask[peak.y * side + peak.x] !== 1
+          ? 'outside-sheet'
+          : rejection(candidate, features, a1, holeDiameterMm, pxPerMm, rotation);
+      if (reason === null) candidates.push(candidate);
+      else rejected.push({ ...candidate, reason });
     }
 
     candidates.sort((a, b) => a.radialMm - b.radialMm || a.xMm - b.xMm || a.yMm - b.yMm);
-    return { method, candidates, rejected, tiles };
+    return {
+      candidates,
+      rejected,
+      sheet: { method: sheet.method, seedCoverage: sheet.seedCoverage, paperGray: sheet.paperGray },
+      numeralRotation: rotation,
+      pxPerMm,
+    };
   } finally {
     rect.gray.delete();
     rect.valid.delete();
+    rect.chroma?.delete();
   }
 }
 
 /**
- * M11 steps 1-5 / analysis-pipeline §2 (A5). Detects the bullet holes in a working image and returns
- * them as `auto` shots in mm (geometry-scoring §2: origin at the target centre, +x right, +y up).
- *
- * `calibration` is in the pixel space of `img`. Ids are `auto-1 …` in ascending radial order, which
- * keeps them stable for a given image; the milestone does not fix an order (see M11's Open questions).
- * Every shot has `multiplicity` 1 (REV-28); capping to the declared rounds is Stage A's and Stage B's
- * job (`capShots`), because detection does not know how many rounds were fired.
+ * analysis-pipeline §2 (A5). The bullet holes in a working image as `auto` shots in mm
+ * (geometry-scoring §2: origin at the target centre, +x right, +y up). Ids are `auto-1 …` in
+ * ascending radial order. Every shot has `multiplicity` 1 (REV-28); capping to the declared rounds is
+ * Stage A's and Stage B's job (`capShots`).
  */
 export function detectShots(
   cv: OpenCvHandle,
@@ -215,9 +228,8 @@ export function detectShots(
   calibration: CalibrationLike,
   template: TemplateId,
   holeDiameterMm: number,
-  options: DetectShotsOptions = {},
 ): Shot[] {
-  const report = detectShotCandidates(cv, img, calibration, template, holeDiameterMm, options);
+  const report = detectShotCandidates(cv, img, calibration, template, holeDiameterMm);
   return report.candidates.map((candidate, index) => ({
     id: `auto-${index + 1}`,
     xMm: candidate.xMm,

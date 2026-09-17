@@ -20,7 +20,8 @@
     "check:privacy": "node scripts/check-privacy.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:privacy",
     "render:samples": "tsx scripts/render-samples.ts",
-    "cv:eval": "tsx --tsconfig tsconfig.test.json scripts/cv-eval.ts"
+    "cv:eval": "tsx --tsconfig tsconfig.test.json scripts/cv-eval.ts",
+    "review:detection": "tsx --tsconfig tsconfig.test.json scripts/detection-review/build.ts"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

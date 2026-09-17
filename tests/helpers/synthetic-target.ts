@@ -8,6 +8,7 @@ import type { Calibration } from '@/lib/domain/photo';
 import { mmToPx } from '@/lib/geometry/transform';
 import type { RgbaImage } from '@/lib/media/format';
 import { ANCHOR_DIAMETER_MM } from '@/lib/cv/anchor';
+import { numeralCentresMm } from '@/lib/cv/print-mask';
 import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
 
 import { svgToRgba } from './rgba';
@@ -22,6 +23,21 @@ const LINE_MM = 0.35;
  * ~166, against ink ~24 and paper ~242.
  */
 const HOLE = '#C8A165';
+/** M16 R3: the backing board around a sheet — grayer and much darker than the paper. */
+const BOARD = '#8E8C88';
+/** M16 R3: ground with no paper on it at all, for the segmentation-failure case. */
+const NO_PAPER = '#3C3A37';
+/** M16 R1: hole appearances. `tan` is M11's torn paper; the rest are the kinds the owner's photos show. */
+const HOLE_STYLES = {
+  tan: { fill: HOLE, rim: null },
+  dark: { fill: '#000000', rim: null },
+  bright: { fill: '#D8D4CC', rim: null },
+  /** A hole whose core is as dark as the ink, visible only by its torn, lighter edge (2 mm wide). */
+  rim: { fill: INK, rim: '#9A968E' },
+  /** A dark hole on paper: the board seen through it. */
+  paperDark: { fill: '#3A3834', rim: null },
+} as const;
+export type SyntheticHoleStyle = keyof typeof HOLE_STYLES;
 /** geometry-scoring §1.1: the .22 LR hole the profile assumes. */
 export const SYNTHETIC_HOLE_DIAMETER_MM = 5.6;
 
@@ -30,6 +46,8 @@ export interface SyntheticHole {
   yMm: number;
   /** Defaults to {@link SYNTHETIC_HOLE_DIAMETER_MM}. */
   diameterMm?: number;
+  /** M16 R1: how the hole looks. Defaults to `tan`. */
+  style?: SyntheticHoleStyle;
 }
 
 export interface SyntheticTargetSpec {
@@ -49,6 +67,15 @@ export interface SyntheticTargetSpec {
    * median and MAD can.
    */
   shadowOpacity?: number;
+  /**
+   * M16 R3: the paper sheet, as a rectangle in target mm (+y up) with the backing board around it.
+   * Omitted, the paper fills the whole image as before. `holesMm` outside it land on the board.
+   */
+  sheetMm?: { left: number; right: number; bottom: number; top: number };
+  /** M16 R3: no paper at all — the target is printed straight onto board-coloured ground. */
+  noPaper?: boolean;
+  /** M16 R2: draw the 32 precision numerals (as glyph blocks) with their axes at this angle. */
+  numeralsDeg?: number;
 }
 
 /** A hole at `radialMm` from the centre, `angleDeg` counter-clockwise from +x in target space. */
@@ -86,21 +113,19 @@ export const SIGHTING_TEST_HOLES: SyntheticHole[] = [
 ];
 
 /**
- * M16 (REV-32) Tests: a hole whose centre lands exactly on a scan-tile corner. At 8 px/mm the
- * rectified precision square is 1395 px, so its centre is 697.5 px and 720 px is a multiple of both
- * the 10 mm (80 px) and 12 mm (96 px) tile strides — this hole therefore straddles four tiles
- * whichever tile size is in force, and must still come back exactly once.
+ * M16 R3 Tests: a letter-size sheet around the precision target (216 x 279 mm, the target 110 mm above
+ * the bottom edge), and holes in the backing board beside it that must never be detected.
  */
-export const TILE_BOUNDARY_HOLE: SyntheticHole = { xMm: 32.8125, yMm: -2.8125 };
-
-/**
- * M16 (REV-33) Tests: holes in the backing board beside the sheet. The precision search area stops
- * at 77.2 + 5 = 82.2 mm, so neither of these may ever be detected — one sits just outside it, the
- * other outside the rectified square altogether.
- */
+export const LETTER_SHEET_MM = { left: -108, right: 108, bottom: -110, top: 169 };
 export const BACKING_BOARD_HOLES: SyntheticHole[] = [
-  polarHole(85, 200),
-  polarHole(110, 25),
+  { xMm: -122, yMm: 20, style: 'paperDark' },
+  { xMm: 124, yMm: -40, style: 'paperDark' },
+  { xMm: 30, yMm: -124, style: 'paperDark' },
+];
+/** M16 R3 Tests: holes on the paper beyond M16's first bound (82.2 mm), which must now be found. */
+export const FAR_PAPER_HOLES: SyntheticHole[] = [
+  { xMm: 0, yMm: 100, style: 'paperDark' },
+  { xMm: -92, yMm: -30, style: 'paperDark' },
 ];
 
 /** The calibration the synthetic sheet was drawn with — the ground truth for a detection test. */
@@ -131,7 +156,7 @@ export function syntheticTargetSvg(spec: SyntheticTargetSpec): string {
 
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${spec.width}" height="${spec.height}" viewBox="0 0 ${spec.width} ${spec.height}">`,
-    `<rect x="0" y="0" width="${spec.width}" height="${spec.height}" fill="${PAPER}" />`,
+    sheetBackground(spec),
   ];
 
   if (spec.template === 'precision') {
@@ -147,6 +172,7 @@ export function syntheticTargetSvg(spec: SyntheticTargetSpec): string {
       parts.push(ellipse(diameterMm, `fill="none" stroke="${PAPER}" stroke-width="${lineWidth}"`));
     }
     parts.push(ellipse(PRECISION_TEMPLATE.innerTenDiameterMm, `fill="none" stroke="${PAPER}" stroke-width="${lineWidth}"`));
+    if (spec.numeralsDeg !== undefined) parts.push(numeralGlyphs(spec, spec.numeralsDeg));
   } else {
     // On the real sheet (docs/reference/IMG_5057-sighting.jpg) every zone marking is a thin WHITE line
     // on the black disc: the disc itself stays solid, which is why it measures fill 0.962 against the
@@ -179,6 +205,52 @@ export function syntheticTargetSvg(spec: SyntheticTargetSpec): string {
   return parts.join('');
 }
 
+/** M16 R3: the paper — the whole image, a sheet on the backing board, or no paper at all. */
+function sheetBackground(spec: SyntheticTargetSpec): string {
+  const full = (fill: string): string => `<rect x="0" y="0" width="${spec.width}" height="${spec.height}" fill="${fill}" />`;
+  if (spec.noPaper === true) return full(NO_PAPER);
+  if (spec.sheetMm === undefined) return full(PAPER);
+  const cal = syntheticCalibration(spec);
+  const { left, right, bottom, top } = spec.sheetMm;
+  const corners = [
+    { xMm: left, yMm: top },
+    { xMm: right, yMm: top },
+    { xMm: right, yMm: bottom },
+    { xMm: left, yMm: bottom },
+  ].map((p) => mmToPx(p, cal));
+  return full(BOARD) + `<polygon points="${corners.map((c) => `${c.x},${c.y}`).join(' ')}" fill="${PAPER}" />`;
+}
+
+/**
+ * M16 R2: the precision sheet's numerals 1-8 on four axes, as glyph blocks the size measured on the
+ * real sheet (about 4 mm tall and 3 mm wide, strokes ~0.6 mm): white on the black mark, black on paper.
+ * No fonts — resvg runs without system fonts — so each glyph is a ring with a bar through it.
+ */
+function numeralGlyphs(spec: SyntheticTargetSpec, axesDeg: number): string {
+  const cal = syntheticCalibration(spec);
+  const pxPerMm = spec.radiusPx / (cal.anchorDiameterMm / 2);
+  const out: string[] = [];
+  for (const radial of numeralCentresMm()) {
+    for (let axis = 0; axis < 4; axis += 1) {
+      const theta = ((axesDeg + 90 * axis) * Math.PI) / 180;
+      const centre = mmToPx({ xMm: radial * Math.cos(theta), yMm: radial * Math.sin(theta) }, cal);
+      const colour = radial < PRECISION_TEMPLATE.blackDiameterMm / 2 ? PAPER : INK;
+      // Measured on IMG_4540: 4 mm tall, except the "3", which fits a 5 mm band at 3.5 mm.
+      const w = 3 * pxPerMm;
+      const h = (radial > 56.2 && radial < 61.2 ? 3.5 : 4) * pxPerMm;
+      const stroke = 0.6 * pxPerMm;
+      // The glyph's long side runs radially, as the printed numerals do on every axis.
+      const rotate = `rotate(${-(axesDeg + 90 * axis) + 90 + spec.angleDeg} ${centre.x} ${centre.y})`;
+      out.push(
+        `<g transform="${rotate}"><rect x="${centre.x - w / 2 + stroke / 2}" y="${centre.y - h / 2 + stroke / 2}" ` +
+          `width="${w - stroke}" height="${h - stroke}" rx="${w / 3}" fill="none" stroke="${colour}" stroke-width="${stroke}" />` +
+          `<line x1="${centre.x - w / 2}" y1="${centre.y}" x2="${centre.x + w / 2}" y2="${centre.y}" stroke="${colour}" stroke-width="${stroke}" /></g>`,
+      );
+    }
+  }
+  return out.join('');
+}
+
 /** M16 (REV-32): the lighting gradient, painted over everything the way a real shadow falls. */
 function shadowWash(spec: SyntheticTargetSpec): string {
   const opacity = spec.shadowOpacity ?? 0;
@@ -206,9 +278,11 @@ function holeEllipses(spec: SyntheticTargetSpec): string {
       const centre = mmToPx({ xMm: hole.xMm, yMm: hole.yMm }, cal);
       const rx = ((hole.diameterMm ?? SYNTHETIC_HOLE_DIAMETER_MM) / 2) * pxPerMm;
       const ry = rx * spec.axisRatio;
+      const style = HOLE_STYLES[hole.style ?? 'tan'];
+      const rim = style.rim === null ? '' : ` stroke="${style.rim}" stroke-width="${2 * pxPerMm}"`;
       return (
         `<ellipse cx="${centre.x}" cy="${centre.y}" rx="${rx}" ry="${ry}" ` +
-        `transform="rotate(${spec.angleDeg} ${centre.x} ${centre.y})" fill="${HOLE}" />`
+        `transform="rotate(${spec.angleDeg} ${centre.x} ${centre.y})" fill="${style.fill}"${rim} />`
       );
     })
     .join('');

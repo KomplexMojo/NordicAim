@@ -220,8 +220,9 @@ finished score" half (Step 9, §4 rule 9) stays here.
     REV-28 rather than becoming an invented multiplicity.
   - **Tilt and curl**: sheets photographed at an angle and not flat.
 - Region scan (REV-32): on a synthetic sheet with a lighting gradient across it, every hole is found, where the old global
-  threshold misses at least one; a hole placed exactly on a tile boundary is returned **once**; tiles with no candidate are
-  skipped (assert the refine pass touches only the affected tiles); and a sheet with 6 holes but 10 declared rounds returns
+  threshold misses at least one; ~~a hole placed exactly on a tile boundary is returned **once**; tiles with no candidate are
+  skipped (assert the refine pass touches only the affected tiles)~~ *(superseded by R1: tiling measured worse and was
+  removed, so these became "each hole is returned exactly once"; Open question 9, owner to confirm)*; and a sheet with 6 holes but 10 declared rounds returns
   **6** shots, never 10 — refinement must not manufacture candidates to fill the quota.
 - Glyph rejection: on `IMG_5132-precision.jpg`, no detection falls inside the numeral sectors, and total detections ≤ 10.
 - Multiplicity: every auto shot from `detectShots` has `multiplicity === 1`, including on a deliberately overlapping synthetic pair.
@@ -258,327 +259,227 @@ resembles the photo.
 
 ## Open questions
 
-1. **`capShots`'s area tie-break has nothing to read.** Step 4 ranks ties "by larger area", but `Shot`
-   (data-model §4) carries no area, and adding one is a data-model change this milestone does not own.
-   `capShots` is therefore generic over `Shot & { areaMm2?: number }`: the area comparison runs when a
-   caller supplies it (`cv:eval` does, and the unit test pins the rule), while Stage A and Stage B pass
-   stored `Shot`s, so in the app the order is confidence → smaller radius → id. Either add `areaMm2` to
-   `Shot`, or drop "area" from the rule.
-2. **Alignment is UNVERIFIED (step 7).** `fixtures/reference/ground-truth/` holds only its README, so
-   `cv:eval` cannot produce the alignment table and gates nothing; it prints a NO GROUND TRUTH notice
-   instead, as step 7 instructs. The anchor table is still measured against `seed-calibrations.json`,
-   which was estimated by eye and is **not** ground truth. Nothing in REV-31 is actually demonstrated
-   until the owner exports ground truth from Adjust (M13 step 7).
-3. **Elongation does not separate printed glyphs from holes on real photos.** Measured on
-   `IMG_5132-precision.jpg`, the two ranges overlap completely (glyphs 1.00–6.15, holes 1.06–3.48),
-   because a ring numeral is a roundish blob, not a long stroke. The stroke-radius half of REV-27's
-   filter does separate them cleanly, so the pair of tests works; but `fill` (glyphs ≤ 0.07, holes
-   ≥ 0.38) and `circularity` (glyphs ≤ 0.11, holes ≥ 0.12) separate by a far wider margin and would be
-   the better second test if REV-27 is ever revisited. Not changed here: the revision names elongation.
-4. **`confidence` is a weak ranking key on real photos, so the cap's choice of which candidate to drop
-   is close to arbitrary.** Confidence is `circularity × cluster factor`, and on real paper every
-   component — true holes included — scores 0.02–0.37 (M11 Open question 5). The cap is still correct
-   (it never reports more than the rounds fired), but *which* `declared` it keeps is not meaningfully
-   ranked. The owner fixes a wrong choice in Adjust; M17's parked markers are the other half of this.
-5. **The region scan changed which blobs carry the `cluster` flag.** On the synthetic overlapping pair
-   the merged blob measures `k = 1.37` under tile-local thresholding, against 1.67 under the global
-   thresholds, so it is now below `CLUSTER_AREA_RATIO` (1.6) and `cluster` is false. Nothing in the app
-   reads `cluster` except `adjust.ts`'s "unchanged" comparison, but if M13/M17 want to offer
-   "split this cluster" on merged holes, the flag no longer marks them reliably.
-6. **The milestone has two steps numbered 3** ("Reject printed glyphs" and "One hole to start"), so the
-   step numbers in these notes are 3a and 3b.
-7. **The "numeral sectors" test pins the 12/6 o'clock column only.** On `IMG_5132-precision.jpg` the
-   3 and 9 o'clock numerals share their band with a real hole (there is a hole at ≈ (−23, 0) mm, beside
-   the printed "8"), so "no detection in the numeral sectors" cannot be asserted for all four axes
-   without asserting away a real shot. The vertical column is where M11's 11 false detections were, and
-   that is what the test asserts is now empty.
-8. **`detectShots` gained an optional sixth parameter** (`options.method`, `options.tuning`) that
-   analysis-pipeline §6's signature does not mention. The worker calls it with five arguments and gets
-   the shipping method; only `cv:eval` and the unit tests pass the option, to compare the two
-   segmentations and to sweep the region constants. §6 could gain the optional argument.
-9. **Step 8 contradicts analysis-pipeline §4, and §4 wins.** The step asserts that a photo whose
-   alignment came from the overlay fallback (`method: 'overlay'`, warning `alignment-uncertain`)
-   "already reaches `needs-attention`". §4's rules say otherwise: pipeline warnings are *appended* to
-   `reasons`, and `alignment-uncertain` matches none of rules 5–8, so such a photo lands on rule 9 and
-   reads `analyzed`, with "Used your on-screen alignment — check the rings line up." underneath.
-   Measured, not assumed: the stage-b test above seeds `alignment.method = 'overlay'` and gets
-   `analyzed`. **Nothing was changed** (golden rule 2: the spec wins, and REV-31 names no rule number).
-   The owner decides which is wanted — either §4 gains a rule "warnings include `alignment-uncertain` →
-   `needs-attention`" (it would sit between the new rule 8 and rule 9, and would also change M13's
-   Adjust preview), or step 8's wording is corrected to "is reported with its reason" and the milestone
-   is already satisfied.
-10. **`capShots`'s crop bound reads `outerRadiusMm + PAPER_OUTSET_MM` (5 mm), not step 2's
-   `outerRadiusMm + 10`.** Step 2 describes the search area as "the rectified crop from M11 step 1
-   (side `2 × (outerRadiusMm + 10) × 8`)". Two different numbers are in play: the rectified *image* is
-   indeed cut at +10 mm (`rectifiedSidePx`, unchanged), while the *candidate* bound is M11 step 3's
-   paper region, `searchRadiusMm = outerRadiusMm + PAPER_OUTSET_MM` — 82.2 mm on the precision sheet
-   against the crop's 87.2 mm. The narrower bound is deliberate (it is exactly where M11 stopped
-   thresholding, so no pixel outside it was ever classified) and is what the test and the REV-33
-   assertion use, but code and milestone wording differ by 5 mm and the owner may want the step reworded.
-11. **The M11 confidence floor was re-measured, not dropped.** Fix round 1 restored
-   `expect(shot.cluster).toBe(false)` and `expect(shot.confidence).toBeGreaterThan(0.65)` on the eight
-   cleanly separated synthetic holes; under the region scan they measure **0.790–0.884** (all
-   `cluster: false`), so M11's floor still holds with room to spare. This matters because confidence is
-   the cap's primary ranking key (Open question 4), so a silent drop on clean holes would have gone
-   unnoticed. Open question 5 (the merged sighting blob losing its `cluster` flag) is unaffected.
+Rework (2026-09-17). Questions 1-11 of the first implementation are restated at the end, marked resolved or still open.
+
+1. **BLOCKING — the R4 gate is not reached.** On the 34 gated photos the reworked detector measures **recall 64.1%,
+   precision 81.8%** against floors of 85% / 85% (baseline 53% / 61%). Precision sheets 59.5% / 78.0% (baseline
+   54% / 54%), sighting sheets 73.6% / 89.0% (baseline 51% / 87%). Per R4, tuning stopped here and `pnpm cv:eval`
+   exits non-zero. Where the rest is lost, measured:
+   - **Tight clusters.** IMG_5152 (6 of 19) and IMG_5153 (5 of 16) alone account for 24 of the 121 missed holes: torn,
+     overlapping holes merge into one blob and the peaks are one hole radius apart at best.
+   - **REV-27's stroke/elongation filter** costs recall: without it the same detector measures recall 72.7%,
+     precision 79.5%. R2 says keep it when removing it lowers precision, and it does, so it is kept (question 3).
+   - **A smaller footprint** (0.5 x hole radius) raised recall to 85% but collapsed precision to 18-27%: printed
+     ring lines the ±0.9 mm bands miss (the calibration is off by 1-3 mm on the outer rings, M18's subject) become
+     candidates. Registering each ring line locally (a per-sector radial search) recovered part of it (precision 27%)
+     but not enough, and was not shipped.
+   - **IMG_4745** (3 of 11, 13 false) has a calibration off by ~1.5x (labels there reach 218 mm), so R3 falls back
+     and the rings are wrong; it is an alignment failure, not a detection one.
+   The owner decides: re-rate with `pnpm review:detection` (labels are incomplete, and every unmatched detection is
+   listed in `cv:eval` for confirmation), move the floors, or ask for another round (cluster splitting, and ring
+   registration once M18 fixes the outer-ring alignment, are the two measured levers).
+2. **The sheet fallback is not recorded on the analysis.** R3 says "record the fallback on the analysis", but
+   `TargetAnalysis.pipeline` (data-model §4) has no field for it and `Warning` has no value for it, and a storage
+   change is not something to guess. The fallback is in `DetectionReport.sheet.method` and reported by `cv:eval`
+   (1 of 40 photos), but the worker returns only `{ shots }` (analysis-pipeline §6), so the app never sees it. Either
+   add a warning (e.g. `sheet-not-found`, with its §4 place and message) or a pipeline field.
+3. **REV-27 is kept by the letter of R2, at a recall cost.** Measured with R1 and R2 in place (same code, same
+   photos, `pnpm cv:eval` gate): with the filter recall 64.1% / precision 81.8%; without it 72.7% / 79.5%. Removing it lowers precision,
+   so R2 keeps it — but it also costs 8 points of recall, more than it gains in precision. Confirm, or change the rule.
+4. **"Bright, low-saturation" is the wrong description of the owner's paper.** Measured at the reference annulus the
+   sheets are bluish white (chroma 2-83 against gray 171-207) and the backing board is the *less* saturated surface.
+   `sheet.ts` therefore segments by similarity to the reference paper (gray no more than 80 darker, chroma/gray ratio
+   within 0.12, no sharp edge) rather than by low saturation. R3's wording could say so.
+5. **A5 is ~7.5x slower in Node.** Median 96 ms (max 136) before, 728 ms (max 921) after, over the 40 photos with a
+   target (A4 unchanged at ~43 ms). The detection square is 1200 px (150 mm at 4 px/mm) against the old 1395 px
+   crop, but it runs two median filters, a sheet segmentation and per-candidate measurement. analysis-pipeline §9's
+   3 s Stage A budget is for the iPhone and is unmeasured here (M15 measures it).
+6. **The numeral mask drops every candidate in a numeral box on paper.** No labelled hole sits in a paper numeral box
+   (0 of the 26 in boxes), so no keep threshold can be measured there; on the black mark the measured threshold is
+   0.685 (holes 0.69-0.95, false detections 0.67-0.68). A synthetic "3" beside the mark's edge scores 0.79-0.87, which
+   is why paper boxes keep nothing. A real hole on a paper numeral would be lost.
+7. **The numeral rotation is weak on 3 of 22 precision photos** (IMG_4743, IMG_4771, IMG_5071: phase strength below
+   0.3), where no numeral mask is applied. Some "reliable" estimates (IMG_4723 8.6°, IMG_5071 -12.4°) could not be
+   checked against anything.
+8. **Printed text and form lines on the paper** are the main remaining false detections beyond the rings (IMG_4514,
+   IMG_5058, IMG_5132_2 in the unmatched list): R3 widened the search to where they are printed, and nothing in R2
+   masks them. Some "false" detections at 125-140 mm may also be real holes the owner never tapped.
+9. **Tiling lost, so REV-32's tile tests were removed.** Measured in the prototype with the same acceptance filters:
+   tiled median/MAD (12 mm tiles) recall 49.6% / precision 63.3%; per-surface global statistics 55.8% / 66.9%; a
+   sliding local median background 72.1% / 81.0%, which ships. The tests "a hole on a tile boundary is returned once"
+   and "empty tiles are skipped" no longer describe anything and were replaced by "each hole is returned once".
+10. **The overlapping-pair test is relaxed.** Two holes 3 mm apart may now come back as one or two shots (both
+   multiplicity 1); the test asserts at most two, never an invented multiplicity, rather than exactly one merged shot.
+11. **Detection scale.** R3 asks for the canonical scale to be chosen from the working resolution: the working images
+   put the sheet at 2.5-6.4 px/mm, so detection rectifies at a fixed 4 px/mm (`DETECTION_PX_PER_MM`), which keeps the
+   150 mm square at the working image's own 1200 px. A per-photo scale was not tried.
+
+Earlier questions: (1) `capShots`'s area tie-break — **still open**; (2) alignment UNVERIFIED — **still open, now
+M18**; (3) elongation does not separate glyphs — **superseded** by question 3 above; (4) confidence is a weak ranking
+key — **changed**: confidence is now the R1 score (the deviating share of the hole disc, x0.6 for a cluster), which
+does separate holes from background (AUC ~0.97) but not from print; (5) the `cluster` flag — **changed**: `cluster`
+is now "blob area >= 1.6 hole areas"; (6) two steps numbered 3 — moot; (7) numeral column only — **replaced** by R2's
+32-box mask and its synthetic test at 0°, 17° and 45°; (8) `detectShots`'s sixth parameter — **resolved**, removed;
+(9) overlay alignment status — **resolved**: §4 rule 9 is implemented in `status.ts` with its vectors, and the Stage B
+test now expects `needs-attention`; (10) the +5 mm crop bound — **superseded** by R3.
+
 ## Completion notes
 
-Implemented by the `milestone-implementer` agent (orchestrated run), 2026-09-16, and revised in **fix
-round 1** after review. Per the orchestration overrides this milestone was **not** committed or pushed,
-and its Status is left `in-progress`.
-
-**Fix round 1 changed five things** (all three Acceptance commands re-run and passing afterwards):
-
-1. The step 8 test asserted the opposite of its own name and never exercised the overlay path. It now
-   seeds `pipeline.alignment.method = 'overlay'`, is named for what it asserts, and the contradiction
-   between step 8 and analysis-pipeline §4 is recorded as **Open question 9** instead of being papered
-   over (golden rule 2).
-2. The `extra-candidates-dropped` message took its count from `result.all.declared`, which is null in
-   the `ready` state §4 rule 4 displays it in — so the card could read "…because you fired 0 rounds."
-   It now comes from the photo's own categorization, via new pure `declaredRoundsOrNull`
-   (geometry-scoring §7), at all three call sites.
-3. The private-set summary below understated every figure; it is restated from the actual `cv:eval`
-   output.
-4. The two M11 assertions deleted from the 8-separate-holes case (`cluster` false, `confidence > 0.65`)
-   are restored, re-measured under the region scan — see **Open question 11**.
-5. "Tilt and curl" gained the unit test the milestone's Tests list asks for, plus a matching `cv:eval`
-   row; the crop-wording mismatch REV-33 introduced is recorded as **Open question 10**.
-
-**All three Acceptance commands pass.**
+Rework implemented by the `milestone-implementer` agent (orchestrated run), 2026-09-17. Not committed or pushed; Status
+left `in-progress`. The first implementation's notes are in commit `90464b8`.
 
 ### Commands
 
 | Command | Result |
 |---|---|
-| `pnpm check` | **pass** — typecheck clean, lint 0 errors (4 pre-existing warnings), **462 unit tests in 53 files** (was 381 in 48), `privacy check passed (15 images)` |
-| `pnpm cv:eval` | **pass (exit 0)** — synthetic anchor and shot cases within tolerance, both reference photos within the seed tolerance, neither yielding more detections than its declared rounds |
-| `pnpm test:e2e` | **pass** — 30/30 across mobile-chromium and mobile-webkit, including the new REV-28 results test |
-| **Human (owner)** | photograph both sheets on the iPhone → Analyze → confirm the shot count is plausible and the diagram resembles the photo. **Not done by the agent** |
+| `pnpm check` | **pass** — typecheck clean, lint 0 errors (4 pre-existing warnings), **477 unit tests in 54 files**, privacy check passed (15 images) |
+| `pnpm cv:eval` | **FAIL (exit 1), as R4 intends** — every synthetic case and both reference JPEGs pass; the labelled-hole gate measures recall 64.1% / precision 81.8% against 85% / 85% (Open question 1) |
+| `pnpm test:e2e` | **pass** — 30/30 on mobile-chromium and mobile-webkit, including "the demo precision target analyses without too-many-shots" |
+| `pnpm review:detection` | **pass** — wrote `fixtures/private/review/detection-review.html` (4.8 MB, 46 photos); smoke-tested headless: `#n` labels, mode switch (a tap on a detection in *Add missed hole* adds a marker), carry-over of the 2026-09-17 labels (146 marks), v2 export, no console errors |
+| **Human (owner)** | re-rate on the review page and paste the export; iPhone check. **Not done by the agent** |
 
 ### What was built
 
-- **`src/lib/cv/holes.ts`** — the public detector. Runs one of two segmentations, applies REV-27's shape
-  filter, REV-33's crop assertion and REV-28's `multiplicity = 1`, and returns either `Shot[]`
-  (`detectShots`, unchanged signature) or the full `DetectionReport` (`detectShotCandidates`: every
-  candidate with its measured area, circularity, elongation, stroke radius and fill, plus everything
-  the gates rejected and why). `cv:eval` reports from the second.
-- **`src/lib/cv/hole-mask.ts`** (new) — the region/band maps and the global two-threshold mask, lifted
-  out of the old `holes.ts` unchanged, so both methods share exactly one definition of "where the disc
-  is, where the paper is, and which pixels are printed circles".
-- **`src/lib/cv/holes-region.ts`** (new) — the REV-32 region scan: `REGION_MM` tiles at half-tile
-  stride, classified by their centre, thresholded against their own median and MAD, empty tiles dropped
-  with no further work, tiles with a candidate refined at up to `REGION_REFINE_MAX` lower `REGION_K`
-  values, results deduped by centroid within one hole radius.
-- **`src/lib/cv/component-metrics.ts`** (new) — one measurement pass over a binary mask: exact pixel
-  areas and centroids from `connectedComponentsWithStats`, perimeter and fitted ellipse from the
-  external contours, and the maximum inscribed radius from one `distanceTransform`. Shared by both
-  methods so the `cv:eval` comparison is like-for-like.
-- **`src/lib/scoring/cap-shots.ts`** (new) — pure `capShots`.
-- **`src/lib/pipeline/stage-a.ts` / `stage-b.ts`** — the cap, with `extra-candidates-dropped`.
-- **`src/lib/domain/`** — the new `Reason`/`Warning`, its place in the warning order, the status rule and
-  the message; **`docs/spec/analysis-pipeline.md` §4** updated to match (new rule 8, renumbering the old
-  rule 8 to 9).
-- **`src/components/results/ReasonList.tsx`** and its three call sites — the new message names the
-  declared rounds, so the component needed the number. It takes `declared: number | null` from
-  `declaredRoundsOrNull(photo.categorization)` (`src/lib/domain/categorization.ts`, new, pure, tested),
-  **not** `result.all.declared`: §4 rule 4 shows this reason while `stageB` is still `pending` and
-  `analysis.computed` is null, which is exactly the state Stage A leaves a capped photo in before
-  Analyze is tapped (fix round 1).
+- **R1 `src/lib/cv/hole-signal.ts`** — per surface (black mark / paper), a median background over 3 hole diameters;
+  a pixel deviates when `|gray - background| > 3 x` the surface's median deviation (floor 2); the score is the
+  deviating share of a hole-sized disc; candidates are peaks of the lightly smoothed score (>= 0.5), one hole radius
+  apart. **`src/lib/cv/hole-features.ts`** measures each candidate: core contrast, surround share, and the blob of
+  deviating pixels it sits on (area, moment elongation, maximum inscribed radius).
+- **Acceptance (`holes.ts`)**: M11's area gate (blob >= 0.35 hole areas); REV-27 (elongation > 4 or inscribed
+  radius < 0.35 x hole radius is print); on the mark, score >= 0.6; on paper, |core contrast| >= 40, surround <= 0.15,
+  elongation <= 3; then R2's numeral boxes. `multiplicity` is always 1; `confidence` = score (x0.6 for a cluster).
+- **R2 `src/lib/cv/print-mask.ts`** — the printed-circle bands (moved from `hole-mask.ts`), numeral centres from the
+  template (band centres; the "3" between the mark's edge and ring 3), the rotation estimate (phase of
+  Σ w e^{4iθ} over ink samples on the band-centre circles; strength < 0.3 = unreliable, no mask), and the 32 boxes
+  (±2.5 mm radial and tangential: glyphs measured ~4 mm tall and 2.5-3 mm wide on IMG_4540, plus margin).
+- **R3 `src/lib/cv/sheet.ts`** — the paper sheet: pixels like the reference annulus 1.5-6 mm beyond the outermost
+  printed circle, OPEN 3 mm, components holding the annulus, union with the target, filled, eroded 3 mm, capped at
+  150 mm. Falls back to the 105 mm circle when the annulus is darker than 100 or under half of it looks like paper.
+  `rectify` gained options (scale, radius, a chroma channel).
+- **R4 `tests/helpers/labelled-holes.ts` + `scripts/cv-eval-labelled.ts`** — labels loader, greedy working-px
+  matcher (0.8 hole diameters), pooled figures, caveated photos reported but never gated, the baseline, the sheet
+  fallback count, A4+A5 time, the numeral-mask cost, and every unmatched detection for the owner. `cv-eval.ts` lost
+  the global/region comparison and labels the `sample-shots-*.json` rows UNVERIFIED.
+- **R5 `scripts/detection-review/`** (`build.ts`, `photo.ts`, `template.html`) + `pnpm review:detection` — reads
+  `fixtures/private/additional references/`, writes only `fixtures/private/review/detection-review.html` (asserted),
+  images re-encoded by sharp with no metadata. `#1, #2…` rank labels and "every detection is ONE hole"; a per-photo
+  *Mark detections* / *Add missed hole* switch; *Carry over earlier marks* from a pasted export (v2 exports carry
+  positions) or from the embedded 2026-09-17 labels, matched within 0.8 hole diameters; storage key bumped to v2 so
+  the first page's rank-based marks cannot leak in.
+- **Step 9 / §4 rule 9** in `src/lib/domain/status.ts`: `alignment.method === 'overlay'` → `needs-attention`,
+  `['alignment-uncertain', ...other warnings]`; a `cv` alignment with the warning stays `analyzed`. Tests: three new
+  status vectors and the Stage B test.
+- Deleted: `hole-mask.ts`, `holes-region.ts`, `component-metrics.ts` (tiling lost; see Open question 9).
+- `tests/helpers/synthetic-target.ts`: hole styles (dark, bright, rim, paperDark), a letter sheet on a backing board,
+  a no-paper ground, and numeral glyph blocks at any rotation.
 
-### Step 3a — the measured glyph filter (REV-27)
+### Measured values (R1-R4)
 
-Measured on `docs/reference/IMG_5132-precision.jpg` with the **CV-measured** calibration (what A4 hands
-A5 in the app). Glyphs are the components on the printed numeral column at 12 and 6 o'clock; holes are
-the components the region scan keeps elsewhere, checked against the photo.
+Polarity-free signals at the owner's labelled holes (prototype, max within 1.5 mm, same photos): deviating share vs
+plain background AUC 0.97 (mark) / 0.97 (paper), edge energy 0.81 / 0.95 — the share ships. On paper, at candidates:
+core contrast AUC 0.89, surround 0.84, elongation 0.79 (TP vs FP).
 
-| class | n | stroke radius (mm) | elongation | circularity | fill | area (mm²) |
-|---|---|---|---|---|---|---|
-| printed numerals | 20 | **0.36 – 0.92** (p50 0.53) | 1.00 – 6.15 | 0.015 – 0.27 | 0.00 – 0.84 | 9.7 – 118 |
-| bullet holes | 30 | **1.04 – 2.98** (p50 1.49) | 1.06 – 3.48 | 0.12 – 0.55 | 0.38 – 0.89 | 9 – 40 |
+**Per-template recall/precision against the baseline** (`pnpm cv:eval`, gated photos):
 
-- `STROKE_MIN_FRACTION = 0.35` → **0.98 mm** for the 5.6 mm hole, which falls inside the measured gap
-  (0.92 | 0.98 | 1.04). This is the test that does the work.
-- `ELONGATION_MAX = 4` sits just above the largest real hole measured (3.48). It does **not** separate
-  numerals from holes (see Open question 3); it removes the long thin remnants of printed ring lines.
-
-On that photo the filter takes detections from M11's **19 detections / 62 units** to **10 detections /
-10 units**, with nothing on the numeral column — pinned by
-`tests/unit/cv/holes.test.ts › detects no ring numeral on the real precision sheet`.
-
-### Step 1 — the measured region constants (REV-32)
-
-Same two photos, same calibrations, `ELONGATION_MAX` and `STROKE_MIN_FRACTION` at their shipping values.
-"On numeral column" counts detections inside the 12/6 o'clock printed numerals, i.e. false positives.
-
-| photo | REGION_MM | REGION_K | refineMax | detections | on numeral column |
+| set | photos | TP/FP/FN | recall | precision | baseline recall / precision |
 |---|---|---|---|---|---|
-| IMG_5132 (10 rounds, ~9–10 holes) | 8 | 3 | 3 | 9 | 0 |
-| IMG_5132 | 8 | 5 | 3 | 5 | 0 |
-| IMG_5132 | 10 | 4 | 3 | 11 | 0 |
-| IMG_5132 | 10 | 5 | 3 | 7 | 0 |
-| IMG_5132 | **12** | 3 | 3 | 21 | 2 |
-| IMG_5132 | **12** | 4 | 3 | 13 | 0 |
-| IMG_5132 | **12** | **5** | **3** | **10** | **0** |
-| IMG_5132 | **12** | 6 | 3 | 9 | 0 |
-| IMG_5132 | 15 | 3 | 3 | 22 | 1 |
-| IMG_5132 | 15 | 5 | 3 | 12 | 1 |
-| IMG_5057 (10 rounds, ~7–8 holes) | 8 | 5 | 3 | 2 | 0 |
-| IMG_5057 | 10 | 4 | 3 | 7 | 0 |
-| IMG_5057 | 10 | 5 | 3 | 6 | 0 |
-| IMG_5057 | **12** | 4 | 3 | 7 | 0 |
-| IMG_5057 | **12** | **5** | **3** | **7** | **0** |
-| IMG_5057 | 15 | 5 | 3 | 11 | 2 |
+| gated · all | 34 | 216/48/121 | 64.1% | 81.8% | 53.0% / 61.0% |
+| gated · precision | 22 | 135/38/92 | 59.5% | 78.0% | 54.0% / 54.0% |
+| gated · sighting | 12 | 81/10/29 | 73.6% | 89.0% | 51.0% / 87.0% |
+| caveated (not gated) | 6 | 32/6/21 | 60.4% | 84.2% | — |
 
-Refinement, at the chosen 12 mm / k 5: IMG_5132 → 8, 9, 10, **10**, 11 detections at refineMax 0, 1, 2,
-3, 5; IMG_5057 → 7 at every refineMax. So refinement recovers two holes and then flattens, which is why
-`REGION_REFINE_MAX = 3` (the milestone's own value) is enough and why raising it is not a way to reach a
-quota.
+**Per photo** (`pnpm cv:eval`):
 
-**Chosen: `REGION_MM = 12`, `REGION_K = 5`, `REGION_REFINE_MAX = 3`, `REGION_REFINE_FACTOR = 0.75`.**
-8 mm starves the statistics (a 5.6 mm hole fills its own tile, so it drags the median with it) and 15 mm
-over-detects; 12 mm is also the smallest tile that *guarantees* the milestone's half-stride claim —
-`tile − hole = 6.4 mm ≥ the 6 mm stride`, so every hole is whole inside at least one tile, where 10 mm
-leaves 4.4 mm against a 5 mm stride and guarantees nothing.
+| photo | template | labelled | detected | TP | FP | FN | recall | precision | sheet | numeral rot | set |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| IMG_4444 | sighting | 10 | 8 | 8 | 0 | 2 | 0.80 | 1.00 | segmented | — | gated |
+| IMG_4514 | precision | 14 | 11 | 8 | 3 | 6 | 0.57 | 0.73 | segmented | -2.7° | gated |
+| IMG_4515 | precision | 10 | 7 | 7 | 0 | 3 | 0.70 | 1.00 | segmented | -0.5° | gated |
+| IMG_4540 | precision | 10 | 7 | 7 | 0 | 3 | 0.70 | 1.00 | segmented | 1.1° | gated |
+| IMG_4673 | precision | 10 | 9 | 8 | 1 | 2 | 0.80 | 0.89 | segmented | 0.2° | gated |
+| IMG_4722 | precision | 10 | 3 | 3 | 0 | 7 | 0.30 | 1.00 | segmented | 1.9° | gated |
+| IMG_4723 | precision | 11 | 8 | 7 | 1 | 4 | 0.64 | 0.88 | segmented | 8.6° | gated |
+| IMG_4742 | sighting | 7 | 4 | 4 | 0 | 3 | 0.57 | 1.00 | segmented | — | CAVEAT |
+| IMG_4743 | precision | 10 | 8 | 8 | 0 | 2 | 0.80 | 1.00 | segmented | -32.7° (weak) | gated |
+| IMG_4744 | sighting | 10 | 12 | 10 | 2 | 0 | 1.00 | 0.83 | segmented | — | gated |
+| IMG_4745 | precision | 11 | 16 | 3 | 13 | 8 | 0.27 | 0.19 | fallback | 5.8° | gated |
+| IMG_4746 | precision | 9 | 7 | 7 | 0 | 2 | 0.78 | 1.00 | segmented | 2.7° | CAVEAT |
+| IMG_4770 | precision | 10 | 7 | 7 | 0 | 3 | 0.70 | 1.00 | segmented | -0.6° | gated |
+| IMG_4771 | precision | 9 | 8 | 8 | 0 | 1 | 0.89 | 1.00 | segmented | -41.1° (weak) | gated |
+| IMG_4820 | sighting | 10 | 8 | 7 | 1 | 3 | 0.70 | 0.88 | segmented | — | CAVEAT |
+| IMG_4827 | precision | 9 | 7 | 7 | 0 | 2 | 0.78 | 1.00 | segmented | -1.3° | gated |
+| IMG_4831 | sighting | 5 | 4 | 4 | 0 | 1 | 0.80 | 1.00 | segmented | — | gated |
+| IMG_4985 | sighting | 10 | 7 | 6 | 1 | 4 | 0.60 | 0.86 | segmented | — | gated |
+| IMG_4986 | precision | 6 | 7 | 4 | 3 | 2 | 0.67 | 0.57 | segmented | -5.2° | CAVEAT |
+| IMG_5057_2 | precision | 11 | 6 | 6 | 0 | 5 | 0.55 | 1.00 | segmented | -3.1° | CAVEAT |
+| IMG_5058 | precision | 11 | 8 | 5 | 3 | 6 | 0.45 | 0.63 | segmented | 6.2° | gated |
+| IMG_5070 | precision | 7 | 5 | 3 | 2 | 4 | 0.43 | 0.60 | segmented | -6.0° | gated |
+| IMG_5071 | precision | 10 | 10 | 8 | 2 | 2 | 0.80 | 0.80 | segmented | -12.4° (weak) | gated |
+| IMG_5084 | sighting | 14 | 10 | 9 | 1 | 5 | 0.64 | 0.90 | segmented | — | gated |
+| IMG_5085 | precision | 10 | 6 | 4 | 2 | 6 | 0.40 | 0.67 | segmented | -2.6° | CAVEAT |
+| IMG_5129 | sighting | 9 | 10 | 8 | 2 | 1 | 0.89 | 0.80 | segmented | — | gated |
+| IMG_5131 | sighting | 10 | 6 | 6 | 0 | 4 | 0.60 | 1.00 | segmented | — | gated |
+| IMG_5132_2 | precision | 9 | 12 | 7 | 5 | 2 | 0.78 | 0.58 | segmented | -5.5° | gated |
+| IMG_5134 | precision | 9 | 7 | 5 | 2 | 4 | 0.56 | 0.71 | segmented | -3.8° | gated |
+| IMG_5146 | sighting | 10 | 6 | 6 | 0 | 4 | 0.60 | 1.00 | segmented | — | gated |
+| IMG_5147 | sighting | 5 | 4 | 3 | 1 | 2 | 0.60 | 0.75 | segmented | — | gated |
+| IMG_5148 | precision | 8 | 7 | 6 | 1 | 2 | 0.75 | 0.86 | segmented | 1.2° | gated |
+| IMG_5149 | precision | 10 | 8 | 7 | 1 | 3 | 0.70 | 0.88 | segmented | 3.8° | gated |
+| IMG_5151 | sighting | 7 | 5 | 5 | 0 | 2 | 0.71 | 1.00 | segmented | — | gated |
+| IMG_5152 | precision | 19 | 6 | 6 | 0 | 13 | 0.32 | 1.00 | segmented | 1.2° | gated |
+| IMG_5153 | precision | 16 | 6 | 5 | 1 | 11 | 0.31 | 0.83 | segmented | 0.8° | gated |
+| IMG_5182 | sighting | 9 | 8 | 7 | 1 | 2 | 0.78 | 0.88 | segmented | — | gated |
+| IMG_5183 | sighting | 11 | 11 | 9 | 2 | 2 | 0.82 | 0.82 | segmented | — | gated |
+| IMG_5184 | precision | 8 | 9 | 6 | 3 | 2 | 0.75 | 0.67 | segmented | -0.5° | gated |
+| IMG_5185 | precision | 6 | 4 | 4 | 0 | 2 | 0.67 | 1.00 | segmented | -3.8° | gated |
 
-### Step 1 — "keep it only if it wins": global vs region
+The six photos without a target (IMG_3478, IMG_3480, IMG_3485, IMG_3487, IMG_4447, IMG_5083) are not run. The
+unmatched detections on gated photos are listed by `cv:eval` in px and mm for the owner to confirm.
 
-From `pnpm cv:eval`. The region scan is what ships.
+- **Numeral mask (R2):** 26 labelled holes sit inside a numeral box, none of them on paper; the mask dropped 2
+  candidates and cost 0 labelled holes. Keep threshold on the mark 0.685 (holes 0.69-0.95, false 0.67-0.68).
+- **REV-27 glyph filter:** measured with R1 and R2 in place, removing it takes precision from 81.8% to 79.5% (recall
+  64.1% to 72.7%; both re-measured with `pnpm cv:eval` on the shipped code in fix round 1), so it stays at its measured values, elongation > 4 or inscribed radius < 0.98 mm (Open question 3).
+- **Sheet segmentation (R3):** fell back on **1 of the 40** photos with a target (IMG_4745, whose calibration is ~1.5x
+  off, so the reference annulus lands on a printed ring). On the other 39, all 379 labelled holes within 150 mm lie
+  inside the segmented sheet (checked with `findSheet` directly).
+- **Stage A time (Node, 40 photos):** A5 median 96 ms / max 136 ms before, 728 ms / 921 ms after; A4 ~43 ms both.
+- **Tiling (R1):** tiled 49.6% / 63.3%, per-surface global 55.8% / 66.9%, sliding local median 72.1% / 81.0% (prototype,
+  same filters without REV-27); the sliding median ships and the tiles are gone.
+- **Fill before the median filter** (prototype runs, before the final code; not re-measured): painting the other
+  surface *and* the printed bands with the local mean measured 59.0% / 71.6%; the surface median everywhere
+  64.1% / 82.8%; the hybrid (other surface local mean, own bands the median) 64.4% / 82.2% in the prototype, which
+  also keeps a paper hole beside the mark under a strong shadow gradient. The shipped hybrid measures
+  **64.1% / 81.8%** in `pnpm cv:eval`, the only figures to use for the shipped detector.
 
-```text
-| case | method | truth | detected | units | recall | precision | mean err (mm) | cap drops | result |
-|---|---|---|---|---|---|---|---|---|---|
-| precision · 8 separate holes | global | 8 | 8 | 8 | 1.00 | 1.00 | 0.25 | 0 | reported |
-| precision · 8 separate holes | region | 8 | 8 | 8 | 1.00 | 1.00 | 0.33 | 0 | pass |
-| precision rot 30 · 8 separate holes | global | 8 | 8 | 8 | 1.00 | 1.00 | 0.24 | 0 | reported |
-| precision rot 30 · 8 separate holes | region | 8 | 8 | 8 | 1.00 | 1.00 | 0.25 | 0 | pass |
-| sighting · 4 holes, 2 overlapping | global | 4 | 3 | 3 | 0.75 | 1.00 | 0.56 | 0 | reported |
-| sighting · 4 holes, 2 overlapping | region | 4 | 3 | 3 | 0.75 | 1.00 | 0.32 | 0 | pass |
-| IMG_5057-sighting.jpg (fixture shots, cv calibration) | global | 7 | 5 | 5 | 0.14 | 0.20 | 1.87 | 0 | reported |
-| IMG_5057-sighting.jpg (fixture shots, cv calibration) | region | 7 | 7 | 7 | 0.14 | 0.14 | 2.36 | 0 | <= 10 declared |
-| IMG_5132-precision.jpg (fixture shots, cv calibration) | global | 9 | 0 | 0 | 0.00 | 0.00 | — | 0 | reported |
-| IMG_5132-precision.jpg (fixture shots, cv calibration) | region | 9 | 10 | 10 | 0.22 | 0.20 | 2.22 | 0 | <= 10 declared |
-```
+`pnpm cv:eval`'s other sections: synthetic anchors pass (centre ≤ 0.37% of R); both reference JPEGs within the seed
+tolerance; alignment vs owner ground truth still NO GROUND TRUTH (UNVERIFIED, M18); synthetic shots 8/8 (mean error
+0.26 mm), 8/8 rotated (0.23 mm), sighting overlapping pair 3 units; IMG_5057-sighting.jpg 7 and IMG_5132-precision.jpg 8
+detections, both within 10 declared (their `sample-shots` rows are labelled UNVERIFIED).
 
-On the real precision sheet the **global method now finds nothing at all** (every blob it produces is a
-thin snake of ring line welded to numerals, which the glyph filter then rejects), while the region scan
-finds 10 candidates for 10 rounds. On the sighting sheet it finds 7 against the global method's 5. The
-region scan wins on both, and on the synthetic sheets it matches the global method's accuracy (mean
-error 0.33 mm vs 0.25 mm, both inside the 0.8 mm bar). Cost: ~110 ms per precision sheet in Node, well
-inside the §9 Stage A budget of 3 s.
+### Fix round 1 (2026-09-17)
 
-**The `recall`/`precision` columns on the two real photos are not a like-for-like accuracy measure**, and
-the same caveat M11 recorded still applies: `fixtures/reference/sample-shots-*.json` was traced from the
-owner's example *diagrams*, not measured off these JPEGs, so a detection can be right and still not match
-it. That is exactly what Open question 2 is about — these numbers only become meaningful once the owner
-exports ground truth.
+Review findings and what was done:
+- **Blocker, `pnpm cv:eval` exits 1 (R4 gate):** not tuned further, because R4 says to stop and record the numbers when the
+  floors can't be reached. This still needs the owner's decision on Open question 1. Re-run: recall 64.1% / precision
+  81.8% (precision sheets 59.5% / 78.0%, sighting sheets 73.6% / 89.0%), unchanged.
+- **Inconsistent figures:** re-measured the REV-27 ablation on the shipped code by disabling `isPrintedGlyph` for one
+  `cv:eval` run, then restored the file byte for byte (checked with `cmp`). Without the filter: 72.7% / 79.5%. With it:
+  64.1% / 81.8%. Open question 3 and the REV-27 bullet now use these numbers. The fill-variant figures are marked as
+  prototype runs.
+- **Tests list still named the REV-32 tile tests:** struck through in *Tests* and pointed to Open question 9.
+- **Sheet fallback not on the analysis (Open question 2), A5 timing (Open question 5):** still open questions for the owner or M15.
+  No code change.
 
-### Step 7 — alignment accuracy (REV-31)
-
-`cv:eval` grew the alignment table the step asks for, and prints this instead of it:
-
-```text
-### Alignment accuracy vs owner ground truth (REV-31; tolerance: centre 5.00% of R, radius 6.00%)
-
-NO GROUND TRUTH: `fixtures/reference/ground-truth/` holds no `<key>.json` file, so alignment is
-UNVERIFIED — the anchor table above is measured against `seed-calibrations.json`, which was
-estimated by eye and is not ground truth. …
-```
-
-Measured against the seed estimates (reported, not ground truth): centre error 1.18% of R and radius
-error 0.06–0.07% on `IMG_5057-sighting.jpg`, centre 1.02% and radius 0.07% on `IMG_5132-precision.jpg`,
-for both the no-prior and capture-prior cases, with axis ratios 0.901 and 0.943. Every value is inside
-the existing tolerance (centre ≤ 5%, radius ≤ 6%), which was **not** tightened, per the step.
-
-**Step 8's premise turned out to be false, and is left to the owner (fix round 1).** The step says an
-overlay-fallback photo "already reaches `needs-attention` via analysis-pipeline §4". It does not: §4
-appends `alignment-uncertain` as a *warning*, so rules 5–8 never fire and rule 9 sets `analyzed` with
-the reason shown beneath it. The test now seeds the real state (`pipeline.alignment.method: 'overlay'`
-plus the warning), is named for what it asserts, and pins the behaviour as it is:
-`tests/unit/pipeline/stage-b.test.ts › an overlay-fallback alignment is reported, but §4 lands on
-`analyzed``. Per golden rule 2 the spec wins and the conflict is recorded as **Open question 9** rather
-than being fixed by inventing a rule change. A *capped* photo does reach `needs-attention`, through the
-new rule 8 — that half of the milestone is implemented and tested.
-
-### The owner's wider reference set
-
-`cv:eval` now reports `fixtures/private/additional references/` (46 files, gitignored, skipped when
-absent) **per photo, never aggregated**: template, detections, glyph drops, outside-crop drops and tiles
-scanned/with candidates. Nothing there is gated — there is no ground truth for those photos.
-
-Read straight off that table (corrected in fix round 1; the first version of these notes understated
-every figure):
-
-- **An anchor was found on 40 of the 46 files.** Six return `no anchor`: `IMG_3478`, `IMG_3480`,
-  `IMG_3485`, `IMG_3487`, `IMG_4447`, `IMG_5083`.
-- **Precision sheets (26 photos) return 0–26 detections**, median 7.5. **Sighting sheets (14 photos)
-  return 0–15**, median 5.5.
-- **Nine photos return 14 or more detections**: `IMG_5152` 26, `IMG_5134` 25, `IMG_5153` 25, `IMG_4514`
-  16, `IMG_5071` 16, `IMG_4745` 15, `IMG_5085` 15, `IMG_5183` 15, `IMG_5149` 14. Eleven are above ten
-  once `IMG_4986` (11) and `IMG_5132 2` (11) are counted, so a 10-round declaration would send all
-  eleven through the cap.
-- **Over-detection is therefore still the standing risk this milestone only bounds, it does not cure**:
-  the cap guarantees the count never exceeds the rounds fired, but on a sheet returning 26 candidates
-  the cap's choice of which ten to keep is ranked by a weak confidence (Open question 4), and the
-  owner fixes it in Adjust.
-- **The REV-33 crop drops nothing on any of the 46** (`outside crop` is 0 on every row) — the backing
-  board is excluded earlier, by `buildRegions` refusing to look there at all.
-- Glyph drops are common on precision sheets (up to 12 on `IMG_5134` and `IMG_5152`) and rare on
-  sighting sheets, which is what REV-27 predicts: only the precision sheet has printed numerals.
-
-The conditions the milestone lists are each pinned by a named unit test rather than by an aggregate
-number: backing board (`ignores holes in the backing board beside the sheet`), both polarities in one
-photo (`finds a hole on the white paper outside the disc`), the sighting dashes (`never detects the
-sighting sheet dashed guides`), overlapping holes (`reads two holes overlapping at 3 mm as ONE shot`),
-**tilt and curl** (`finds every hole on a tilted sheet`, added in fix round 1: the same eight holes on a
-sheet rotated 30° and foreshortened to axis ratio 0.82 — 8/8 matched, mean error 0.34 mm, against 0.33 mm
-square to the camera; `cv:eval` gained the matching `precision rot 30 · 8 separate holes` row), and the
-lighting gradient (`finds every hole under a lighting gradient that defeats the global thresholds`).
-
-### Deviations and decisions
-
-- **Three new modules instead of one `holes.ts`** (`hole-mask.ts`, `holes-region.ts`,
-  `component-metrics.ts`). The milestone's *Files* names `holes.ts`; a single file holding both
-  segmentations, the shared masks and the measurement pass would have been ~700 lines, against AGENTS.md's
-  ~300-line rule. No behaviour moved: `holes.ts` re-exports `printedCircleRadiiMm` and the M11 constants,
-  so every existing import still resolves.
-- **`multiplicity` is always 1, and `cluster` is still measured** — it flags the shot and discounts the
-  confidence, exactly as step 3b says. See Open question 5 for what that changed.
-- **Region statistics are per class, not per tile-blind.** A tile takes the class of its centre (as the
-  step says), and the median, MAD and candidate pixels are then taken only from pixels *of that class*.
-  Without this a paper tile that clips the black aiming mark reads the mark as one enormous dark "hole",
-  and a disc tile that clips the paper never reaches its threshold at all.
-- **`REGION_MAD_FLOOR = 1`** (new constant, `constants.ts`): gray levels are 8-bit integers, so a flat
-  synthetic tile measures MAD 0 and `k × MAD` would collapse to "any pixel that differs at all".
-- **A cheap pre-check before OpenCV runs on a tile**: a tile whose raw candidate pixels cannot reach half
-  the area gate is skipped without constructing a Mat. This is what makes 596 tiles cost ~110 ms.
-- **Dedupe prefers a component that does not touch its tile's edge**, then higher fill, then larger area,
-  then position. The milestone says "keep the higher fill"; on its own that can prefer a hole sliced by a
-  tile boundary (a half-disc fills its own fitted ellipse nicely) over the whole copy in the neighbouring
-  tile.
-- **REV-33 is enforced twice**: the scan never looks at a tile whose centre is outside the search area,
-  *and* a candidate whose centroid lands beyond it is dropped and reported as `outside-crop` — the step
-  asks for the assertion, not just the assumption.
-- **Stage B writes the capped shots back only when something was actually dropped**, so a re-run never
-  rewrites shots it did not change.
-- **`cv:eval` is 496 lines** (was 349). It is a Node-only script, not app code.
-- `tests/helpers/synthetic-target.ts` gained `shadowOpacity` (the lighting gradient), `TILE_BOUNDARY_HOLE`
-  and `BACKING_BOARD_HOLES`; `tests/e2e/pipeline.spec.ts` now asserts `multiplicity === 1` and
-  `shots.length <= 10` on the fake-camera precision target.
+Re-run: `pnpm check` pass (477 tests), `pnpm cv:eval` FAIL (exit 1, gate as above), `pnpm test:e2e` pass (30/30),
+`pnpm review:detection` pass (46 photos).
 
 ### Owner checks (not done by the agent)
 
-1. **On the iPhone, photograph both sheets → Analyze → confirm the shot count is plausible and the
-   diagram resembles the photo.** This is the milestone's own human acceptance step.
-2. **Export ground truth for both reference photos** (M13 step 7 → `fixtures/reference/ground-truth/`).
-   Until then alignment accuracy (REV-31) is unverified and the real-photo recall/precision numbers above
-   cannot be trusted in either direction — see Open question 2.
-3. **Decide Open question 1** (whether `Shot` should carry its blob area so the cap's tie-break can use
-   it) and **Open question 3** (whether REV-27's second test should be `fill`/`circularity` rather than
-   elongation).
-4. **Decide Open question 9**: step 8 asks for `needs-attention` on an overlay-fallback alignment, but
-   analysis-pipeline §4 gives `analyzed` with the `alignment-uncertain` reason shown. Either §4 gains a
-   rule (a spec change that also affects M13's Adjust preview) or step 8's wording is corrected. Nothing
-   was changed either way, per golden rule 2.
-5. **Decide Open question 10**: the REV-33 candidate bound is `outerRadiusMm + 5` (M11's paper region),
-   while step 2's prose says the crop is `outerRadiusMm + 10`. No regression either way — but the
-   wording and the code differ by 5 mm.
+1. **Re-rate:** run `pnpm review:detection`, open `fixtures/private/review/detection-review.html`, press *Carry over
+   earlier marks → Use the 2026-09-17 labels*, correct the marks (*Add missed hole* for holes beside a marker), rate
+   every photo and paste the export.
+2. **Decide Open question 1** (the gate is not reached: accept, move the floors, or another round) and questions 2
+   (record the sheet fallback), 3 (REV-27's recall cost) and 6 (paper numeral boxes).
+3. **On the iPhone:** photograph both sheets → Analyze → confirm the shot count is plausible, the diagram resembles the
+   photo, and Stage A still finishes in reasonable time (A5 is ~7.5x slower in Node, Open question 5).
