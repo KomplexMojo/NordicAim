@@ -26,6 +26,12 @@ Milestones **M16** (REV-27, REV-28) and **M17** (REV-29, REV-30); M15 now depend
 | REV-29 | **Unfound shots are parked as draggable markers.** When detection finds fewer shots than rounds fired, the remainder appear as markers on the white margin beside the target; the owner drags each one onto the hole it belongs to. They are derived, never stored. | — | "If image recognition can only find 8 of 10 shots, place the shots it can't find as diagram images on the white somewhere out of the way. That will allow users to easily drag the icon over top of where it should be on the target." |
 | REV-30 | **A compare slider under the target**: full left shows the diagram, full right shows the source photo, in between it wipes across. A fade mode (diagram's opacity over the photo) is the alternative the same control offers. | M12 step 4 ("a toggle to show the working photo") | "Add a horizontal slider where the diagram is so that the user can move it back and forth… If that is not possible try to use transparency to overlay a transparent diagram on top of a more opaque source image." |
 
+## 2026-09-16 (evening): the backing board is not the target
+
+| ID | Decision | Supersedes | Owner's words / reason |
+|---|---|---|---|
+| REV-33 | **Detection never searches outside the rectified target crop.** A round that landed off the scoring area stays unidentified and is accounted for by the owner in Adjust, where a parked marker can be marked **off target** rather than placed on the diagram. | M11 step 1 (the crop bounded the rectify step, but nothing said it bounded the *search*) | The owner's reference photos, 2026-09-16: the backing board beside the sheet is peppered with old holes, dozens of them. Nothing stopped the detector collecting those, and combined with the REV-28 cap it could have kept backing-board holes and dropped real ones. |
+
 ## 2026-09-16 (evening): scan the target in regions
 
 | ID | Decision | Supersedes | Owner's words / reason |

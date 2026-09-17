@@ -50,7 +50,15 @@ The Adjust screen (M17), the summary image (M14), any change to ring scoring mat
      finds ten will eventually find ten, and they will not be holes.
    - **Keep it only if it wins.** `cv:eval` reports recall and precision for the global method and the region method on every
      reference photo. The region scan ships only if it is better; record both tables in Completion notes either way.
-2. **Reject printed glyphs (REV-27).** M11 step 4 erases printed *circles* only, so the numerals at 12 and 6 o'clock survive and
+2. **Never search outside the target crop (REV-33).** The owner's reference photos show the backing board peppered with old
+   holes right up against the sheet — dozens of them, along the bottom and right of several photos. Nothing currently stops the
+   detector collecting those, and with the step 4 cap it could keep *backing board* holes and drop real ones.
+   - The search area is the rectified crop from M11 step 1 (side `2 × (outerRadiusMm + 10) × 8`) and **nothing outside it** is
+     ever a candidate. Assert this rather than assume it: a component whose centroid falls outside the crop is dropped.
+   - A round that landed off the scoring area is still a fired round. It stays unidentified, so `missing` counts it, and the
+     owner accounts for it in Adjust — see M17, where a parked marker can be marked **off target** instead of placed.
+   - Test with a reference photo whose backing board is visible in frame: no detection may fall outside the crop.
+3. **Reject printed glyphs (REV-27).** M11 step 4 erases printed *circles* only, so the numerals at 12 and 6 o'clock survive and
    are detected as shots. Add a shape filter to M11 step 5, before the component is accepted:
    - `elongation = major/minor` of the fitted ellipse; reject `elongation > ELONGATION_MAX`.
    - `strokeRadius` = the maximum inscribed radius (distance transform peak) of the component; reject
@@ -93,6 +101,17 @@ The Adjust screen (M17), the summary image (M14), any change to ring scoring mat
    add a test for it rather than assuming.
 
 ## Tests
+- **Conditions the tuning set must cover** (from the owner's reference photos in `fixtures/private/additional references/`, 46
+  files). Report each separately in `cv:eval` rather than reporting one aggregate number:
+  - **Backing board in frame** (REV-33): old holes in the board beside the sheet — none may be detected.
+  - **Holes on the white paper outside the black**: dark-on-light, the opposite polarity to a hole on the aiming mark. Both
+    polarities must work in the same photo.
+  - **Sighting dashed circles**: the 110 mm and 40 mm guides are *white dashes on black* — bright blobs on a dark ground, which
+    is exactly the signature of a hole inside the disc. They are covered today only because 55 and 20 are in
+    `printedCircleRadiiMm` (`[7.5, 20, 22.5, 55, 57.5]`). Add a test that pins this: no detection on the dashes.
+  - **Overlapping and torn holes** touching each other near the centre (several photos), which must stay one shot each under
+    REV-28 rather than becoming an invented multiplicity.
+  - **Tilt and curl**: sheets photographed at an angle and not flat.
 - Region scan (REV-32): on a synthetic sheet with a lighting gradient across it, every hole is found, where the old global
   threshold misses at least one; a hole placed exactly on a tile boundary is returned **once**; tiles with no candidate are
   skipped (assert the refine pass touches only the affected tiles); and a sheet with 6 holes but 10 declared rounds returns

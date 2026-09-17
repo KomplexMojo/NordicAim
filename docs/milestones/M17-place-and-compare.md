@@ -37,6 +37,9 @@ Detection itself (M16), the summary image (M14), storing anything new — parked
    - Dragging a tray marker onto the image creates a shot at `pxToMm(point)` with `source: 'manual'`, `multiplicity: 1`, and
      removes it from the tray (the tray count is derived, so it shrinks on its own once the shot exists).
    - Dragging a placed shot back into the tray deletes that shot.
+   - Each tray marker also offers **off target** (REV-33): the round was fired but hit outside the scoring area — the backing
+     board, or the paper beyond ring 1 — so it cannot be dragged onto the diagram. Marking it records a miss for that round
+     instead of leaving it unaccounted, which is what a shot off the paper actually is.
    - The tray is **derived state**: never stored, never sent to the pipeline, absent from `analysis.shots`. No data-model change.
    - When `unplaced === 0` the tray is hidden.
 2. **Diagram in image space.** `renderDiagramOverlaySvg(result, shots, calibration, template, imageSize)` returns the diagram's
