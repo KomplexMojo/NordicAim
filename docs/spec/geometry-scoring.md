@@ -213,6 +213,11 @@ Units sorted: D#0, D#1, B, C, A → standing = {D#0, D#1}; prone = {B, C, A}.
 `overcount = max(0, identified - declared)`.
 If `overcount > 0`, raise warning `overcount` and set all three modes equal to the identified-only result.
 
+**Since REV-28, `overcount` can only come from the owner's own edits.** Automatic detection gives every shot `multiplicity` 1 and
+is capped to the declared rounds before anything is scored (analysis-pipeline §2 A5), so a 10-round precision target cannot exceed
+`maxPossible = declared * 10`. The rule stays defined because Adjust lets the owner add shots or raise a multiplicity deliberately.
+In the other direction, `missing > 0` is what the Adjust screen shows as parked markers to drag onto the target (REV-29).
+
 ### 8.1 Precision modes
 
 With identified ring values `v_i`:

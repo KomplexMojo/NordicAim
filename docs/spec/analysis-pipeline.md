@@ -56,7 +56,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 | A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
 | A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
 | A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
-| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual) | `analysis.shots` (source `auto`) |
+| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Printed glyphs are rejected by shape (REV-27); every automatic shot has `multiplicity` 1 (REV-28); the set is capped to the declared rounds when they are known, warning `extra-candidates-dropped` (REV-28) | `analysis.shots` (source `auto`) |
 
 **Stage B: runs when analysis has been requested for the session and the photo's metadata is complete**
 

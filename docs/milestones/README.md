@@ -26,7 +26,9 @@ as shown (`<model> · <effort>`).
 | [M12](M12-analysis-results.md) | Analysis generation and results screen | **3. receive analysis** | M05, M09, M11 | opus · high | opus · high | no | done |
 | [M13](M13-adjust-shots.md) | Adjust shots (optional correction) | optional | M12 | opus · high | opus · high | no | done |
 | [M14](M14-summary-image-share.md) | Session summary image and share | **3. receive analysis** | M12 | sonnet · medium | sonnet · high | no | pending |
-| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14 | sonnet · medium | sonnet · high | yes | pending |
+| [M16](M16-detection-accuracy.md) | Detection accuracy and shot constraints | generate analysis | M12 | opus · high | opus · high | no | pending |
+| [M17](M17-place-and-compare.md) | Unplaced shot markers and the diagram/photo compare slider | optional · receive analysis | M13, M16 | opus · high | opus · high | no | pending |
+| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17 | sonnet · medium | sonnet · high | yes | pending |
 
 ```mermaid
 flowchart TD
@@ -47,9 +49,17 @@ flowchart TD
   M11 --> M12
   M12 --> M13
   M12 --> M14
+  M12 --> M16
+  M13 --> M17
+  M16 --> M17
   M13 --> M15
   M14 --> M15
+  M16 --> M15
+  M17 --> M15
 ```
+
+**M16 and M17 are numbered after M15 but run before it** (M15 depends on them). They come from the owner's review of real
+targets on 2026-09-16: detection quality (REV-27, REV-28) and placing/comparing shots by hand (REV-29, REV-30).
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.

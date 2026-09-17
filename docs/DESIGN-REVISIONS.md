@@ -14,6 +14,18 @@
 - **Not part of the product:** Apple Health; any Garmin connection or upload (attaching the summary image in Garmin Connect is manual).
 - **Everything else** is post-MVP, listed in [`BACKLOG.md`](BACKLOG.md).
 
+## 2026-09-16: detection quality and correcting shots by hand
+
+The owner compared real target photos with the diagrams the app produced and found the diagrams did not represent the photos.
+Milestones **M16** (REV-27, REV-28) and **M17** (REV-29, REV-30); M15 now depends on both.
+
+| ID | Decision | Supersedes | Owner's words / reason |
+|---|---|---|---|
+| REV-27 | **Printed ring numerals must not be detected as shots.** Detection rejects thin printed glyphs by shape (elongation and stroke width), with the thresholds measured on the owner's real photos. | M11 step 4 (printed *circles* erased; numerals survive) | "There needs to be some refinement of the image recognition. The diagrams don't represent the source images well." On `IMG_5132-precision.jpg` this produced 19 detections / 62 units against ~10 rounds. |
+| REV-28 | **Always assume one hole to start, and never report more shots than the declared rounds.** Every automatic detection has `multiplicity` 1; overlapping holes stay one shot until the owner says otherwise. If detection finds more candidates than rounds fired, the best `declared` are kept, the rest are dropped and reported. A 10-round precision target can therefore never score above 100. | M11 step 5 (`multiplicity` inferred from blob area, 2–8) | "Some basic rules and constraints such as always assume one hole to start, and if there are 10 shots on a precision target the max score can be 100." |
+| REV-29 | **Unfound shots are parked as draggable markers.** When detection finds fewer shots than rounds fired, the remainder appear as markers on the white margin beside the target; the owner drags each one onto the hole it belongs to. They are derived, never stored. | — | "If image recognition can only find 8 of 10 shots, place the shots it can't find as diagram images on the white somewhere out of the way. That will allow users to easily drag the icon over top of where it should be on the target." |
+| REV-30 | **A compare slider under the target**: full left shows the diagram, full right shows the source photo, in between it wipes across. A fade mode (diagram's opacity over the photo) is the alternative the same control offers. | M12 step 4 ("a toggle to show the working photo") | "Add a horizontal slider where the diagram is so that the user can move it back and forth… If that is not possible try to use transparency to overlay a transparent diagram on top of a more opaque source image." |
+
 ## 2026-09-16: measuring the precision disc
 
 | ID | Decision | Supersedes | Owner's words / reason |
