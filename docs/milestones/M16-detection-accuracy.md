@@ -10,13 +10,23 @@ diagrams do not represent the photos: printed ring numerals are detected as shot
 10-round precision sheet reported 19 detections / 62 units. Three rules fix it (REV-27, REV-28): reject printed glyphs, start every
 detection at **one hole**, and never report more shots than the declared rounds.
 
+**Rework, 2026-09-17 (REV-34 to REV-37).** The first implementation was committed as `90464b8` and then rated by the owner on all
+46 real photos: mean quality **below 2 out of 5**, recall **53%**, precision **61%**. The cause is measured, not guessed — see the
+*Rework* section below, which **takes precedence over Steps 1, 2, 3, 7 and 8** wherever they disagree. Steps 4, 5, 6 and 9 stand.
+
 ## Read first
+- **The *Rework* section below, first.** Then `docs/DESIGN-REVISIONS.md` REV-34 to REV-37 for the evidence.
 - `docs/spec/analysis-pipeline.md` §2 (A5), §4
 - `docs/spec/geometry-scoring.md` §7, §8
 - `docs/milestones/M11-shot-detection.md` Steps 4–5 and Open questions 1–4
+- `fixtures/private/review/` (gitignored): `ground-truth-holes-2026-09-17.json` (the 390 labelled holes, with per-photo caveats),
+  `detection-review-2026-09-17.json` (the owner's raw ratings and comments), and `tool/` (the review page and the probes that
+  produced the evidence — a reference implementation, not code to import)
 
 ## In scope
 `src/lib/cv/holes.ts` (glyph rejection, multiplicity), a pure `capShots` helper, its use in Stage A and Stage B, `cv:eval` reporting.
+**Rework adds:** polarity-free hole candidates (R1), printed-mark masking by template geometry including numeral rotation (R2),
+paper-sheet search area (R3), the labelled-hole gate in `cv:eval` (R4), and the owner review page as a repo command (R5).
 
 ## Out of scope
 The Adjust screen (M17), the summary image (M14), any change to ring scoring maths.
@@ -27,6 +37,78 @@ The Adjust screen (M17), the summary image (M14), any change to ring scoring mat
 - `src/lib/pipeline/stage-a.ts`, `stage-b.ts`
 - `scripts/cv-eval.ts`
 - `tests/unit/cv/holes.test.ts`, `tests/unit/scoring/cap-shots.test.ts`, `tests/unit/pipeline/stage-a.test.ts`
+- **Rework:** `src/lib/cv/print-mask.ts` (pure: printed-mark geometry and numeral rotation), `src/lib/cv/sheet.ts` (pure: paper-sheet
+  search area), `scripts/detection-review/` + `"review:detection"` in `package.json`, `tests/helpers/labelled-holes.ts`
+
+## Rework (2026-09-17) — read this first
+
+**What the owner's review measured** (all numbers from the 390 labelled holes; details in REV-34 to REV-37):
+- Holes on the black mark are **not** reliably brighter than it. Of the holes the detector missed there, 66 were darker, 60 about the
+  same and only 29 brighter; the holes it did find were overwhelmingly the bright kind (158 of 191). Both kinds occur in the same photo.
+- **182 of 183 missed holes produced no candidate at all** — they are lost at thresholding, not by any later filter.
+- The bright things on the black are the **printed white numerals, ring lines and dashed guides**, which is where the false detections
+  come from. No shape metric separates them from holes; their *position* does.
+- Holes on the white paper are outside the current search bound: paper holes lie at 61–97 mm (sighting) and 56–103 mm and a few
+  beyond 110 (precision), against bounds of 62.5 and 82.2 mm.
+
+**What was measured to work.** On the labelled holes, each signal's AUC against three kinds of non-hole (0.5 = no signal, 1.0 = perfect):
+
+| Signal, on the black mark | vs plain black | vs a printed ring line | vs owner-flagged false |
+|---|---|---|---|
+| core brighter than surround (the current rule) | 0.71 | 0.69 | 0.39 |
+| edge energy inside the hole footprint | **0.97** | **0.93** | 0.81 |
+| share of pixels deviating either way | **0.98** | **0.91** | 0.69 |
+
+On the white paper the same polarity-free signals score 0.95–0.97 against plain paper. So: finding holes needs a polarity-free
+signal, and rejecting printed marks needs geometry. The probes are in `fixtures/private/review/tool/probe.mts` and `polarity.mts`.
+
+**R1. Polarity-free candidates (REV-34).** Replace the signed thresholds of M11 step 3 and REV-32 with a test that fires on a hole
+whether its core is darker, brighter or equal to its surroundings. Start from the two signals measured above (edge energy within a
+hole-sized footprint, and the fraction of pixels deviating from the local median by more than `k × MAD` in either direction). Keep
+REV-32's tiling and local statistics if they still earn their place, but **measure it**: report recall and precision with and without
+tiling on the labelled set, and keep whichever wins. The M11 area gate and REV-28's `multiplicity = 1` stand.
+
+**R2. Mask printed marks by geometry (REV-35).** Build the printed-mark mask from the template, in target mm:
+- **Ring lines and dashed guides:** the annuli already erased by M11 step 4 (`printedCircleRadiiMm`) — keep, and add a test that a
+  dashed guide on the sighting sheet produces no detection.
+- **Numerals (precision sheet only):** numerals 1–8 print at the **centre of their ring band** on **four axes**. The sheet's rotation
+  in the photo is unknown, so estimate it first: sample the printed-mark response along each band-centre circle and fit the 90°-periodic
+  phase (for example the argument of Σ w·e^{4iθ}). Mask a box around each of the 32 positions, sized from the printed glyphs (measure
+  it on the sample sheets; do not guess). A candidate inside a numeral box is dropped unless its R1 score clears a threshold measured
+  on labelled holes that genuinely sit on numerals — report how many such holes exist and how many the mask costs.
+- REV-27's elongation/stroke filter is **no longer the mechanism**. Keep it only if, measured on the labelled set with R1 and R2 in place,
+  removing it lowers precision; otherwise delete it and say so.
+
+**R3. Search the paper sheet (REV-36).** Segment the paper sheet around the target — the bright, low-saturation region connected to the
+area just outside the outermost printed circle — fill it, and search inside its boundary eroded by 3 mm. Nothing outside the sheet is
+ever a candidate, so REV-33's backing-board guarantee holds. Cap the search radius at 150 mm; if sheet segmentation fails, fall back to
+105 mm and record the fallback on the analysis. Report how often segmentation fails on the 40 photos with a target. The rectified
+image must cover the search area, so its canonical scale may need to drop below 8 px/mm: choose it from the working resolution, and
+report Stage A time before and after.
+
+**R4. Gate on the labelled holes (REV-37).** `cv:eval` loads `fixtures/private/review/ground-truth-holes-2026-09-17.json` (skipped with a
+loud notice when absent, as CI will be):
+- Match detections to labelled holes greedily in working px, tolerance `0.8 × hole diameter` (the owner tapped by eye).
+- Report recall and precision **per photo and per template**, never only in aggregate, plus the baseline from this review
+  (recall 53%, precision 61%; precision sheets 54% / 54%, sighting 51% / 87%).
+- **Exclude caveated photos from the gate** (the `caveat` field — four photos where the owner read rank numbers as shot counts, one
+  incompletely tagged, one where the wrong target was analysed) and report them separately.
+- **Exit non-zero** below recall **0.85** or precision **0.85** on the gated set. These floors are provisional and the owner may move
+  them. If they cannot be reached, stop and record the measured numbers under Open questions — do not tune until the numbers clear.
+- Labels can be incomplete: a real hole the owner never tapped counts as a false positive. List every "false positive" the new detector
+  makes on a gated photo so the owner can confirm or correct it in R5.
+
+**R5. The owner re-rates (REV-37).** Port `fixtures/private/review/tool/` (`extract.mts`, `build.mjs`, `template.html`) to
+`scripts/detection-review/` as `pnpm review:detection`. It reads `fixtures/private/additional references/`, writes
+`fixtures/private/review/detection-review.html`, and **never writes an image or a photo-derived file outside `fixtures/private/`**.
+Fix the two ways the first page misled the owner:
+- rank labels read as shot counts — label them `#1`, `#2`…, and say on the page that every detection is **one** hole;
+- a tap next to a detection toggled it instead of adding a missed hole — add a per-photo mode switch (**Mark detections** / **Add missed
+  hole**) so a hole beside a marker can be added.
+Also let the page load a previous export so the owner's existing marks carry over where positions still match.
+
+**Moved out of M16:** Step 8 (alignment accuracy) is now **M18**, which the owner asked for after detection. Its "must not present as a
+finished score" half (Step 9, §4 rule 9) stays here.
 
 ## Steps
 1. **Scan the target in regions (REV-32).** This replaces M11 step 3's two global thresholds
@@ -148,14 +230,24 @@ The Adjust screen (M17), the summary image (M14), any change to ring scoring mat
 - Stage A: complete categorization → capped and warned; incomplete categorization → not capped.
 - Stage B: re-caps after metadata; `identified <= declared` always, so `overcount` is unreachable from auto detection.
 - E2E: the demo precision fixture still analyses without `too-many-shots`.
+- **Rework:**
+  - R1: a synthetic sheet with dark-core, bright-core and equal-core holes on the black **and** dark holes on the paper → all found.
+  - R2: a synthetic precision sheet rotated by 0°, 17° and 45° → numeral rotation estimated within ±2°, and no detection on any numeral.
+  - R2: a sighting sheet's dashed guides produce no detection.
+  - R3: a synthetic sheet on a backing board peppered with holes → no detection off the sheet; holes on the paper beyond the old bound are found.
+  - R3: sheet segmentation failing → the 105 mm fallback is used and recorded.
+  - R4: the gate's matcher, on a hand-built labelled case, gives the expected recall/precision; caveated photos are excluded.
 
 ## Acceptance
 ```bash
 pnpm check
 pnpm cv:eval
 pnpm test:e2e
+pnpm review:detection
 ```
-Paste the `cv:eval` table and the measured glyph-filter values into Completion notes.
+Paste the `cv:eval` table and the measured glyph-filter values into Completion notes. **Rework:** also paste the per-template
+recall/precision against the baseline, the numeral-mask cost, the sheet-segmentation failure count and Stage A time before/after.
+**Human (owner), rework:** open `fixtures/private/review/detection-review.html`, rate every photo again and paste the export.
 **Human (owner):** on the iPhone, photograph both sheets → Analyze → confirm the shot count is plausible and the diagram
 resembles the photo.
 

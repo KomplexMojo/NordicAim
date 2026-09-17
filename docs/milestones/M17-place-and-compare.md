@@ -2,7 +2,7 @@
 
 | Depends on | Tier | Size | MVP step |
 |---|---|---|---|
-| M13, M16 | high | M | optional correction · receive analysis |
+| M13 | high | M | optional correction · receive analysis |
 
 ## Goal
 Two owner requests from reviewing real targets (2026-09-16):

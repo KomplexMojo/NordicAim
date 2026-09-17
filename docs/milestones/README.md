@@ -25,10 +25,11 @@ as shown (`<model> · <effort>`).
 | [M11](M11-shot-detection.md) | Shot detection | generate analysis | M10 | opus · high | opus · high | no | done |
 | [M12](M12-analysis-results.md) | Analysis generation and results screen | **3. receive analysis** | M05, M09, M11 | opus · high | opus · high | no | done |
 | [M13](M13-adjust-shots.md) | Adjust shots (optional correction) | optional | M12 | opus · high | opus · high | no | done |
-| [M14](M14-summary-image-share.md) | Session summary image and share | **3. receive analysis** | M12, M16 | sonnet · medium | sonnet · high | no | pending |
-| [M16](M16-detection-accuracy.md) | Detection accuracy, alignment accuracy, shot constraints | generate analysis | M12 | opus · high | opus · high | no | blocked: needs owner ground truth (M13 export) |
+| [M14](M14-summary-image-share.md) | Session summary image and share | **3. receive analysis** | M12, M16, M18 | sonnet · medium | sonnet · high | no | pending |
+| [M16](M16-detection-accuracy.md) | Detection accuracy and shot constraints (rework: polarity-free, geometry masks, sheet search) | generate analysis | M12 | opus · high | opus · high | yes | pending |
 | [M17](M17-place-and-compare.md) | Unplaced shot markers and the diagram/photo compare slider | optional · receive analysis | M13 | opus · high | opus · high | no | pending |
-| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17 | sonnet · medium | sonnet · high | yes | pending |
+| [M18](M18-alignment-perspective.md) | Alignment under perspective (the centre rings) | overlay on template · generate analysis | M16 | opus · high | opus · high | yes | pending |
+| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18 | sonnet · medium | sonnet · high | yes | pending |
 
 ```mermaid
 flowchart TD
@@ -52,6 +53,9 @@ flowchart TD
   M12 --> M16
   M13 --> M17
   M16 --> M14
+  M16 --> M18
+  M18 --> M14
+  M18 --> M15
   M13 --> M15
   M14 --> M15
   M16 --> M15
@@ -62,7 +66,12 @@ flowchart TD
 targets on 2026-09-16: detection quality (REV-27, REV-28, REV-31) and placing/comparing shots by hand (REV-29, REV-30).
 
 **M14 now waits for M16.** The session summary image packages the analysis, so there is no point building it from numbers the
-owner has shown to be wrong. Run order from here: **M16 → M17 → M14 → M15**.
+owner has shown to be wrong. Run order from here: **M16 → M17 → M18 → M14 → M15**.
+
+**2026-09-17 owner review (REV-34 to REV-37).** The owner rated M16's first detector on 46 real photos: below 2/5, recall 53%,
+precision 61%. M16 is reworked against the owner's 390 labelled holes and is now an **owner gate** — the run stops so the owner can
+re-rate it with `pnpm review:detection` before anything is built on it. **M18** (new) fixes the centre-ring offset the owner reported;
+it is also an owner gate, because the fix may change the stored calibration shape.
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.
