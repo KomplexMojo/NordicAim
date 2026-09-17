@@ -3,7 +3,7 @@
 
 import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
-import { isCategorizationComplete } from '@/lib/domain/categorization';
+import { declaredRounds, isCategorizationComplete } from '@/lib/domain/categorization';
 import type { Position, Warning } from '@/lib/domain/enums';
 import type { Categorization } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
@@ -12,6 +12,7 @@ import { summaryHooks } from '@/lib/pipeline/hooks';
 import { renderDiagramSvg, type DiagramInput } from '@/lib/render/diagram';
 import type { RenderTools } from '@/lib/render/rasterize-browser';
 import { ENGINE_VERSION, analyzeTarget } from '@/lib/scoring/analyze';
+import { capShots } from '@/lib/scoring/cap-shots';
 import type { ServiceContext } from '@/lib/services/context';
 import { AnalysisNotFoundError, PhotoNotFoundError } from '@/lib/services/photos';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -126,14 +127,21 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
     const template = categorization.template!;
     const position = categorization.position!;
 
+    // REV-28: cap again now that the declared rounds are known for certain, so nothing is scored or
+    // drawn that breaks the rule — a 10-round precision target cannot score above 100.
+    const capped = capShots(analysis.shots, declaredRounds(categorization));
+    const shots = capped.kept;
+
     // B2: scoring only means something once the target has been located on the sheet.
     const result =
-      analysis.calibration === null
-        ? null
-        : analyzeTarget({ template, categorization, shots: analysis.shots, profile });
+      analysis.calibration === null ? null : analyzeTarget({ template, categorization, shots, profile });
 
     // B4 (warnings half; the status itself is computed inside the transaction below).
-    const warnings = stageBWarnings(analysis, categorization);
+    const stageAWarnings = stageBWarnings(analysis, categorization);
+    const warnings =
+      capped.dropped.length > 0 && !stageAWarnings.includes('extra-candidates-dropped')
+        ? [...stageAWarnings, 'extra-candidates-dropped' as const]
+        : stageAWarnings;
 
     // B3: rasterise before the transaction (data-model §6).
     const diagrams =
@@ -143,7 +151,7 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
             {
               template,
               result,
-              shots: analysis.shots,
+              shots,
               positionLabel: positionLabel(position),
               captureLocal: photo.captureTime.local,
               lighting: photo.lighting,
@@ -163,6 +171,9 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
 
     const next: TargetAnalysis = {
       ...currentAnalysis,
+      // Only touched when the cap actually dropped something, so a re-run never rewrites shots it
+      // did not change (and never renumbers a manual one).
+      shots: capped.dropped.length > 0 ? shots : currentAnalysis.shots,
       pipeline: { ...currentAnalysis.pipeline, stageB: 'done', error: null, warnings },
       computed: result === null ? null : { engineVersion: ENGINE_VERSION, result },
       updatedAt: nowIso,

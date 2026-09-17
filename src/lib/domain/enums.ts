@@ -22,6 +22,7 @@ export const Reason = z.enum([
   'target-not-found',
   'no-shots-found',
   'too-many-shots',
+  'extra-candidates-dropped',
   'rounds-unaccounted',
   'alignment-uncertain',
   'image-blurry',
@@ -29,7 +30,12 @@ export const Reason = z.enum([
 ]);
 export type Reason = z.infer<typeof Reason>;
 
-export const Warning = z.enum(['alignment-uncertain', 'image-blurry', 'template-mismatch']);
+export const Warning = z.enum([
+  'extra-candidates-dropped',
+  'alignment-uncertain',
+  'image-blurry',
+  'template-mismatch',
+]);
 export type Warning = z.infer<typeof Warning>;
 
 export const StageState = z.enum(['pending', 'running', 'done', 'error']);

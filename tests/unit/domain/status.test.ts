@@ -142,6 +142,35 @@ describe('photoStatus', () => {
     expect(out).toEqual({ status: 'needs-attention', reasons: ['too-many-shots', 'alignment-uncertain'] });
   });
 
+  it('done/done, warnings [extra-candidates-dropped] -> needs-attention, [extra-candidates-dropped]', () => {
+    // REV-28: the shot set was capped to the declared rounds, so the owner confirms what was kept.
+    const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
+    const result = resultStub({ all, subsets: [all] });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ warnings: ['extra-candidates-dropped'] }),
+      result,
+    });
+    expect(out).toEqual({ status: 'needs-attention', reasons: ['extra-candidates-dropped'] });
+  });
+
+  it('orders the warnings extra-candidates-dropped, alignment-uncertain, image-blurry, template-mismatch', () => {
+    const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({
+        warnings: ['template-mismatch', 'image-blurry', 'alignment-uncertain', 'extra-candidates-dropped'],
+      }),
+      result: resultStub({ all, subsets: [all] }),
+    });
+    expect(out.reasons).toEqual([
+      'extra-candidates-dropped',
+      'alignment-uncertain',
+      'image-blurry',
+      'template-mismatch',
+    ]);
+  });
+
   it('done/done, precision golden fixture (missing 0) -> analyzed, []', () => {
     const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
     const result = resultStub({ all, subsets: [all] });

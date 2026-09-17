@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { AnalysisResult, SubsetResult, TargetAnalysis } from '@/lib/domain/analysis';
+import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { positionLabel } from '@/lib/pipeline/stage-b';
 import { targetHeadline } from '@/lib/render/text-lines';
@@ -240,6 +241,7 @@ export function TargetPage() {
         reasons={photo.reasons}
         missing={missing}
         hintTemplate={analysis?.pipeline.templateHint?.template ?? null}
+        declared={declaredRoundsOrNull(photo.categorization)}
       />
 
       <div className={zoomed ? 'max-h-[70vh] overflow-auto' : ''}>

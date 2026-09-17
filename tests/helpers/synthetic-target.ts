@@ -43,6 +43,12 @@ export interface SyntheticTargetSpec {
   angleDeg: number;
   /** M11: bullet holes to punch through the sheet, in target mm (+x right, +y up). */
   holesMm?: SyntheticHole[];
+  /**
+   * M16 (REV-32): a shadow gradient across the whole sheet, as the opacity of a black wash at the
+   * right-hand edge (0 at the left). One pair of global thresholds cannot cope with it; a tile's own
+   * median and MAD can.
+   */
+  shadowOpacity?: number;
 }
 
 /** A hole at `radialMm` from the centre, `angleDeg` counter-clockwise from +x in target space. */
@@ -77,6 +83,24 @@ export const SIGHTING_TEST_HOLES: SyntheticHole[] = [
   { xMm: 14.6, yMm: 34.5 }, // 3.0 mm from the one above
   { xMm: -30, yMm: -20 },
   { xMm: 5, yMm: -40 },
+];
+
+/**
+ * M16 (REV-32) Tests: a hole whose centre lands exactly on a scan-tile corner. At 8 px/mm the
+ * rectified precision square is 1395 px, so its centre is 697.5 px and 720 px is a multiple of both
+ * the 10 mm (80 px) and 12 mm (96 px) tile strides — this hole therefore straddles four tiles
+ * whichever tile size is in force, and must still come back exactly once.
+ */
+export const TILE_BOUNDARY_HOLE: SyntheticHole = { xMm: 32.8125, yMm: -2.8125 };
+
+/**
+ * M16 (REV-33) Tests: holes in the backing board beside the sheet. The precision search area stops
+ * at 77.2 + 5 = 82.2 mm, so neither of these may ever be detected — one sits just outside it, the
+ * other outside the rectified square altogether.
+ */
+export const BACKING_BOARD_HOLES: SyntheticHole[] = [
+  polarHole(85, 200),
+  polarHole(110, 25),
 ];
 
 /** The calibration the synthetic sheet was drawn with — the ground truth for a detection test. */
@@ -150,8 +174,21 @@ export function syntheticTargetSvg(spec: SyntheticTargetSpec): string {
   }
 
   parts.push(holeEllipses(spec));
+  parts.push(shadowWash(spec));
   parts.push('</svg>');
   return parts.join('');
+}
+
+/** M16 (REV-32): the lighting gradient, painted over everything the way a real shadow falls. */
+function shadowWash(spec: SyntheticTargetSpec): string {
+  const opacity = spec.shadowOpacity ?? 0;
+  if (opacity <= 0) return '';
+  return (
+    `<defs><linearGradient id="shadow" x1="0" y1="0" x2="1" y2="0">` +
+    `<stop offset="0" stop-color="#000" stop-opacity="0" />` +
+    `<stop offset="1" stop-color="#000" stop-opacity="${opacity}" /></linearGradient></defs>` +
+    `<rect x="0" y="0" width="${spec.width}" height="${spec.height}" fill="url(#shadow)" />`
+  );
 }
 
 /**

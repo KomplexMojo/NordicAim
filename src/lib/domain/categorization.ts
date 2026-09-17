@@ -24,6 +24,15 @@ export function declaredRounds(c: Categorization): number {
   return (c.roundsProne as number) + (c.roundsStanding as number);
 }
 
+/**
+ * geometry-scoring §7, the same count without the throw: the declared rounds, or `null` while the
+ * categorization is still incomplete. The `extra-candidates-dropped` message (analysis-pipeline §4)
+ * names this number in the `ready` state, before `analysis.computed` exists to carry it.
+ */
+export function declaredRoundsOrNull(c: Categorization): number | null {
+  return isCategorizationComplete(c) ? declaredRounds(c) : null;
+}
+
 export function defaultCategorization(template: TemplateId, position: Position): Categorization {
   if (position === 'prone') {
     return { template, position, roundsProne: 10, roundsStanding: null };

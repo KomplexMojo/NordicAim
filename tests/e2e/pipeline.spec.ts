@@ -84,7 +84,9 @@ test('Stage A reviews, aligns and finds shots on a captured precision target', a
   expect(analysis!.shots.length).toBeGreaterThan(0);
   for (const shot of analysis!.shots) {
     expect(shot.source).toBe('auto');
-    expect(shot.multiplicity).toBeGreaterThanOrEqual(1);
+    // REV-28: every automatic shot is one hole, and there are never more than the declared rounds.
+    expect(shot.multiplicity).toBe(1);
     expect(Number.isFinite(shot.xMm) && Number.isFinite(shot.yMm)).toBe(true);
   }
+  expect(analysis!.shots.length).toBeLessThanOrEqual(10);
 });

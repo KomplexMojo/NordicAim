@@ -26,7 +26,7 @@ as shown (`<model> · <effort>`).
 | [M12](M12-analysis-results.md) | Analysis generation and results screen | **3. receive analysis** | M05, M09, M11 | opus · high | opus · high | no | done |
 | [M13](M13-adjust-shots.md) | Adjust shots (optional correction) | optional | M12 | opus · high | opus · high | no | done |
 | [M14](M14-summary-image-share.md) | Session summary image and share | **3. receive analysis** | M12, M16 | sonnet · medium | sonnet · high | no | pending |
-| [M16](M16-detection-accuracy.md) | Detection accuracy, alignment accuracy, shot constraints | generate analysis | M12 | opus · high | opus · high | no | pending |
+| [M16](M16-detection-accuracy.md) | Detection accuracy, alignment accuracy, shot constraints | generate analysis | M12 | opus · high | opus · high | no | blocked: needs owner ground truth (M13 export) |
 | [M17](M17-place-and-compare.md) | Unplaced shot markers and the diagram/photo compare slider | optional · receive analysis | M13 | opus · high | opus · high | no | pending |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17 | sonnet · medium | sonnet · high | yes | pending |
 

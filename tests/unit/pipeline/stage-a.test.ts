@@ -330,6 +330,52 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     expect((await getAnalysisRecord(ctx.db, photoId))?.shots).toEqual([DETECTED]);
   });
 
+  it('caps the shots to the declared rounds and warns (REV-28)', async () => {
+    const { ctx, photoId } = await seed(); // categorization: prone, 10 rounds
+    const twelve: Shot[] = Array.from({ length: 12 }, (_, i) => ({
+      ...DETECTED,
+      id: `auto-${i + 1}`,
+      xMm: i,
+      yMm: 0,
+      confidence: 1 - i * 0.05,
+    }));
+    const { api } = stubCv(review({ detection }), twelve);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(10);
+    expect(analysis?.shots.map((shot) => shot.id)).not.toContain('auto-11');
+    expect(analysis?.pipeline.warnings).toEqual(['extra-candidates-dropped']);
+
+    // A capped photo is still for the owner to confirm (analysis-pipeline §4).
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.reasons).toEqual(['extra-candidates-dropped']);
+  });
+
+  it('does not cap, or warn, when the shots already fit the declared rounds', async () => {
+    const { ctx, photoId } = await seed();
+    const { api } = stubCv(review({ detection }), [DETECTED]);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toEqual([DETECTED]);
+    expect(analysis?.pipeline.warnings).toEqual([]);
+  });
+
+  it('leaves the shots uncapped while the categorization is incomplete (Stage A runs before metadata)', async () => {
+    const { ctx, photoId } = await seed({ template: null });
+    const twelve: Shot[] = Array.from({ length: 12 }, (_, i) => ({ ...DETECTED, id: `auto-${i + 1}`, xMm: i }));
+    const { api } = stubCv(review({ detection }), twelve);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(12);
+    expect(analysis?.pipeline.warnings).toEqual([]);
+  });
+
   it('falls back to the template hint when the photo has no template yet', async () => {
     const { ctx, photoId } = await seed({ withPrior: false, template: null });
     const sightingDisc: Calibration = { ...MEASURED, anchorDiameterMm: 115 };

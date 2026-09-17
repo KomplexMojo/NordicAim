@@ -20,7 +20,7 @@ import {
 import { useServices } from '@/lib/app/services';
 import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot, TargetAnalysis } from '@/lib/domain/analysis';
-import { isCategorizationComplete } from '@/lib/domain/categorization';
+import { declaredRoundsOrNull, isCategorizationComplete } from '@/lib/domain/categorization';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
@@ -323,6 +323,7 @@ export function AdjustPage() {
           status={preview.status}
           reasons={preview.reasons}
           hintTemplate={analysis.pipeline.templateHint?.template ?? null}
+          declared={declaredRoundsOrNull(photo.categorization)}
         />
       )}
 

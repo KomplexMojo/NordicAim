@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   IncompleteCategorizationError,
   declaredRounds,
+  declaredRoundsOrNull,
   defaultCategorization,
   emptyCategorization,
   isCategorizationComplete,
@@ -80,5 +81,20 @@ describe('categorization', () => {
     expect(() =>
       declaredRounds({ template: 'precision', position: 'standing', roundsProne: null, roundsStanding: null }),
     ).toThrow(IncompleteCategorizationError);
+  });
+
+  it('declaredRoundsOrNull: the same count when the categorization is complete', () => {
+    expect(
+      declaredRoundsOrNull({ template: 'precision', position: 'both', roundsProne: 3, roundsStanding: 2 }),
+    ).toBe(5);
+  });
+
+  it('declaredRoundsOrNull: null instead of a throw when it is incomplete', () => {
+    expect(
+      declaredRoundsOrNull({ template: 'precision', position: 'standing', roundsProne: null, roundsStanding: null }),
+    ).toBeNull();
+    expect(
+      declaredRoundsOrNull({ template: null, position: null, roundsProne: null, roundsStanding: null }),
+    ).toBeNull();
   });
 });

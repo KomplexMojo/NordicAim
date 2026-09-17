@@ -23,6 +23,12 @@ describe('reasonMessage', () => {
     expect(reasonMessage('too-many-shots')).toBe('More shots found than the rounds you entered. Check the rounds or adjust shots.');
   });
 
+  it('extra-candidates-dropped names the declared rounds (M16 step 5)', () => {
+    expect(reasonMessage('extra-candidates-dropped', { declared: 10 })).toBe(
+      'Some detected marks were ignored because you fired 10 rounds.',
+    );
+  });
+
   it('alignment-uncertain matches the spec table string', () => {
     expect(reasonMessage('alignment-uncertain')).toBe('Used your on-screen alignment — check the rings line up.');
   });

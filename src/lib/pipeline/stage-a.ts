@@ -5,10 +5,12 @@ import * as Comlink from 'comlink';
 
 import { BLUR_THRESHOLD } from '@/lib/cv/constants';
 import { SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
-import type { TargetAnalysis } from '@/lib/domain/analysis';
+import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
+import { declaredRounds, isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
+import { capShots } from '@/lib/scoring/cap-shots';
 import { scaleCalibration } from '@/lib/geometry/transform';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { AnalysisNotFoundError, PhotoNotFoundError } from '@/lib/services/photos';
@@ -162,10 +164,19 @@ export async function runStageA(
             settings.profileOverrides.holeDiameterMm,
           );
 
+    // A5 / REV-28: never report more shots than the declared rounds. Stage A runs before metadata,
+    // so it can only cap when the categorization is already complete; Stage B caps again once it is.
+    let shots: Shot[] | null = detected === null ? null : detected.shots;
+    if (shots !== null && isCategorizationComplete(photo.categorization)) {
+      const capped = capShots(shots, declaredRounds(photo.categorization));
+      shots = capped.kept;
+      if (capped.dropped.length > 0) warnings.push('extra-candidates-dropped');
+    }
+
     await commitAnalysis(ctx, photoId, (a) => ({
       ...a,
       calibration: choice.calibration,
-      shots: detected === null ? a.shots : detected.shots,
+      shots: shots === null ? a.shots : shots,
       pipeline: {
         ...a.pipeline,
         stageA: 'done',

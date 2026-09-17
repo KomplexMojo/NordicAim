@@ -125,14 +125,15 @@ adjusts the constant with a note.
 
 ```ts
 export type PhotoStatus = 'needs-metadata' | 'processing' | 'ready' | 'analyzed' | 'needs-attention' | 'failed';
-export type Reason = 'target-not-found' | 'no-shots-found' | 'too-many-shots' | 'rounds-unaccounted'
-  | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch';
+export type Reason = 'target-not-found' | 'no-shots-found' | 'too-many-shots' | 'extra-candidates-dropped'
+  | 'rounds-unaccounted' | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch';
 export function photoStatus(input: { categorization: Categorization; analysis: TargetAnalysis; result: AnalysisResult | null })
   : { status: PhotoStatus; reasons: Reason[] };
 ```
 
 Rules, first match sets the status. Pipeline warnings are **always appended** to `reasons` (in the order
-`alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`, `processing`, and `failed`:
+`extra-candidates-dropped`, `alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`,
+`processing`, and `failed`:
 1. categorization incomplete → `needs-metadata`, []
 2. `stageA === 'error' || stageB === 'error'` → `failed`, []
 3. `stageA` is `pending`/`running`, or `stageB === 'running'` → `processing`, []
@@ -140,7 +141,13 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 5. `calibration === null` → `needs-attention`, [`target-not-found`, ...warnings]
 6. `result === null || result.all.identified === 0` → `needs-attention`, [`no-shots-found`, ...warnings]
 7. any subset `overcount > 0` → `needs-attention`, [`too-many-shots`, ...warnings]
-8. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0), ...warnings]
+8. warnings include `extra-candidates-dropped` → `needs-attention`, [...warnings] (REV-28: the shot set was capped to
+   the declared rounds, so the owner should confirm which marks were kept)
+9. `pipeline.alignment.method === 'overlay'` → `needs-attention`, [`alignment-uncertain`, ...other warnings] (REV-31: the
+   overlay fallback means **no disc was found**, so the rings sit where the owner aimed rather than where the target is. A guess
+   must not present as a finished score. A `cv` alignment with `outsidePrior: true` is *not* escalated — there the disc was
+   measured, so its `alignment-uncertain` warning stays an appended note.)
+10. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0), ...warnings]
 
 **Vectors** (complete categorization unless stated; "done/done" = stageA done, stageB done):
 - incomplete categorization, stageA running → `needs-metadata`, []
@@ -150,6 +157,9 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 - done/done, calibration null → `needs-attention`, [target-not-found]
 - done/done, identified 0 → `needs-attention`, [no-shots-found]
 - done/done, overcount 1, warnings [alignment-uncertain] → `needs-attention`, [too-many-shots, alignment-uncertain]
+- done/done, warnings [extra-candidates-dropped] → `needs-attention`, [extra-candidates-dropped]
+- done/done, `alignment.method` `overlay` → `needs-attention`, [alignment-uncertain] (REV-31)
+- done/done, `alignment.method` `cv` with warnings [alignment-uncertain] (the `outsidePrior` case) → `analyzed`, [alignment-uncertain]
 - done/done, precision golden fixture (missing 0) → `analyzed`, []
 - done/done, golden with P8 multiplicity 1 (missing 1) → `analyzed`, [rounds-unaccounted]
 
@@ -160,6 +170,7 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 | `target-not-found` | Couldn't find the target in this photo. Use Adjust to line it up. |
 | `no-shots-found` | No shots detected. Use Adjust to add them. |
 | `too-many-shots` | More shots found than the rounds you entered. Check the rounds or adjust shots. |
+| `extra-candidates-dropped` | Some detected marks were ignored because you fired `<N>` rounds. |
 | `rounds-unaccounted` | `<N>` round(s) not found (often overlapping holes) — score shown as a range. |
 | `alignment-uncertain` | Used your on-screen alignment — check the rings line up. |
 | `image-blurry` | This photo looks blurry, so results may be less accurate. |

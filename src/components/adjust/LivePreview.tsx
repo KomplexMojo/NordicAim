@@ -11,13 +11,15 @@ interface LivePreviewProps {
   status: PhotoStatus;
   reasons: Reason[];
   hintTemplate: TemplateId | null;
+  /** `declaredRoundsOrNull(photo.categorization)`, for the `extra-candidates-dropped` message. */
+  declared: number | null;
 }
 
 /**
  * M13 step 3: the score this photo would get if the edits on screen were saved — `analyzeTarget`,
  * `targetHeadline` and the `photoStatus` reasons, recomputed on every edit.
  */
-export function LivePreview({ result, status, reasons, hintTemplate }: LivePreviewProps) {
+export function LivePreview({ result, status, reasons, hintTemplate, declared }: LivePreviewProps) {
   const missing = result === null ? 0 : result.subsets.reduce((sum, subset) => sum + subset.missing, 0);
 
   return (
@@ -41,7 +43,12 @@ export function LivePreview({ result, status, reasons, hintTemplate }: LivePrevi
         <div data-testid="live-status" data-status={status}>
           <StatusChip status={status} stageA="done" stageB="done" />
         </div>
-        <ReasonList reasons={reasons} missing={missing} hintTemplate={hintTemplate} />
+        <ReasonList
+          reasons={reasons}
+          missing={missing}
+          hintTemplate={hintTemplate}
+          declared={declared}
+        />
       </CardContent>
     </Card>
   );

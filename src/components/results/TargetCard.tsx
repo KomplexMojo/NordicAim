@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
+import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { positionLabel } from '@/lib/pipeline/stage-b';
 import { targetHeadline } from '@/lib/render/text-lines';
@@ -60,6 +61,7 @@ export function TargetCard({ sessionId, photo, analysis, onRetry }: TargetCardPr
           reasons={photo.reasons}
           missing={missing}
           hintTemplate={analysis?.pipeline.templateHint?.template ?? null}
+          declared={declaredRoundsOrNull(photo.categorization)}
         />
         <div className="flex gap-2">
           <Button asChild variant="outline" className="h-11 flex-1">

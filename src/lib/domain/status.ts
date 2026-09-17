@@ -3,7 +3,12 @@ import type { PhotoStatus, Reason, Warning } from './enums';
 import type { Categorization } from './photo';
 import type { AnalysisResult, TargetAnalysis } from './analysis';
 
-const WARNING_ORDER: Warning[] = ['alignment-uncertain', 'image-blurry', 'template-mismatch'];
+const WARNING_ORDER: Warning[] = [
+  'extra-candidates-dropped',
+  'alignment-uncertain',
+  'image-blurry',
+  'template-mismatch',
+];
 
 function orderedWarnings(warnings: Warning[]): Reason[] {
   return WARNING_ORDER.filter((w) => warnings.includes(w));
@@ -61,7 +66,13 @@ export function photoStatus(input: PhotoStatusInput): PhotoStatusOutput {
     return { status: 'needs-attention', reasons: ['too-many-shots', ...warnings] };
   }
 
-  // 8. analyzed
+  // 8. REV-28: the shot set was capped to the declared rounds, so the owner should confirm which
+  // marks were kept before the score counts as finished.
+  if (pipeline.warnings.includes('extra-candidates-dropped')) {
+    return { status: 'needs-attention', reasons: [...warnings] };
+  }
+
+  // 9. analyzed
   const totalMissing = result.subsets.reduce((sum, s) => sum + s.missing, 0);
   const reasons: Reason[] = [];
   if (totalMissing > 0) reasons.push('rounds-unaccounted');

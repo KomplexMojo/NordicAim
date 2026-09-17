@@ -4,6 +4,8 @@ import type { Reason } from './enums';
 export interface ReasonMessageContext {
   missing?: number;
   hintTemplate?: TemplateId;
+  /** Declared rounds, for the `extra-candidates-dropped` message (M16 step 5). */
+  declared?: number;
 }
 
 /** analysis-pipeline §4 message table. */
@@ -15,6 +17,8 @@ export function reasonMessage(reason: Reason, ctx: ReasonMessageContext = {}): s
       return 'No shots detected. Use Adjust to add them.';
     case 'too-many-shots':
       return 'More shots found than the rounds you entered. Check the rounds or adjust shots.';
+    case 'extra-candidates-dropped':
+      return `Some detected marks were ignored because you fired ${ctx.declared ?? 0} rounds.`;
     case 'rounds-unaccounted':
       return `${ctx.missing ?? 0} round(s) not found (often overlapping holes) — score shown as a range.`;
     case 'alignment-uncertain':

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import type { Shot } from '@/lib/domain/analysis';
+import type { PipelineState, Shot } from '@/lib/domain/analysis';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, Categorization } from '@/lib/domain/photo';
 import { runStageB } from '@/lib/pipeline/stage-b';
@@ -51,6 +51,8 @@ interface SeedOptions {
   shots?: Shot[];
   templateHint?: { template: TemplateId; confidence: number } | null;
   warnings?: Warning[];
+  /** `pipeline.alignment` as Stage A left it (analysis-pipeline §3). */
+  alignment?: PipelineState['alignment'];
 }
 
 interface Seeded {
@@ -75,6 +77,7 @@ async function seed(opts: SeedOptions = {}): Promise<Seeded> {
       stageB: 'pending',
       templateHint: opts.templateHint ?? null,
       warnings: opts.warnings ?? [],
+      ...(opts.alignment === undefined ? {} : { alignment: opts.alignment }),
     },
     { calibration: opts.calibration === undefined ? MANUAL_CAL : opts.calibration, shots: opts.shots ?? [] },
   );
@@ -207,6 +210,93 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.status).toBe('needs-attention');
     expect(photo?.reasons).toEqual(['too-many-shots']);
+  });
+
+  it('re-caps the shots to the declared rounds after metadata, and warns (REV-28)', async () => {
+    // Eleven auto shots reach Stage B (Stage A could not cap: no categorization yet).
+    const extras: Shot[] = Array.from({ length: 11 }, (_, i) => ({
+      id: `auto-${i + 1}`,
+      xMm: i * 2,
+      yMm: 0,
+      multiplicity: 1,
+      positionOverrides: null,
+      source: 'auto' as const,
+      confidence: 1 - i * 0.05,
+      cluster: false,
+    }));
+    const { ctx, photoId } = await seed({ shots: extras });
+
+    await runStageB(ctx, photoId, stubRenderTools());
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(10);
+    expect(analysis?.shots.map((shot) => shot.id)).not.toContain('auto-11');
+    expect(analysis?.pipeline.warnings).toEqual(['extra-candidates-dropped']);
+
+    // identified <= declared, so `overcount` is unreachable from automatic detection.
+    expect(analysis?.computed?.result.all.identified).toBe(10);
+    expect(analysis?.computed?.result.all.overcount).toBe(0);
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.status).toBe('needs-attention');
+    expect(photo?.reasons).toEqual(['extra-candidates-dropped']);
+  });
+
+  it('keeps Stage A\'s cap warning without dropping anything more', async () => {
+    const { ctx, photoId } = await seed({
+      shots: precisionFixture.shots.slice(0, 5),
+      warnings: ['extra-candidates-dropped'],
+    });
+
+    await runStageB(ctx, photoId, stubRenderTools());
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(5);
+    expect(analysis?.pipeline.warnings).toEqual(['extra-candidates-dropped']);
+  });
+
+  it('never drops a shot the owner placed by hand, even over the declared rounds', async () => {
+    const manual: Shot[] = Array.from({ length: 11 }, (_, i) => ({
+      id: `m-${i + 1}`,
+      xMm: i * 2,
+      yMm: 0,
+      multiplicity: 1,
+      positionOverrides: null,
+      source: 'manual' as const,
+      confidence: null,
+      cluster: false,
+    }));
+    const { ctx, photoId } = await seed({ shots: manual });
+
+    await runStageB(ctx, photoId, stubRenderTools());
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(11);
+    expect(analysis?.pipeline.warnings).toEqual([]);
+    // The owner's own edits can still overcount (geometry-scoring §8).
+    expect((await getPhotoRecord(ctx.db, photoId))?.reasons).toEqual(['too-many-shots']);
+  });
+
+  it('an overlay-fallback alignment is reported, but §4 lands on `analyzed` (REV-31, Open question 9)', async () => {
+    // The alignment Stage A's overlay fallback leaves behind (analysis-pipeline §3): the on-screen
+    // overlay, not a measured disc, with the warning that says so.
+    const { ctx, photoId } = await seed({
+      shots: precisionFixture.shots,
+      alignment: { method: 'overlay', confidence: null },
+      warnings: ['alignment-uncertain'],
+    });
+
+    await runStageB(ctx, photoId, stubRenderTools());
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.alignment.method).toBe('overlay');
+    expect(analysis?.pipeline.warnings).toEqual(['alignment-uncertain']);
+
+    // M16 step 8 assumes this photo reaches `needs-attention`. It does not: §4 appends
+    // `alignment-uncertain` as a warning only, so rules 5-8 never fire and rule 9 sets `analyzed`
+    // with the reason shown. Recorded under Open question 9 rather than changed here (golden rule 2).
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.status).toBe('analyzed');
+    expect(photo?.reasons).toEqual(['alignment-uncertain']);
   });
 
   it('adds `template-mismatch` when a confident hint disagrees with the chosen template (§2 B4)', async () => {

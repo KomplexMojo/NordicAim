@@ -54,6 +54,18 @@ test('results: the demo session scores both reference targets', async ({ page })
   await expect(page.getByTestId('diagram-cell')).toHaveCount(2);
 });
 
+test('results: the demo precision target analyses without too-many-shots (REV-28)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/results`);
+  await expect(page.getByTestId('target-card')).toHaveCount(2, { timeout: 30_000 });
+
+  // The fixture is a 10-round precision sheet with 10 identified units: nothing to cap, nothing to
+  // over-count, so neither reason may appear on either card.
+  await expect(page.locator('[data-reason="too-many-shots"]')).toHaveCount(0);
+  await expect(page.locator('[data-reason="extra-candidates-dropped"]')).toHaveCount(0);
+  await expect(page.getByTestId('status-chip').nth(1)).toHaveText('Analyzed');
+});
+
 test('results: View opens the target detail with the precision tally', async ({ page }) => {
   const sessionId = await loadDemoSession(page);
   await page.goto(`/#/sessions/${sessionId}/results`);
