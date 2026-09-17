@@ -26,6 +26,12 @@ Milestones **M16** (REV-27, REV-28) and **M17** (REV-29, REV-30); M15 now depend
 | REV-29 | **Unfound shots are parked as draggable markers.** When detection finds fewer shots than rounds fired, the remainder appear as markers on the white margin beside the target; the owner drags each one onto the hole it belongs to. They are derived, never stored. | — | "If image recognition can only find 8 of 10 shots, place the shots it can't find as diagram images on the white somewhere out of the way. That will allow users to easily drag the icon over top of where it should be on the target." |
 | REV-30 | **A compare slider under the target**: full left shows the diagram, full right shows the source photo, in between it wipes across. A fade mode (diagram's opacity over the photo) is the alternative the same control offers. | M12 step 4 ("a toggle to show the working photo") | "Add a horizontal slider where the diagram is so that the user can move it back and forth… If that is not possible try to use transparency to overlay a transparent diagram on top of a more opaque source image." |
 
+## 2026-09-16 (evening): the rings must land on the paper
+
+| ID | Decision | Supersedes | Owner's words / reason |
+|---|---|---|---|
+| REV-31 | **Alignment accuracy is measured, not assumed.** The template rings the app scores against must sit on the target's printed rings. `cv:eval` compares each detected calibration with the owner's hand-checked ground truth (centre, radius, axis ratio) on every real photo and fails when a photo is outside tolerance. A photo whose alignment cannot be verified says so rather than presenting a confident score. | M10/M11 acceptance (alignment judged only against two seed calibrations estimated by eye) | Owner's example analysis, 2026-09-16: on top of the numeral and multiplicity errors, the drawn rings were shifted up-and-left and too large — the outermost ring bulged past printed ring 1 on one side and cut inside it on the other. Scoring would be wrong even after the shots were fixed. |
+
 ## 2026-09-16: measuring the precision disc
 
 | ID | Decision | Supersedes | Owner's words / reason |

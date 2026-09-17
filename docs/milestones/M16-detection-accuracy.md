@@ -55,6 +55,21 @@ The Adjust screen (M17), the summary image (M14), any change to ring scoring mat
    `needs-attention`, since the owner should confirm which marks were kept.
 5. **`cv:eval`** reports, per reference photo: detections, units, recall and precision against the fixture/ground-truth shots, and
    how many candidates the cap dropped. It exits non-zero if a reference photo yields more detections than its declared rounds.
+6. **Alignment accuracy (REV-31).** The owner's example analysis showed the drawn rings shifted up-and-left and too large relative
+   to the printed rings, which corrupts scoring even once the shots are right. Detection quality is meaningless if the geometry it
+   is measured in is wrong, so verify both in the same milestone:
+   - `cv:eval` gains an **alignment** table: for every photo with an owner ground-truth file
+     (`fixtures/reference/ground-truth/<key>.json`, written by M13 step 7), report centre error as a percentage of R, radius error,
+     and axis-ratio error, for both the no-prior and capture-prior cases.
+   - It exits non-zero when a photo exceeds the existing seed tolerance (centre ≤ 5% of R, radius ≤ 6%). Record every measured
+     value in Completion notes so the owner can decide whether to tighten it — do **not** tighten it in this milestone.
+   - Ground-truth files supersede `seed-calibrations.json` (which was estimated by eye) wherever one exists.
+   - **The owner must export ground truth for the real photos first** (M13 step 7, `fixtures/reference/ground-truth/README.md`).
+     If no ground-truth file exists for any real photo, report that plainly and do not invent tolerances from the seed estimates.
+7. **Say so when alignment is unverified (REV-31).** A photo whose alignment came from the overlay fallback
+   (`method: 'overlay'`, warning `alignment-uncertain`) must not present as a finished score: it already reaches
+   `needs-attention` via analysis-pipeline §4, so confirm that path holds once the cap and glyph filter change the shot set, and
+   add a test for it rather than assuming.
 
 ## Tests
 - Glyph rejection: on `IMG_5132-precision.jpg`, no detection falls inside the numeral sectors, and total detections ≤ 10.
