@@ -26,6 +26,12 @@ Milestones **M16** (REV-27, REV-28) and **M17** (REV-29, REV-30); M15 now depend
 | REV-29 | **Unfound shots are parked as draggable markers.** When detection finds fewer shots than rounds fired, the remainder appear as markers on the white margin beside the target; the owner drags each one onto the hole it belongs to. They are derived, never stored. | — | "If image recognition can only find 8 of 10 shots, place the shots it can't find as diagram images on the white somewhere out of the way. That will allow users to easily drag the icon over top of where it should be on the target." |
 | REV-30 | **A compare slider under the target**: full left shows the diagram, full right shows the source photo, in between it wipes across. A fade mode (diagram's opacity over the photo) is the alternative the same control offers. | M12 step 4 ("a toggle to show the working photo") | "Add a horizontal slider where the diagram is so that the user can move it back and forth… If that is not possible try to use transparency to overlay a transparent diagram on top of a more opaque source image." |
 
+## 2026-09-16 (evening): scan the target in regions
+
+| ID | Decision | Supersedes | Owner's words / reason |
+|---|---|---|---|
+| REV-32 | **Detection scans the target region by region with local statistics**, instead of two thresholds applied to the whole sheet. A region with no candidate is skipped; a region with candidates is refined further. Refinement is bounded and never runs until a shot quota is met — whatever is missing stays missing and becomes a parked marker (REV-29). | M11 step 3 (`gray > median(disc) + 45` inside the mark, `gray < median(paper) − 50` outside) | "Break the image down into regions, examine the region. If there are 0 shots identified in that region, ignore it and move to the next. This should be done for all the regions until all the shots within the affected regions are identified." Global thresholds cannot cope with shadow, glare, or the different contrast of a hole on the black mark versus on paper. Note this does **not** by itself fix the printed numerals — a numeral region is not empty, so REV-27's shape filter is still required. |
+
 ## 2026-09-16 (evening): the rings must land on the paper
 
 | ID | Decision | Supersedes | Owner's words / reason |
