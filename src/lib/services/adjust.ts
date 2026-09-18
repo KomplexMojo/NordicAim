@@ -180,17 +180,24 @@ export async function redetectShots(
   if (workingBlob === null) throw new WorkingImageMissingError(photoId);
   const bytes = await workingBlob.arrayBuffer();
   const settings = await getSettings(ctx.db);
+  // backing-sheet.md §5: an explicit re-detect uses the session's backing, like A5 does.
+  const session = await getSessionRecord(ctx.db, photo.sessionId);
 
   const detected = await cvApi.detectShots(
     Comlink.transfer(bytes, [bytes]),
     calibration,
     shotTemplate(photo, analysis.pipeline.templateHint, calibration),
     settings.profileOverrides.holeDiameterMm,
+    { mode: session?.backingMode ?? 'auto', colour: session?.backing?.colour ?? null },
   );
 
   return commitAdjustment(ctx, photoId, (current) => {
     const kept = current.shots.filter((shot) => shot.source === 'manual');
-    return { ...current, shots: [...kept, ...withUniqueIds(detected.shots, kept)] };
+    return {
+      ...current,
+      shots: [...kept, ...withUniqueIds(detected.shots, kept)],
+      pipeline: { ...current.pipeline, detection: detected.detection },
+    };
   });
 }
 

@@ -1,5 +1,6 @@
 // analysis-pipeline §5. Pure planner: no clock, no randomness, no IO.
 
+import { isTargetPhoto } from '@/lib/domain/backing';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import type { TargetPhoto } from '@/lib/domain/photo';
@@ -30,6 +31,8 @@ export function planJobs(
   const bJobs: Job[] = [];
 
   for (const photo of [...photos].sort(byImportedAt)) {
+    // backing-sheet.md §3 (REV-38): a backing-card photo is not a target — no Stage A, no Stage B.
+    if (!isTargetPhoto(photo)) continue;
     const analysis = analysisByPhoto.get(photo.id);
     if (analysis === undefined) continue;
     const { stageA, stageB } = analysis.pipeline;

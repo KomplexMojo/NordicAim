@@ -2,6 +2,7 @@ import { Navigate, useParams } from 'react-router';
 
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
+import { isTargetPhoto } from '@/lib/domain/backing';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 
 /** Route `#/sessions/:sid`: redirect to `metadata` if any photo is `needs-metadata`, else to `results`
@@ -10,7 +11,8 @@ export function SessionRedirect() {
   const { sid = '' } = useParams();
   const { ctx } = useServices();
   const { value } = useLiveQuery(async () => {
-    const photos = await listPhotosBySession(ctx.db, sid);
+    // backing-sheet.md §3: a backing-card photo is not a target and never holds the session here.
+    const photos = (await listPhotosBySession(ctx.db, sid)).filter(isTargetPhoto);
     const dest = photos.length === 0 || photos.some((p) => p.status === 'needs-metadata') ? 'metadata' : 'results';
     return { sid, dest };
   }, [ctx, sid]);

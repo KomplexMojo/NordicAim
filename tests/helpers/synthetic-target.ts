@@ -48,6 +48,16 @@ export interface SyntheticHole {
   diameterMm?: number;
   /** M16 R1: how the hole looks. Defaults to `tan`. */
   style?: SyntheticHoleStyle;
+  /** M19 (REV-38): the backing sheet showing through, as a CSS colour. Overrides `style`'s fill. */
+  fill?: string;
+}
+
+/** M19 (REV-38): a pen mark on the paper — a coloured stroke that is NOT a hole. */
+export interface SyntheticPenMark {
+  fromMm: { xMm: number; yMm: number };
+  toMm: { xMm: number; yMm: number };
+  colour: string;
+  widthMm: number;
 }
 
 export interface SyntheticTargetSpec {
@@ -76,6 +86,13 @@ export interface SyntheticTargetSpec {
   noPaper?: boolean;
   /** M16 R2: draw the 32 precision numerals (as glyph blocks) with their axes at this angle. */
   numeralsDeg?: number;
+  /** M19 (REV-38): coloured pen marks on the paper, which the colour path must not read as holes. */
+  penMarksMm?: SyntheticPenMark[];
+  /**
+   * M19 (REV-38, backing-sheet.md §5.1): camera/JPEG chroma fringing along every printed ring edge,
+   * as a thin coloured line of this width in source px. The 3x3 opening must remove all of it.
+   */
+  ringFringe?: { colour: string; widthPx: number };
 }
 
 /** A hole at `radialMm` from the centre, `angleDeg` counter-clockwise from +x in target space. */
@@ -199,6 +216,8 @@ export function syntheticTargetSvg(spec: SyntheticTargetSpec): string {
     parts.push(ellipse(inner, `fill="none" stroke="${PAPER}" stroke-width="${lineWidth}"`));
   }
 
+  parts.push(ringFringes(spec));
+  parts.push(penMarks(spec));
   parts.push(holeEllipses(spec));
   parts.push(shadowWash(spec));
   parts.push('</svg>');
@@ -251,6 +270,51 @@ function numeralGlyphs(spec: SyntheticTargetSpec, axesDeg: number): string {
   return out.join('');
 }
 
+/** M19: coloured pen marks on the paper (scores written in pen), drawn under the holes. */
+function penMarks(spec: SyntheticTargetSpec): string {
+  const marks = spec.penMarksMm ?? [];
+  if (marks.length === 0) return '';
+  const cal = syntheticCalibration(spec);
+  const pxPerMm = spec.radiusPx / (cal.anchorDiameterMm / 2);
+  return marks
+    .map((mark) => {
+      const a = mmToPx(mark.fromMm, cal);
+      const b = mmToPx(mark.toMm, cal);
+      return (
+        `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${mark.colour}" ` +
+        `stroke-width="${mark.widthMm * pxPerMm}" stroke-linecap="round" />`
+      );
+    })
+    .join('');
+}
+
+/** M19: a thin coloured line along every printed ring edge — the chroma fringing of a real camera. */
+function ringFringes(spec: SyntheticTargetSpec): string {
+  const fringe = spec.ringFringe;
+  if (fringe === undefined) return '';
+  const cal = syntheticCalibration(spec);
+  const pxPerMm = spec.radiusPx / (cal.anchorDiameterMm / 2);
+  const diameters =
+    spec.template === 'precision'
+      ? Object.values(PRECISION_TEMPLATE.ringDiameterMm)
+      : [
+          SIGHTING_TEMPLATE.anchor.diameterMm,
+          SIGHTING_TEMPLATE.zones.standing.guideDiameterMm,
+          SIGHTING_TEMPLATE.zones.prone.solidDiameterMm,
+          SIGHTING_TEMPLATE.zones.prone.guideDiameterMm,
+        ];
+  return diameters
+    .map((diameterMm) => {
+      const rx = (diameterMm / 2) * pxPerMm;
+      return (
+        `<ellipse cx="${spec.cx}" cy="${spec.cy}" rx="${rx}" ry="${rx * spec.axisRatio}" ` +
+        `transform="rotate(${spec.angleDeg} ${spec.cx} ${spec.cy})" fill="none" ` +
+        `stroke="${fringe.colour}" stroke-width="${fringe.widthPx}" />`
+      );
+    })
+    .join('');
+}
+
 /** M16 (REV-32): the lighting gradient, painted over everything the way a real shadow falls. */
 function shadowWash(spec: SyntheticTargetSpec): string {
   const opacity = spec.shadowOpacity ?? 0;
@@ -282,7 +346,7 @@ function holeEllipses(spec: SyntheticTargetSpec): string {
       const rim = style.rim === null ? '' : ` stroke="${style.rim}" stroke-width="${2 * pxPerMm}"`;
       return (
         `<ellipse cx="${centre.x}" cy="${centre.y}" rx="${rx}" ry="${ry}" ` +
-        `transform="rotate(${spec.angleDeg} ${centre.x} ${centre.y})" fill="${style.fill}"${rim} />`
+        `transform="rotate(${spec.angleDeg} ${centre.x} ${centre.y})" fill="${hole.fill ?? style.fill}"${rim} />`
       );
     })
     .join('');

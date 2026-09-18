@@ -12,7 +12,8 @@ export type ShotPosition = z.infer<typeof ShotPosition>;
 export const Lighting = z.enum(['daylight', 'night', 'artificial', 'mixed', 'unknown']);
 export type Lighting = z.infer<typeof Lighting>;
 
-export const PhotoOrigin = z.enum(['camera-overlay', 'camera-native', 'import']);
+// backing-sheet.md §3 (REV-38): `backing-card` is a photo of the backing card, never a target.
+export const PhotoOrigin = z.enum(['camera-overlay', 'camera-native', 'import', 'backing-card']);
 export type PhotoOrigin = z.infer<typeof PhotoOrigin>;
 
 export const PhotoStatus = z.enum(['needs-metadata', 'processing', 'ready', 'analyzed', 'needs-attention', 'failed']);
@@ -27,11 +28,13 @@ export const Reason = z.enum([
   'alignment-uncertain',
   'image-blurry',
   'template-mismatch',
+  'backing-colour-not-found',
 ]);
 export type Reason = z.infer<typeof Reason>;
 
 export const Warning = z.enum([
   'extra-candidates-dropped',
+  'backing-colour-not-found',
   'alignment-uncertain',
   'image-blurry',
   'template-mismatch',

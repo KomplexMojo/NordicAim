@@ -54,6 +54,8 @@ export interface RectifyOptions {
   radiusMm?: number;
   /** Also warp the per-pixel chroma (`max(R,G,B) - min(R,G,B)`), which sheet segmentation reads. */
   chroma?: boolean;
+  /** Also warp the colour itself (CV_8UC3, R,G,B), which the backing-colour path reads (REV-38). */
+  rgb?: boolean;
 }
 
 export interface Rectified extends RectifiedGeometry {
@@ -69,6 +71,21 @@ export interface Rectified extends RectifiedGeometry {
   valid: CvMat;
   /** CV_8UC1 chroma, only when {@link RectifyOptions.chroma} was asked for. The caller deletes it. */
   chroma: CvMat | null;
+  /** CV_8UC3 R,G,B, only when {@link RectifyOptions.rgb} was asked for. The caller deletes it. */
+  rgb: CvMat | null;
+}
+
+/** The image's R,G,B channels (alpha dropped) as a CV_8UC3 Mat the caller owns. */
+function rgbMat(cv: OpenCv, img: RgbaImage): CvMat {
+  const mat = new cv.Mat(img.height, img.width, cv.CV_8UC3);
+  const out = mat.data as Uint8Array;
+  const data = img.data;
+  for (let i = 0, p = 0; i < out.length; i += 3, p += 4) {
+    out[i] = data[p] as number;
+    out[i + 1] = data[p + 1] as number;
+    out[i + 2] = data[p + 2] as number;
+  }
+  return mat;
 }
 
 /** Per-pixel `max(R,G,B) - min(R,G,B)` as a CV_8UC1 Mat the caller owns. */
@@ -138,6 +155,8 @@ export function rectify(
   const valid = new cv.Mat();
   const chromaSource = options.chroma === true ? chromaMat(cv, img) : null;
   const chroma = chromaSource === null ? null : new cv.Mat();
+  const rgbSource = options.rgb === true ? rgbMat(cv, img) : null;
+  const rgb = rgbSource === null ? null : new cv.Mat();
 
   try {
     forward = cv.getAffineTransform(fromPoints, toPoints); // rectified px -> working px
@@ -151,12 +170,16 @@ export function rectify(
     if (chromaSource !== null && chroma !== null) {
       cv.warpAffine(chromaSource, chroma, inverse, size, cv.INTER_LINEAR, cv.BORDER_CONSTANT, outside);
     }
+    if (rgbSource !== null && rgb !== null) {
+      cv.warpAffine(rgbSource, rgb, inverse, size, cv.INTER_LINEAR, cv.BORDER_CONSTANT, outside);
+    }
 
-    return { gray: out, valid, chroma, side, pxPerMm };
+    return { gray: out, valid, chroma, rgb, side, pxPerMm };
   } catch (err) {
     out.delete();
     valid.delete();
     chroma?.delete();
+    rgb?.delete();
     throw err;
   } finally {
     gray.delete();
@@ -166,5 +189,6 @@ export function rectify(
     inverse.delete();
     ones.delete();
     chromaSource?.delete();
+    rgbSource?.delete();
   }
 }

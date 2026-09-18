@@ -1,5 +1,6 @@
 import type { PhotoOrigin } from '@/lib/domain/enums';
 import { initialAnalysis } from '@/lib/domain/analysis';
+import { isTargetPhoto } from '@/lib/domain/backing';
 import type { CaptureInfo, Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { detectFormat, type ImageFormat, type RgbaImage } from '@/lib/media/format';
@@ -158,7 +159,11 @@ export async function ingestPhoto(
   await putBlob(tx, photoOriginalKey(photoId), originalRecord);
   await putBlob(tx, photoWorkingKey(photoId), workingRecord);
   await putBlob(tx, photoThumbKey(photoId), thumbRecord);
-  await putSessionRecord(tx, { ...session, photoIds: [...session.photoIds, photoId], updatedAt: nowIso });
+  // backing-sheet.md §3: `photoIds` is the session's TARGETS. A backing-card photo is not one, so it
+  // never enters the list the metadata screen, the results screen and every count walk; it is reached
+  // through `session.backing.cardPhotoId`, and removed with the session by its `sessionId`.
+  const photoIds = isTargetPhoto(photo) ? [...session.photoIds, photoId] : session.photoIds;
+  await putSessionRecord(tx, { ...session, photoIds, updatedAt: nowIso });
   await tx.done;
 
   // 6. after commit

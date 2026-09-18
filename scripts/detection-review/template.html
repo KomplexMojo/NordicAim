@@ -208,8 +208,11 @@ function drawOverlay(p) {
     const wrong = st.falseRanks.includes(c.rank);
     const col = wrong ? 'var(--bad)' : 'var(--shot)';
     const g = el('g', { class: 'hit', 'data-kind': 'shot', 'data-rank': c.rank, style: 'cursor:pointer' }, layer);
-    el('title', {}, g).textContent = `#${c.rank} (one hole) · confidence ${c.conf} · score ${c.score} · on ${c.surface} · elongation ${c.elong} · stroke ${c.strokeMm} mm · ${c.radialMm} mm from centre${c.cluster ? ' · cluster' : ''}${wrong ? ' · YOU: not a hole' : ''}`;
+    const n = (v, unitLabel = '') => (v === null || v === undefined ? '—' : `${v}${unitLabel}`);
+    el('title', {}, g).textContent = `#${c.rank} (one hole) · confidence ${n(c.conf)} · score ${n(c.score)} · on ${c.surface} · elongation ${n(c.elong)} · stroke ${n(c.strokeMm, ' mm')} · area ${n(c.areaMm2, ' mm²')} · ${c.radialMm} mm from centre${c.cluster ? ' · cluster' : ''}${c.possibleOverlap ? ' · MAY BE TWO SHOTS' : ''}${wrong ? ' · YOU: not a hole' : ''}`;
     el('circle', { cx: c.x, cy: c.y, r: hole + 4 * unit, fill: 'transparent', stroke: col, 'stroke-width': 2.6, 'vector-effect': 'non-scaling-stroke' }, g);
+    // M19 (backing-sheet.md §5.5): a blob far larger than the median may hold two shots.
+    if (c.possibleOverlap) el('circle', { cx: c.x, cy: c.y, r: hole + 8 * unit, fill: 'none', stroke: col, 'stroke-width': 2, 'stroke-dasharray': '6 4', 'vector-effect': 'non-scaling-stroke' }, g);
     if (wrong) { const d = hole + 2 * unit; el('path', { d: `M${c.x - d} ${c.y + d}L${c.x + d} ${c.y - d}`, stroke: col, 'stroke-width': 2.6, 'vector-effect': 'non-scaling-stroke' }, g); }
     if (view.numbers) {
       const t = el('text', { x: c.x + hole + 6 * unit, y: c.y - hole * 0.6, 'font-size': fs, 'font-weight': 700, fill: col, stroke: '#000', 'stroke-width': 3 * unit, 'paint-order': 'stroke', 'font-family': 'system-ui, sans-serif' }, g);
@@ -311,6 +314,10 @@ function card(p) {
         <dt>Rejected, weak on the black</dt><dd>${weak}</dd>
         <dt>Alignment confidence</dt><dd>${p.anchor.confidence ?? '—'}</dd>
         <dt>Paper sheet</dt><dd>${p.sheet?.method === 'fallback' ? 'not found (105 mm circle)' : 'found'}</dd>
+        ${p.detection ? `<dt>Detection method</dt><dd><b>${p.detection.method === 'colour' ? 'backing colour' : 'standard'}</b></dd>
+        <dt>Backing (Auto)</dt><dd>${p.detection.backing}${p.detection.spots ? ` · ${p.detection.spots} spots, largest ${p.detection.largestRatio}×` : ''}</dd>
+        ${p.detection.swatch ? `<dt>Card colour</dt><dd><i class="sw" style="background:${p.detection.swatch};border-color:${p.detection.swatch}"></i> hue ${p.detection.hueDeg}°</dd>` : ''}
+        ${p.candidates.some((c) => c.possibleOverlap) ? `<dt>May be two shots</dt><dd>${p.candidates.filter((c) => c.possibleOverlap).length}</dd>` : ''}` : ''}
         ${p.numeralRotation ? `<dt>Numeral rotation</dt><dd>${p.numeralRotation.deg}°${p.numeralRotation.reliable ? '' : ' (weak)'}</dd>` : ''}` : ''}
         <dt>Sharpness</dt><dd>${p.sharpness}</dd>
         <dt>Processing time</dt><dd>${p.ms} ms</dd>

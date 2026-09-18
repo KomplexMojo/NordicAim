@@ -27,5 +27,7 @@ export function reasonMessage(reason: Reason, ctx: ReasonMessageContext = {}): s
       return 'This photo looks blurry, so results may be less accurate.';
     case 'template-mismatch':
       return `This looks like a ${ctx.hintTemplate ?? 'sighting/precision'} target — check the template.`;
+    case 'backing-colour-not-found':
+      return 'No backing colour showed through the holes, so standard detection was used. Check the backing card or lighting.';
   }
 }

@@ -5,6 +5,7 @@ import type { AnalysisResult, TargetAnalysis } from './analysis';
 
 const WARNING_ORDER: Warning[] = [
   'extra-candidates-dropped',
+  'backing-colour-not-found',
   'alignment-uncertain',
   'image-blurry',
   'template-mismatch',

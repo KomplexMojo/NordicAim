@@ -1,9 +1,11 @@
 import * as Comlink from 'comlink';
 
 import type { PointMm } from '@/lib/cv/split-cluster';
-import type { Shot } from '@/lib/domain/analysis';
+import type { DetectionRecord } from '@/lib/domain/analysis';
+import type { BackingMode, ColourSignature } from '@/lib/domain/backing';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
+import type { CappableShot } from '@/lib/scoring/cap-shots';
 
 /** analysis-pipeline §6: what `reviewAndAlign` gives Stage A back. */
 export interface ReviewAndAlignResult {
@@ -12,9 +14,19 @@ export interface ReviewAndAlignResult {
   templateHint: { template: TemplateId; confidence: number } | null;
 }
 
+/** backing-sheet.md §5: the session's backing, as A5 needs it. */
+export interface BackingInput {
+  mode: BackingMode;
+  /** The card's measured colour, when the session has one. */
+  colour: ColourSignature | null;
+}
+
 /** analysis-pipeline §6: what `detectShots` gives Stage A back. */
 export interface DetectShotsResult {
-  shots: Shot[];
+  /** backing-sheet.md §5.4: the colour path adds the blob's coloured area, which REV-28's cap ranks by. */
+  shots: CappableShot[];
+  /** backing-sheet.md §3, §5.6: which path ran, and why it fell back. */
+  detection: DetectionRecord;
 }
 
 export interface CvWorkerApi {
@@ -25,12 +37,16 @@ export interface CvWorkerApi {
     prior: Calibration | null,
     templateHint: TemplateId | null,
   ): Promise<ReviewAndAlignResult>;
-  /** M11 (A5). `calibration` is in the working image's pixel space; shots come back in mm. */
+  /**
+   * M11 (A5). `calibration` is in the working image's pixel space; shots come back in mm.
+   * `backing` (REV-38) picks the colour path, the standard path, or `Auto`'s per-photo decision.
+   */
   detectShots(
     workingJpeg: ArrayBuffer,
     calibration: Calibration,
     template: TemplateId,
     holeDiameterMm: number,
+    backing: BackingInput,
   ): Promise<DetectShotsResult>;
   /**
    * M11 step 6, for M13's Adjust screen: `k` centroids in mm for one cluster's points. Not listed in

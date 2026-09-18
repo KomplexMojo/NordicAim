@@ -14,7 +14,7 @@ const NOPE = '99999999-9999-4999-8999-999999999999';
 
 function session(overrides: Partial<BiathlonSession> = {}): BiathlonSession {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: S1,
     name: 'Session 2026-09-05',
     sessionDate: '2026-09-05',
@@ -25,6 +25,8 @@ function session(overrides: Partial<BiathlonSession> = {}): BiathlonSession {
     artifacts: [],
     shares: [],
     notes: '',
+    backingMode: 'auto',
+    backing: null,
     ...overrides,
   };
 }

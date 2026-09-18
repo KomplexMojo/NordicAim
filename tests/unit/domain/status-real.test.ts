@@ -67,7 +67,7 @@ const withOneMissing = score(fixture.shots.map((s) => (s.id === 'P8' ? { ...s, m
 const empty = score([]);
 const overcounted = score([
   ...fixture.shots,
-  { id: 'P10', xMm: 12, yMm: 12, multiplicity: 1, positionOverrides: null, source: 'manual', confidence: null, cluster: false },
+  { id: 'P10', xMm: 12, yMm: 12, multiplicity: 1, positionOverrides: null, source: 'manual', confidence: null, cluster: false, possibleOverlap: false },
 ]);
 
 describe('photoStatus over real analyzeTarget output (analysis-pipeline §4 vectors)', () => {

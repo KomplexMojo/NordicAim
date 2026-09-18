@@ -182,6 +182,7 @@ export function AdjustPage() {
       source: 'manual',
       confidence: null,
       cluster: false,
+      possibleOverlap: false,
     };
     setShots((current) => [...current, shot]);
     setSelectedId(shot.id);

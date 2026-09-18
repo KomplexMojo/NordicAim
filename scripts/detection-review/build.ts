@@ -12,14 +12,20 @@ import { fileURLToPath } from 'node:url';
 
 import sharp from 'sharp';
 
+import { backingColourFromCard } from '../../src/lib/cv/backing-colour.ts';
+import type { ColourSignature } from '../../src/lib/domain/backing.ts';
 import { loadOpenCvForTests } from '../../tests/helpers/opencv.ts';
 import { LABELLED_HOLES_RELATIVE_PATH } from '../../tests/helpers/labelled-holes.ts';
 import { jpegFileToRgba } from '../../tests/helpers/rgba.ts';
-import { reviewPhoto, WORKING_LONGEST } from './photo.ts';
+import { reviewPhoto, WORKING_LONGEST, type ReviewBacking } from './photo.ts';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const PRIVATE_ROOT = resolve(REPO_ROOT, 'fixtures/private');
 const SOURCE_DIR = resolve(PRIVATE_ROOT, 'additional references');
+/** M19 step 9 (REV-38): the owner's backed targets are reviewed alongside the rest. */
+const BACKING_DIR = resolve(PRIVATE_ROOT, 'backing');
+/** `{ "<target file>": "<card file>" }` beside the backing photos (backing-sheet.md §2). */
+const CARDS_MANIFEST = resolve(BACKING_DIR, 'cards.json');
 const OUT_FILE = resolve(PRIVATE_ROOT, 'review/detection-review.html');
 const TEMPLATE = resolve(dirname(fileURLToPath(import.meta.url)), 'template.html');
 const JPEG_QUALITY = 72;
@@ -37,13 +43,47 @@ if (!existsSync(SOURCE_DIR)) {
 }
 
 const cv = await loadOpenCvForTests();
-const names = readdirSync(SOURCE_DIR).filter((f) => /\.jpe?g$/i.test(f)).sort();
+
+/** Every photo to review: the reference set, then the backed targets with their card's colour. */
+const cards: Record<string, string> = existsSync(CARDS_MANIFEST)
+  ? (JSON.parse(readFileSync(CARDS_MANIFEST, 'utf-8')) as Record<string, string>)
+  : {};
+const cardColours = new Map<string, ColourSignature | null>();
+for (const file of new Set(Object.values(cards))) {
+  cardColours.set(file, backingColourFromCard(await jpegFileToRgba(resolve(BACKING_DIR, file), 512)));
+}
+
+interface Source {
+  dir: string;
+  name: string;
+  backing: ReviewBacking;
+}
+
+const sources: Source[] = readdirSync(SOURCE_DIR)
+  .filter((f) => /\.jpe?g$/i.test(f))
+  .sort()
+  .map((name) => ({ dir: SOURCE_DIR, name, backing: { mode: 'auto' as const, colour: null } }));
+if (existsSync(BACKING_DIR)) {
+  const cardFiles = new Set(Object.values(cards));
+  for (const name of readdirSync(BACKING_DIR).filter((f) => /\.jpe?g$/i.test(f)).sort()) {
+    if (cardFiles.has(name)) continue; // a card is not a target
+    const cardFile = cards[name];
+    sources.push({
+      dir: BACKING_DIR,
+      name,
+      // backing-sheet.md §2: these photos were shot with a backing, so the colour path is forced.
+      backing: { mode: 'coloured', colour: cardFile === undefined ? null : (cardColours.get(cardFile) ?? null) },
+    });
+  }
+}
+
 const photos: unknown[] = [];
 
-for (const name of names) {
-  const path = resolve(SOURCE_DIR, name);
+for (const source of sources) {
+  const { name } = source;
+  const path = resolve(source.dir, name);
   const img = await jpegFileToRgba(path, WORKING_LONGEST);
-  const record = reviewPhoto(cv, img, name);
+  const record = reviewPhoto(cv, img, name, source.backing);
   // Same orientation and size as the working image, so overlay px line up exactly.
   const jpeg = await sharp(readFileSync(path))
     .rotate()
@@ -52,7 +92,7 @@ for (const name of names) {
     .toBuffer();
   photos.push({ ...record, img: `data:image/jpeg;base64,${jpeg.toString('base64')}` });
   console.log(
-    `${name}: ${record.anchor === null ? 'no anchor' : `${record.template} · ${record.candidates.length} detected · sheet ${record.sheet?.method}`}`,
+    `${name}: ${record.anchor === null ? 'no anchor' : `${record.template} · ${record.candidates.length} detected · ${record.detection?.method ?? 'standard'} · sheet ${record.sheet?.method}`}`,
   );
 }
 

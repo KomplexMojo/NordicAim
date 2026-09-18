@@ -84,7 +84,139 @@ the Completion notes must say so.
 - Never write the card photo, or anything derived from any photo, outside the phone's store or `fixtures/private/`.
 
 ## Open questions
-_(add here)_
+1. **BLOCKING — `Auto` reads four of the owner's 46 reference photos as backed** (`IMG_4743` 3 spots, `IMG_4744` 6,
+   `IMG_5182` 8, `IMG_5184` 6; largest blob 0.22–0.88× a hole). §4 is explicit that "the colour path must never run on a
+   photo without a backing", and §4a's table expects `IMG_4743` **absent** by the area rule — but with REV-36's sheet
+   search in place the scenery is already outside the search area, so the large-blob ratio no longer separates it
+   (measured 0.22×, not 4.6×). `IMG_4770`/`IMG_4771` are still refused (264×, 667×) and `IMG_5057 2`/`IMG_5084` by the
+   spot count. Since `Auto` is the **default** mode (and the v1 → v2 migration puts every existing session on it), a
+   session created today would silently take 3–8 colour blobs on those four photos instead of the standard detector's
+   result. The milestone is therefore **`blocked`** rather than done, and all four verdicts are pinned by name in
+   `tests/unit/cv/backing-colour.test.ts` so the divergence cannot change unnoticed.
+
+   **What was measured on 2026-09-18** (fix round 1), to put the question to the owner precisely: every coloured pixel
+   those four contribute sits in the **outer band** of the REV-36 search area. Accepted-pixel radius p10 was 101 mm
+   (`IMG_4743`) and 128–133 mm (the other three) against the 150 mm search cap, at hues **31–49°** (bare wood) and
+   **213°** (sky/shade); the backed photos' accepted pixels sit at radius p10 **4–12 mm**, where the holes are. The
+   white-balance gains were 0.94–1.04, so this is not a neutralisation artefact — it is the board and surroundings
+   around the sheet leaking through `findSheet`'s mask. Two of `IMG_4744`'s blobs land exactly on labelled holes (wood
+   seen through a hole), so **no threshold on `AUTO_MIN_SPOTS` alone separates the sets** (3–8 unbacked spots against
+   6–10 backed): raising it to 9 would lose four of the six backed photos.
+
+   **The owner must say which of those four photos (if any) actually had a backing sheet.** If none did, the fix is
+   *not* the spot floor: it is either a tighter sheet mask (the board around the sheet is inside the searched area) or a
+   chroma/saturation floor that separates bare wood (max chroma 82–110 on these four) from a fluorescent backing
+   (209–223 on the backed photos). Both are constants the spec calls provisional and §7's photo set is meant to set, so
+   nothing was tuned here on a guess. `pnpm cv:eval` prints the list under "CONFIRM WITH THE OWNER".
+   *(Not blocking M20: it consumes `possibleOverlap` and the declared rounds, not `Auto`'s verdict.)*
+2. **`IMG_5189` yields 7 holes, not the 8 of §4's table**, measured with the same chroma ≥ 40 rule but inside the REV-36
+   sheet area and after the 3×3 opening. One hole falls under the 0.08 × hole-area guard. Pinned as 7 in the unit test.
+   The milestone also asks that each detection be "within one hole radius of a real hole": **no backing photo is
+   labelled yet** (the labels cover the 46 unbacked reference photos; labelling the backing set is §7's human step), so
+   the test checks the labels when `IMG_5189` appears in an export and, until then, against the standard detector's
+   candidates — which on this photo include all 8 real holes (§1). Measured: all 7 are within **1.47 mm** (hole radius
+   2.8 mm), so none of them is a fringe.
+3. **§5.1's "with the 3×3 opening removed the result is still 8" does not hold on `IMG_5191`**: measured 9 (card hue) and
+   11 (chroma). The size guard alone does not catch every fringe, so the opening is load-bearing rather than a second
+   defence. Pinned as 9.
+4. **`estimateBackingColour` has no caller in the spec.** §3 gives `BackingSheet.source: 'estimated'` and the milestone
+   asks for the function, but §5 uses the neutral-chroma rule directly when there is no card, so nothing in the pipeline
+   needs an estimated `ColourSignature`. It is implemented as the hue statistics of the pixels the chroma rule accepts,
+   and is reported by `pnpm cv:eval` as "the colour signature used". No UI writes `source: 'estimated'` yet.
+5. **`pipeline.detection` has no value for "Stage A has not run".** §3's `backing` enum is
+   `detected | not-detected | forced | off`; a fresh analysis records `off` until A5 decides.
+6. **`possibleOverlap` has no home in `data-model.md`.** §5.5 says a blob "is flagged `possibleOverlap: true`" and M17/M20
+   consume it, so it is stored on `Shot` (`z.boolean().default(false)`, so shots written before REV-38 still read back).
+   **M20 step 5 should read `shot.possibleOverlap`.**
+7. **`detectBackingPresence(img, calibration)` in §4a needs two more arguments** — the template and the hole diameter —
+   because it rectifies and sizes a hole exactly as A5 does. Implemented as
+   `detectBackingPresence(cv, img, calibration, template, holeDiameterMm)`.
+8. **"Back to pending *from A5*" has no resume point in Stage A**, so changing the backing sets `stageA` to `pending` and
+   the whole stage re-runs (A4 is skipped anyway for a manual calibration). `stageB` is reset with it when it had already
+   finished, so the score is rebuilt from the new shots instead of being left stale.
+9. **Pairing a card photo with a target in `fixtures/private/backing/` has no convention in the spec.** `pnpm cv:eval` and
+   `pnpm review:detection` read `fixtures/private/backing/cards.json` (`{"IMG_5191.jpeg": "IMG_5190.jpeg"}`); a target with
+   no entry is measured with the neutral-chroma rule. The file for the owner's two orange photos was written (gitignored).
+10. **§4a names only one fallback reason string** ("large coloured area"). The other two are
+   `no coloured spots` (Auto saw too few) and `no backing colour showed through` (§5.6's fallback), both exported constants.
+11. **`data-model.md` §2 and §8 still say `schemaVersion: 1` for `BiathlonSession`**, while backing-sheet.md §3 says
+   "Schema version 1 → 2". The spec written for this milestone wins (golden rule 2: the later spec is the one this
+   milestone implements), so the code and `tests/unit/domain/schemas.test.ts` use 2 — but **data-model.md §2 and its §8
+   example record need the owner's edit** to match. Recorded here rather than changed, because data-model.md is not in
+   this milestone's *Files*.
+12. **A5's cost, for M15's measurement.** `Auto` with a card now rectifies **once** (fix round 1: the §4a probe and the
+   §5 hue mask share one `Rectified`, so the warp plus `findSheet` runs once instead of twice). What remains is §5.6's
+   fallback: when the colour path yields zero blobs the standard detector rectifies again, because `detectShots` owns
+   its own warp (`src/lib/cv/holes.ts`, M16). Sharing that one would mean reworking `holes.ts`, which is out of scope
+   here; **M15's performance budget should expect a fallback photo to cost two warps.**
+13. **`Shot` carries no area, so Stage B's cap cannot rank by it.** §5.4's coloured area now reaches `capShots` in Stage
+   A (`CappableShot.areaMm2`, dropped again by `withoutArea` before the analysis is stored, since data-model §4 has no
+   such field). Stage B re-caps from the stored shots, where only `confidence` survives — for a colour-path shot that is
+   `null`, so a re-cap after metadata falls back to the radial tie-break. Adding an area to `Shot` is a data-model
+   change and was not made here.
 
 ## Completion notes
-_(fill in when done)_
+**Commands** (2026-09-18, this machine):
+
+| Command | Result |
+|---|---|
+| `pnpm check` | **pass** — typecheck, lint (0 errors, 4 pre-existing warnings), 587 unit tests, privacy check (16 images) |
+| `pnpm cv:eval` | **pass** — "all synthetic cases and reference photos pass"; the new backing section is UNVERIFIED (see below) |
+| `pnpm test:e2e` | **pass** — 42 tests, mobile Chromium and mobile WebKit |
+| `pnpm review:detection` | **pass** — 52 photos (46 reference + 6 backed), page written inside `fixtures/private/review/` |
+| `pnpm build` | **pass** |
+
+**The colour path is UNVERIFIED** (backing-sheet.md §7). The owner has 6 backed target photos and 1 card; §7 asks for at
+least 10 backed photos with a card each, labelled. `pnpm cv:eval` therefore prints `GATE: UNVERIFIED` with the counts and
+gates nothing. Measured today on the 6 photos (colour vs the standard detector, no labels to score against):
+
+| photo | colour | overlap flags | standard | Auto |
+|---|---|---|---|---|
+| IMG_5189 (pink, no card) | 7 | 1 | 25 | present, 7 spots, 0.61× |
+| IMG_5191 (orange, card IMG_5190) | **8** | 1 | 7 | present, 8 spots, 0.49× |
+| IMG_5193 (orange, card IMG_5190) | **10** | 2 | 15 | present, 10 spots, 0.67× |
+| IMG_5194 (red, no card) | 9 | 0 | 9 | present, 9 spots, 0.20× |
+| IMG_5196 (red, no card) | 6 | 2 | 9 | present, 6 spots, 0.46× |
+| IMG_5198 (red, no card) | 9 | 1 | 14 | present, 9 spots, 0.76× |
+
+IMG_5191 and IMG_5193 reproduce §5's measured 8 (one overlap) and 10 exactly. The card measured **15.9° ± 2.4°**, matching
+the spec's number to one decimal place.
+
+**Deviations from the spec**, all recorded above as Open questions: `IMG_5189` gives 7 rather than 8 (2); `IMG_5191`
+without the opening gives 9 rather than 8 (3); `Auto` reads 4 reference photos as backed where §4a expects 1 of them
+absent (1). No constant was changed from its spec value.
+
+**Design notes for the reviewer**
+- The A5 branch is a pure function, `detectShotsWithBacking` in `src/lib/cv/backing-colour.ts`, so the whole decision
+  (`none` / `coloured` / `auto` + §5.6's fallback) is unit-tested without the worker. Stage A only passes the session's
+  backing down and turns the returned `DetectionRecord` into the `backing-colour-not-found` warning
+  (`usedBackingFallback`: `method === 'standard'` with `backing` `forced` or `detected`).
+- `rectify` grew an `rgb` option (CV_8UC3) because the colour path needs hue in the rectified square; `chroma` alone is a
+  scalar. Every caller deletes it.
+- **A backing-card photo is kept out of `session.photoIds`.** That one decision makes every count, screen and planner
+  correct without a filter at each call site (the metadata screen, results, `Analyze N targets`, the session list badge,
+  `SessionRedirect`). `isTargetPhoto` is still asserted in `planJobs`, `runStageA`, `requestAnalysis` and both screens.
+- `AppSettings` keeps `schemaVersion: 1` (data-model §5 does not bump it); the two new fields carry zod defaults so rows
+  written before REV-38 read back. `BiathlonSession` goes to version 2 with `upgradeSession` run on every read.
+- The summary image and share payloads (M14) are not built yet; the card photo is excluded from the data they will read.
+
+**Not done**: nothing in *In scope* was left out. The optional results note of §2 ("Holes found by backing colour") is
+shown on the target card when `pipeline.detection.method === 'colour'`.
+
+### Fix round 1 (2026-09-18, review feedback)
+
+| # | Issue | What changed |
+|---|---|---|
+| 1 (major) | `Auto`'s four false positives were diagnosed but not pinned by any test, so `pnpm check` stayed green over them | All four (`IMG_4743`, `IMG_4744`, `IMG_5182`, `IMG_5184`) are now asserted **by name** in `tests/unit/cv/backing-colour.test.ts` with their measured spots and largest-blob ratio, plus a control case that four other reference photos are still absent. Open question 1 carries the new measurement (below) and the milestone's status is **`blocked`**, not done. |
+| 2 (minor) | `IMG_5189` had no "within one hole radius of a real hole" check | Added. No backing photo is labelled yet, so the test uses the labels when `IMG_5189` appears in an export and the standard detector's candidates until then; measured max distance **1.47 mm** against a 2.8 mm hole radius. |
+| 3 (minor) | Colour-path shots reached `capShots` with no `confidence` and no area, so the cap kept the most central marks | `backingBlobsToShots` now returns `CappableShot[]` carrying §5.4's `areaMm2`; `DetectShotsResult` and Stage A were typed through, and `withoutArea` (new, in `cap-shots.ts`) drops it again before the analysis is stored, since data-model §4's `Shot` has no area. New unit test: capping 8 colour blobs to 4 keeps the 4 **largest**, not the 4 most central. |
+| 4 (minor) | The data-model.md §2/§8 `schemaVersion: 1` conflict was not recorded | Now **Open question 11**. |
+| 5 (minor) | `Auto` with a card rectified the working image twice | `detectByBackingColour` was split into `withBackingView` + `reportFromView`, so the §4a probe and the §5 hue mask share one warp and one `findSheet`. The §5.6 fallback still costs a second warp inside `detectShots`; recorded for M15 as **Open question 12**. |
+
+**What Open question 1's new measurement says** (the reviewer asked for evidence or a `blocked` status; both are here):
+the coloured pixels on all four photos sit in the **outer band** of the search area (accepted-pixel radius p10 101 mm and
+128–133 mm against a 150 mm cap) at wood and sky hues, while the backed photos' coloured pixels sit at radius p10 4–12 mm,
+on the holes. Raising `AUTO_MIN_SPOTS` cannot fix it (3–8 unbacked spots against 6–10 backed), so no constant was moved.
+
+**Commands re-run after the fixes** (2026-09-18): see the table at the top of these notes — all re-run and all still pass;
+`npx vitest run tests/unit/cv/backing-colour.test.ts` now reports **29** tests (was 23).

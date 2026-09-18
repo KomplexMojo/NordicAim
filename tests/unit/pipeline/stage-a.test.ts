@@ -1,18 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { Shot } from '@/lib/domain/analysis';
+import type { DetectionRecord, Shot } from '@/lib/domain/analysis';
+import type { ColourSignature } from '@/lib/domain/backing';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
 import { defaultAppSettings } from '@/lib/domain/settings';
-import { runStageA, priorInWorkingPx, type CvApi } from '@/lib/pipeline/stage-a';
+import { NotATargetPhotoError, runStageA, priorInWorkingPx, type CvApi } from '@/lib/pipeline/stage-a';
 import type { ServiceContext } from '@/lib/services/context';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { putBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
-import { putSessionRecord } from '@/lib/store/sessions-repo';
+import { listSessionRecords, putSessionRecord } from '@/lib/store/sessions-repo';
 import { putSettings } from '@/lib/store/settings-repo';
-import type { ReviewAndAlignResult } from '@/workers/cv-client';
+import type { BackingInput, ReviewAndAlignResult } from '@/workers/cv-client';
 
 import { openTestDb } from '../../helpers/db';
 import { makeTestContext } from '../../helpers/fixtures';
@@ -43,6 +44,7 @@ const DETECTED: Shot = {
   source: 'auto',
   confidence: 0.92,
   cluster: false,
+  possibleOverlap: false,
 };
 
 /** A shot the user placed in Adjust: A5 must never touch it (analysis-pipeline §8). */
@@ -55,6 +57,7 @@ const MANUAL_SHOT: Shot = {
   source: 'manual',
   confidence: null,
   cluster: false,
+  possibleOverlap: false,
 };
 
 function review(over: Partial<ReviewAndAlignResult> = {}): ReviewAndAlignResult {
@@ -66,9 +69,18 @@ function review(over: Partial<ReviewAndAlignResult> = {}): ReviewAndAlignResult 
   };
 }
 
-function stubCv(result: ReviewAndAlignResult | Error, shots: Shot[] = []) {
+/** The owner's orange backing card (backing-sheet.md §4, measured 15.9 degrees). */
+const ORANGE: ColourSignature = { hueDeg: 15.9, hueSpreadDeg: 2.4, satP10: 0.73, valP10: 0.85, samples: 70610 };
+const STANDARD_DETECTION: DetectionRecord = { method: 'standard', backing: 'off', fallbackReason: null };
+
+function stubCv(result: ReviewAndAlignResult | Error, shots: Shot[] = [], detectionRecord = STANDARD_DETECTION) {
   const calls: Array<{ prior: Calibration | null; templateHint: TemplateId | null }> = [];
-  const detectCalls: Array<{ calibration: Calibration; template: TemplateId; holeDiameterMm: number }> = [];
+  const detectCalls: Array<{
+    calibration: Calibration;
+    template: TemplateId;
+    holeDiameterMm: number;
+    backing: BackingInput;
+  }> = [];
   const api: CvApi = {
     async reviewAndAlign(workingJpeg, prior, templateHint) {
       void workingJpeg;
@@ -76,10 +88,10 @@ function stubCv(result: ReviewAndAlignResult | Error, shots: Shot[] = []) {
       if (result instanceof Error) throw result;
       return result;
     },
-    async detectShots(workingJpeg, calibration, template, holeDiameterMm) {
+    async detectShots(workingJpeg, calibration, template, holeDiameterMm, backing) {
       void workingJpeg;
-      detectCalls.push({ calibration, template, holeDiameterMm });
-      return { shots };
+      detectCalls.push({ calibration, template, holeDiameterMm, backing });
+      return { shots, detection: detectionRecord };
     },
   };
   return { api, calls, detectCalls };
@@ -374,6 +386,68 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     const analysis = await getAnalysisRecord(ctx.db, photoId);
     expect(analysis?.shots).toHaveLength(12);
     expect(analysis?.pipeline.warnings).toEqual([]);
+  });
+
+  it('passes the session backing to A5 and records the detection (backing-sheet.md §3, §5)', async () => {
+    const { ctx, photoId } = await seed();
+    const session = (await listSessionRecords(ctx.db))[0]!;
+    await putSessionRecord(ctx.db, {
+      ...session,
+      backingMode: 'coloured',
+      backing: { kind: 'coloured', source: 'card', cardPhotoId: null, colour: ORANGE },
+    });
+    const { api, detectCalls } = stubCv(review({ detection }), [DETECTED], {
+      method: 'colour',
+      backing: 'forced',
+      fallbackReason: null,
+    });
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect(detectCalls[0]?.backing).toEqual({ mode: 'coloured', colour: ORANGE });
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.detection).toEqual({ method: 'colour', backing: 'forced', fallbackReason: null });
+    expect(analysis?.pipeline.warnings).not.toContain('backing-colour-not-found');
+  });
+
+  it('warns backing-colour-not-found when the colour path fell back to the standard detector (§5.6)', async () => {
+    const { ctx, photoId } = await seed();
+    const { api } = stubCv(review({ detection }), [DETECTED], {
+      method: 'standard',
+      backing: 'forced',
+      fallbackReason: 'no backing colour showed through',
+    });
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.warnings).toContain('backing-colour-not-found');
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.reasons).toContain('backing-colour-not-found');
+  });
+
+  it("does not warn when Auto simply decided the photo is not backed (backing 'not-detected')", async () => {
+    const { ctx, photoId } = await seed();
+    const { api } = stubCv(review({ detection }), [DETECTED], {
+      method: 'standard',
+      backing: 'not-detected',
+      fallbackReason: 'no coloured spots',
+    });
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.warnings).not.toContain('backing-colour-not-found');
+    expect(analysis?.pipeline.detection.backing).toBe('not-detected');
+  });
+
+  it('refuses to run on a backing-card photo (backing-sheet.md §3)', async () => {
+    const { ctx, photoId } = await seed();
+    const photo = (await getPhotoRecord(ctx.db, photoId))!;
+    await putPhotoRecord(ctx.db, { ...photo, origin: 'backing-card' });
+    const { api } = stubCv(review({ detection }), [DETECTED]);
+
+    await expect(runStageA(ctx, photoId, api, imageTools)).rejects.toBeInstanceOf(NotATargetPhotoError);
   });
 
   it('falls back to the template hint when the photo has no template yet', async () => {

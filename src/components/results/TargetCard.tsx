@@ -57,6 +57,12 @@ export function TargetCard({ sessionId, photo, analysis, onRetry }: TargetCardPr
           stageB={analysis?.pipeline.stageB ?? 'pending'}
           onRetry={onRetry}
         />
+        {/* backing-sheet.md §2: one line, and only when the colour path actually ran. */}
+        {analysis?.pipeline.detection.method === 'colour' && (
+          <p className="text-xs text-muted-foreground" data-testid="found-by-backing-colour">
+            Holes found by backing colour
+          </p>
+        )}
         <ReasonList
           reasons={photo.reasons}
           missing={missing}

@@ -14,6 +14,18 @@ import type { Shot } from '@/lib/domain/analysis';
  */
 export type CappableShot = Shot & { areaMm2?: number };
 
+/**
+ * The stored shape (data-model §4): a `Shot` carries no area, so whatever measured it drops the area
+ * once the cap has used it.
+ */
+export function withoutArea(shots: CappableShot[]): Shot[] {
+  return shots.map((shot) => {
+    const stored: CappableShot = { ...shot };
+    delete stored.areaMm2;
+    return stored;
+  });
+}
+
 export interface CapShotsResult<T extends CappableShot> {
   /** The shots that survive, in their original order — a kept shot is never renumbered. */
   kept: T[];

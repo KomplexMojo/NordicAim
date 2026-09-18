@@ -52,6 +52,7 @@ function autoShot(id: string, xMm: number, yMm: number): Shot {
     source: 'auto',
     confidence: 0.9,
     cluster: false,
+    possibleOverlap: false,
   };
 }
 
@@ -100,7 +101,7 @@ function stubDetect(shots: Shot[]) {
     async detectShots(workingJpeg, calibration, template, holeDiameterMm) {
       void workingJpeg;
       calls.push({ calibration, template, holeDiameterMm });
-      return { shots };
+      return { shots, detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null } };
     },
   };
   return { api, calls };
@@ -228,7 +229,7 @@ describe('saveAdjustments (analysis-pipeline §8)', () => {
       },
       async detectShots(...args) {
         detectCalls.push(args);
-        return { shots: [autoShot('auto-9', 0, 0)] };
+        return { shots: [autoShot('auto-9', 0, 0)], detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null } };
       },
     };
 

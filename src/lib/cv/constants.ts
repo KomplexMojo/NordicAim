@@ -101,3 +101,48 @@ export const NUMERAL_ROTATION_MIN_STRENGTH = 0.3;
  * candidate survives at all.
  */
 export const NUMERAL_KEEP_SCORE = 0.685;
+
+// --- M19 / REV-38: the coloured backing sheet (`docs/spec/backing-sheet.md`) --------------------
+// Every value here is PROVISIONAL. §7 of the spec sets the evidence needed before the colour path is
+// trusted: at least 10 backed target photos with a card photo each, labelled with
+// `pnpm review:detection`. The numbers below are the spec's starting points, measured on three photos.
+
+// §4, from a card photo.
+/** §4.1: the card is measured over the central 60% x 60% of the image. */
+export const CARD_REGION_FRACTION = 0.6;
+/** §4.2: a card pixel counts when its HSV saturation is at least this... */
+export const CARD_SAT_MIN = 0.3;
+/** ...and its HSV value is at least this (drops shadow, white and black). */
+export const CARD_VAL_MIN = 0.25;
+/** §4.3: below this share of the region kept, the card has no clear colour and the measure is null. */
+export const CARD_MIN_KEPT_FRACTION = 0.3;
+
+// §4, without a card: anything clearly coloured is backing.
+/** §4.1: "white" is the median of pixels at least this bright (max channel, 0-255)... */
+export const NEUTRAL_WHITE_MIN_MAX = 150;
+/** ...and this close to neutral (max - min, 0-255). */
+export const NEUTRAL_WHITE_MAX_CHROMA = 40;
+/** §4.3: after the white balance, a pixel is backing at this chroma (max - min, 0-255) or above. */
+export const NEUTRAL_CHROMA_MIN = 40;
+
+// §5, the colour mask from a card's signature.
+/** §5.1: a pixel is backing within this many degrees beyond the card's own hue spread. */
+export const BACKING_HUE_MARGIN_DEG = 25;
+/** §5.1: and at this saturation or above — the floor... */
+export const BACKING_SAT_FLOOR = 0.25;
+/** ...or this multiple of the card's `satP10`, whichever is larger. No minimum brightness is applied. */
+export const BACKING_SAT_P10_FACTOR = 0.7;
+/** §5.1: the morphological opening (px, on the rectified square) that removes printed-edge fringes. */
+export const BACKING_OPEN_PX = 3;
+/** §5.2: a component below this fraction of one hole's area is dropped. */
+export const BACKING_MIN_AREA_FRACTION = 0.08;
+/** §5.3: components whose centroids lie within this fraction of a hole DIAMETER are one blob. */
+export const BACKING_MERGE_FRACTION = 0.6;
+/** §5.5: a blob at this multiple of the median blob area is flagged `possibleOverlap` (a hint only). */
+export const BACKING_OVERLAP_RATIO = 1.8;
+
+// §4a, `Auto`: is a coloured backing present in this photo?
+/** §4a: at least this many coloured blobs in the search area. */
+export const AUTO_MIN_SPOTS = 3;
+/** §4a: and no coloured blob larger than this multiple of one hole's area (scenery, not a hole). */
+export const AUTO_MAX_BLOB_RATIO = 2.5;

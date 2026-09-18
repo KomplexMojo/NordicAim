@@ -1,5 +1,6 @@
 // data-model §7, analysis-pipeline §2 (B1) / §5. `updatePhotoMetadata`, `deletePhoto`, `requestAnalysis`.
 
+import { isTargetPhoto } from '@/lib/domain/backing';
 import { photoStatus } from '@/lib/domain/status';
 import type { Lighting } from '@/lib/domain/enums';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
@@ -107,9 +108,15 @@ export async function deletePhoto(ctx: ServiceContext, photoId: string): Promise
 
   await deleteByPrefix(tx, photoPrefix(photoId));
   await deleteByPrefix(tx, diagramPrefix(photoId));
+  // backing-sheet.md §3: a session never points at a card photo that no longer exists.
+  const backing =
+    session.backing !== null && session.backing.cardPhotoId === photoId
+      ? { ...session.backing, cardPhotoId: null }
+      : session.backing;
   await putSessionRecord(tx, {
     ...session,
     photoIds: session.photoIds.filter((id) => id !== photoId),
+    backing,
     updatedAt: nowIso,
   });
   await deletePhotoRecord(tx, photoId);
@@ -132,6 +139,8 @@ export async function requestAnalysis(ctx: ServiceContext, sessionId: string): P
   const photos = await listPhotosBySession(tx, sessionId);
 
   for (const photo of photos) {
+    // backing-sheet.md §3: card photos are excluded from Stage B and from "Analyze N targets".
+    if (!isTargetPhoto(photo)) continue;
     const analysis = await getAnalysisRecord(tx, photo.id);
     if (analysis === null) continue;
 

@@ -47,7 +47,7 @@ function stubCv(): { api: CvApi; calls: number } {
       return result;
     },
     async detectShots() {
-      return { shots: [] };
+      return { shots: [], detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null } };
     },
   };
   return {

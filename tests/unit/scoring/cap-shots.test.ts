@@ -14,6 +14,7 @@ function shot(over: Partial<CappableShot> & { id: string }): CappableShot {
     source: 'auto',
     confidence: 0.5,
     cluster: false,
+    possibleOverlap: false,
     ...over,
   };
 }

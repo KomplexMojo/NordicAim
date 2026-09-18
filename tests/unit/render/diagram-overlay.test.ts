@@ -20,7 +20,7 @@ const CAL: CalibrationLike = {
 const IMAGE = { widthPx: 1200, heightPx: 1600 };
 
 function shot(id: string, xMm: number, yMm: number, multiplicity = 1): Shot {
-  return { id, xMm, yMm, multiplicity, positionOverrides: null, source: 'manual', confidence: null, cluster: false };
+  return { id, xMm, yMm, multiplicity, positionOverrides: null, source: 'manual', confidence: null, cluster: false, possibleOverlap: false };
 }
 
 /** Only the parts of an `AnalysisResult` the overlay reads (`all.mpi`, `all.groupEllipse`). */

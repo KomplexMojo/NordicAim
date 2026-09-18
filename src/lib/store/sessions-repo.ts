@@ -1,4 +1,4 @@
-import { BiathlonSession } from '@/lib/domain/session';
+import { BiathlonSession, upgradeSession } from '@/lib/domain/session';
 
 import type { AppDb, AppTx } from './db';
 import { CorruptRecordError } from './errors';
@@ -13,8 +13,9 @@ function idOf(raw: unknown): string {
   return raw !== null && typeof raw === 'object' && 'id' in raw && typeof raw.id === 'string' ? raw.id : 'unknown';
 }
 
+/** Records written before REV-38 are migrated on read (backing-sheet.md §3, milestone step 1). */
 function parse(id: string, raw: unknown): BiathlonSession {
-  const parsed = BiathlonSession.safeParse(raw);
+  const parsed = BiathlonSession.safeParse(upgradeSession(raw));
   if (!parsed.success) throw new CorruptRecordError('sessions', id);
   return parsed.data;
 }

@@ -1,7 +1,7 @@
 import * as Comlink from 'comlink';
 
 import { ANCHOR_DIAMETER_MM, detectAnchor } from '@/lib/cv/anchor';
-import { detectShots } from '@/lib/cv/holes';
+import { detectShotsWithBacking } from '@/lib/cv/backing-colour';
 import { loadOpenCv } from '@/lib/cv/opencv';
 import { sharpness } from '@/lib/cv/sharpness';
 import { splitCluster, type PointMm } from '@/lib/cv/split-cluster';
@@ -10,7 +10,7 @@ import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
 import type { RgbaImage } from '@/lib/media/format';
 
-import type { CvWorkerApi, DetectShotsResult, ReviewAndAlignResult } from './cv-client';
+import type { BackingInput, CvWorkerApi, DetectShotsResult, ReviewAndAlignResult } from './cv-client';
 
 /** analysis-pipeline §6: JPEG bytes -> RgbaImage, via createImageBitmap + OffscreenCanvas. */
 async function decodeToRgba(bytes: ArrayBuffer): Promise<RgbaImage> {
@@ -61,12 +61,14 @@ const api: CvWorkerApi = {
     calibration: Calibration,
     template: TemplateId,
     holeDiameterMm: number,
+    backing: BackingInput,
   ): Promise<DetectShotsResult> {
     const cv = await loadOpenCv();
     const img = await decodeToRgba(workingJpeg);
 
-    // A5: rectify with the chosen alignment, then segment the holes (M11 steps 1-5).
-    return { shots: detectShots(cv, img, calibration, template, holeDiameterMm) };
+    // A5: rectify with the chosen alignment, then segment the holes (M11 steps 1-5) — by the
+    // backing's colour first when there is one (REV-38, backing-sheet.md §5).
+    return detectShotsWithBacking(cv, img, calibration, template, holeDiameterMm, backing);
   },
 
   async splitCluster(pointsMm: PointMm[], k: number): Promise<PointMm[]> {

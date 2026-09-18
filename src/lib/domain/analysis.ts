@@ -14,9 +14,30 @@ export const Shot = z
     source: z.enum(['auto', 'manual']),
     confidence: z.number().min(0).max(1).nullable(),
     cluster: z.boolean(),
+    /**
+     * backing-sheet.md §5.5 (REV-38): the colour path found a blob far larger than the median, so two
+     * shots may share this hole. A hint only — it never changes `multiplicity`. Defaults to false so
+     * shots stored before REV-38 read back unchanged.
+     */
+    possibleOverlap: z.boolean().default(false),
   })
   .refine((s) => s.positionOverrides === null || s.positionOverrides.length === s.multiplicity);
 export type Shot = z.infer<typeof Shot>;
+
+/**
+ * backing-sheet.md §3: how this photo's shots were found, so the owner can see why a photo was or
+ * wasn't treated as backed. `backing` is `off` when the session's mode is `none` (and on an analysis
+ * whose Stage A has not run yet — the spec names no separate "undecided" value; see the milestone's
+ * Open questions).
+ */
+export const DetectionRecord = z.object({
+  method: z.enum(['colour', 'standard']),
+  backing: z.enum(['detected', 'not-detected', 'forced', 'off']),
+  fallbackReason: z.string().max(200).nullable(),
+});
+export type DetectionRecord = z.infer<typeof DetectionRecord>;
+
+export const INITIAL_DETECTION: DetectionRecord = { method: 'standard', backing: 'off', fallbackReason: null };
 
 export const PipelineState = z.object({
   stageA: StageState,
@@ -29,6 +50,9 @@ export const PipelineState = z.object({
   templateHint: z.object({ template: TemplateId, confidence: z.number().min(0).max(1) }).nullable(),
   sharpness: z.number().nullable(),
   warnings: z.array(Warning),
+  // REV-38: recorded on every analysis (backing-sheet.md §3, milestone step 2a). Defaulted so
+  // analyses stored before REV-38 still read back.
+  detection: DetectionRecord.default(INITIAL_DETECTION),
 });
 export type PipelineState = z.infer<typeof PipelineState>;
 
@@ -152,6 +176,7 @@ export function initialAnalysis(photoId: string, nowIso: string): TargetAnalysis
       templateHint: null,
       sharpness: null,
       warnings: [],
+      detection: INITIAL_DETECTION,
     },
     updatedAt: nowIso,
     computed: null,

@@ -3,14 +3,16 @@
 
 import * as Comlink from 'comlink';
 
+import { usedBackingFallback } from '@/lib/cv/backing-colour';
 import { BLUR_THRESHOLD } from '@/lib/cv/constants';
 import { SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
-import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
+import { INITIAL_DETECTION, type DetectionRecord, type Shot, type TargetAnalysis } from '@/lib/domain/analysis';
+import { isTargetPhoto } from '@/lib/domain/backing';
 import { declaredRounds, isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
-import { capShots } from '@/lib/scoring/cap-shots';
+import { capShots, withoutArea, type CappableShot } from '@/lib/scoring/cap-shots';
 import { scaleCalibration } from '@/lib/geometry/transform';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { AnalysisNotFoundError, PhotoNotFoundError } from '@/lib/services/photos';
@@ -20,6 +22,7 @@ import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo'
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
+import { getSessionRecord } from '@/lib/store/sessions-repo';
 import { getSettings } from '@/lib/store/settings-repo';
 import type { CvWorkerApi, ReviewAndAlignResult } from '@/workers/cv-client';
 
@@ -27,6 +30,14 @@ import { chooseAlignment } from './alignment';
 
 /** Only the part of the worker Stage A needs, so tests can stub it. */
 export type CvApi = Pick<CvWorkerApi, 'reviewAndAlign' | 'detectShots'>;
+
+/** backing-sheet.md §3: a backing-card photo is not a target, so Stage A never runs on it. */
+export class NotATargetPhotoError extends Error {
+  constructor(photoId: string) {
+    super(`Not a target photo: ${photoId}`);
+    this.name = 'NotATargetPhotoError';
+  }
+}
 
 export class WorkingImageMissingError extends Error {
   constructor(photoId: string) {
@@ -110,6 +121,8 @@ export async function runStageA(
 
   const photo = await getPhotoRecord(ctx.db, photoId);
   if (photo === null) throw new PhotoNotFoundError(photoId);
+  // backing-sheet.md §3: card photos are excluded from Stage A and B.
+  if (!isTargetPhoto(photo)) throw new NotATargetPhotoError(photoId);
   const analysis = await getAnalysisRecord(ctx.db, photoId);
   if (analysis === null) throw new AnalysisNotFoundError(photoId);
 
@@ -127,6 +140,12 @@ export async function runStageA(
     const bytesForShots = bytes.slice(0);
     // data-model §5: the hole diameter the touch rule and A5 use is a profile override.
     const settings = await getSettings(ctx.db);
+    // backing-sheet.md §5: the session's backing decides which A5 path runs.
+    const session = await getSessionRecord(ctx.db, photo.sessionId);
+    const backing = {
+      mode: session?.backingMode ?? 'auto',
+      colour: session?.backing?.colour ?? null,
+    };
 
     // §8: a calibration the user saved in Adjust is never replaced, so A4 is skipped for it.
     const manual = analysis.calibration?.source === 'manual';
@@ -162,16 +181,24 @@ export async function runStageA(
             choice.calibration,
             shotTemplate(photo, review.templateHint, choice.calibration),
             settings.profileOverrides.holeDiameterMm,
+            backing,
           );
+
+    // backing-sheet.md §3, §5.6: record which path ran, and warn when the colour path found nothing.
+    const detection: DetectionRecord = detected?.detection ?? analysis.pipeline.detection ?? INITIAL_DETECTION;
+    if (detected !== null && usedBackingFallback(detection)) warnings.push('backing-colour-not-found');
 
     // A5 / REV-28: never report more shots than the declared rounds. Stage A runs before metadata,
     // so it can only cap when the categorization is already complete; Stage B caps again once it is.
-    let shots: Shot[] | null = detected === null ? null : detected.shots;
-    if (shots !== null && isCategorizationComplete(photo.categorization)) {
-      const capped = capShots(shots, declaredRounds(photo.categorization));
-      shots = capped.kept;
+    // The colour path measures a coloured area per shot (backing-sheet.md §5.4) and the cap ranks by
+    // it; a stored `Shot` carries no area, so it is dropped again once the cap has used it.
+    let measured: CappableShot[] | null = detected === null ? null : detected.shots;
+    if (measured !== null && isCategorizationComplete(photo.categorization)) {
+      const capped = capShots(measured, declaredRounds(photo.categorization));
+      measured = capped.kept;
       if (capped.dropped.length > 0) warnings.push('extra-candidates-dropped');
     }
+    const shots: Shot[] | null = measured === null ? null : withoutArea(measured);
 
     await commitAnalysis(ctx, photoId, (a) => ({
       ...a,
@@ -185,6 +212,7 @@ export async function runStageA(
         templateHint: review.templateHint,
         sharpness: review.sharpness,
         warnings,
+        detection,
       },
     }));
   } catch (err) {

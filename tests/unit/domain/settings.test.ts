@@ -10,6 +10,9 @@ describe('defaultAppSettings', () => {
       profileOverrides: { holeDiameterMm: 5.6 },
       persistRequested: false,
       persisted: null,
+      // backing-sheet.md §3: the last backing a new session inherits.
+      lastBackingMode: 'auto',
+      lastBacking: null,
     });
   });
 

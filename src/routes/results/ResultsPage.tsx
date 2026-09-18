@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
+import { isTargetPhoto } from '@/lib/domain/backing';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { retryFailedStage } from '@/lib/pipeline/runner-browser';
 import { getSession } from '@/lib/services/sessions';
@@ -25,7 +26,10 @@ async function loadResults(ctx: ReturnType<typeof useServices>['ctx'], sid: stri
   const photos = await listPhotosBySession(ctx.db, sid);
   const byId = new Map(photos.map((p) => [p.id, p]));
   // analysis-pipeline §1 step 3: "one target card per photo in capture order".
-  const ordered = session.photoIds.map((id) => byId.get(id)).filter((p): p is TargetPhoto => p !== undefined);
+  // backing-sheet.md §3: card photos never appear in results (they are not in `photoIds` either).
+  const ordered = session.photoIds
+    .map((id) => byId.get(id))
+    .filter((p): p is TargetPhoto => p !== undefined && isTargetPhoto(p));
   const entries = await Promise.all(ordered.map(async (p) => [p.id, await getAnalysisRecord(ctx.db, p.id)] as const));
   return { sid, name: session.name, photos: ordered, analyses: new Map(entries) };
 }

@@ -1,4 +1,5 @@
 export * from './enums';
+export * from './backing';
 export * from './primitives';
 export * from './session';
 export * from './photo';

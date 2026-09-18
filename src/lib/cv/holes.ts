@@ -213,6 +213,7 @@ export function detectShotCandidates(
     rect.gray.delete();
     rect.valid.delete();
     rect.chroma?.delete();
+    rect.rgb?.delete();
   }
 }
 
@@ -239,5 +240,6 @@ export function detectShots(
     source: 'auto' as const,
     confidence: candidate.confidence,
     cluster: candidate.cluster,
+    possibleOverlap: false,
   }));
 }

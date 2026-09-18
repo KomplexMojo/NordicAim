@@ -89,3 +89,47 @@ test('metadata screen: Analyze is disabled until the imported photo is categoriz
 
   await expect(analyzeButton).toBeEnabled({ timeout: 10000 });
 });
+
+test('session options: Coloured backing, a card photo shows its swatch, and the flow is unchanged when collapsed', async ({
+  page,
+}) => {
+  const sessionId = await createSessionViaHome(page);
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
+
+  // backing-sheet.md §2: collapsed by default, and the three-step flow is untouched.
+  const toggle = page.getByTestId('session-options-toggle');
+  await expect(toggle).toBeVisible();
+  await expect(page.getByTestId('session-options-panel')).toBeHidden();
+  await expect(page.getByTestId('metadata-photo-count')).toHaveText('1 photo');
+  await expect(page.getByTestId('analyze-button')).toHaveText('Analyze 1 target');
+
+  await toggle.click();
+  await expect(page.getByTestId('session-options-panel')).toBeVisible();
+  // Auto is the default; the card actions only appear with Coloured backing chosen.
+  await expect(page.getByTestId('backing-mode-trigger')).toHaveText('Auto');
+  await expect(page.getByTestId('choose-card-photo')).toBeHidden();
+
+  await page.getByTestId('backing-mode-trigger').click();
+  await page.getByRole('option', { name: 'Coloured backing' }).click();
+  await expect(page.getByTestId('backing-source')).toHaveText('No colour measured yet');
+
+  await page.getByTestId('card-photo-input').setInputFiles('fixtures/reference/backing-card-orange.png');
+  await expect(page.getByTestId('backing-source')).toHaveText('Colour from your card photo', { timeout: 15000 });
+  const swatch = page.getByTestId('backing-swatch');
+  await expect(swatch).toHaveCSS('background-color', 'rgb(255, 106, 31)');
+
+  // backing-sheet.md §3: the card photo is not a target — no extra card, no extra count.
+  await expect(page.getByTestId('photo-metadata-card')).toHaveCount(1);
+  await expect(page.getByTestId('metadata-photo-count')).toHaveText('1 photo');
+  await expect(page.getByTestId('analyze-button')).toHaveText('Analyze 1 target');
+
+  // ...and the choice survives a reload, still collapsed.
+  await page.reload();
+  await expect(page.getByTestId('session-options-panel')).toBeHidden();
+  await page.getByTestId('session-options-toggle').click();
+  await expect(page.getByTestId('backing-mode-trigger')).toHaveText('Coloured backing');
+  await expect(page.getByTestId('backing-source')).toHaveText('Colour from your card photo');
+});

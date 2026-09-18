@@ -13,6 +13,7 @@ function shot(overrides: Partial<Shot>): Shot {
     source: 'manual',
     confidence: null,
     cluster: false,
+    possibleOverlap: false,
     ...overrides,
   };
 }

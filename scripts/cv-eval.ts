@@ -10,7 +10,9 @@
 //   * a photo with owner ground truth exceeds that same alignment tolerance (M16 step 7), or
 //   * a reference photo yields MORE detections than its declared rounds (M16 step 7), or
 //   * detection on the owner's labelled holes falls below the R4 floors (skipped when absent), or
-//   * a synthetic sheet with a known homography is outside M18's centre tolerances.
+//   * a synthetic sheet with a known homography is outside M18's centre tolerances, or
+//   * the coloured-backing path is below the backing-sheet.md §7 floors (only once >= 10 labelled
+//     backing photos exist; skipped when absent).
 
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +30,7 @@ import { loadOpenCvForTests } from '../tests/helpers/opencv.ts';
 import { blurRgba, jpegFileToRgba } from '../tests/helpers/rgba.ts';
 import { MATCH_TOLERANCE_MM, matchShots, type MatchResult } from '../tests/helpers/shot-match.ts';
 import { evaluateAlignment } from './cv-eval-alignment.ts';
+import { evaluateBacking } from './cv-eval-backing.ts';
 import { evaluateLabelled } from './cv-eval-labelled.ts';
 import {
   PRECISION_TEST_HOLES,
@@ -366,6 +369,7 @@ for (const ref of REFERENCE) {
       source: 'auto' as const,
       confidence: candidate.confidence,
       cluster: candidate.cluster,
+      possibleOverlap: false,
       areaMm2: candidate.areaMm2,
     }));
     const units = shots.reduce((sum, shot) => sum + shot.multiplicity, 0);
@@ -384,6 +388,7 @@ for (const ref of REFERENCE) {
 
 const labelled = await evaluateLabelled(cv, REPO_ROOT);
 const alignment = await evaluateAlignment(cv, REPO_ROOT);
+const backing = await evaluateBacking(cv, REPO_ROOT);
 
 // --- Report -------------------------------------------------------------------------------------
 
@@ -416,6 +421,7 @@ console.log(
 console.log(table(['case', 'truth', 'detected', 'units', 'recall', 'precision', 'mean err (mm)', 'cap drops', 'result'], shotRows));
 for (const line of labelled.lines) console.log(line);
 for (const line of alignment.lines) console.log(line);
+for (const line of backing.lines) console.log(line);
 
 const minSharp = Math.min(...sharpScores);
 const maxBlurred = Math.max(...blurredScores);
@@ -432,7 +438,8 @@ if (
   alignmentFailures > 0 ||
   capFailures > 0 ||
   labelled.failed ||
-  alignment.failed
+  alignment.failed ||
+  backing.failed
 ) {
   if (syntheticFailures > 0) console.error(`\n${syntheticFailures} synthetic anchor case(s) failed`);
   if (referenceFailures > 0) {
@@ -446,6 +453,7 @@ if (
   if (capFailures > 0) console.error(`${capFailures} reference photo(s) yielded more detections than the declared rounds`);
   if (labelled.failed) console.error('detection is below the R4 recall/precision floors on the labelled holes (M16 Open questions)');
   if (alignment.failed) console.error('a synthetic perspective case failed (M18 Tests)');
+  if (backing.failed) console.error('the colour path is below the backing-sheet §7 floors on the labelled backing photos');
   process.exit(1);
 }
 console.log('\nall synthetic cases and reference photos pass');

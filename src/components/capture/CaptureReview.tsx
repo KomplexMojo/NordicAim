@@ -7,7 +7,8 @@ import type { Calibration } from '@/lib/domain/photo';
 interface CaptureReviewProps {
   imageUrl: string;
   frame: Size;
-  prior: Calibration;
+  /** Null in backing-card mode (backing-sheet.md §2): there is no target to line up. */
+  prior: Calibration | null;
   saving: boolean;
   onRetake(): void;
   onUse(): void;
@@ -34,14 +35,14 @@ export function CaptureReview({ imageUrl, frame, prior, saving, onRetake, onUse 
     };
   }, []);
 
-  const t = container ? containTransform(container, frame) : null;
-  const centre = t ? frameToCss({ x: prior.cx, y: prior.cy }, t) : null;
-  const r = t ? prior.radiusPx * t.k : 0;
+  const t = container && prior !== null ? containTransform(container, frame) : null;
+  const centre = t && prior !== null ? frameToCss({ x: prior.cx, y: prior.cy }, t) : null;
+  const r = t && prior !== null ? prior.radiusPx * t.k : 0;
 
   return (
     <div className="flex h-full flex-col">
       <div ref={containerRef} className="relative min-h-0 flex-1 bg-black">
-        <img src={imageUrl} alt="Captured target" className="absolute inset-0 size-full object-contain" />
+        <img src={imageUrl} alt="Captured photo" className="absolute inset-0 size-full object-contain" />
         {container && centre && (
           <svg
             className="pointer-events-none absolute inset-0 size-full"

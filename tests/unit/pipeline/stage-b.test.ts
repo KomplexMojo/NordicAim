@@ -200,6 +200,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
       source: 'manual',
       confidence: null,
       cluster: false,
+      possibleOverlap: false,
     };
     const { ctx, photoId } = await seed({ shots: [...precisionFixture.shots, extra] });
 
@@ -223,6 +224,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
       source: 'auto' as const,
       confidence: 1 - i * 0.05,
       cluster: false,
+      possibleOverlap: false,
     }));
     const { ctx, photoId } = await seed({ shots: extras });
 
@@ -264,6 +266,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
       source: 'manual' as const,
       confidence: null,
       cluster: false,
+      possibleOverlap: false,
     }));
     const { ctx, photoId } = await seed({ shots: manual });
 

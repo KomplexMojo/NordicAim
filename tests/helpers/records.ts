@@ -7,7 +7,7 @@ import type { BiathlonSession } from '@/lib/domain/session';
 
 export function makeSession(over: Partial<BiathlonSession> = {}): BiathlonSession {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     id: crypto.randomUUID(),
     name: 'Session 2026-09-05',
     sessionDate: '2026-09-05',
@@ -18,6 +18,8 @@ export function makeSession(over: Partial<BiathlonSession> = {}): BiathlonSessio
     artifacts: [],
     shares: [],
     notes: '',
+    backingMode: 'auto',
+    backing: null,
     ...over,
   };
 }
