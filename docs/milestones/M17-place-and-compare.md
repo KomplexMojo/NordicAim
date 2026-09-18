@@ -83,6 +83,12 @@ parked marker onto a hole the app missed.
 
 ## Open questions
 
+**Resolved 2026-09-18.** Question 2 (*off target*) is a scoring ruling, not an M17 one: the control moved to **M20**, which
+introduces the miss representation it needs (`missesAssumed`, step 5.3), and M20's open question 1 now carries the ruling the
+owner still has to make — whether an off-target round is excluded from the group metrics or is a ring-0 unit at a nominal
+position. M17 delivered everything else and is `done`. The remaining questions below are notes for the owner's device pass,
+not blockers.
+
 1. **Step 3's clip formula contradicts step 3's own sentence and the *Tests* vectors.** The step says
    `clip-path: inset(0 <(1−value)·100%> 0 0)`, but also "0 is the whole diagram, 1 is the whole photo", and *Tests*
    fixes `value 0 → inset(0 0% 0 0)` (**fully visible**), `1 → fully clipped`, `0.5 → half`. Clipping to the left

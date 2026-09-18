@@ -23,7 +23,7 @@ A pure reconciliation step between detection and scoring, the reject rule, doubl
 status, and the results/summary presentation of all three outcomes.
 
 ## Out of scope
-Detection itself (M16, M19). The Adjust screen beyond relabelling parked markers (M17).
+Detection itself (M16, M19). The Adjust screen beyond relabelling parked markers and the **off target** control (below).
 
 ## Steps
 1. **Pure `reconcileRounds(found: FoundHole[], declared: number, evidence): Reconciliation`** in `src/lib/scoring/reconcile.ts`, run per
@@ -87,7 +87,18 @@ neighbour's shot), confirm the outcome — rejected, doubles, misses — matches
 - A rejected target keeps its shots and photo — rejection withholds a score, it doesn't discard data.
 
 ## Open questions
-_(add here)_
+
+1. **BLOCKING — how is a round that hit off the scoring area scored?** M17 left REV-33's *off target* control out because
+   nothing in the data model can record a miss: `Shot` (data-model §4) has no miss flag, and `SubsetResult` carries only
+   `missing = declared − identified` (geometry-scoring §8). The only way to score an unaccounted round as zero today is to
+   invent a coordinate beyond ring 1, which would also enter extreme spread, MPI, mean radius and the group ellipse
+   (geometry-scoring §6) — changing numbers the owner reads. AGENTS rule 2 forbids guessing here. **The owner must rule:**
+   is an off-target round *excluded from the group metrics entirely* (scored 0, but not a point in the group), or is it a
+   ring-0 unit at some nominal position that does enter them? The first is almost certainly right — a shot that missed the
+   paper says nothing about group size — but it is the owner's call, and it decides the shape `missesAssumed` takes.
+2. **This milestone now owns the *off target* control** (moved from M17, which delivered everything else). Once question 1
+   is answered, add it to the parked-marker tray alongside step 8's *Scored as miss* label: both are the same
+   representation seen from two directions — one the owner asserts, one the app assumes.
 
 ## Completion notes
 _(fill in when done)_
