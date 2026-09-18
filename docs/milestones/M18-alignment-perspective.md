@@ -65,7 +65,18 @@ Paste the per-photo centre spread from step 1 and the step 3 comparison into Com
 
 ## Open questions
 
-### 1. OWNER GATE — the calibration shape (step 2). **Blocking for the fix; nothing else waits on it.**
+### 1. RATIFIED 2026-09-18 by the owner (REV-44). Steps 2 and 3 are unblocked.
+
+> "yes, ratify it, and keep the perspective on manual drag"
+
+The shape below is now in `docs/spec/data-model.md` §3. The sub-decision is answered: **a manual handle drag in Adjust keeps
+the measured `perspective`** — the sheet's tilt has not changed because the owner corrected where the target is — and a
+separate **reset alignment** action clears it. Still to follow, as this question already lists: `transform.ts`,
+geometry-scoring §2/§2.1 (every existing vector is unchanged, because `p = q = 0` is the identity), the `scaleCalibration`
+invariance test, Stage A's 120–250 ms per photo against §9's budget (measure on the phone before switching it on, and fall
+back to `perspective: null` if the ring measurement fails), Adjust's handles, and the M13 step 7 ground-truth export.
+
+**The original gate, kept for the evidence:**
 
 Step 1 confirmed perspective, and the projective model fixes the centre (numbers below). Step 2 says to stop here,
 because storing it changes `Calibration`. **The proposal, measured rather than guessed:**

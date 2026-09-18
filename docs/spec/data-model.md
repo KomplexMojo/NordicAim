@@ -1,7 +1,7 @@
 # Spec: data model, on-device storage, services
 
 Implementation: `src/lib/domain/*.ts` (zod schemas; types are `z.infer`), `src/lib/store/*` (IndexedDB),
-`src/lib/services/*`, `src/lib/pipeline/*`. Every persisted record has `schemaVersion: 1`.
+`src/lib/services/*`, `src/lib/pipeline/*`. Every persisted record has `schemaVersion: 1`, except `BiathlonSession`, which REV-38 (M19) raised to **2** when it gained the backing fields (`backing-sheet.md` §3).
 
 Formats: `UtcIso` = ISO-8601 with `Z`; `LocalDateTime` = `YYYY-MM-DDTHH:mm:ss`; `Offset` = `±HH:MM`;
 `LocalDate` = `YYYY-MM-DD`.
@@ -36,7 +36,8 @@ export const ShareRecord = z.object({
   createdAt: UtcIso, method: z.enum(['web-share', 'download']),
 });
 export const BiathlonSession = z.object({
-  schemaVersion: z.literal(1),
+  // REV-38 (M19) raised this to 2 when the session gained its backing fields; see backing-sheet.md §3.
+  schemaVersion: z.literal(2),
   id: Id,
   name: z.string().trim().min(1).max(80),
   sessionDate: LocalDate,
@@ -62,6 +63,13 @@ export const Calibration = z.object({
   anchorDiameterMm: z.number().positive(), // 115 (sighting) or 112.4 (precision)
   source: z.enum(['overlay', 'auto', 'manual']),
   confidence: z.number().min(0).max(1).nullable(),
+  // REV-44 (M18): the target plane's vanishing line, in target mm. null = the sheet was square on, which is
+  // exactly the pre-M18 behaviour. Applied BEFORE the ellipse map:
+  //   mmToPx(p) = ellipse( p / (perspective.p * p.xMm + perspective.q * p.yMm + 1) )
+  // No migration: null computes bit-for-bit what the app computed before, so every stored TargetAnalysis keeps
+  // its numbers until re-analysed, and a source: 'manual' calibration is never rewritten (analysis-pipeline §8).
+  // A manual handle drag in Adjust KEEPS this; only "reset alignment" clears it.
+  perspective: z.object({ p: z.number(), q: z.number() }).nullable().default(null),
 });
 
 export const CaptureInfo = z.object({
@@ -260,7 +268,7 @@ After committing, services call `pipelineHooks.notify()` (`src/lib/pipeline/hook
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "6f1d7c1e-3b1e-4f5e-9a3e-1c2d3e4f5a6b",
   "name": "Session 2026-09-05",
   "sessionDate": "2026-09-05",

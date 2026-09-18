@@ -84,6 +84,36 @@ the Completion notes must say so.
 - Never write the card photo, or anything derived from any photo, outside the phone's store or `fixtures/private/`.
 
 ## Open questions
+
+### 1. ANSWERED 2026-09-18 — none of the four had a backing sheet
+
+**All four are unbacked**, confirmed by looking at them: `IMG_4743` is a sighting sheet on a weathered **wooden frame**
+(the 31–49° hues are the bare wood at the photo's left and right edges); `IMG_4744`, `IMG_5182` and `IMG_5184` are white
+paper stapled to a **pale beige board**, photographed in shade. None carries a coloured backing — a fluorescent sheet is
+unmistakable when present (compare `IMG_5189`/`IMG_5191`). **Say so if you disagree**; the constants below follow from this.
+
+**The fix is therefore determined by the measurement already taken, not by tuning.** The implementer was right that
+`AUTO_MIN_SPOTS` cannot separate the sets (3–8 unbacked spots against 6–10 backed). Two other measured axes separate them
+cleanly, and both were named in its own analysis:
+
+| | The four unbacked | The six backed |
+|---|---|---|
+| Accepted-pixel radius, p10 | **101–133 mm** (the board and scenery, at the 150 mm cap) | **4–12 mm** (where the holes are) |
+| Max chroma | **82–110** (wood, sky, shade) | **209–223** (fluorescent paper) |
+
+Either separates with a wide margin; together they are decisive. Implement **both**, because they fail differently — a
+chroma floor catches a bright board, a radial rule catches a dull one:
+
+- **A chroma floor** (`AUTO_MIN_CHROMA`, start **150**, midway between 110 and 209) — a backing sheet is fluorescent; wood,
+  sky and shade are not.
+- **A radial rule**: accepted pixels must cluster where holes can be, not in the outer band. The cleanest form is to tighten
+  `findSheet`'s mask so the board around the sheet stops leaking in, which is the root cause the implementer identified;
+  failing that, require the accepted-pixel radius p10 to sit inside the scoring area.
+
+Both are §7 constants: provisional until the labelled backing set exists, and they must be re-measured with it. Keep the
+four verdicts pinned by name in `tests/unit/cv/backing-colour.test.ts`, now asserting **not backed**.
+
+### 1a. Original question, kept for the evidence
 1. **BLOCKING — `Auto` reads four of the owner's 46 reference photos as backed** (`IMG_4743` 3 spots, `IMG_4744` 6,
    `IMG_5182` 8, `IMG_5184` 6; largest blob 0.22–0.88× a hole). §4 is explicit that "the colour path must never run on a
    photo without a backing", and §4a's table expects `IMG_4743` **absent** by the area rule — but with REV-36's sheet
