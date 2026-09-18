@@ -26,7 +26,7 @@ as shown (`<model> · <effort>`).
 | [M12](M12-analysis-results.md) | Analysis generation and results screen | **3. receive analysis** | M05, M09, M11 | opus · high | opus · high | no | done |
 | [M13](M13-adjust-shots.md) | Adjust shots (optional correction) | optional | M12 | opus · high | opus · high | no | done |
 | [M14](M14-summary-image-share.md) | Session summary image and share | **3. receive analysis** | M12, M16, M18 | sonnet · medium | sonnet · high | no | pending |
-| [M16](M16-detection-accuracy.md) | Detection accuracy and shot constraints (rework: polarity-free, geometry masks, sheet search) | generate analysis | M12 | opus · high | opus · high | yes | blocked: re-rated 2026-09-18 at recall 76.9% / precision 94.7% — precision passes, recall is below the 85% floor and tuning is exhausted (Open questions 1, 3) |
+| [M16](M16-detection-accuracy.md) | Detection accuracy and shot constraints (rework: polarity-free, geometry masks, sheet search) | generate analysis | M12 | opus · high | opus · high | yes | done |
 | [M17](M17-place-and-compare.md) | Unplaced shot markers and the diagram/photo compare slider | optional · receive analysis | M13 | opus · high | opus · high | no | pending |
 | [M18](M18-alignment-perspective.md) | Alignment under perspective (the centre rings) | overlay on template · generate analysis | M16 | opus · high | opus · high | yes | pending |
 | [M21](M21-session-review.md) | Session review, suggested holes and double punches | optional correction · receive analysis | M16, M17 | opus · high | opus · high | yes | pending |

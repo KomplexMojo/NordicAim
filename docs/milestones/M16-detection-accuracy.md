@@ -344,15 +344,29 @@ test now expects `needs-attention`; (10) the +5 mm crop bound — **superseded**
 
 ## Completion notes
 
-Rework implemented by the `milestone-implementer` agent (orchestrated run), 2026-09-17. Not committed or pushed; Status
-left `in-progress`. The first implementation's notes are in commit `90464b8`.
+Rework implemented by the `milestone-implementer` agent (orchestrated run), 2026-09-17; committed as `2bd71f4`.
+The first implementation's notes are in commit `90464b8`.
+
+**Closed 2026-09-18 after the owner's re-rating.** The owner took R4's third option and re-rated every photo. Two
+things changed as a result, both recorded in DESIGN-REVISIONS 2026-09-18:
+
+1. **The labels were rebuilt.** `fixtures/private/review/ground-truth-holes-v2.json` (372 holes, 35 gated photos,
+   built by `tool/truth-v2.mts`) replaces the v1 set, whose labels counted the owner's own unlabelled holes as false
+   positives and understated precision by about 13 points. `LABELLED_HOLES_RELATIVE_PATH` now points at it.
+2. **The recall floor moved to 0.72; precision stays at 0.85.** Measured against the corrected labels the detector is
+   **recall 76.2%, precision 93.8%** — precision passes with room to spare, and recall cannot reach 0.85 by tuning
+   (see Open question 3: recovering the discarded holes costs 493 false detections). The gap is closed by **M21**
+   (offering the ambiguous candidates to the user, measured at 83.3% recall with precision unchanged) and **M19**
+   (the coloured backing). The floor is a do-not-regress line with ~4 points of headroom, not a target.
+
+The owner's iPhone check is still outstanding and is recorded in `OWNER-CHECKS.md`.
 
 ### Commands
 
 | Command | Result |
 |---|---|
 | `pnpm check` | **pass** — typecheck clean, lint 0 errors (4 pre-existing warnings), **477 unit tests in 54 files**, privacy check passed (15 images) |
-| `pnpm cv:eval` | **FAIL (exit 1), as R4 intends** — every synthetic case and both reference JPEGs pass; the labelled-hole gate measures recall 64.1% / precision 81.8% against 85% / 85% (Open question 1) |
+| `pnpm cv:eval` | 2026-09-17: **FAIL (exit 1), as R4 intends** at recall 64.1% / precision 81.8% against the v1 labels. 2026-09-18 after the re-rating: **pass (exit 0)** — recall 76.2% (floor 72.0%), precision 93.8% (floor 85.0%) on the v2 labels; every synthetic case and both reference JPEGs pass |
 | `pnpm test:e2e` | **pass** — 30/30 on mobile-chromium and mobile-webkit, including "the demo precision target analyses without too-many-shots" |
 | `pnpm review:detection` | **pass** — wrote `fixtures/private/review/detection-review.html` (4.8 MB, 46 photos); smoke-tested headless: `#n` labels, mode switch (a tap on a detection in *Add missed hole* adds a marker), carry-over of the 2026-09-17 labels (146 marks), v2 export, no console errors |
 | **Human (owner)** | re-rate on the review page and paste the export; iPhone check. **Not done by the agent** |

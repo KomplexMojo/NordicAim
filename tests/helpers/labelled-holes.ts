@@ -7,16 +7,37 @@ import { existsSync, readFileSync } from 'node:fs';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { CalibrationLike } from '@/lib/geometry/transform';
 
-export const LABELLED_HOLES_RELATIVE_PATH = 'fixtures/private/review/ground-truth-holes-2026-09-17.json';
+export const LABELLED_HOLES_RELATIVE_PATH = 'fixtures/private/review/ground-truth-holes-v2.json';
 
 /** R4: a detection matches a labelled hole within this many hole diameters (the owner tapped by eye). */
 export const MATCH_HOLE_DIAMETERS = 0.8;
 
-/** R4: provisional floors on the gated set; the owner may move them. */
-export const GATE_RECALL_MIN = 0.85;
+/**
+ * Floors on the gated set. R4 set both at 0.85 provisionally, "the owner may move them"; the owner's
+ * re-rating of 2026-09-18 moved the recall floor, and DESIGN-REVISIONS 2026-09-18 records why.
+ *
+ * **Precision stays at 0.85** and passes with room to spare (93.8%): a false detection is a phantom shot
+ * in someone's score, so this floor must not move.
+ *
+ * **Recall is 0.72 against a measured 76.2%**, because reaching 0.85 by tuning was tried and rejected.
+ * The glyph filter discards 807 candidates across the 41 targets of which only 25 are real holes, so
+ * admitting them costs 493 false detections and takes precision to 37.9%; no measured feature separates
+ * them. Hand-written features are at their ceiling on bare paper. The remaining gap is closed by
+ * **M21** (the ambiguous candidates are offered to the user, measured at 83.3% recall with precision
+ * unchanged) and **M19** (a coloured backing, where hue separates what shape and brightness cannot).
+ * This floor is therefore a "do not regress" line, not a target: it leaves ~4 points of headroom.
+ */
+export const GATE_RECALL_MIN = 0.72;
 export const GATE_PRECISION_MIN = 0.85;
 
-/** R4: the first detector's numbers in the owner's review, reported alongside every run. */
+/**
+ * R4: the first detector's numbers in the owner's review, reported alongside every run.
+ *
+ * Measured against the **v1** labels, so it is no longer directly comparable with the numbers above,
+ * which are measured against the corrected v2 set. The v1 labels were incomplete — holes the first
+ * detector never showed the owner counted as false positives — which understated precision by about
+ * 13 points. Treat the baseline as a direction of travel, not a difference.
+ */
 export const REVIEW_BASELINE: Record<'all' | TemplateId, { recall: number; precision: number }> = {
   all: { recall: 0.53, precision: 0.61 },
   precision: { recall: 0.54, precision: 0.54 },

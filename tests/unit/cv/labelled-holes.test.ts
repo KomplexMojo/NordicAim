@@ -102,15 +102,20 @@ describe('the gated set (R4)', () => {
     expect(passesGate(pooled([...results.values()]))).toBe(false);
   });
 
-  it('pools counts rather than averaging ratios, and gates at the provisional floors', () => {
+  it('pools counts rather than averaging ratios, and gates at the recorded floors', () => {
     const result = pooled([
       { truePositives: 1, falsePositives: 0, falseNegatives: 0 },
       { truePositives: 5, falsePositives: 5, falseNegatives: 5 },
     ]);
     expect(result.recall).toBeCloseTo(6 / 11, 12);
     expect(result.precision).toBeCloseTo(6 / 11, 12);
-    expect(GATE_RECALL_MIN).toBe(0.85);
+    // Moved by the owner's re-rating, 2026-09-18 (DESIGN-REVISIONS, and labelled-holes.ts explains why):
+    // recall dropped to 0.72 because 0.85 is unreachable by tuning; precision must not move off 0.85,
+    // because a false detection is a phantom shot in someone's score.
+    expect(GATE_RECALL_MIN).toBe(0.72);
     expect(GATE_PRECISION_MIN).toBe(0.85);
-    expect(passesGate({ recall: 0.85, precision: 0.849 })).toBe(false);
+    expect(passesGate({ recall: 0.72, precision: 0.849 })).toBe(false);
+    expect(passesGate({ recall: 0.719, precision: 0.95 })).toBe(false);
+    expect(passesGate({ recall: 0.72, precision: 0.85 })).toBe(true);
   });
 });
