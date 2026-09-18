@@ -141,6 +141,14 @@ during M10/M11 work._
   3. Should saving a manual calibration clear the `alignment-uncertain` warning? Currently it doesn't (spec §8 doesn't say to), so a photo the owner just lined up by hand still shows "Used your on-screen alignment — check the rings line up."
   4. Is the re-detect shot-id collision rule acceptable: a re-detected shot whose id collides with a kept manual one is renamed `auto-1-2`, `auto-1-3`, … (unspecified by the spec)?
 
+## M18 — Alignment under perspective (the centre rings)
+
+- [ ] OWNER GATE (blocking, M18's stop point): decide `docs/milestones/M18-alignment-perspective.md` Open question 1 — add `Calibration.perspective: { p, q } | null` (the target plane's vanishing line, applied before the ellipse map). 2 numbers complete the 7 observable degrees of freedom the 5 existing fields don't carry; verified on 12 owner photos to within 2.3e-4 px; `null` reproduces today's app bit-for-bit, so no migration and no rewriting of `source: 'manual'` calibrations. Also decide the sub-question: should a manual Adjust handle drag keep the measured `perspective` (recommended, plus a "reset alignment" action) or clear it?
+- [ ] Decide how to close Open question 2 (missing ground truth): `fixtures/reference/ground-truth/` has only its README, so real-photo alignment numbers are measured evidence, not owner-confirmed. Either export ground truth from Adjust for the two reference JPEGs (see that README), or add a "rings line up / off" question to the M16 R5 review page (`pnpm review:detection`).
+- [ ] Correct `fixtures/private/review/ground-truth-holes-v2.json`: the entry `IMG_5057_2` (`template: "precision"`, `anchorDiameterMm: 112.4`) is actually the Caledonia Nordic SIGHTING sheet (115 mm disc, 110/45/40 mm guides, 15 mm inner circle). This also means M16's detection numbers for that photo were computed against the wrong template.
+- [ ] Decide whether to write the 15 mm inner-circle measurement into `docs/spec/geometry-scoring.md` §1.2 (still says "approximate, measure in M09") — note the supporting number isn't reproducible from the repo.
+- [ ] Not yet actionable — do only after the shape above is ratified and wired into Stage A, `transform.ts` and Adjust: on the iPhone, check that the centre rings sit on the printed rings. The fix isn't shipped yet, so the device looks the same as before M18.
+
 ## M17 — Unplaced shot markers and the diagram/photo compare slider
 
 - [ ] On the iPhone, open Adjust shots on a real target where the app missed a hole: confirm the numbered "Not placed" markers appear in the tray beside the target, drag one onto the missed hole at both default zoom and after zooming/panning, and confirm it lands under your finger. Also drag a placed shot back onto the tray and confirm it is removed (note the tray only shows while at least one round is unplaced, so this is unavailable once every declared round is placed — see Open question 4 below).

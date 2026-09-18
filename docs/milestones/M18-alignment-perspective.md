@@ -64,7 +64,184 @@ Paste the per-photo centre spread from step 1 and the step 3 comparison into Com
 - Stored analyses with `source: 'manual'` calibrations are the owner's edits: a migration must never overwrite them (analysis-pipeline §8).
 
 ## Open questions
-_(add here)_
+
+### 1. OWNER GATE — the calibration shape (step 2). **Blocking for the fix; nothing else waits on it.**
+
+Step 1 confirmed perspective, and the projective model fixes the centre (numbers below). Step 2 says to stop here,
+because storing it changes `Calibration`. **The proposal, measured rather than guessed:**
+
+```ts
+export const Calibration = z.object({
+  cx: z.number(), cy: z.number(), radiusPx: z.number().positive(),
+  axisRatio: z.number().gt(0.3).lte(1),
+  angleDeg: z.number().gte(0).lt(180),
+  anchorDiameterMm: z.number().positive(),
+  source: z.enum(['overlay', 'auto', 'manual']),
+  confidence: z.number().min(0).max(1).nullable(),
+  // NEW (M18): the target plane's vanishing line, in target mm. null = the sheet was square on, which
+  // is exactly today's behaviour. Applied BEFORE the ellipse map:
+  //   mmToPx(p) = ellipse( p / (perspective.p * p.xMm + perspective.q * p.yMm + 1) )
+  perspective: z.object({ p: z.number(), q: z.number() }).nullable().default(null),
+});
+```
+
+**Why two numbers are enough, and why this shape loses nothing.** A homography has 8 degrees of freedom, but concentric
+circles cannot see the sheet's rotation in its own plane (rotating the rings changes nothing in the photo), so only 7 are
+observable. The existing five fields carry 5 — the ellipse family is exactly "affine minus a rotation" — and the vanishing
+line carries the other 2. Every homography factors as `ellipse · perspective · rotation`, and the rotation is the
+unobservable one. **Verified numerically on 12 of the owner's photos:** decomposing each fitted homography into these seven
+numbers and rebuilding it reproduces every sampled ring point to within **2.3e-4 px**. The fit pins the rotation to the
+ellipse calibration's own frame (`alignRotationGauge`), so shot coordinates never silently swing about the centre.
+
+**Migration for stored analyses: none needed.** `perspective` defaults to `null`, and `null` computes bit-for-bit what the
+app computes today, so every stored `TargetAnalysis` keeps its current numbers until it is re-analysed. In particular a
+calibration with `source: 'manual'` is never rewritten (analysis-pipeline §8). If the owner wants stored analyses improved
+they must be re-run, which is a user action, not a migration.
+
+**What else has to follow, if the owner says yes:**
+- `src/lib/geometry/transform.ts` — `mmToPx` / `pxToMm` apply the factor. geometry-scoring §2.1 needs the extra step
+  written into the spec; every existing vector is unchanged because `p = q = 0` is the identity.
+- `scaleCalibration` (capture-overlay §3.3) — unchanged. `perspective` is in **mm**, so rescaling image pixels does not
+  touch it (the homography's last row is invariant under `diag(f, f, 1)`). Verified algebraically; worth a unit test.
+- Stage A (analysis-pipeline §3) — after `detectAnchor`, run the ring measurement and store the fitted pair. **Cost
+  measured here: 120–250 ms per 1200 px photo in Node** (two measurement passes over 5–12 circles). The phone will be
+  slower; §9's budget needs checking before this is switched on.
+- M13/M17 **Adjust** — the centre/edge/radius handles still edit the five ellipse fields. One decision is needed: does a
+  manual handle drag **keep** the measured `perspective` (the sheet's tilt has not changed, so it should) or **clear** it?
+  Recommendation: keep it, and offer a "reset alignment" that clears everything.
+- The ground-truth export (M13 step 7) and `fixtures/reference/ground-truth/README.md` gain the field.
+- `docs/spec/data-model.md` §3 and `docs/spec/geometry-scoring.md` §2 / §2.1.
+
+### 2. Step 3 has no owner-confirmed ground truth to measure against
+
+`fixtures/reference/ground-truth/` still holds only its README — no owner-aligned rings have ever been exported from
+Adjust — and `pnpm review:detection` has no "rings line up / off" question. So step 3 is measured against **the printed
+circles found in each photo**, which is evidence (a sub-pixel edge fit on 500–2100 points per photo) but is not the owner
+confirming what they see. The milestone forbids inventing a tolerance from eyeballed seeds, so nothing here is gated on
+real photos. The owner decides which route to close this: export ground truth from Adjust for the two reference JPEGs, or
+extend the review page (M16 R5) with a per-photo ring confirmation.
+
+### 3. The owner's labelled set records `IMG_5057 2.jpeg` as `precision`, but it is a sighting sheet
+
+`fixtures/private/review/ground-truth-holes-v2.json` has `IMG_5057_2` with `template: "precision"`. The photo is the
+Caledonia Nordic sighting sheet (the 115 mm disc with the 110/45/40 mm guides). The alignment row for it is therefore
+measured against the wrong circles, and — more importantly — **M16's detection numbers for that photo were also computed
+against the wrong template**. Not fixed here: it is the owner's data, and changing it would move M16's gated figures.
+
+### 4. The new modules are not named by any spec
+
+`docs/spec/` does not mention a projective model, so these paths were chosen to match the repo map rather than a spec:
+`src/lib/geometry/homography.ts`, `src/lib/geometry/fit-homography.ts`, `src/lib/cv/ring-edges.ts`,
+`src/lib/cv/alignment-perspective.ts`. If the owner ratifies question 1, the spec should name them.
+
+### 5. Confirmed, not a question: the sighting sheet's inner circle really is 15 mm
+
+geometry-scoring §1.2 marks it "approximate, measure in M09". Measured on the owner's 14 sighting photos, against a model
+fitted to the other four circles: **median implied diameter 14.94 mm** (the 110 mm guide measures 109.97 and the 115 mm
+disc 115.01 on the same fits). The constant is right; it is the *measurement* of that circle that is fragile, because it
+is small and the owner's shots tend to sit on it.
 
 ## Completion notes
-_(fill in when done)_
+
+**Status: step 1 done and the hypothesis confirmed; step 2 stopped at the owner gate as the milestone requires; step 3
+measured as far as it can be without owner-confirmed rings.** Nothing the app stores or computes has changed — `Calibration`,
+`mmToPx`/`pxToMm`, Stage A, Adjust and scoring are all untouched. The new code is the measurement and the proposed model,
+used by `pnpm cv:eval` and the unit tests only.
+
+### Step 1 — the hypothesis is confirmed
+
+The method: for each printed circle of known radius, walk 180 rays out from the model centre, find the ring line (or the
+mark's edge) on each ray to sub-pixel accuracy, then fit an **ellipse to each circle on its own**. Under perspective those
+per-circle centres step along a line, with the step growing as the square of the radius; under a plain fitting error they
+scatter.
+
+| | per-circle centre spread | distance off the best-fit line | correlation with r² |
+|---|---|---|---|
+| synthetic precision sheet, tilted 25° | 4.198 mm | 0.000 mm | −1.00 |
+| the same sheet rolled 35° | 4.195 mm | 0.004 mm | −1.00 |
+| synthetic sighting sheet, tilted 25° | 2.295 mm | 0.002 mm | +1.00 |
+| synthetic precision sheet, square on | **0.003 mm** | 0.000 mm | 0.19 (noise) |
+| synthetic sighting sheet, square on | **0.006 mm** | 0.001 mm | 0.23 (noise) |
+| **42 real photos (2 reference JPEGs + the owner's 40 labelled targets)** | **median 3.500 mm** | **median 0.070 mm** | \|r²corr\| ≥ 0.9 on 29 of 42, ≥ 0.5 on 36 |
+
+The centres are **50× closer to a line than the line is long**, and the displacement grows with r². That is perspective,
+not a fitting error. The direction also agrees with how the photos were taken: the fitted vanishing line is dominated by
+its **q** (vertical) term on every photo measured (q from −1.3e-4 to −1.0e-3 per mm, p typically 3× smaller), i.e. the
+sheets lean away from the camera about a horizontal axis, as they would when photographed from standing height.
+
+### Step 3 — the centre error, under each model
+
+Measured against the printed circles found in each photo (see Open question 2 — this is not owner-confirmed). "Centre" is
+the printed 10 ring (precision, 10.4 mm) or the inner circle (sighting, 15 mm); "edge" is the anchor's own boundary.
+
+| | ellipse model (what the app stores today) | projective model |
+|---|---|---|
+| median centre-ring error, 42 photos | **0.888 mm** (max up to 3.07 mm) | **0.150 mm** |
+| median anchor-edge error, 42 photos | 0.518 mm | **0.212 mm** |
+| median fit rms over all circles | 0.997 mm | **0.284 mm** |
+
+The centre is **5.9× better and the edge is 2.4× better**, so the fix does not buy the centre at the outer rings' expense
+(M18 Pitfalls). The edge got *worse* on 3 of 42 photos, all of them in the group below. `0.888 mm` at the 10 ring is the
+owner's "the centre rings are always slightly off" in millimetres: the 10 ring's radius is 5.2 mm, so the app's ring was
+sitting about **17% of a 10-ring radius** off the printed one.
+
+On **11 of 42 photos the projective fit did not improve the rms by a quarter**. Two different things are in that group and
+the report says which by the circles/points and rms columns: photos taken nearly square on (nothing to correct — e.g.
+IMG_5084, rms 0.476 → 0.360, centre error 0.185 → 0.176 mm), and photos where the **ring measurement itself** failed —
+under 1400 believable points instead of the usual 2000+ (IMG_4743, IMG_4745, IMG_4770, IMG_4771), or the wrong recorded
+template (IMG_5057 2.jpeg, Open question 3). Those rows are evidence about the measurement, not about either model.
+
+### Synthetic ground truth (exact)
+
+`tests/helpers/tilted-target.ts` renders a sheet under a **known** homography — every printed circle as a 256-point
+polygon, because SVG's own transforms are affine and cannot express perspective — so the printed centre is exact.
+
+| case | ellipse centre error | projective centre error | models differ |
+|---|---|---|---|
+| precision, tilt 25°, 600 mm | 1.168 mm | **0.153 mm** | 1.397 mm |
+| precision, tilt 25° + roll 35° | 1.218 mm | **0.155 mm** | 1.360 mm |
+| sighting, tilt 25° | 0.738 mm | **0.162 mm** | 0.929 mm |
+| precision, square on | 0.154 mm | 0.154 mm | **0.000 mm** |
+| sighting, square on | 0.160 mm | 0.160 mm | **0.000 mm** |
+
+The 0.15 mm floor on the square-on rows is the rasteriser and the edge finder, not either model: both models report it
+identically. The milestone's two bars (tilted within 0.5 mm; square-on agreement within 0.2 mm) are gated in `cv:eval`
+and covered by unit tests.
+
+### Files
+
+| File | What it is |
+|---|---|
+| `src/lib/geometry/homography.ts` | the projective mm↔px map, built from a `Calibration`, plus the rotation gauge fix |
+| `src/lib/geometry/fit-homography.ts` | Levenberg–Marquardt + Tukey biweight fit to points on circles of known radius |
+| `src/lib/cv/ring-edges.ts` | sub-pixel measurement of every printed circle, pure over `RgbaImage`, no OpenCV |
+| `src/lib/cv/alignment-perspective.ts` | both models fitted to the same points, plus step 1's centre-spread statistic |
+| `scripts/cv-eval-alignment.ts` | the two tables above; wired into `pnpm cv:eval` |
+| `tests/helpers/tilted-target.ts` | a sheet rendered under a known homography |
+| `tests/unit/geometry/homography.test.ts` | geometry-scoring §2.1's vectors through the new model; the 1e-6 mm round trip |
+| `tests/unit/geometry/fit-homography.test.ts` | exact recovery, the gauge fix, robustness to bad rays |
+| `tests/unit/cv/alignment-perspective.test.ts` | the milestone's three tests end to end on rendered sheets |
+
+`tests/helpers/synthetic-target.ts` only gained `export` on its `PAPER`, `INK` and `LINE_MM` constants, so the tilted
+sheet is drawn in the same colours.
+
+### Commands
+
+| Command | Result |
+|---|---|
+| `pnpm check` | pass — typecheck, lint (4 pre-existing warnings, 0 errors), 535 unit tests in 59 files, privacy check (15 images) |
+| `pnpm cv:eval` | pass — every existing gate still passes, plus the 5 new synthetic perspective cases; the 42-photo table is reported, not gated |
+| `pnpm test:e2e` | pass — 40 tests, mobile Chromium + mobile WebKit |
+
+### Deviations
+
+- **Step 2 stops before the data-model change**, as the milestone instructs. The projective model exists as pure code and
+  is measured, but nothing stores it and nothing in the app uses it. Open question 1 is the owner's decision.
+- Two things had to be **decided to make the measurement honest**, both recorded in the code: the fit uses Tukey's
+  biweight (rays that latch onto a shot hole or a numeral are common on real paper and plain least squares lets a handful
+  drag the model), and a per-circle ellipse fit always starts from an affine model (`affinePartAtCentre`) — an affine
+  correction of a projective init is still projective, so without it the "ellipse centres" were not ellipse centres at
+  all. The first version of this measurement had that bug and understated the spread by 5×.
+- The alignment table uses the template the owner **recorded** for each photo rather than `hintTemplate`, which reads
+  `IMG_5057-sighting.jpg` as `precision`. That template-hint mistake is not M18's to fix, but it would have silently
+  wrecked two rows.

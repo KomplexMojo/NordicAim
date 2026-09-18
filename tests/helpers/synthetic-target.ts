@@ -13,9 +13,9 @@ import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates'
 
 import { svgToRgba } from './rgba';
 
-const PAPER = '#F4F2EE';
-const INK = '#181818';
-const LINE_MM = 0.35;
+export const PAPER = '#F4F2EE';
+export const INK = '#181818';
+export const LINE_MM = 0.35;
 
 /**
  * M11: a fired hole is torn paper and backing — much brighter than the printed ink it sits on and
