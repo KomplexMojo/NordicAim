@@ -276,6 +276,16 @@ DESIGN-REVISIONS 2026-09-18). The owner took the third option in question 1 and 
 - **Consequence.** Hand-written features are at their ceiling on bare paper at about 77% / 95%. The recall gap is addressed
   instead by **M21** (REV-40), which offers the ambiguous candidates to the user — measured to reach 83.3% recall with precision
   unchanged — and by **M19** (the backing sheet), where colour separates what shape and brightness cannot.
+- **The sample set is worst-case, not typical (owner, 2026-09-18).** The 46 photos "were those I had on my phone before this
+  work was started so will represent the worst photos available" — taken before the capture overlay existed, so the target is
+  often small in frame, badly lit or cropped. **Recall 76.2% / precision 93.8% is therefore a pessimistic floor.** Re-measure
+  once photos taken *through* the app exist; until then the gate deliberately sits on hard cases.
+- **`IMG_5057 2.jpeg` was recorded as `precision`; it is a sighting sheet** (Caledonia Nordic, 115 mm disc, dashed 110/40 mm
+  guides, 45 mm circle — confirmed visually 2026-09-18). Corrected in the v2 labels, with `anchorDiameterMm` 112.4 → 115. The
+  aggregate is unchanged (76.2% / 93.8%); the per-template split moves to precision 22 photos / sighting 13. **The underlying
+  defect is `hintTemplate`**, which classifies sighting sheets as precision (M10 open question 3) and so also picks the wrong
+  anchor diameter. It is not fixed here — it needs its own measurement across the whole set, and it affects live analyses, not
+  just the labels.
 - **Sample-set corrections from the owner:** pull **IMG_5084** (a combined prone/standing target plus two others in frame), and
   **IMG_5153 duplicates IMG_5152**. The review page's rank labels also skipped numbers on IMG_4744, so its detected count reads
   high; fix with R5's labelling.

@@ -88,17 +88,24 @@ neighbour's shot), confirm the outcome — rejected, doubles, misses — matches
 
 ## Open questions
 
-1. **BLOCKING — how is a round that hit off the scoring area scored?** M17 left REV-33's *off target* control out because
-   nothing in the data model can record a miss: `Shot` (data-model §4) has no miss flag, and `SubsetResult` carries only
-   `missing = declared − identified` (geometry-scoring §8). The only way to score an unaccounted round as zero today is to
-   invent a coordinate beyond ring 1, which would also enter extreme spread, MPI, mean radius and the group ellipse
-   (geometry-scoring §6) — changing numbers the owner reads. AGENTS rule 2 forbids guessing here. **The owner must rule:**
-   is an off-target round *excluded from the group metrics entirely* (scored 0, but not a point in the group), or is it a
-   ring-0 unit at some nominal position that does enter them? The first is almost certainly right — a shot that missed the
-   paper says nothing about group size — but it is the owner's call, and it decides the shape `missesAssumed` takes.
-2. **This milestone now owns the *off target* control** (moved from M17, which delivered everything else). Once question 1
-   is answered, add it to the parked-marker tray alongside step 8's *Scored as miss* label: both are the same
-   representation seen from two directions — one the owner asserts, one the app assumes.
+1. **RESOLVED 2026-09-18 by REV-43.** The owner: *"If a round is on the paper off the scoring area, treat it as a ring-zero
+   unit."* The deciding distinction is **whether a position exists**, not whether the round scored:
+   - a hole **on the paper, outside the scoring area** is a **ring-zero unit at its measured position**, and enters the group
+     metrics (geometry-scoring §6) like any other located shot — nothing about it is invented;
+   - a declared round with **no hole found anywhere** stays an **assumed miss** (step 5.3) and enters no group metric, because
+     it has no position.
+
+   This milestone must therefore check three things rather than assume them:
+   - **does a shot beyond ring 1 already score 0** under geometry-scoring §7, or does the ring lookup need an explicit
+     outside-the-rings case? Verify; do not change the ring maths without saying so;
+   - a ring-zero unit **counts as identified**, so it reduces `missing` and must never also be counted as an assumed miss;
+   - **sighting sheets score by zone, not ring** — confirm the equivalent: a hole on the paper outside the outermost zone is a
+     located unit that misses the zone tally but still enters the group metrics.
+
+2. **This milestone owns the *off target* control** (moved from M17, which delivered everything else). Under REV-43 its
+   meaning is now narrow: a paper hole outside the rings needs no control at all — it is simply a detected shot that scores
+   zero — so the control means only *"this round is not in this photo"*, which is step 5.3's assumed miss. Deliver it as that
+   single concept on the parked-marker tray, alongside step 8's *Scored as miss* label.
 
 ## Completion notes
 _(fill in when done)_

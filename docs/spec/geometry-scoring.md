@@ -209,6 +209,8 @@ Units sorted: D#0, D#1, B, C, A → standing = {D#0, D#1}; prone = {B, C, A}.
 
 ## 8. Missing and over-count (per subset)
 
+**Amended by REV-43 (M20):** a **located** hole on the paper outside the scoring area is a **ring-zero unit** — it scores zero and is included in §6's group metrics, because its position was measured. An **assumed miss** (a declared round with no hole found anywhere) is excluded from every group metric, because it has no position.
+
 **Amended by REV-39 (M20):** automatic analyses reconcile found holes against the declared rounds (reject / cap / double punches / misses) before scoring; unaccounted rounds after that are scored as misses, and the range below is no longer the headline. Keep the rest until M20 decides what still uses it.
 
 `identified = number of units in the subset`, `missing = max(0, declared - identified)`,

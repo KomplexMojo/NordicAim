@@ -39,9 +39,17 @@ app does not, and it is the one place a person beats every rule tested.
 | REV-41 | **A hole too wide to be one shot is offered as a double punch.** A .22 hole is 5.6 mm ± 5%; a detected hole materially wider is flagged in Adjust with a one-tap "2 shots", which sets the multiplicity the Inspector already supports. The app proposes, never decides — REV-28's "always assume one hole to start" is unchanged. | Nothing: M13's multiplicity control exists but nothing ever suggests using it | "#5 is a double punch this can be determined by width. #6 is a double punch that can be determined by width." **13 of the 41 rated targets contain a multi-shot hole**, which is scoring error that the detection numbers do not capture at all — the detector correctly found one hole. |
 | REV-42 | **Reviewing a session is a single pass, not a hunt.** A review route walks a session's photos one at a time — needing attention first — with the existing Adjust surface embedded and Confirm / Next, so a session is checked the way the owner checks a folder of photos. It adds no editing capability of its own. | M12's results screen as the only way in (one target at a time, by navigation) | "…the same corrections … that I can when I review the photos as a group." |
 
+| REV-43 | **A hole on the paper outside the scoring area is a ring-zero unit.** It scores zero and enters the group metrics like any other located shot, because its position was measured, not invented. A declared round with **no hole found anywhere** stays an assumed miss (REV-39) and enters no group metric, because it has no position. | M17's unresolved "off target" question; narrows REV-33's control to "this round is not in this photo" | "If a round is on the paper off the scoring area, treat it as a ring-zero unit." Also, on why off-paper hits are rare in practice: "The photo should be focused on the circular target. Most of the time it won't include off paper hits." The distinction that matters is whether a position exists, not whether the round scored — so nothing fabricated ever reaches extreme spread, MPI, mean radius or the ellipse (geometry-scoring §6). |
+
 **Deliberately not brought across from the review page:** quality ratings, alignment ratings, free-text comments and the ratings
 export. Those exist to judge the *detector*, not to correct a target, and the owner's own page keeps that job. Nothing in the app
 sends anything anywhere (no runtime network calls).
+
+**The 46-photo sample set is worst-case, not typical.** The owner: they "were those I had on my phone before this work was
+started so will represent the worst photos available" — taken before the capture overlay existed, with no framing guidance.
+Every detection number measured on them (M16's recall 76.2% / precision 93.8%) is therefore a **pessimistic floor**. The gate
+keeps them because a bar should sit on hard cases, but the figures should be re-measured once photos taken *through* the app
+exist (M16 open questions, and M15's release notes).
 
 ## 2026-09-17: coloured backing sheet and declared rounds
 
