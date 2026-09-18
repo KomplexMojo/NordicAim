@@ -261,6 +261,25 @@ resembles the photo.
 
 Rework (2026-09-17). Questions 1-11 of the first implementation are restated at the end, marked resolved or still open.
 
+**Resolved 2026-09-18 by the owner's re-rating** (`fixtures/private/review/detection-review-v2-2026-09-17.json`, and
+DESIGN-REVISIONS 2026-09-18). The owner took the third option in question 1 and re-rated, which changed both answers below.
+
+- **Question 1 — the gate's numbers were measured against incomplete labels.** Re-rated: **recall 76.9%, precision 94.7%**
+  (mean quality 2.94), against the 64.1% / 81.8% recorded below. Only **16 of 302 detections are false**; the labels were
+  counting the owner's own unlabelled holes against the detector. Precision therefore clears its 85% floor; **recall does not**,
+  and M16 stays blocked on that alone.
+- **Question 3 — REV-27 is kept, now by measurement rather than by the letter of R2.** Of the 86 real holes missed, 30 produced
+  a candidate that a filter discarded and 25 of those died on the glyph test. But that test discards **807 candidates across the
+  41 targets, of which only 25 are real holes.** Admitting them costs 493 false detections (precision 37.9%); the best variant
+  tried, a 40 mm radial gate with relaxed thresholds, still trades 5 points of recall for 16 of precision. Detection score does
+  not separate the 25 from the 782 (the distributions overlap); radial distance helps but not enough. **Do not relax REV-27.**
+- **Consequence.** Hand-written features are at their ceiling on bare paper at about 77% / 95%. The recall gap is addressed
+  instead by **M21** (REV-40), which offers the ambiguous candidates to the user — measured to reach 83.3% recall with precision
+  unchanged — and by **M19** (the backing sheet), where colour separates what shape and brightness cannot.
+- **Sample-set corrections from the owner:** pull **IMG_5084** (a combined prone/standing target plus two others in frame), and
+  **IMG_5153 duplicates IMG_5152**. The review page's rank labels also skipped numbers on IMG_4744, so its detected count reads
+  high; fix with R5's labelling.
+
 1. **BLOCKING — the R4 gate is not reached.** On the 34 gated photos the reworked detector measures **recall 64.1%,
    precision 81.8%** against floors of 85% / 85% (baseline 53% / 61%). Precision sheets 59.5% / 78.0% (baseline
    54% / 54%), sighting sheets 73.6% / 89.0% (baseline 51% / 87%). Per R4, tuning stopped here and `pnpm cv:eval`

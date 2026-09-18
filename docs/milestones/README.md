@@ -26,9 +26,10 @@ as shown (`<model> · <effort>`).
 | [M12](M12-analysis-results.md) | Analysis generation and results screen | **3. receive analysis** | M05, M09, M11 | opus · high | opus · high | no | done |
 | [M13](M13-adjust-shots.md) | Adjust shots (optional correction) | optional | M12 | opus · high | opus · high | no | done |
 | [M14](M14-summary-image-share.md) | Session summary image and share | **3. receive analysis** | M12, M16, M18 | sonnet · medium | sonnet · high | no | pending |
-| [M16](M16-detection-accuracy.md) | Detection accuracy and shot constraints (rework: polarity-free, geometry masks, sheet search) | generate analysis | M12 | opus · high | opus · high | yes | blocked: R4 gate not reached — recall 64.1% / precision 81.8% against 85% / 85%; owner decides (Open question 1) |
+| [M16](M16-detection-accuracy.md) | Detection accuracy and shot constraints (rework: polarity-free, geometry masks, sheet search) | generate analysis | M12 | opus · high | opus · high | yes | blocked: re-rated 2026-09-18 at recall 76.9% / precision 94.7% — precision passes, recall is below the 85% floor and tuning is exhausted (Open questions 1, 3) |
 | [M17](M17-place-and-compare.md) | Unplaced shot markers and the diagram/photo compare slider | optional · receive analysis | M13 | opus · high | opus · high | no | pending |
 | [M18](M18-alignment-perspective.md) | Alignment under perspective (the centre rings) | overlay on template · generate analysis | M16 | opus · high | opus · high | yes | pending |
+| [M21](M21-session-review.md) | Session review, suggested holes and double punches | optional correction · receive analysis | M16, M17 | opus · high | opus · high | yes | pending |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18 | sonnet · medium | sonnet · high | yes | pending |
 
 ```mermaid
@@ -60,18 +61,27 @@ flowchart TD
   M14 --> M15
   M16 --> M15
   M17 --> M15
+  M16 --> M21
+  M17 --> M21
+  M21 --> M15
 ```
 
 **M16 and M17 are numbered after M15 but run before it** (M15 depends on them). They come from the owner's review of real
 targets on 2026-09-16: detection quality (REV-27, REV-28, REV-31) and placing/comparing shots by hand (REV-29, REV-30).
 
 **M14 now waits for M16.** The session summary image packages the analysis, so there is no point building it from numbers the
-owner has shown to be wrong. Run order from here: **M16 → M17 → M18 → M14 → M15**.
+owner has shown to be wrong. Run order from here: **M16 → M17 → M18 → M21 → M14 → M15**.
 
 **2026-09-17 owner review (REV-34 to REV-37).** The owner rated M16's first detector on 46 real photos: below 2/5, recall 53%,
 precision 61%. M16 is reworked against the owner's 390 labelled holes and is now an **owner gate** — the run stops so the owner can
 re-rate it with `pnpm review:detection` before anything is built on it. **M18** (new) fixes the centre-ring offset the owner reported;
 it is also an owner gate, because the fix may change the stored calibration shape.
+
+**2026-09-18 re-rating and M21 (REV-40 to REV-42).** The owner re-rated the reworked detector: **recall 76.9%, precision 94.7%,
+mean quality 2.94**, which supersedes both the first review's 53% / 61% and the R4 gate's 64.1% / 81.8% (measured against
+incomplete labels). Relaxing REV-27 to recover the filtered-out holes was measured and rejected — it costs 493 false detections
+for 24 real ones. **M21** instead offers the ambiguous candidates to the user as suggestions, which reaches the same recall with
+precision untouched; it is an owner gate because it adds a route and may need a data-model field (its open question 1).
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.

@@ -14,6 +14,35 @@
 - **Not part of the product:** Apple Health; any Garmin connection or upload (attaching the summary image in Garmin Connect is manual).
 - **Everything else** is post-MVP, listed in [`BACKLOG.md`](BACKLOG.md).
 
+## 2026-09-18: the owner's review moves into the app
+
+The owner re-rated the reworked detector on all 46 photos (`pnpm review:detection`, export in
+`fixtures/private/review/detection-review-v2-2026-09-17.json`). **These numbers supersede the first review's**, which was
+measured against incomplete labels: recall **76.9%**, precision **94.7%**, mean quality **2.94** — against 53% / 61% / below 2
+for the first detector and the 64.1% / 81.8% the R4 gate reported. Only **16 of 302 detections are false**.
+
+Two measurements out of that review decide the work below.
+
+**Relaxing REV-27 was tested and rejected.** Of the 86 real holes missed, 30 produced a candidate that a filter discarded, and 25
+of those 30 died on REV-27's glyph test — but that test discards **807 candidates across the 41 targets, of which only 25 are
+real holes**. Admitting them costs 493 false detections and drops precision to 37.9%; the best variant tried (a 40 mm radial gate
+with relaxed thresholds) still trades 5 points of recall for 16 of precision. No measured feature separates the 25 from the 782:
+detection score overlaps almost exactly, and distance from centre helps but not enough. **REV-27 stays**, which answers M16's open
+question 3 by measurement rather than by the letter of R2.
+
+**What the human does better is the small ambiguous set, not the thresholds.** That is what the owner's review page does and the
+app does not, and it is the one place a person beats every rule tested.
+
+| ID | Decision | Supersedes | Owner's words / evidence |
+|---|---|---|---|
+| REV-40 | **The app offers the holes it was unsure about.** Detection already measures every candidate it discards; instead of throwing them away, the few plausible ones near the target are offered in Adjust as **suggested holes** — hollow, dashed, visibly not shots. A tap turns one into a manual shot; ignored, it scores nothing and is never stored. The user decides the ambiguous cases that no threshold can. | M16 R1's rejected candidates being discarded at the worker boundary (analysis-pipeline §6 returns only `shots`) | "The user should be able to perform the same corrections through the application that I can when I review the photos as a group." Measured on the owner's 41 targets: a rule of `radialMm ≤ 60`, `elongation ≤ 6`, `strokeRadiusMm ≥ 0.70`, capped at the 3 best, shows a **median of 3 suggestions per photo** and contains **22 of the 30 real holes the filters discarded** (24 at a cap of 4). Accepting every real one would take recall to **83.3% with precision unchanged at 94.7%** — better than any automatic variant measured, because a suggestion scores nothing until it is confirmed. |
+| REV-41 | **A hole too wide to be one shot is offered as a double punch.** A .22 hole is 5.6 mm ± 5%; a detected hole materially wider is flagged in Adjust with a one-tap "2 shots", which sets the multiplicity the Inspector already supports. The app proposes, never decides — REV-28's "always assume one hole to start" is unchanged. | Nothing: M13's multiplicity control exists but nothing ever suggests using it | "#5 is a double punch this can be determined by width. #6 is a double punch that can be determined by width." **13 of the 41 rated targets contain a multi-shot hole**, which is scoring error that the detection numbers do not capture at all — the detector correctly found one hole. |
+| REV-42 | **Reviewing a session is a single pass, not a hunt.** A review route walks a session's photos one at a time — needing attention first — with the existing Adjust surface embedded and Confirm / Next, so a session is checked the way the owner checks a folder of photos. It adds no editing capability of its own. | M12's results screen as the only way in (one target at a time, by navigation) | "…the same corrections … that I can when I review the photos as a group." |
+
+**Deliberately not brought across from the review page:** quality ratings, alignment ratings, free-text comments and the ratings
+export. Those exist to judge the *detector*, not to correct a target, and the owner's own page keeps that job. Nothing in the app
+sends anything anywhere (no runtime network calls).
+
 ## 2026-09-16: detection quality and correcting shots by hand
 
 The owner compared real target photos with the diagrams the app produced and found the diagrams did not represent the photos.
