@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router';
 
+import { CompareSlider } from '@/components/results/CompareSlider';
 import { DiagramSvg } from '@/components/results/DiagramSvg';
 import { ReasonList } from '@/components/results/ReasonList';
 import { StatusChip } from '@/components/results/StatusChip';
@@ -11,24 +12,34 @@ import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { AnalysisResult, SubsetResult, TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import type { TargetPhoto } from '@/lib/domain/photo';
+import { shotTemplate } from '@/lib/pipeline/stage-a';
 import { positionLabel } from '@/lib/pipeline/stage-b';
+import { renderDiagramOverlaySvg } from '@/lib/render/diagram-overlay';
 import { targetHeadline } from '@/lib/render/text-lines';
 import { formatAngular, formatFractionalScore, formatMm } from '@/lib/scoring/format';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord } from '@/lib/store/photos-repo';
+import { getSettings } from '@/lib/store/settings-repo';
 
 interface TargetData {
   pid: string;
   photo: TargetPhoto;
   analysis: TargetAnalysis | null;
+  holeDiameterMm: number;
 }
 
 async function loadTarget(ctx: ReturnType<typeof useServices>['ctx'], pid: string): Promise<TargetData | null> {
   const photo = await getPhotoRecord(ctx.db, pid);
   if (photo === null) return null;
-  return { pid, photo, analysis: await getAnalysisRecord(ctx.db, pid) };
+  const settings = await getSettings(ctx.db);
+  return {
+    pid,
+    photo,
+    analysis: await getAnalysisRecord(ctx.db, pid),
+    holeDiameterMm: settings.profileOverrides.holeDiameterMm,
+  };
 }
 
 function subsetTitle(subset: SubsetResult): string {
@@ -154,31 +165,65 @@ function SubsetSection({ subset }: { subset: SubsetResult }) {
   );
 }
 
-function WorkingPhoto({ photoId }: { photoId: string }) {
+/**
+ * M17 step 3 (REV-30): the diagram drawn in this photo's own pixel space, over the photo, with the
+ * wipe/fade slider. Replaces M12 step 4's "show the working photo" toggle.
+ *
+ * `ready` only turns true once the blob lookup has settled, so a photo that is still loading is not
+ * mistaken for one that was deleted (step 4).
+ */
+function TargetCompare({ data }: { data: TargetData }) {
   const { ctx } = useServices();
+  const { photo, analysis, holeDiameterMm } = data;
   const [url, setUrl] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
-    getBlob(ctx.db, photoWorkingKey(photoId)).then(
+    getBlob(ctx.db, photoWorkingKey(photo.id)).then(
       (blob) => {
-        if (cancelled || blob === null) return;
-        objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
+        if (cancelled) return;
+        if (blob !== null) {
+          objectUrl = URL.createObjectURL(blob);
+          setUrl(objectUrl);
+        }
+        setReady(true);
       },
       () => {
-        // No working image stored (e.g. a record restored without blobs) — nothing to show.
+        // No working image stored (e.g. a record restored without blobs) — the diagram stands alone.
+        if (!cancelled) setReady(true);
       },
     );
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [ctx, photoId]);
+  }, [ctx, photo.id]);
 
-  if (url === null) return <p className="text-sm text-muted-foreground">No photo stored for this target.</p>;
-  return <img src={url} alt="The photo this analysis was made from" className="w-full rounded-lg" data-testid="working-photo" />;
+  const calibration = analysis?.calibration ?? null;
+  const overlaySvg = useMemo(() => {
+    if (analysis === null || calibration === null) return null;
+    return renderDiagramOverlaySvg(
+      analysis.computed?.result ?? null,
+      analysis.shots,
+      calibration,
+      shotTemplate(photo, analysis.pipeline.templateHint, calibration),
+      photo.working,
+      holeDiameterMm,
+    );
+  }, [analysis, calibration, photo, holeDiameterMm]);
+
+  if (!ready) return null;
+  if (overlaySvg === null) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="compare-unavailable">
+        This target has no alignment yet, so the diagram cannot be laid over the photo. Open Adjust shots to line it
+        up by hand.
+      </p>
+    );
+  }
+  return <CompareSlider photoUrl={url} imageSize={photo.working} overlaySvg={overlaySvg} />;
 }
 
 /** Route `#/sessions/:sid/photos/:pid` (analysis-pipeline §1): the full diagram, every metric from the
@@ -188,7 +233,6 @@ export function TargetPage() {
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadTarget(ctx, pid), [ctx, pid]);
   const [zoomed, setZoomed] = useState(false);
-  const [showPhoto, setShowPhoto] = useState(false);
 
   if (data === undefined) {
     return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
@@ -291,15 +335,7 @@ export function TargetPage() {
         </CardContent>
       </Card>
 
-      <Button
-        variant="outline"
-        className="h-11"
-        data-testid="toggle-working-photo"
-        onClick={() => setShowPhoto(!showPhoto)}
-      >
-        {showPhoto ? 'Hide the photo' : 'Show the photo'}
-      </Button>
-      {showPhoto && <WorkingPhoto photoId={photo.id} />}
+      <TargetCompare data={data} />
     </main>
   );
 }

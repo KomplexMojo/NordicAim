@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Shot } from '@/lib/domain/analysis';
-import type { Calibration } from '@/lib/domain/photo';
+import type { Calibration, Categorization } from '@/lib/domain/photo';
 import { onPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { runStageA, type CvApi } from '@/lib/pipeline/stage-a';
@@ -13,6 +13,7 @@ import {
   markManualShots,
   redetectShots,
   saveAdjustments,
+  unplacedRounds,
   type DetectShotsApi,
 } from '@/lib/services/adjust';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -336,5 +337,54 @@ describe('adjustStartCalibration', () => {
       confidence: null,
     });
     ctx.db.close();
+  });
+});
+
+describe('unplacedRounds (M17 step 1, REV-29)', () => {
+  const precision10: Categorization = {
+    template: 'precision',
+    position: 'prone',
+    roundsProne: 10,
+    roundsStanding: null,
+  };
+
+  it('parks one marker per declared round with no hole: 10 declared, 8 identified -> 2', () => {
+    const shots = Array.from({ length: 8 }, (_, i) => autoShot(`a${i}`, i, 0));
+    expect(unplacedRounds(precision10, shots)).toBe(2);
+  });
+
+  it('counts units, not holes: a x3 hole accounts for three rounds', () => {
+    const shots = [{ ...autoShot('a0', 0, 0), multiplicity: 3 }, autoShot('a1', 5, 0)];
+    expect(unplacedRounds(precision10, shots)).toBe(6);
+  });
+
+  it('is 0 once every round is placed, which is what hides the tray', () => {
+    const shots = Array.from({ length: 10 }, (_, i) => autoShot(`a${i}`, i, 0));
+    expect(unplacedRounds(precision10, shots)).toBe(0);
+  });
+
+  it('never goes negative when there are more units than declared rounds', () => {
+    const shots = Array.from({ length: 12 }, (_, i) => autoShot(`a${i}`, i, 0));
+    expect(unplacedRounds(precision10, shots)).toBe(0);
+  });
+
+  it('sums both positions for a `both` target', () => {
+    const both: Categorization = {
+      template: 'precision',
+      position: 'both',
+      roundsProne: 5,
+      roundsStanding: 5,
+    };
+    expect(unplacedRounds(both, [autoShot('a0', 0, 0)])).toBe(9);
+  });
+
+  it('parks nothing while the categorization is still incomplete', () => {
+    const incomplete: Categorization = {
+      template: 'precision',
+      position: null,
+      roundsProne: null,
+      roundsStanding: null,
+    };
+    expect(unplacedRounds(incomplete, [])).toBe(0);
   });
 });

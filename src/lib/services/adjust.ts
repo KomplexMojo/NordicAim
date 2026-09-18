@@ -10,8 +10,9 @@ import * as Comlink from 'comlink';
 
 import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
 import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
+import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import { photoStatus } from '@/lib/domain/status';
-import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
+import type { Calibration, Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { WorkingImageMissingError, priorInWorkingPx, shotTemplate } from '@/lib/pipeline/stage-a';
@@ -239,4 +240,20 @@ export function adjustStartCalibration(photo: TargetPhoto, analysis: TargetAnaly
     source: 'manual',
     confidence: null,
   };
+}
+
+/**
+ * M17 step 1 (REV-29). The declared rounds that have no hole on the diagram yet:
+ * `max(0, declaredRounds - identified units)`. This is what the Adjust screen parks in the tray as
+ * draggable markers.
+ *
+ * Derived on every render and **never stored** — there is no field for it in the data model, and a
+ * stored marker would be something Stage A could overwrite (analysis-pipeline §8). While the
+ * categorization is incomplete there is no declared count, so nothing is unplaced.
+ */
+export function unplacedRounds(categorization: Categorization, shots: Shot[]): number {
+  const declared = declaredRoundsOrNull(categorization);
+  if (declared === null) return 0;
+  const identified = shots.reduce((sum, shot) => sum + shot.multiplicity, 0);
+  return Math.max(0, declared - identified);
 }

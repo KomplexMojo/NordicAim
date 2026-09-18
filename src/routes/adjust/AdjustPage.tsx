@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { AlignmentControls } from '@/components/adjust/AlignmentControls';
-import { ImageStage } from '@/components/adjust/ImageStage';
+import { ImageStage, type StageApi } from '@/components/adjust/ImageStage';
 import { LivePreview } from '@/components/adjust/LivePreview';
 import { ShotInspector } from '@/components/adjust/ShotInspector';
+import { UnplacedTray } from '@/components/adjust/UnplacedTray';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,6 +31,7 @@ import {
   buildGroundTruth,
   redetectShots,
   saveAdjustments,
+  unplacedRounds,
 } from '@/lib/services/adjust';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
@@ -84,6 +86,8 @@ export function AdjustPage() {
   const [mode, setMode] = useState<'shots' | 'alignment'>('shots');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // M17 step 1: the stage's live transform, so a dragged tray marker lands under the finger.
+  const stageApi = useRef<StageApi | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +170,7 @@ export function AdjustPage() {
   const template = shotTemplate(photo, analysis.pipeline.templateHint, calibration);
   const selected = shots.find((shot) => shot.id === selectedId) ?? null;
   const units = shots.reduce((sum, shot) => sum + shot.multiplicity, 0);
+  const unplaced = unplacedRounds(photo.categorization, shots);
 
   function addShot(mm: { xMm: number; yMm: number }) {
     const shot: Shot = {
@@ -190,9 +195,26 @@ export function AdjustPage() {
     setShots((current) => current.map((shot) => (shot.id === next.id ? next : shot)));
   }
 
+  function deleteShot(id: string) {
+    setShots((current) => current.filter((shot) => shot.id !== id));
+    setSelectedId((current) => (current === id ? null : current));
+  }
+
   function deleteSelected() {
-    setShots((current) => current.filter((shot) => shot.id !== selectedId));
-    setSelectedId(null);
+    if (selectedId !== null) deleteShot(selectedId);
+  }
+
+  /** M17 step 1: a parked marker let go over the photo becomes a manual shot where the finger was. */
+  function placeUnplaced(client: { x: number; y: number }) {
+    const mm = stageApi.current?.clientToMm(client) ?? null;
+    if (mm === null) return;
+    addShot(mm);
+  }
+
+  /** M17 step 1: a placed shot dragged back onto the tray is removed. */
+  function onShotDragEnd(id: string, client: { x: number; y: number }) {
+    const dropped = document.elementFromPoint(client.x, client.y);
+    if (dropped?.closest('[data-unplaced-tray]') != null) deleteShot(id);
   }
 
   async function onSave() {
@@ -283,21 +305,29 @@ export function AdjustPage() {
         </Button>
       </div>
 
-      <ImageStage
-        imageUrl={imageUrl}
-        imageSize={photo.working}
-        calibration={calibration}
-        template={template}
-        mode={mode}
-        shots={shots}
-        selectedShotId={selectedId}
-        mpiMm={preview?.result?.all.mpi ?? null}
-        holeDiameterMm={holeDiameterMm}
-        onSelectShot={setSelectedId}
-        onAddShot={addShot}
-        onMoveShot={moveShot}
-        onCalibrationChange={setCalibration}
-      />
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <ImageStage
+            imageUrl={imageUrl}
+            imageSize={photo.working}
+            calibration={calibration}
+            template={template}
+            mode={mode}
+            shots={shots}
+            selectedShotId={selectedId}
+            mpiMm={preview?.result?.all.mpi ?? null}
+            holeDiameterMm={holeDiameterMm}
+            onSelectShot={setSelectedId}
+            onAddShot={addShot}
+            onMoveShot={moveShot}
+            onCalibrationChange={setCalibration}
+            apiRef={stageApi}
+            onShotDragEnd={onShotDragEnd}
+          />
+        </div>
+        {/* M17 step 1 (REV-29): one parked marker per round with no hole yet. Derived, never stored. */}
+        {mode === 'shots' && <UnplacedTray count={unplaced} onPlace={placeUnplaced} />}
+      </div>
 
       {mode === 'shots' ? (
         selected !== null ? (
@@ -311,6 +341,7 @@ export function AdjustPage() {
         ) : (
           <p className="text-sm text-muted-foreground">
             Tap the photo to add a shot, tap a shot to select it, or drag one to move it.
+            {unplaced > 0 ? ' Drag a numbered marker from the tray onto the hole it made.' : ''}
           </p>
         )
       ) : (

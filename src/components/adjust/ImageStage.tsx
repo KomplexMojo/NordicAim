@@ -23,6 +23,15 @@ interface Point {
   y: number;
 }
 
+/**
+ * M17 step 1: the stage's live transform, handed to the page so a marker dragged in from the
+ * unplaced tray lands where the finger is rather than at the SVG's untransformed origin.
+ */
+export interface StageApi {
+  /** A viewport point in target mm, or `null` when it is outside the stage box. */
+  clientToMm(client: Point): { xMm: number; yMm: number } | null;
+}
+
 type Gesture =
   | { kind: 'pan'; pointerId: number; start: Point; startPan: Point; moved: boolean }
   | { kind: 'shot'; pointerId: number; id: string }
@@ -43,6 +52,10 @@ interface ImageStageProps {
   onAddShot(mm: { xMm: number; yMm: number }): void;
   onMoveShot(id: string, mm: { xMm: number; yMm: number }): void;
   onCalibrationChange(calibration: Calibration): void;
+  /** M17 step 1: filled with the live transform so the page can place a dragged tray marker. */
+  apiRef?: React.RefObject<StageApi | null>;
+  /** M17 step 1: where a dragged shot was let go, so the page can drop it on the tray to delete it. */
+  onShotDragEnd?(id: string, client: Point): void;
 }
 
 function clampAxis(pan: number, originAtZoom: number, content: number, container: number): number {
@@ -95,6 +108,25 @@ export function ImageStage(props: ImageStageProps) {
   function toImage(p: Point): Point {
     return { x: (p.x - offsetX) / scale, y: (p.y - offsetY) / scale };
   }
+
+  // M17 step 1: refreshed on every render, because `scale`/`offset` change with zoom and pan.
+  const apiRef = props.apiRef;
+  useEffect(() => {
+    if (apiRef === undefined) return;
+    apiRef.current = {
+      clientToMm(client: Point) {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect === undefined || base === null) return null;
+        if (client.x < rect.left || client.x > rect.right || client.y < rect.top || client.y > rect.bottom) {
+          return null;
+        }
+        return pxToMm(toImage({ x: client.x - rect.left, y: client.y - rect.top }), calibration);
+      },
+    };
+    return () => {
+      apiRef.current = null;
+    };
+  });
 
   function clampPan(next: Point, atZoom: number): Point {
     if (base === null || container === null) return next;
@@ -200,6 +232,11 @@ export function ImageStage(props: ImageStageProps) {
     const p = localPoint(e);
     pointers.current.delete(e.pointerId);
     containerRef.current?.releasePointerCapture?.(e.pointerId);
+
+    if (g !== null && g.kind === 'shot') {
+      // M17 step 1: dropping a shot on the tray removes it; the page decides from the drop point.
+      props.onShotDragEnd?.(g.id, { x: e.clientX, y: e.clientY });
+    }
 
     if (g !== null && g.kind === 'pan' && !g.moved && base !== null) {
       // A tap on bare paper: add a shot in the Shots mode, otherwise clear the selection.

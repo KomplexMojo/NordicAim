@@ -222,3 +222,120 @@ test('adjust: the alignment mode edits the calibration and saves it as manual', 
   expect(analysis.calibration?.source).toBe('manual');
   expect(analysis.pipeline.alignment.method).toBe('manual');
 });
+
+/** Drops a tray marker (or any element) at an image-px point on the stage, with a real pointer drag. */
+async function dragTo(page: Page, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 5 });
+  await page.mouse.move(to.x, to.y, { steps: 5 });
+  await page.mouse.up();
+}
+
+async function centreOf(page: Page, testId: string): Promise<{ x: number; y: number }> {
+  const box = await page.getByTestId(testId).first().boundingBox();
+  if (box === null) throw new Error(`${testId} has no box`);
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  // A drag only works on points the pointer can actually reach.
+  const viewport = page.viewportSize();
+  if (viewport !== null) {
+    expect(centre.y, `${testId} must be in the viewport to be dragged`).toBeGreaterThan(0);
+    expect(centre.y).toBeLessThan(viewport.height);
+  }
+  return centre;
+}
+
+/** Brings the stage (and the tray beside it) back into view after the inspector scrolled the page. */
+async function scrollStageIntoView(page: Page): Promise<void> {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.getByTestId('image-stage').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(150);
+}
+
+test('adjust: a parked marker dragged onto the target places the missing round (M17 step 1)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  const photoId = await precisionPhotoId(page, sessionId);
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+
+  // No tray while all 10 declared rounds are accounted for (M17 step 1: `unplaced === 0` hides it).
+  await expect(page.getByTestId('unplaced-tray')).toHaveCount(0);
+
+  // Remove P9, leaving one declared round with no hole: one parked marker.
+  await page.locator('[data-shot-id="P9"]').click();
+  await page.getByTestId('delete-shot').click();
+  await expect(page.getByTestId('unplaced-tray')).toHaveAttribute('data-count', '1');
+  await expect(page.getByTestId('unplaced-marker')).toHaveCount(1);
+  await expect(page.getByTestId('live-preview')).toContainText('1 round(s) not found');
+
+  // Drag it onto the hole the app is missing.
+  const saved = await getAnalysis(page, photoId);
+  const calibration = saved.calibration!;
+  await scrollStageIntoView(page);
+  const g = await stageGeometry(page);
+  const drop = toCss(g, mmToPx({ xMm: -30.1, yMm: -28.4 }, calibration));
+  expect(onScreen(g, drop)).toBe(true);
+  await dragTo(page, await centreOf(page, 'unplaced-marker'), drop);
+
+  // The shot exists, so the tray count (which is derived) falls to zero and the tray disappears.
+  await expect(page.getByTestId('adjust-shot-count')).toContainText('10 shots');
+  await expect(page.getByTestId('unplaced-tray')).toHaveCount(0);
+  await expect(page.getByTestId('live-status')).toHaveAttribute('data-status', 'analyzed');
+
+  // It is a manual shot of multiplicity 1 (M17 step 1).
+  await page.getByTestId('save-adjustments').click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  await waitForIdle(page);
+  const after = await getAnalysis(page, photoId);
+  // 9 fixture holes (one of them x2 = 10 units), minus P9, plus the one just placed.
+  expect(after.shots).toHaveLength(FIXTURE.shots.length);
+  const fixtureIds = new Set(FIXTURE.shots.map((shot) => shot.id));
+  const placed = after.shots.filter((shot) => !fixtureIds.has(shot.id));
+  expect(placed).toHaveLength(1);
+  expect(placed[0]!.source).toBe('manual');
+  expect(placed[0]!.multiplicity).toBe(1);
+
+  const card = page.locator(`[data-testid="target-card"][data-photo-id="${photoId}"]`);
+  await expect(card.getByTestId('status-chip')).toHaveAttribute('data-status', 'analyzed', { timeout: 30_000 });
+  await expect(card.locator('[data-reason="rounds-unaccounted"]')).toHaveCount(0);
+});
+
+test('adjust: a placed shot dragged onto the tray is removed (M17 step 1)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  const photoId = await precisionPhotoId(page, sessionId);
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+
+  // Delete one shot the ordinary way so the tray is on screen to drag onto.
+  await page.locator('[data-shot-id="P9"]').click();
+  await page.getByTestId('delete-shot').click();
+  await expect(page.getByTestId('unplaced-tray')).toHaveAttribute('data-count', '1');
+
+  // Shots overlap, so press on one whose own hit circle is actually on top at its centre.
+  await scrollStageIntoView(page);
+  let grabbed: { id: string; multiplicity: number; from: { x: number; y: number } } | null = null;
+  for (const candidate of FIXTURE.shots) {
+    if (candidate.id === 'P9') continue;
+    const b = await page.locator(`[data-shot-id="${candidate.id}"]`).boundingBox();
+    if (b === null) continue;
+    const from = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    const onTop = await page.evaluate(
+      (pt) => document.elementFromPoint(pt.x, pt.y)?.closest('[data-shot-id]')?.getAttribute('data-shot-id') ?? null,
+      from,
+    );
+    if (onTop === candidate.id) {
+      grabbed = { id: candidate.id, multiplicity: candidate.multiplicity, from };
+      break;
+    }
+  }
+  if (grabbed === null) throw new Error('no shot is grabbable at its own centre');
+  const unitsLeft = 10 - 1 - grabbed.multiplicity;
+
+  const shot = page.locator(`[data-shot-id="${grabbed.id}"]`);
+  await dragTo(page, grabbed.from, await centreOf(page, 'unplaced-tray'));
+
+  await expect(shot).toHaveCount(0);
+  await expect(page.getByTestId('adjust-shot-count')).toContainText(`${unitsLeft} shots`);
+  // The tray count is derived, so removing a round puts a marker back: 10 declared - 8 units.
+  await expect(page.getByTestId('unplaced-tray')).toHaveAttribute('data-count', String(10 - unitsLeft));
+});
