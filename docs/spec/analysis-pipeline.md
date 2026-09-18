@@ -126,13 +126,15 @@ adjusts the constant with a note.
 ```ts
 export type PhotoStatus = 'needs-metadata' | 'processing' | 'ready' | 'analyzed' | 'needs-attention' | 'failed';
 export type Reason = 'target-not-found' | 'no-shots-found' | 'too-many-shots' | 'extra-candidates-dropped'
-  | 'rounds-unaccounted' | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch' | 'backing-colour-not-found';
+  | 'rounds-unaccounted' | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch' | 'backing-colour-not-found'
+  | 'too-many-holes' | 'double-punch-assumed' | 'rounds-scored-as-miss';
 export function photoStatus(input: { categorization: Categorization; analysis: TargetAnalysis; result: AnalysisResult | null })
   : { status: PhotoStatus; reasons: Reason[] };
 ```
 
 Rules, first match sets the status. Pipeline warnings are **always appended** to `reasons` (in the order
-`extra-candidates-dropped`, `backing-colour-not-found`, `alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`,
+`extra-candidates-dropped`, `too-many-holes`, `double-punch-assumed`, `rounds-scored-as-miss`,
+`backing-colour-not-found`, `alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`,
 `processing`, and `failed`:
 1. categorization incomplete → `needs-metadata`, []
 2. `stageA === 'error' || stageB === 'error'` → `failed`, []
@@ -141,6 +143,10 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 5. `calibration === null` → `needs-attention`, [`target-not-found`, ...warnings]
 6. `result === null || result.all.identified === 0` → `needs-attention`, [`no-shots-found`, ...warnings]
 7. any subset `overcount > 0` → `needs-attention`, [`too-many-shots`, ...warnings]
+7a. warnings include `too-many-holes` → `needs-attention`, [`too-many-holes`, ...other warnings] (REV-39/M20: clearly more
+   holes than the declared rounds means the target is **rejected** and carries no score — it is likely the wrong target or
+   the wrong round count, and the declared count is fact. `double-punch-assumed` and `rounds-scored-as-miss` are notes and
+   never change the status.)
 8. warnings include `extra-candidates-dropped` → `needs-attention`, [...warnings] (REV-28: the shot set was capped to
    the declared rounds, so the owner should confirm which marks were kept)
 9. `pipeline.alignment.method === 'overlay'` → `needs-attention`, [`alignment-uncertain`, ...other warnings] (REV-31: the
@@ -176,6 +182,9 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 | `image-blurry` | This photo looks blurry, so results may be less accurate. |
 | `template-mismatch` | This looks like a `<sighting/precision>` target — check the template. |
 | `backing-colour-not-found` | No backing colour showed through the holes, so standard detection was used. Check the backing card or lighting. |
+| `too-many-holes` | Found `<N>` clear holes but you entered `<D>` rounds. This may be the wrong target or the wrong round count. |
+| `double-punch-assumed` | `<N>` hole(s) look like two shots through the same hole. |
+| `rounds-scored-as-miss` | `<N>` round(s) weren't found and are scored as misses. |
 
 ## 5. Triggers and runner
 

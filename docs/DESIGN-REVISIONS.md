@@ -43,11 +43,12 @@ app does not, and it is the one place a person beats every rule tested.
 export. Those exist to judge the *detector*, not to correct a target, and the owner's own page keeps that job. Nothing in the app
 sends anything anywhere (no runtime network calls).
 
-## 2026-09-17: coloured backing sheet
+## 2026-09-17: coloured backing sheet and declared rounds
 
 | ID | Decision | Supersedes | Owner's words / evidence |
 |---|---|---|---|
 | REV-38 | **Optional coloured backing sheet.** A tucked-away session option (Session options on the metadata screen, collapsed) records that a coloured backing was used, optionally with a photo of the backing card. Detection then finds holes by the colour showing through them, falling back to standard detection when no colour is found. The three-step flow does not change. | — | "Add an option for the user to indicate that a backing sheet was used. This should not be a main interface element, it could be buried on an interface screen. Ideally they would be able to take a picture of the backing 'card' and you would be able to use that in your processing." On the owner's first pink-backing photo (IMG_5189, 9 shots, one overlap) colour alone found the 8 holes exactly, with no fragments or false marks; the standard detector reported 17. One photo — thresholds are provisional until 10+ labelled backing photos exist. |
+| REV-39 | **Declared rounds are fact.** Clearly more holes than rounds → the target is **rejected** (no score, `needs-attention`, `too-many-holes`). Fewer → check for **double punches first**, then count the remainder as **misses** and give a definite score (no range). Owner edits always win. | REV-28's cap as the only response to extra holes; REV-18's score range for unaccounted rounds; REV-29's parked markers default to "unplaced" (now "scored as miss") | "Yes, it was 10 rounds. This should be treated as fact if specified by the user. I say 10 rounds and 15 are obviously detected with high confidence, the target should be rejected. If I say 10 rounds and less than that are counted, check of double punches (this happens often), then assume it was a pure miss (sometimes I shoot on one target, then realign and actually shoot on the wrong target, especially when sighting in)." Evidence for why "every round accounted for" suppresses doubles: on IMG_5193 (10 rounds, 10 holes found) two long tears measured 2.31× and 1.87× the median area and would otherwise have become false doubles. |
 
 ## 2026-09-16: detection quality and correcting shots by hand
 

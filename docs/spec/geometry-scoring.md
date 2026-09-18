@@ -209,6 +209,8 @@ Units sorted: D#0, D#1, B, C, A → standing = {D#0, D#1}; prone = {B, C, A}.
 
 ## 8. Missing and over-count (per subset)
 
+**Amended by REV-39 (M20):** automatic analyses reconcile found holes against the declared rounds (reject / cap / double punches / misses) before scoring; unaccounted rounds after that are scored as misses, and the range below is no longer the headline. Keep the rest until M20 decides what still uses it.
+
 `identified = number of units in the subset`, `missing = max(0, declared - identified)`,
 `overcount = max(0, identified - declared)`.
 If `overcount > 0`, raise warning `overcount` and set all three modes equal to the identified-only result.

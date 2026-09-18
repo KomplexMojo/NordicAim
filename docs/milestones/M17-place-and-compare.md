@@ -40,6 +40,9 @@ Detection itself (M16), the summary image (M14), storing anything new — parked
    - Each tray marker also offers **off target** (REV-33): the round was fired but hit outside the scoring area — the backing
      board, or the paper beyond ring 1 — so it cannot be dragged onto the diagram. Marking it records a miss for that round
      instead of leaving it unaccounted, which is what a shot off the paper actually is.
+   - **REV-39 (M20 step 8):** once declared-round reconciliation lands, a marker standing for a round M20 has already assumed
+     was a miss is labelled **Scored as miss** rather than left as a plain unplaced marker — the score is definite, and the
+     marker exists so the owner can still place the shot if the app was wrong.
    - The tray is **derived state**: never stored, never sent to the pipeline, absent from `analysis.shots`. No data-model change.
    - When `unplaced === 0` the tray is hidden.
 2. **Diagram in image space.** `renderDiagramOverlaySvg(result, shots, calibration, template, imageSize)` returns the diagram's

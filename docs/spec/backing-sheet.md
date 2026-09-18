@@ -191,9 +191,9 @@ one (hue test), otherwise the neutral-chroma test of §4:
 4. Each merged blob is one shot, `multiplicity: 1` (REV-28 still holds). Record its coloured area.
 5. **Overlap hint, not a count:** a blob whose area ≥ `BACKING_OVERLAP_RATIO × median blob area` (start 1.8) is flagged
    `possibleOverlap: true`. It does not change multiplicity; Adjust (M17) shows it so the owner can add the second shot in one tap.
-   **Elongated tears also enlarge the coloured area** (both flags on IMG_5193 sit on long tears), so the hint is shown **only while
-   the distinct shots found are fewer than the declared rounds** — if every round is already accounted for, an overlap is impossible
-   and the flag is suppressed.
+   **Elongated tears also enlarge the coloured area** (both flags on IMG_5193 sit on long tears), so the hint is
+   **consumed by REV-39's reconciliation (M20 step 5), which only infers a double when rounds are short** — if every round is
+   already accounted for, an overlap is impossible and the flag is suppressed.
 6. **Fallback:** if the colour path yields **zero** blobs, run the standard detector (M16) instead and add warning
    `backing-colour-not-found`. The analysis records `pipeline.detection = { method: 'colour' | 'standard', fallbackReason: string | null }`.
 7. The cap to declared rounds (REV-28) and manual-shot protection (analysis-pipeline §8) apply unchanged.
