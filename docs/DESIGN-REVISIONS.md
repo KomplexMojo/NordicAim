@@ -43,6 +43,12 @@ app does not, and it is the one place a person beats every rule tested.
 export. Those exist to judge the *detector*, not to correct a target, and the owner's own page keeps that job. Nothing in the app
 sends anything anywhere (no runtime network calls).
 
+## 2026-09-17: coloured backing sheet
+
+| ID | Decision | Supersedes | Owner's words / evidence |
+|---|---|---|---|
+| REV-38 | **Optional coloured backing sheet.** A tucked-away session option (Session options on the metadata screen, collapsed) records that a coloured backing was used, optionally with a photo of the backing card. Detection then finds holes by the colour showing through them, falling back to standard detection when no colour is found. The three-step flow does not change. | — | "Add an option for the user to indicate that a backing sheet was used. This should not be a main interface element, it could be buried on an interface screen. Ideally they would be able to take a picture of the backing 'card' and you would be able to use that in your processing." On the owner's first pink-backing photo (IMG_5189, 9 shots, one overlap) colour alone found the 8 holes exactly, with no fragments or false marks; the standard detector reported 17. One photo — thresholds are provisional until 10+ labelled backing photos exist. |
+
 ## 2026-09-16: detection quality and correcting shots by hand
 
 The owner compared real target photos with the diagrams the app produced and found the diagrams did not represent the photos.

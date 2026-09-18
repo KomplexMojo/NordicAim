@@ -47,6 +47,8 @@ export const BiathlonSession = z.object({
   artifacts: z.array(ArtifactMeta),      // newest last; at most 3 kept
   shares: z.array(ShareRecord),
   notes: z.string().max(2000),
+  // REV-38: the optional coloured backing for this session. Shape in `backing-sheet.md` §3
+  // (`backingMode` Auto/None/Coloured, and the measured `BackingSheet` when a card was photographed).
 });
 ```
 
@@ -101,7 +103,7 @@ export const Categorization = z.object({
 export const TargetPhoto = z.object({
   schemaVersion: z.literal(1),
   id: Id, sessionId: Id,
-  origin: PhotoOrigin,
+  origin: PhotoOrigin,                   // REV-38 adds `backing-card` for a photo of the backing (`backing-sheet.md` §3)
   originalFormat: z.enum(['jpeg', 'png', 'heic']),
   originalFilename: z.string().max(255).nullable(),
   importedAt: UtcIso,
@@ -197,6 +199,7 @@ export const AppSettings = z.object({
   profileOverrides: z.object({ holeDiameterMm: z.number().positive() }),
   persistRequested: z.boolean(),
   persisted: z.boolean().nullable(),
+  // REV-38: the last backing the user chose, so a new session can offer it again (`backing-sheet.md` §3).
 });
 // default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null }
 ```

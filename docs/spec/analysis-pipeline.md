@@ -56,7 +56,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 | A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
 | A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
 | A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
-| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); the set is capped to the declared rounds when they are known, warning `extra-candidates-dropped` (REV-28) | `analysis.shots` (source `auto`) |
+| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); the set is capped to the declared rounds when they are known, warning `extra-candidates-dropped` (REV-28). With a coloured backing (REV-38, `backing-sheet.md` §5), holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
 
 **Stage B: runs when analysis has been requested for the session and the photo's metadata is complete**
 
@@ -126,13 +126,13 @@ adjusts the constant with a note.
 ```ts
 export type PhotoStatus = 'needs-metadata' | 'processing' | 'ready' | 'analyzed' | 'needs-attention' | 'failed';
 export type Reason = 'target-not-found' | 'no-shots-found' | 'too-many-shots' | 'extra-candidates-dropped'
-  | 'rounds-unaccounted' | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch';
+  | 'rounds-unaccounted' | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch' | 'backing-colour-not-found';
 export function photoStatus(input: { categorization: Categorization; analysis: TargetAnalysis; result: AnalysisResult | null })
   : { status: PhotoStatus; reasons: Reason[] };
 ```
 
 Rules, first match sets the status. Pipeline warnings are **always appended** to `reasons` (in the order
-`extra-candidates-dropped`, `alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`,
+`extra-candidates-dropped`, `backing-colour-not-found`, `alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`,
 `processing`, and `failed`:
 1. categorization incomplete → `needs-metadata`, []
 2. `stageA === 'error' || stageB === 'error'` → `failed`, []
@@ -175,6 +175,7 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 | `alignment-uncertain` | Used your on-screen alignment — check the rings line up. |
 | `image-blurry` | This photo looks blurry, so results may be less accurate. |
 | `template-mismatch` | This looks like a `<sighting/precision>` target — check the template. |
+| `backing-colour-not-found` | No backing colour showed through the holes, so standard detection was used. Check the backing card or lighting. |
 
 ## 5. Triggers and runner
 
