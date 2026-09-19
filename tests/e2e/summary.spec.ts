@@ -30,7 +30,7 @@ async function getSession(page: Page, sessionId: string): Promise<HookSession | 
   return page.evaluate((sid) => (window as HookWindow).__asaTest!.getSession(sid), sessionId);
 }
 
-test('summary: the summary image appears and loads at 1440x2160 (rendering-composite.md §5)', async ({ page }) => {
+test('summary: the summary image appears and loads at its drawn size (rendering-composite.md §5, REV-51)', async ({ page }) => {
   const sessionId = await loadDemoSession(page);
   await page.goto(`/#/sessions/${sessionId}/results`);
 
@@ -38,7 +38,9 @@ test('summary: the summary image appears and loads at 1440x2160 (rendering-compo
   await expect(image).toBeVisible({ timeout: 30_000 });
 
   const dims = await image.evaluate((el: HTMLImageElement) => ({ w: el.naturalWidth, h: el.naturalHeight }));
-  expect(dims).toEqual({ w: 1440, h: 2160 });
+  // REV-51: always the four fixed positions (1440) under the 120 header; the demo's 1 sighting + 1 precision
+  // leave a 3-line band (targets + one line each): 100 + 34 * 3 + 64 = 266.
+  expect(dims).toEqual({ w: 1440, h: 120 + 1440 + 266 });
 });
 
 test('summary: Share downloads a file named *-shooting-analysis.png and records one ShareRecord', async ({ page }) => {

@@ -18,6 +18,9 @@ import {
   renderSubtitle,
   renderTitle,
   svgRoot,
+  cellScale,
+  clipCell,
+  renderBlankCell,
 } from './diagram-shared';
 import { cellCaption, sightingFooterLines } from './text-lines';
 import type { DiagramInput, DiagramVariant } from './diagram';
@@ -90,16 +93,18 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
   const isBoth = result.position === 'both';
 
   if (variant === 'cell') {
+    // §4 (REV-51): zoom out so every shot fits, then clip the drawing above the caption band.
+    const s = cellScale(CELL.s, shots, holeDiameterMm);
     const target =
-      renderTarget(CELL.cx, CELL.cy, CELL.s) +
-      renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, CELL.s) +
-      renderShots(shots, subset.units, CELL.cx, CELL.cy, CELL.s, 5, holeDiameterMm) +
-      renderMpiMarker(subset.mpi, CELL.cx, CELL.cy, CELL.s) +
-      renderMarkerLabels(shots, subset.mpi, CELL.cx, CELL.cy, CELL.s, 5, 'cell');
+      renderTarget(CELL.cx, CELL.cy, s) +
+      renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, s) +
+      renderShots(shots, subset.units, CELL.cx, CELL.cy, s, 5, holeDiameterMm) +
+      renderMpiMarker(subset.mpi, CELL.cx, CELL.cy, s) +
+      renderMarkerLabels(shots, subset.mpi, CELL.cx, CELL.cy, s, 5, 'cell');
 
     const body =
       renderBackground(CELL.width, CELL.height) +
-      target +
+      clipCell(`cellclip-sighting-${slotLabel ?? '0'}`, target) +
       renderCellChip('SIGHTING', positionLabel, slotLabel) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
@@ -121,4 +126,9 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
     target +
     renderFooterPanel(sightingFooterLines(result, shots, positionLabel, holeDiameterMm));
   return svgRoot(FULL.width, FULL.height, body);
+}
+
+/** rendering-composite.md §5 (REV-51): an empty sighting slot in the summary image. */
+export function renderBlankSightingCell(slotLabel: string): string {
+  return renderBlankCell('SIGHTING', slotLabel, renderTarget(CELL.cx, CELL.cy, CELL.s));
 }

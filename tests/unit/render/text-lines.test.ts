@@ -223,23 +223,25 @@ describe('render/text-lines golden checks (rendering-composite.md §3 "Golden ch
 });
 
 describe('render/text-lines cellCaption (rendering-composite.md §4)', () => {
-  it('sighting: "<hits>/<declared> hit @ <zone> mm · ES <es> mm · <moa> MOA"', () => {
+  // REV-51 (REV-49 wording): the cell caption says what it counts, like the headline, so a summary image
+  // never reads as "7 of 10 found" (the owner's reading of the old "7/10 hit @ 45 mm").
+  it('sighting: "<h> hit(s) · <m> miss(es) — <zone> mm · ES <es> mm · <moa> MOA"', () => {
     const fixture = readFixture('sample-shots-sighting.json');
     const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots: fixture.shots });
-    expect(cellCaption(result)).toBe('9/10 hit @ 45 mm · ES 27.7 mm · 1.90 MOA');
+    expect(cellCaption(result)).toBe('9 hits · 1 miss — 45 mm · ES 27.7 mm · 1.90 MOA');
   });
 
-  it('precision: "<total>/<max> · X <x> · ES <es> mm · <moa> MOA"', () => {
+  it('precision: "<total> / <max> · X <x> · ES <es> mm · <moa> MOA"', () => {
     const fixture = readFixture('sample-shots-precision.json');
     const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots: fixture.shots });
-    expect(cellCaption(result)).toBe('72/100 · X 1 · ES 41.9 mm · 2.88 MOA');
+    expect(cellCaption(result)).toBe('72 / 100 · X 1 · ES 41.9 mm · 2.88 MOA');
   });
 
   it('shows the definite total, never a range, when missing > 0 (REV-39)', () => {
     const fixture = readFixture('sample-shots-precision.json');
     const shots = fixture.shots.map((s) => (s.id === 'P8' ? { ...s, multiplicity: 1 } : s));
     const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots });
-    expect(cellCaption(result)).toBe('66/100 · X 1 · ES 41.9 mm · 2.88 MOA');
+    expect(cellCaption(result)).toBe('66 / 100 · 1 miss · X 1 · ES 41.9 mm · 2.88 MOA');
   });
 
   it('precisionFooterLines names the misses on the Total line (REV-39)', () => {
@@ -251,11 +253,11 @@ describe('render/text-lines cellCaption (rendering-composite.md §4)', () => {
     expect(lines.join('\n')).not.toContain('Range');
   });
 
-  it('sighting "both" uses "P <h>/<d> · S <h>/<d>" instead of a single zone', () => {
+  it('sighting "both" names each position\'s hits instead of a single zone', () => {
     const fixture = readFixture('sample-shots-sighting.json');
     const categorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
     const result = analyzeTarget({ template: fixture.template, categorization, shots: fixture.shots });
-    expect(cellCaption(result)).toMatch(/^P \d+\/\d+ · S \d+\/\d+ · ES/);
+    expect(cellCaption(result)).toMatch(/^Prone \d+ hits? · Standing \d+ hits? · ES /);
   });
 });
 

@@ -153,12 +153,19 @@ and it is what pushed the summary image's per-slot line, below, past its 110-cha
 
 ## 4. `cell` variant (720 × 720)
 
-- Target centre (360, 350); s = 300 / haloRadiusMm (sighting 4.8, precision ≈ 3.6276). Same target, ellipse, shots (r 5 px), MPI.
-  Precision ring labels omitted when s < 4; sighting zone labels omitted.
+- Target centre (360, 350); base scale s₀ = 300 / haloRadiusMm (sighting 4.8, precision ≈ 3.6276). Same target, ellipse, shots
+  (r 5 px), MPI. Precision ring labels omitted when s < 4; sighting zone labels omitted.
+- **Every shot stays inside the drawing (REV-51).** With `reach` = the largest `hypot(xMm, yMm) + holeDiameterMm / 2 + 2` over the
+  shots, `s = max(0.5 · s₀, min(s₀, 300 / reach))`: a shot on the paper beyond the printed target zooms the cell out until it fits,
+  never below half scale (2 × the halo radius — beyond anything detection can produce). The rings shrink with it; nothing is hidden.
+- **Nothing crosses the caption.** The target, ellipse, shots, MPI and marker labels are clipped to (0, 0, 720, 668) with a
+  `clipPath` whose id is unique in the composite (`cellclip-<template>-<slot>`); the group ellipse of a scattered group is cut at
+  the edge rather than drawn over the caption band.
 - Chip (20, 20, 16 + 9·chars, 36) rx 18 `panel`; 15 bold uppercase `<TEMPLATE> <slot> · <POSITION>`.
-- Caption band (0, 668, 720, 52) `panel`; centred 17 px at y 700:
-  - sighting `<hits>/<declared> hit @ <45|115> mm · ES <es> mm · <moa> MOA` (both: `P <h>/<d> · S <h>/<d>`)
-  - precision `<total>/<max> · X <x> · ES <es> mm · <moa> MOA`
+- Caption band (0, 668, 720, 52) `panel`; centred 17 px at y 700 (REV-49 wording, so the cell never reads as "N of M found"):
+  - sighting `<h> hit(s) · <m> miss(es) — <45|115> mm · ES <es> mm · <moa> MOA`
+    (both: `Prone <h> hit(s) · Standing <h> hit(s) · ES <es> mm · <moa> MOA`)
+  - precision `<total> / <max> · X <x> · ES <es> mm · <moa> MOA`
   - (M20: no range suffix; the total is definite.)
 
 ## 5. Session summary image (`src/lib/render/composite.ts`)
@@ -171,34 +178,47 @@ export interface CompositeInput {
   generatedAtLocal: string;     // "2026-09-05 17:20"
   holeDiameterMm: number;
 }
-export function compositeHeight(sightingRow: 0 | 1, precisionRow: 0 | 1): number;
-export function renderCompositeSvg(input: CompositeInput): string;
+export function renderComposite(input: CompositeInput): { svg: string; width: number; height: number }; // REV-51
+export function renderCompositeSvg(input: CompositeInput): string; // renderComposite(input).svg
 export interface SlotIds { sighting: [string | null, string | null]; precision: [string | null, string | null] }
 export function selectDefaultSlots(photos: TargetPhoto[], analyses: Map<string, TargetAnalysis>): SlotIds;
 ```
 
-- Width **1440**; height `120 + 720 × rows + 600`, where rows = (any sighting ? 1 : 0) + (any precision ? 1 : 0); zero rows →
-  `EmptyCompositeError`.
+**Layout: four fixed positions (REV-51).** The owner asked for "a better template for the scoring summary. It should handle cases
+where there's one, two, three, or four images and format correctly", then: "Keep a blank template slot for each of the 4 targets."
+So the image always has the same shape — **Sighting 1 and 2 on the top row, Precision 1 and 2 on the bottom row** — and a position
+with no selected target shows its **blank template** (the template alone at `BLANK_CELL_OPACITY` 0.35, the chip without a
+position, e.g. `SIGHTING 2`, and the caption `No target`). A target is always found in the same place. This replaces the old
+one-row-per-template grid, which dropped an empty row entirely and put a filler "stat card" in a half-empty one (with an unfilled
+black border), described only that one target, and left a fixed 600 px band mostly empty.
+
+- **Positions** (x, y within the grid, all 720 × 720): sighting 1 (0, 0), sighting 2 (720, 0), precision 1 (0, 720),
+  precision 2 (720, 720). Grid height **1440**. At least one filled slot is required; 0 throws `EmptyCompositeError`.
+- **Canvas.** Width **1440**. A full-canvas `panel` rect is drawn first, so no area is ever unfilled (transparent renders black).
 - **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); subtitle 18 `#CFE6F3` at
-  (40, 94): `<sessionDate> · <lightingSummary>` (shared label if all slots agree, else `mixed lighting`).
-- **Rows**: sighting row first, then precision, 720 tall each. Slot 1 at x 0, slot 2 at x 720, as nested
-  `<svg x y width="720" height="720" viewBox="0 0 720 720">` using the cell renderer. A row with one filled slot puts it at x 0 and a
-  **stat card** at x 720: rect (744, y+24, 672, 672) rx 16 `panel`, the target's full-variant footer lines at 20 px from (776, y+84),
-  step 40.
-- **Analysis band** at y = 120 + 720·rows, height 600: `panel`, 8 px `accent` rail.
+  (40, 94): `<sessionDate> · <lightingSummary>` (shared label if all filled slots agree, else `mixed lighting`).
+- **Cells** start at y = 120, each nested as `<svg x y width="720" height="720" viewBox="0 0 720 720">` — the `cell` diagram (§4)
+  for a filled slot, the blank template for an empty one.
+- **Analysis band** at y = 120 + 1440, **sized to its content**: `panel`, 8 px `accent` rail.
   - `Session analysis` 24 bold at (40, y+56).
   - Lines 18 px from y+100, step 34, each ≤ 110 chars (`…`):
-    1. `Targets: <nS> sighting · <nP> precision · <lightingSummary>`
-    2. One per filled slot (≤ 4), built from `targetHeadline` (M24: the same helper the card and target detail use, so they
-       stay in step), e.g. `Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
-       `Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)`, or for a `both` slot (fix round 1: `targetHeadline`'s
-       `both` form omits the zone size, keeping this line's ES visible under the 110-char cap even when MPI still gets cut),
-       `Sighting 1 (prone + standing): Prone 9 hits · 1 miss · Standing 10 hits · 0 misses · ES 27.7 mm (1.90 MOA) · …`
-    3. If there are more analyzed targets than slots: `+<n> more target(s) in the app`
-    4. If `session.notes`: `Notes: <notes>` (≤ 2 lines).
-  - Footer 13 `textSecondary` at (40, y+572): `advanced-shooting-analysis · generated <generatedAtLocal>`.
+    1. `Targets: <nS> sighting · <nP> precision · <lightingSummary>`, leaving out a zero count (`Targets: 1 precision · Daylight`)
+    2. One per filled slot, built from `targetHeadline` (M24: the same helper the card and target detail use), e.g.
+       `Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
+       `Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)`; for a `both` slot the `targetHeadline` `both` form.
+    3. **N = 1 only:** that target's `full`-variant footer lines (§3), which the old stat card carried — the only place the
+       summary has room for them — **minus** the lines that repeat line 2: the `Scoring summary` heading, precision's `Total: …`
+       and sighting's `Scored (…): …`.
+    4. If there are more analyzed targets than slots: `+<n> more target(s) in the app`
+    5. If `session.notes`: `Notes: <notes>` (≤ 2 lines).
+  - Footer 13 `textSecondary`, 28 px above the band's bottom: `Nordic Aim · generated <generatedAtLocal>` (REV-45).
+  - Band height = `100 + 34 × lines + 64`.
+- **Height** = 120 + 1440 + band height. `renderComposite(input)` returns `{ svg, width, height }` so `buildComposite`
+  rasterises at exactly the drawn size.
 
-**Height vectors**: (2, 2) → 2160; (1, 1) → 2160; (0, 1) → 1440; (2, 0) → 1440; (0, 0) → throws.
+**Height vectors** (no notes, `moreCount` 0, single-position slots): 1 filled precision slot → 120 + 1440 + (100 + 34·5 + 64) =
+1894 (targets, its slot line, its 3 non-repeating footer lines); 2 filled → 120 + 1440 + 100 + 34·3 + 64 = 1826; 3 filled → 1860;
+4 filled → 1894; 0 filled → throws.
 
 **Slot selection (automatic, pure)**: candidates per template = photos with `status === 'analyzed'`, sorted by `captureTime.utc`
 descending (null last, then `importedAt` descending). Break ties with the better result (precision: higher `identifiedTotal`;

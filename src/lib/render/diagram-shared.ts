@@ -220,7 +220,9 @@ export function renderFooterPanel(lines: string[]): string {
 
 /** §4: chip `<TEMPLATE> <slot> · <POSITION>` (slot omitted when not given), sized to its own text. */
 export function renderCellChip(templateId: string, positionLabel: string, slotLabel?: string): string {
-  const label = slotLabel ? `${templateId} ${slotLabel} · ${positionLabel}` : `${templateId} · ${positionLabel}`;
+  const head = slotLabel ? `${templateId} ${slotLabel}` : templateId;
+  // An empty slot (REV-51) has no position, so its chip reads just "SIGHTING 2".
+  const label = positionLabel === '' ? head : `${head} · ${positionLabel}`;
   const upper = label.toUpperCase();
   const width = 16 + 9 * upper.length;
   const chip = el('rect', { x: 20, y: 20, width, height: 36, rx: 18, fill: PALETTE.panel });
@@ -233,4 +235,41 @@ export function renderCellCaptionBand(captionText: string): string {
   const band = el('rect', { x: 0, y: 668, width: 720, height: 52, fill: PALETTE.panel });
   const label = text(360, 700, 17, captionText, { anchor: 'middle', color: PALETTE.textPrimary });
   return band + label;
+}
+
+/** rendering-composite.md §4: where a cell's caption band starts; the drawing is clipped above it. */
+export const CELL_CAPTION_TOP = 668;
+
+/**
+ * §4 (REV-51): a cell's scale. The base scale fits the printed target's halo; a shot on the paper beyond
+ * it zooms the cell out until the shot fits, never below half scale (2× the halo radius, beyond anything
+ * detection produces). Before, such a shot was drawn below the target and over the caption band.
+ */
+export function cellScale(baseScale: number, shots: Array<{ xMm: number; yMm: number }>, holeDiameterMm: number): number {
+  const reach = shots.reduce((max, shot) => Math.max(max, Math.hypot(shot.xMm, shot.yMm) + holeDiameterMm / 2 + 2), 0);
+  if (reach === 0) return baseScale;
+  return Math.max(0.5 * baseScale, Math.min(baseScale, 300 / reach));
+}
+
+/**
+ * §4 (REV-51): clips a cell's drawing to (0, 0, 720, CELL_CAPTION_TOP) so a scattered group's ellipse is
+ * cut at the edge rather than drawn over the caption. `id` must be unique in the whole composite, where
+ * several cells share one document.
+ */
+export function clipCell(id: string, content: string): string {
+  const defs = el('defs', {}, el('clipPath', { id }, el('rect', { x: 0, y: 0, width: 720, height: CELL_CAPTION_TOP })));
+  return defs + el('g', { 'clip-path': `url(#${id})` }, content);
+}
+
+/** §5 (REV-51): how strongly an empty slot's blank template is drawn, so it reads as unused. */
+export const BLANK_CELL_OPACITY = 0.35;
+
+/** §5 (REV-51): an empty slot — the template alone, faded, with its chip and a "No target" caption. */
+export function renderBlankCell(templateId: string, slotLabel: string, target: string): string {
+  const body =
+    renderBackground(720, 720) +
+    el('g', { opacity: BLANK_CELL_OPACITY }, target) +
+    renderCellChip(templateId, '', slotLabel) +
+    renderCellCaptionBand('No target');
+  return svgRoot(720, 720, body);
 }

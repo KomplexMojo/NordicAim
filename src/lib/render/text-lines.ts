@@ -117,24 +117,23 @@ export function precisionFooterLines(result: AnalysisResult, shots: Shot[]): str
 
 /** rendering-composite.md §4, caption band. Always uses `result.all` (and, for `both` sighting, `result.subsets`). */
 export function cellCaption(result: AnalysisResult): string {
+  // rendering-composite.md §4 (REV-51, REV-49 wording): the cell caption says what it counts, like the
+  // headline, so a summary image never reads as "7 of 10 found".
   const subset = result.all;
   const esText = `ES ${fmtMm(subset.extremeSpreadMm)} mm · ${fmtAngular(subset.extremeSpreadAngular?.moa ?? null)} MOA`;
 
   if (result.template === 'sighting') {
-    const sighting = subset.sighting!;
-    let head: string;
     if (result.position === 'both') {
-      const prone = result.subsets.find((s) => s.key === 'prone')!;
-      const standing = result.subsets.find((s) => s.key === 'standing')!;
-      head = `P ${prone.sighting!.hits}/${prone.declared} · S ${standing.sighting!.hits}/${standing.declared}`;
-    } else {
-      head = `${sighting.hits}/${subset.declared} hit @ ${sighting.zoneDiameterMm} mm`;
+      const prone = result.subsets.find((s) => s.key === 'prone')!.sighting!;
+      const standing = result.subsets.find((s) => s.key === 'standing')!.sighting!;
+      const hits = (n: number) => `${n} ${n === 1 ? 'hit' : 'hits'}`;
+      return `Prone ${hits(prone.hits)} · Standing ${hits(standing.hits)} · ${esText}`;
     }
-    return `${head} · ${esText}`;
+    const zone = subset.sighting!.zoneDiameterMm;
+    return `${sightingHeadline(subset, null)}${zone === null ? '' : ` — ${zone} mm`} · ${esText}`;
   }
 
-  const precision = subset.precision!;
-  return `${precision.identifiedTotal}/${precision.maxPossible} · X ${precision.xCount} · ${esText}`;
+  return `${precisionHeadline(subset)} · ${esText}`;
 }
 
 /** REV-39 (M20): ` · 1 miss` / ` · 5 misses` when rounds were scored as misses, else nothing. */

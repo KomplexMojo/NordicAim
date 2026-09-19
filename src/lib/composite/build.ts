@@ -20,7 +20,7 @@ import { getSettings } from '@/lib/store/settings-repo';
 
 import { ArtifactNotFoundError, EmptyCompositeError, type CompositeArtifact } from './artifact';
 import { selectDefaultSlots, type SlotIds } from './select-defaults';
-import { compositeHeight, renderCompositeSvg, type CompositeInput, type SlotData } from '@/lib/render/composite';
+import { renderComposite, type CompositeInput, type SlotData } from '@/lib/render/composite';
 
 const WIDTH_PX = 1440;
 const KEEP_ARTIFACTS = 3;
@@ -125,8 +125,8 @@ export async function buildComposite(ctx: ServiceContext, sessionId: string, ren
     moreCount,
   };
 
-  const svg = renderCompositeSvg(input);
-  const heightPx = compositeHeight(anySighting ? 1 : 0, anyPrecision ? 1 : 0);
+  // §5 (REV-51): the height depends on the count and on the band's content, so take it from the render.
+  const { svg, height: heightPx } = renderComposite(input);
   const png = await render.svgToPng(svg, WIDTH_PX, heightPx);
   const pngBuffer = await png.arrayBuffer();
   const sha256 = await sha256Hex(pngBuffer);

@@ -81,7 +81,9 @@ describe('composite/build buildComposite (rendering-composite.md §6)', () => {
 
     expect(artifact.sessionId).toBe(sessionId);
     expect(artifact.widthPx).toBe(1440);
-    expect(artifact.heightPx).toBe(1440); // one row (precision only) + header + band
+    // REV-51: always the four fixed positions (1440) under the 120 header, then a band sized to its 5 lines
+    // (targets, the slot line, and the 3 footer lines that don't repeat it): 100 + 34 * 5 + 64 = 334.
+    expect(artifact.heightPx).toBe(120 + 1440 + 334);
     expect(artifact.sha256).toMatch(/^[a-f0-9]{64}$/);
 
     const png = await getBlob(ctx.db, artifactPngKey(artifact.id));
@@ -167,9 +169,10 @@ describe('composite/build.ts §6 step 2: fresh analyzeTarget per slot, not the s
     const svg = render.calls[0]!.svg;
     // The fresh recompute must win: no stale "9 hit / 1 miss" anywhere in the composite...
     expect(svg).not.toContain('9 hit / 1 miss');
-    // ...and the stat-card's current-settings line and the freshly-recomputed "Scored" line must agree.
+    // ...and the current-settings detail line and the freshly-recomputed headline must agree. (REV-51 drops the
+    // footer's "Scored (…)" line from the band, since the slot line above it already states the hits.)
     expect(svg).toContain('vs 45 mm prone: 10 hit / 0 miss');
-    expect(svg).toContain('Scored (Prone): 10 hit / 0 miss');
+    expect(svg).toContain('Sighting 1 (prone): 10 hits · 0 misses — 45 mm prone');
   });
 });
 

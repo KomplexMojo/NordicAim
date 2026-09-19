@@ -20,6 +20,9 @@ import {
   renderSubtitle,
   renderTitle,
   svgRoot,
+  cellScale,
+  clipCell,
+  renderBlankCell,
 } from './diagram-shared';
 import { cellCaption, precisionFooterLines } from './text-lines';
 import type { DiagramInput, DiagramVariant } from './diagram';
@@ -117,16 +120,18 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
   const isBoth = result.position === 'both';
 
   if (variant === 'cell') {
+    // §4 (REV-51): zoom out so every shot fits, then clip the drawing above the caption band.
+    const s = cellScale(CELL.s, shots, holeDiameterMm);
     const target =
-      renderTarget(CELL.cx, CELL.cy, CELL.s, CELL.s >= 4) +
-      renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, CELL.s) +
-      renderShots(shots, subset.units, CELL.cx, CELL.cy, CELL.s, 5, holeDiameterMm) +
-      renderMpiMarker(subset.mpi, CELL.cx, CELL.cy, CELL.s) +
-      renderMarkerLabels(shots, subset.mpi, CELL.cx, CELL.cy, CELL.s, 5, 'cell');
+      renderTarget(CELL.cx, CELL.cy, s, s >= 4) +
+      renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, s) +
+      renderShots(shots, subset.units, CELL.cx, CELL.cy, s, 5, holeDiameterMm) +
+      renderMpiMarker(subset.mpi, CELL.cx, CELL.cy, s) +
+      renderMarkerLabels(shots, subset.mpi, CELL.cx, CELL.cy, s, 5, 'cell');
 
     const body =
       renderBackground(CELL.width, CELL.height) +
-      target +
+      clipCell(`cellclip-precision-${slotLabel ?? '0'}`, target) +
       renderCellChip('PRECISION', positionLabel, slotLabel) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
@@ -148,4 +153,9 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     renderResultsPanel(subset) +
     renderFooterPanel(precisionFooterLines(result, shots));
   return svgRoot(FULL.width, FULL.height, body);
+}
+
+/** rendering-composite.md §5 (REV-51): an empty precision slot in the summary image. */
+export function renderBlankPrecisionCell(slotLabel: string): string {
+  return renderBlankCell('PRECISION', slotLabel, renderTarget(CELL.cx, CELL.cy, CELL.s, CELL.s >= 4));
 }

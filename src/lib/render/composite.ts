@@ -8,7 +8,7 @@ import type { Position } from '@/lib/domain/enums';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import type { BiathlonSession } from '@/lib/domain/session';
 
-import { renderDiagramSvg, type DiagramInput } from './diagram';
+import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
 import { PALETTE } from './palette';
 import { el, num, text } from './svg';
 import { fmtAngular, fmtMm, precisionFooterLines, sightingFooterLines, targetHeadline } from './text-lines';
@@ -35,15 +35,34 @@ export interface CompositeInput {
 
 const WIDTH = 1440;
 const HEADER_HEIGHT = 120;
-const ROW_HEIGHT = 720;
-const BAND_HEIGHT = 600;
 const MAX_LINE_CHARS = 110;
+const LINE_STEP = 34;
 
-/** §5: `120 + 720 × rows + 600`; zero rows throws (both height vectors and `buildComposite` rely on this). */
-export function compositeHeight(sightingRow: 0 | 1, precisionRow: 0 | 1): number {
-  const rows = sightingRow + precisionRow;
-  if (rows === 0) throw new EmptyCompositeError();
-  return HEADER_HEIGHT + ROW_HEIGHT * rows + BAND_HEIGHT;
+/** §5 (REV-51): one of the four fixed positions, its offset within the grid, and its drawn size. */
+export interface CellPlacement {
+  template: 'sighting' | 'precision';
+  index: 0 | 1;
+  x: number;
+  y: number;
+  size: number;
+}
+
+/**
+ * §5 (REV-51, owner: "keep a blank template slot for each of the 4 targets"): always four positions —
+ * sighting 1 and 2 on the top row, precision 1 and 2 below. An empty position shows its blank template,
+ * so every summary has the same shape and a target is always found in the same place.
+ */
+export const COMPOSITE_CELLS: readonly CellPlacement[] = [
+  { template: 'sighting', index: 0, x: 0, y: 0, size: 720 },
+  { template: 'sighting', index: 1, x: 720, y: 0, size: 720 },
+  { template: 'precision', index: 0, x: 0, y: 720, size: 720 },
+  { template: 'precision', index: 1, x: 720, y: 720, size: 720 },
+];
+export const COMPOSITE_GRID_HEIGHT = 1440;
+
+/** §5: the analysis band's height for `lines` text lines — sized to its content, never a fixed block. */
+export function bandHeight(lines: number): number {
+  return 100 + LINE_STEP * lines + 64;
 }
 
 function capitalize(value: string): string {
@@ -80,9 +99,11 @@ function slotDiagramInput(slot: SlotData, holeDiameterMm: number): DiagramInput 
   };
 }
 
-/** Turns a full standalone `<svg …>` (as `renderDiagramSvg('cell', …)` returns) into a nested one at (x, y). */
-function nestCellSvg(svg: string, x: number, y: number): string {
-  return svg.replace('<svg ', `<svg x="${num(x)}" y="${num(y)}" `);
+/** Turns a standalone 720×720 cell `<svg …>` into a nested one at (x, y), drawn at `size` (viewBox unchanged). */
+function nestCellSvg(svg: string, x: number, y: number, size: number): string {
+  return svg
+    .replace(/^<svg /, `<svg x="${num(x)}" y="${num(y)}" `)
+    .replace(' width="720" height="720"', ` width="${num(size)}" height="${num(size)}"`);
 }
 
 function renderHeader(session: BiathlonSession, lightingSummary: string): string {
@@ -98,41 +119,6 @@ function lightingSummary(photos: TargetPhoto[]): string {
   if (unique.size === 0) return 'unknown';
   const [only] = unique;
   return unique.size === 1 ? capitalize(only!) : 'mixed lighting';
-}
-
-/** §4 stat-card content: the target's `full`-variant footer lines, 20 px from (776, y+84), step 40. */
-function renderStatCard(slot: SlotData, holeDiameterMm: number, rowY: number): string {
-  const panel = el('rect', { x: 744, y: rowY + 24, width: 672, height: 672, rx: 16, fill: PALETTE.panel });
-  const lines =
-    slot.result.template === 'precision'
-      ? precisionFooterLines(slot.result, slot.analysis.shots)
-      : sightingFooterLines(slot.result, slot.analysis.shots, fullPositionLabel(slot.result.position), holeDiameterMm);
-  let body = '';
-  let y = rowY + 84;
-  for (const line of lines) {
-    body += text(776, y, 20, line, { color: PALETTE.textPrimary });
-    y += 40;
-  }
-  return panel + body;
-}
-
-/** One 720-tall row: both slot cells side by side, or one cell (x 0) plus a stat card (x 720). */
-function renderRow(pair: [SlotData | null, SlotData | null], rowY: number, holeDiameterMm: number): string {
-  const filled = pair.filter((s): s is SlotData => s !== null);
-  if (filled.length === 2) {
-    const [a, b] = pair as [SlotData, SlotData];
-    return (
-      nestCellSvg(renderDiagramSvg(slotDiagramInput(a, holeDiameterMm), 'cell', '1'), 0, rowY) +
-      nestCellSvg(renderDiagramSvg(slotDiagramInput(b, holeDiameterMm), 'cell', '2'), 720, rowY)
-    );
-  }
-  // Exactly one filled (selectDefaultSlots always fills slot 1 first): that cell at x 0, a stat card at x 720.
-  const slotIndex = pair[0] !== null ? 0 : 1;
-  const slot = filled[0]!;
-  return (
-    nestCellSvg(renderDiagramSvg(slotDiagramInput(slot, holeDiameterMm), 'cell', String(slotIndex + 1)), 0, rowY) +
-    renderStatCard(slot, holeDiameterMm, rowY)
-  );
 }
 
 function mpiCompactLine(offset: MpiOffset | null): string | null {
@@ -161,45 +147,65 @@ function slotSummaryLine(label: string, slot: SlotData): string {
   return mpi === null ? head : `${head} · ${mpi}`;
 }
 
-function renderAnalysisBand(input: CompositeInput, bandY: number): string {
-  const { slots, session, generatedAtLocal, moreCount } = input;
-  const filledSighting = slots.sighting.filter((s): s is SlotData => s !== null);
-  const filledPrecision = slots.precision.filter((s): s is SlotData => s !== null);
-  const allFilled = [...filledSighting, ...filledPrecision].map((s) => s.photo);
+/** A filled slot with its chip label, in §5's reading order: sighting 1, sighting 2, precision 1, precision 2. */
+interface Placed {
+  label: string;
+  slotLabel: string;
+  slot: SlotData;
+}
 
-  const panel = el('rect', { x: 0, y: bandY, width: WIDTH, height: BAND_HEIGHT, fill: PALETTE.panel });
-  const rail = el('rect', { x: 0, y: bandY, width: 8, height: BAND_HEIGHT, fill: PALETTE.accent });
+function placedSlots(input: CompositeInput): Placed[] {
+  const placed: Placed[] = [];
+  input.slots.sighting.forEach((slot, i) => {
+    if (slot !== null) placed.push({ label: `Sighting ${i + 1}`, slotLabel: String(i + 1), slot });
+  });
+  input.slots.precision.forEach((slot, i) => {
+    if (slot !== null) placed.push({ label: `Precision ${i + 1}`, slotLabel: String(i + 1), slot });
+  });
+  return placed;
+}
+
+/**
+ * §5 N = 1: the full footer lines that only repeat the slot line above them — the footer panel's own
+ * heading, and the total / hit-miss line the headline already states.
+ */
+const REPEATS_HEADLINE = [/^Scoring summary$/, /^Total: /, /^Scored \(/];
+
+/** §5's band lines, in order. N = 1 adds that target's `full` footer lines (what the old stat card held). */
+function bandLines(input: CompositeInput, placed: Placed[]): string[] {
+  const nS = placed.filter((p) => p.slot.result.template === 'sighting').length;
+  const nP = placed.length - nS;
+  // Zero counts are left out ("Targets: 1 precision", never "0 sighting · 1 precision").
+  const counts = [nS > 0 ? `${nS} sighting` : null, nP > 0 ? `${nP} precision` : null].filter((c) => c !== null);
+  const lines: string[] = [`Targets: ${[...counts, lightingSummary(placed.map((p) => p.slot.photo))].join(' · ')}`];
+  for (const p of placed) lines.push(slotSummaryLine(p.label, p.slot));
+  if (placed.length === 1) {
+    const only = placed[0]!.slot;
+    const footer =
+      only.result.template === 'precision'
+        ? precisionFooterLines(only.result, only.analysis.shots)
+        : sightingFooterLines(only.result, only.analysis.shots, fullPositionLabel(only.result.position), input.holeDiameterMm);
+    lines.push(...footer.filter((line) => !REPEATS_HEADLINE.some((re) => re.test(line))));
+  }
+  if (input.moreCount > 0) lines.push(`+${input.moreCount} more target(s) in the app`);
+  if (input.session.notes.trim().length > 0) lines.push(...noteLines(input.session.notes));
+  return lines.map((line) => truncate(line));
+}
+
+function renderAnalysisBand(lines: string[], generatedAtLocal: string, bandY: number): string {
+  const height = bandHeight(lines.length);
+  const panel = el('rect', { x: 0, y: bandY, width: WIDTH, height, fill: PALETTE.panel });
+  const rail = el('rect', { x: 0, y: bandY, width: 8, height, fill: PALETTE.accent });
   const title = text(40, bandY + 56, 24, 'Session analysis', { bold: true, color: PALETTE.textPrimary });
-
-  const lines: string[] = [
-    `Targets: ${filledSighting.length} sighting · ${filledPrecision.length} precision · ${lightingSummary(allFilled)}`,
-  ];
-  slots.sighting.forEach((slot, i) => {
-    if (slot !== null) lines.push(slotSummaryLine(`Sighting ${i + 1}`, slot));
-  });
-  slots.precision.forEach((slot, i) => {
-    if (slot !== null) lines.push(slotSummaryLine(`Precision ${i + 1}`, slot));
-  });
-  if (moreCount > 0) lines.push(`+${moreCount} more target(s) in the app`);
-
   let body = '';
   let y = bandY + 100;
   for (const line of lines) {
-    body += text(40, y, 18, truncate(line), { color: PALETTE.textPrimary });
-    y += 34;
+    body += text(40, y, 18, line, { color: PALETTE.textPrimary });
+    y += LINE_STEP;
   }
-
-  if (session.notes.trim().length > 0) {
-    for (const noteLine of noteLines(session.notes)) {
-      body += text(40, y, 18, noteLine, { color: PALETTE.textPrimary });
-      y += 34;
-    }
-  }
-
-  const footer = text(40, bandY + 572, 13, `advanced-shooting-analysis · generated ${generatedAtLocal}`, {
+  const footer = text(40, bandY + height - 28, 13, `Nordic Aim · generated ${generatedAtLocal}`, {
     color: PALETTE.textSecondary,
   });
-
   return panel + rail + title + body + footer;
 }
 
@@ -212,26 +218,35 @@ function noteLines(notes: string): string[] {
   return [first, truncate(rest)];
 }
 
+/**
+ * §5 (REV-51): the whole summary image — the four fixed positions (blank templates where nothing was
+ * selected) and an analysis band sized to its content. Returns the size so `buildComposite` rasterises
+ * exactly what was drawn.
+ */
+export function renderComposite(input: CompositeInput): { svg: string; width: number; height: number } {
+  const placed = placedSlots(input);
+  if (placed.length === 0) throw new EmptyCompositeError();
+  const lines = bandLines(input, placed);
+  const bandY = HEADER_HEIGHT + COMPOSITE_GRID_HEIGHT;
+  const height = bandY + bandHeight(lines.length);
+
+  let body = el('rect', { x: 0, y: 0, width: WIDTH, height, fill: PALETTE.panel });
+  body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)));
+  for (const cell of COMPOSITE_CELLS) {
+    const slot = input.slots[cell.template][cell.index];
+    const slotLabel = String(cell.index + 1);
+    const svg =
+      slot === null
+        ? renderBlankCellSvg(cell.template, slotLabel)
+        : renderDiagramSvg(slotDiagramInput(slot, input.holeDiameterMm), 'cell', slotLabel);
+    body += nestCellSvg(svg, cell.x, HEADER_HEIGHT + cell.y, cell.size);
+  }
+  body += renderAnalysisBand(lines, input.generatedAtLocal, bandY);
+
+  const svg = el('svg', { xmlns: 'http://www.w3.org/2000/svg', width: WIDTH, height, viewBox: `0 0 ${WIDTH} ${height}` }, body);
+  return { svg, width: WIDTH, height };
+}
+
 export function renderCompositeSvg(input: CompositeInput): string {
-  const anySighting = input.slots.sighting.some((s) => s !== null) ? 1 : 0;
-  const anyPrecision = input.slots.precision.some((s) => s !== null) ? 1 : 0;
-  const height = compositeHeight(anySighting, anyPrecision); // throws EmptyCompositeError at (0, 0)
-
-  const photosForLighting = [...input.slots.sighting, ...input.slots.precision]
-    .filter((s): s is SlotData => s !== null)
-    .map((s) => s.photo);
-
-  let y = HEADER_HEIGHT;
-  let body = renderHeader(input.session, lightingSummary(photosForLighting));
-  if (anySighting === 1) {
-    body += renderRow(input.slots.sighting, y, input.holeDiameterMm);
-    y += ROW_HEIGHT;
-  }
-  if (anyPrecision === 1) {
-    body += renderRow(input.slots.precision, y, input.holeDiameterMm);
-    y += ROW_HEIGHT;
-  }
-  body += renderAnalysisBand(input, y);
-
-  return el('svg', { xmlns: 'http://www.w3.org/2000/svg', width: WIDTH, height, viewBox: `0 0 ${WIDTH} ${height}` }, body);
+  return renderComposite(input).svg;
 }

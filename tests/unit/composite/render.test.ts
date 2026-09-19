@@ -7,7 +7,7 @@ import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot } from '@/lib/domain/analysis';
 import { initialAnalysis } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
-import { compositeHeight, renderCompositeSvg, type CompositeInput, type SlotData } from '@/lib/render/composite';
+import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, renderComposite, renderCompositeSvg } from '@/lib/render/composite';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 
 import { makePhoto, makeSession } from '../../helpers/records';
@@ -57,17 +57,101 @@ function baseInput(over: Partial<CompositeInput> = {}): CompositeInput {
   };
 }
 
-describe('render/composite compositeHeight (rendering-composite.md §5 height vectors)', () => {
-  it.each([
-    [1, 1, 2160],
-    [0, 1, 1440],
-    [1, 0, 1440],
-  ] as const)('(%i, %i) -> %i', (s, p, expected) => {
-    expect(compositeHeight(s, p)).toBe(expected);
+describe('render/composite four fixed positions (rendering-composite.md §5, REV-51)', () => {
+  const s1 = () => slot(sightingFixture, sightingResult);
+  const p1 = () => slot(precisionFixture, precisionResult);
+
+  it('sighting 1 and 2 on the top row, precision 1 and 2 below', () => {
+    expect(COMPOSITE_CELLS.map((c) => [c.template, c.index, c.x, c.y])).toEqual([
+      ['sighting', 0, 0, 0],
+      ['sighting', 1, 720, 0],
+      ['precision', 0, 0, 720],
+      ['precision', 1, 720, 720],
+    ]);
   });
 
-  it('(0, 0) throws EmptyCompositeError', () => {
-    expect(() => compositeHeight(0, 0)).toThrow('No analyzed targets');
+  it.each([
+    ['1 target', { sighting: [null, null], precision: [p1(), null] }, 3],
+    ['2 targets', { sighting: [s1(), null], precision: [p1(), null] }, 2],
+    ['3 targets', { sighting: [s1(), s1()], precision: [p1(), null] }, 1],
+    ['4 targets', { sighting: [s1(), s1()], precision: [p1(), p1()] }, 0],
+  ] as const)('%s: always four cells, a blank template in each empty one', (_name, slots, blanks) => {
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    expect((svg.match(/viewBox="0 0 720 720"/g) ?? []).length).toBe(4);
+    expect((svg.match(/>No target</g) ?? []).length).toBe(blanks);
+  });
+
+  it('a blank slot is its faded template, chipped without a position', () => {
+    const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), null], precision: [p1(), null] } }));
+    expect(svg).toContain('>SIGHTING 2<');
+    expect(svg).toContain('>PRECISION 2<');
+    expect(svg).toContain('opacity="0.35"');
+  });
+
+  it('0 targets throws EmptyCompositeError', () => {
+    expect(() => renderComposite(baseInput())).toThrow('No analyzed targets');
+  });
+
+  it('the band is sized to its content', () => {
+    expect(bandHeight(3)).toBe(100 + 34 * 3 + 64);
+  });
+});
+
+describe('render/composite height vectors (§5)', () => {
+  const s1 = () => slot(sightingFixture, sightingResult);
+  const p1 = () => slot(precisionFixture, precisionResult);
+  it.each([
+    ['1 target', { sighting: [null, null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 5 + 64],
+    ['2 targets', { sighting: [s1(), null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 3 + 64],
+    ['3 targets', { sighting: [s1(), s1()], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 4 + 64],
+    ['4 targets', { sighting: [s1(), s1()], precision: [p1(), p1()] }, 120 + 1440 + 100 + 34 * 5 + 64],
+  ] as const)('%s', (_name, slots, expected) => {
+    const { svg, height } = renderComposite(baseInput({ slots: slots as never }));
+    expect(height).toBe(expected);
+    expect(svg).toContain(`viewBox="0 0 1440 ${expected}"`);
+  });
+});
+
+describe('render/composite the owner\'s screenshot, 2026-09-19 (REV-51)', () => {
+  // Two sighting targets and one precision: the old grid gave the precision row a filler "stat card"
+  // in a black frame, cut the diagrams off at the caption, and left a large empty band.
+  const input = baseInput({
+    slots: {
+      sighting: [slot(sightingFixture, sightingResult), slot(sightingFixture, sightingResult)],
+      precision: [slot(precisionFixture, precisionResult), null],
+    },
+  });
+  const { svg } = renderComposite(input);
+
+  it('has no stat card; the empty fourth position is a blank precision template', () => {
+    expect(svg).not.toContain('x="744"');
+    expect(svg).toContain('>PRECISION 2<');
+    expect((svg.match(/>No target</g) ?? []).length).toBe(1);
+  });
+
+  it('fills the whole canvas first, so nothing renders black', () => {
+    expect(svg).toMatch(/^<svg[^>]*><rect x="0" y="0" width="1440" height="\d+" fill="#EAF2F8"\/>/);
+  });
+
+  it('clips every filled cell drawing above its caption band, with ids unique in the document', () => {
+    const ids = [...svg.matchAll(/clipPath id="([^"]+)"/g)].map((m) => m[1]);
+    expect(ids).toEqual(['cellclip-sighting-1', 'cellclip-sighting-2', 'cellclip-precision-1']);
+  });
+
+  it('captions say what they count (REV-49), and the footer says Nordic Aim', () => {
+    expect(svg).not.toMatch(/\d+\/\d+ hit @/);
+    expect(svg).toContain('9 hits · 1 miss — 45 mm · ES');
+    expect(svg).toContain('Nordic Aim · generated');
+  });
+});
+
+describe('render/composite one target carries its full stats in the band (§5)', () => {
+  it('lists the footer lines that do not repeat the slot line', () => {
+    const { svg } = renderComposite(baseInput({ slots: { sighting: [null, null], precision: [slot(precisionFixture, precisionResult), null] } }));
+    expect(svg).toContain('Group size:');
+    expect(svg).toContain('Targets: 1 precision · Daylight');
+    expect(svg).not.toContain('Scoring summary');
+    expect(svg).not.toContain('Total:');
   });
 });
 
@@ -80,9 +164,9 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
   });
   const svg = renderCompositeSvg(input);
 
-  it('root height is 2160 (one sighting row + one precision row)', () => {
-    expect(svg).toContain('height="2160"');
-    expect(svg).toContain('viewBox="0 0 1440 2160"');
+  it('two targets: root height 120 + 1440 + band (REV-51, four fixed positions)', () => {
+    const height = 120 + 1440 + 100 + 34 * 3 + 64;
+    expect(svg).toContain(`viewBox="0 0 1440 ${height}"`);
   });
 
   it('contains the required golden substrings', () => {
@@ -92,9 +176,8 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
     expect(svg).toContain('Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone');
   });
 
-  it('has two stat cards (one filled slot per row)', () => {
-    // A stat card is a 672x672 panel rect at x 744; both rows have exactly one filled slot here.
-    expect((svg.match(/x="744"/g) ?? []).length).toBe(2);
+  it('has no stat cards (REV-51 removed them)', () => {
+    expect(svg).not.toContain('x="744"');
   });
 
   it('never emits <foreignObject> or an external href', () => {
@@ -104,7 +187,7 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
 });
 
 describe('render/composite renderCompositeSvg slot layout', () => {
-  it('two filled slots in a row nest two cell diagrams side by side, no stat card', () => {
+  it('two filled slots nest two cell diagrams side by side, no stat card', () => {
     const input = baseInput({
       slots: {
         precision: [slot(precisionFixture, precisionResult), slot(precisionFixture, precisionResult)],
@@ -113,8 +196,8 @@ describe('render/composite renderCompositeSvg slot layout', () => {
     });
     const svg = renderCompositeSvg(input);
     expect(svg).not.toContain('x="744"');
-    // Two nested cell <svg> roots (720x720 viewBox) inside the composite.
-    expect((svg.match(/viewBox="0 0 720 720"/g) ?? []).length).toBe(2);
+    // Four nested cell <svg> roots: the two precision targets and two blank sighting templates (REV-51).
+    expect((svg.match(/viewBox="0 0 720 720"/g) ?? []).length).toBe(4);
   });
 
   it('an empty composite (no filled slots at all) throws EmptyCompositeError', () => {
