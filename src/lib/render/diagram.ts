@@ -14,6 +14,12 @@ export interface DiagramInput {
   captureLocal: string | null; // "2026-09-05T16:56:03"
   lighting: Lighting;
   holeDiameterMm: number;
+  /**
+   * rendering-composite.md §4 (REV-52): the `cell` variant's scale, when the caller sets it. The summary
+   * image gives every cell the same one so its targets can be compared by eye; a standalone cell (a result
+   * card's thumbnail) leaves it undefined and fits itself.
+   */
+  cellScaleOverride?: number;
 }
 
 export type DiagramVariant = 'full' | 'cell';
@@ -25,6 +31,6 @@ export function renderDiagramSvg(input: DiagramInput, variant: DiagramVariant, s
 }
 
 /** rendering-composite.md §5 (REV-51): an empty slot's cell — the template alone, faded, captioned "No target". */
-export function renderBlankCellSvg(template: 'sighting' | 'precision', slotLabel: string): string {
-  return template === 'precision' ? renderBlankPrecisionCell(slotLabel) : renderBlankSightingCell(slotLabel);
+export function renderBlankCellSvg(template: 'sighting' | 'precision', slotLabel: string, scale?: number): string {
+  return template === 'precision' ? renderBlankPrecisionCell(slotLabel, scale) : renderBlankSightingCell(slotLabel, scale);
 }

@@ -7,7 +7,8 @@ import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot } from '@/lib/domain/analysis';
 import { initialAnalysis } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
-import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, renderComposite, renderCompositeSvg } from '@/lib/render/composite';
+import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, renderComposite, sharedCellScale, renderCompositeSvg } from '@/lib/render/composite';
+import { PRECISION_TEMPLATE } from '@/lib/defaults/templates';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 
 import { makePhoto, makeSession } from '../../helpers/records';
@@ -109,6 +110,62 @@ describe('render/composite height vectors (§5)', () => {
     const { svg, height } = renderComposite(baseInput({ slots: slots as never }));
     expect(height).toBe(expected);
     expect(svg).toContain(`viewBox="0 0 1440 ${expected}"`);
+  });
+});
+
+describe('render/composite one scale for every target (REV-52)', () => {
+  const s1 = () => slot(sightingFixture, sightingResult);
+  const p1 = () => slot(precisionFixture, precisionResult);
+
+  /** The target's outer (halo) radius in each nested cell, keyed by its position — scale x haloRadiusMm. */
+  function cellRadii(svg: string): Map<string, number> {
+    const cells = svg.split('<svg ').slice(2); // [0] is the composite root, [1..] the nested cells
+    const byLabel = new Map<string, number>();
+    for (const cell of cells) {
+      // The chip reads "SIGHTING 1 · PRONE" when filled and "SIGHTING 2" when blank; key on the position.
+      const label = /<text[^>]*>([A-Z]+ \d)/.exec(cell)?.[1] ?? '?';
+      // The largest circle is the target's halo; a filled cell also draws shot dots, a blank one does not.
+      const radii = [...cell.matchAll(/ r="([\d.]+)"/g)].map((m) => Number(m[1]));
+      byLabel.set(label, Math.max(...radii));
+    }
+    return byLabel;
+  }
+
+  it('the two sighting targets are drawn identically, even when one has a shot beyond the target', () => {
+    // The owner's report: a far shot zoomed its own cell, so the pair no longer matched.
+    const far = { ...sightingFixture.shots[0]!, id: 'far', xMm: -8, yMm: -64 };
+    const withFar = slot({ ...sightingFixture, shots: [...sightingFixture.shots, far] } as never, sightingResult);
+    const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), withFar], precision: [p1(), null] } }));
+    const radii = cellRadii(svg);
+    expect(radii.get('SIGHTING 1')).toBeDefined();
+    expect(radii.get('SIGHTING 1')).toEqual(radii.get('SIGHTING 2'));
+  });
+
+  it('a blank slot matches the filled one of its template', () => {
+    const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), null], precision: [p1(), null] } }));
+    const radii = cellRadii(svg);
+    expect(radii.get('SIGHTING 1')).toBeDefined();
+    expect(radii.get('SIGHTING 1')).toEqual(radii.get('SIGHTING 2'));
+    expect(radii.get('PRECISION 1')).toEqual(radii.get('PRECISION 2'));
+  });
+
+  it('the precision sheet sets the baseline, so a sighting-only image uses it too', () => {
+    const base = 300 / (PRECISION_TEMPLATE.haloDiameterMm / 2);
+    expect(sharedCellScale(baseInput({ slots: { sighting: [s1(), null], precision: [null, null] } }))).toBeCloseTo(base, 9);
+    expect(sharedCellScale(baseInput({ slots: { sighting: [s1(), s1()], precision: [p1(), p1()] } }))).toBeCloseTo(base, 9);
+  });
+
+  it('a shot beyond the target zooms every cell out together, down to a floor', () => {
+    const base = 300 / (PRECISION_TEMPLATE.haloDiameterMm / 2);
+    const far = { ...sightingFixture.shots[0]!, id: 'far', xMm: 0, yMm: -120 };
+    const withFar = slot({ ...sightingFixture, shots: [...sightingFixture.shots, far] } as never, sightingResult);
+    const zoomed = sharedCellScale(baseInput({ slots: { sighting: [withFar, null], precision: [p1(), null] } }));
+    expect(zoomed).toBeLessThan(base);
+    expect(zoomed).toBeCloseTo(300 / (120 + 5.6 / 2 + 2), 9);
+
+    const wild = { ...far, yMm: -900 };
+    const withWild = slot({ ...sightingFixture, shots: [...sightingFixture.shots, wild] } as never, sightingResult);
+    expect(sharedCellScale(baseInput({ slots: { sighting: [withWild, null], precision: [p1(), null] } }))).toBeCloseTo(0.5 * base, 9);
   });
 });
 

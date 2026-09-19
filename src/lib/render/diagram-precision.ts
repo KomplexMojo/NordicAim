@@ -121,7 +121,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
 
   if (variant === 'cell') {
     // §4 (REV-51): zoom out so every shot fits, then clip the drawing above the caption band.
-    const s = cellScale(CELL.s, shots, holeDiameterMm);
+    const s = input.cellScaleOverride ?? cellScale(CELL.s, shots, holeDiameterMm);
     const target =
       renderTarget(CELL.cx, CELL.cy, s, s >= 4) +
       renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, s) +
@@ -156,6 +156,6 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
 }
 
 /** rendering-composite.md §5 (REV-51): an empty precision slot in the summary image. */
-export function renderBlankPrecisionCell(slotLabel: string): string {
-  return renderBlankCell('PRECISION', slotLabel, renderTarget(CELL.cx, CELL.cy, CELL.s, CELL.s >= 4));
+export function renderBlankPrecisionCell(slotLabel: string, scale = CELL.s): string {
+  return renderBlankCell('PRECISION', slotLabel, renderTarget(CELL.cx, CELL.cy, scale, scale >= 4));
 }

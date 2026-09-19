@@ -155,6 +155,9 @@ and it is what pushed the summary image's per-slot line, below, past its 110-cha
 
 - Target centre (360, 350); base scale s₀ = 300 / haloRadiusMm (sighting 4.8, precision ≈ 3.6276). Same target, ellipse, shots
   (r 5 px), MPI. Precision ring labels omitted when s < 4; sighting zone labels omitted.
+- **In the summary image every cell shares one scale (REV-52).** `DiagramInput.cellScaleOverride`, set by
+  `sharedCellScale` (§5), replaces the per-cell fit below, so two targets in one image can be compared by eye. A standalone cell
+  (a result card's thumbnail) leaves it undefined and fits itself.
 - **Every shot stays inside the drawing (REV-51).** With `reach` = the largest `hypot(xMm, yMm) + holeDiameterMm / 2 + 2` over the
   shots, `s = max(0.5 · s₀, min(s₀, 300 / reach))`: a shot on the paper beyond the printed target zooms the cell out until it fits,
   never below half scale (2 × the halo radius — beyond anything detection can produce). The rings shrink with it; nothing is hidden.
@@ -197,6 +200,11 @@ black border), described only that one target, and left a fixed 600 px band most
 - **Canvas.** Width **1440**. A full-canvas `panel` rect is drawn first, so no area is ever unfilled (transparent renders black).
 - **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); subtitle 18 `#CFE6F3` at
   (40, 94): `<sessionDate> · <lightingSummary>` (shared label if all filled slots agree, else `mixed lighting`).
+- **One scale for the whole image (REV-52).** `sharedCellScale(input)` is the tightest fit any of the four positions needs:
+  every template's halo must fit within the 300 px drawing radius — the precision sheet is larger, so it sets the baseline
+  3.6276 px/mm, and sighting targets are drawn smaller than their cell rather than at their own fit — and a shot out on the paper
+  beyond its printed target zooms **every** cell out together, never only its own. Floored at half the precision baseline, so one
+  wild manual shot cannot shrink the image away (a shot beyond that is clipped).
 - **Cells** start at y = 120, each nested as `<svg x y width="720" height="720" viewBox="0 0 720 720">` — the `cell` diagram (§4)
   for a filled slot, the blank template for an empty one.
 - **Analysis band** at y = 120 + 1440, **sized to its content**: `panel`, 8 px `accent` rail.

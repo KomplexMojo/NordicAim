@@ -94,7 +94,7 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
 
   if (variant === 'cell') {
     // §4 (REV-51): zoom out so every shot fits, then clip the drawing above the caption band.
-    const s = cellScale(CELL.s, shots, holeDiameterMm);
+    const s = input.cellScaleOverride ?? cellScale(CELL.s, shots, holeDiameterMm);
     const target =
       renderTarget(CELL.cx, CELL.cy, s) +
       renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, s) +
@@ -129,6 +129,6 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
 }
 
 /** rendering-composite.md §5 (REV-51): an empty sighting slot in the summary image. */
-export function renderBlankSightingCell(slotLabel: string): string {
-  return renderBlankCell('SIGHTING', slotLabel, renderTarget(CELL.cx, CELL.cy, CELL.s));
+export function renderBlankSightingCell(slotLabel: string, scale = CELL.s): string {
+  return renderBlankCell('SIGHTING', slotLabel, renderTarget(CELL.cx, CELL.cy, scale));
 }
