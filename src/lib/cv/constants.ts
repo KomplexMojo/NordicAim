@@ -146,3 +146,19 @@ export const BACKING_OVERLAP_RATIO = 1.8;
 export const AUTO_MIN_SPOTS = 3;
 /** §4a: and no coloured blob larger than this multiple of one hole's area (scenery, not a hole). */
 export const AUTO_MAX_BLOB_RATIO = 2.5;
+/**
+ * M19 Open question 1 (owner, 2026-09-18): a backing sheet is fluorescent, so the most coloured pixel
+ * the neutral-chroma rule accepts (chroma after the white balance, max - min, 0-255) must reach this.
+ * The owner's rule is "midway between" the unbacked maximum and the backed minimum; the owner's start
+ * value of 150 assumed a backed minimum of 209, but re-measured the six backed photos give 138-223
+ * (IMG_5189, pink: 138; IMG_5198: 167) and the unbacked ones 42-110, so midway is (110 + 138) / 2 =
+ * 124. Recorded as M19 Open question 14. Provisional (§7).
+ */
+export const AUTO_MIN_CHROMA = 124;
+/**
+ * M19 Open question 1: the radial rule. This quantile of the accepted pixels' distance from the
+ * target centre must lie inside the template's outermost printed circle (`outerRadiusMm`) — where
+ * holes can be — not in the outer band of the search area where the board and scenery leak in.
+ * Measured p10: 101-133 mm on the four unbacked photos, 4-12 mm on the six backed ones. Provisional (§7).
+ */
+export const AUTO_RADIUS_QUANTILE = 0.1;

@@ -315,7 +315,7 @@ function card(p) {
         <dt>Alignment confidence</dt><dd>${p.anchor.confidence ?? '—'}</dd>
         <dt>Paper sheet</dt><dd>${p.sheet?.method === 'fallback' ? 'not found (105 mm circle)' : 'found'}</dd>
         ${p.detection ? `<dt>Detection method</dt><dd><b>${p.detection.method === 'colour' ? 'backing colour' : 'standard'}</b></dd>
-        <dt>Backing (Auto)</dt><dd>${p.detection.backing}${p.detection.spots ? ` · ${p.detection.spots} spots, largest ${p.detection.largestRatio}×` : ''}</dd>
+        <dt>Backing (Auto)</dt><dd>${p.detection.backing}${p.detection.autoReason ? ` (${p.detection.autoReason})` : ''}${p.detection.spots ? ` · ${p.detection.spots} spots, largest ${p.detection.largestRatio}×, max chroma ${p.detection.maxChroma}, radius p10 ${p.detection.radiusP10Mm ?? '—'} mm` : ''}</dd>
         ${p.detection.swatch ? `<dt>Card colour</dt><dd><i class="sw" style="background:${p.detection.swatch};border-color:${p.detection.swatch}"></i> hue ${p.detection.hueDeg}°</dd>` : ''}
         ${p.candidates.some((c) => c.possibleOverlap) ? `<dt>May be two shots</dt><dd>${p.candidates.filter((c) => c.possibleOverlap).length}</dd>` : ''}` : ''}
         ${p.numeralRotation ? `<dt>Numeral rotation</dt><dd>${p.numeralRotation.deg}°${p.numeralRotation.reliable ? '' : ' (weak)'}</dd>` : ''}` : ''}

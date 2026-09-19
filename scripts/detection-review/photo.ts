@@ -43,6 +43,10 @@ export interface ReviewPhoto {
     backing: 'detected' | 'not-detected' | 'forced' | 'off';
     spots: number;
     largestRatio: number;
+    /** M19 Open question 1: the fluorescence floor's and the radial rule's inputs, and why `Auto` said no. */
+    maxChroma: number;
+    radiusP10Mm: number | null;
+    autoReason: string | null;
     /** The card's hue as a CSS colour, so the page can draw the swatch. */
     swatch: string | null;
     hueDeg: number | null;
@@ -172,6 +176,9 @@ export function reviewPhoto(
       backing: backing.mode === 'none' ? 'off' : backing.mode === 'coloured' ? 'forced' : presence.present ? 'detected' : 'not-detected',
       spots: presence.spots,
       largestRatio: round(presence.largestRatio, 2),
+      maxChroma: round(presence.maxChroma),
+      radiusP10Mm: presence.acceptedRadiusP10Mm === null ? null : round(presence.acceptedRadiusP10Mm),
+      autoReason: presence.reason,
       swatch: backing.colour === null ? null : swatchCss(backing.colour),
       hueDeg: backing.colour === null ? null : round(backing.colour.hueDeg, 1),
     },

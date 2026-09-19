@@ -17,7 +17,9 @@ import type { CappableShot } from '@/lib/scoring/cap-shots';
 
 import {
   AUTO_MAX_BLOB_RATIO,
+  AUTO_MIN_CHROMA,
   AUTO_MIN_SPOTS,
+  AUTO_RADIUS_QUANTILE,
   BACKING_HUE_MARGIN_DEG,
   BACKING_MERGE_FRACTION,
   BACKING_MIN_AREA_FRACTION,
@@ -37,7 +39,7 @@ import {
 } from './constants';
 import { detectShots, holeAreaPx } from './holes';
 import type { CvMat, OpenCv } from './opencv';
-import { rectify, rectifiedToMm, type Rectified } from './rectify';
+import { outerRadiusMm, rectify, rectifiedToMm, type Rectified } from './rectify';
 import { findSheet, type SheetMethod } from './sheet';
 
 // --- HSV, hue statistics -------------------------------------------------------------------------
@@ -214,6 +216,13 @@ export interface BackingColourReport {
   /** §4a: coloured blobs in the search area, and the largest blob's area / one hole's area. */
   spots: number;
   largestRatio: number;
+  /**
+   * M19 Open question 1, measured only by the chroma rule (null for the hue rule): the largest chroma
+   * (after the white balance) of any accepted pixel, and the {@link AUTO_RADIUS_QUANTILE} quantile
+   * of the accepted pixels' distance from the target centre in mm (null when no pixel is accepted).
+   */
+  maxChroma: number | null;
+  acceptedRadiusP10Mm: number | null;
   sheet: { method: SheetMethod; seedCoverage: number; paperGray: number };
   pxPerMm: number;
 }
@@ -410,19 +419,44 @@ function hueMask(rgb: Uint8Array, searchable: Uint8Array, colour: ColourSignatur
   return mask;
 }
 
-/** §4: the neutral-chroma rule — the paper's colour cast removed, then anything clearly coloured. */
-function chromaMask(rgb: Uint8Array, searchable: Uint8Array): Uint8Array {
+/**
+ * §4: the neutral-chroma rule — the paper's colour cast removed, then anything clearly coloured.
+ * Also returns the largest accepted chroma, which `Auto`'s fluorescence floor reads.
+ */
+function chromaMask(rgb: Uint8Array, searchable: Uint8Array): { mask: Uint8Array; maxChroma: number } {
   const [gr, gg, gb] = whiteBalanceGains(rgb, searchable);
   const mask = new Uint8Array(searchable.length);
+  let maxChroma = 0;
   for (let i = 0; i < searchable.length; i += 1) {
     if (searchable[i] !== 1) continue;
     const r = Math.min(255, (rgb[i * 3] as number) * gr);
     const g = Math.min(255, (rgb[i * 3 + 1] as number) * gg);
     const b = Math.min(255, (rgb[i * 3 + 2] as number) * gb);
-    if (Math.max(r, g, b) - Math.min(r, g, b) < NEUTRAL_CHROMA_MIN) continue;
+    const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+    if (chroma < NEUTRAL_CHROMA_MIN) continue;
     mask[i] = 1;
+    if (chroma > maxChroma) maxChroma = chroma;
   }
-  return mask;
+  return { mask, maxChroma };
+}
+
+/**
+ * M19 Open question 1's radial rule: the {@link AUTO_RADIUS_QUANTILE} quantile of the accepted
+ * pixels' distance from the target centre, in mm. Null when nothing was accepted.
+ */
+function acceptedRadiusQuantileMm(mask: Uint8Array, rect: Rectified): number | null {
+  const { side, pxPerMm } = rect;
+  const centre = side / 2;
+  const radii: number[] = [];
+  for (let y = 0; y < side; y += 1) {
+    for (let x = 0; x < side; x += 1) {
+      if (mask[y * side + x] !== 1) continue;
+      radii.push(Math.hypot(x - centre, centre - y) / pxPerMm);
+    }
+  }
+  if (radii.length === 0) return null;
+  radii.sort((a, b) => a - b);
+  return quantile(radii, AUTO_RADIUS_QUANTILE);
 }
 
 /**
@@ -453,7 +487,8 @@ function reportFromView(
   options: BackingDetectOptions = {},
 ): BackingColourReport {
   const { rect, rgb, searchable, sheet } = view;
-  const mask = colour === null ? chromaMask(rgb, searchable) : hueMask(rgb, searchable, colour);
+  const chroma = colour === null ? chromaMask(rgb, searchable) : null;
+  const mask = chroma !== null ? chroma.mask : hueMask(rgb, searchable, colour as ColourSignature);
   const { blobs, largestAreaPx } = blobsFromMask(cv, mask, rect, holeDiameterMm, options);
   return {
     blobs,
@@ -461,6 +496,8 @@ function reportFromView(
     colour,
     spots: blobs.length,
     largestRatio: largestAreaPx / holeAreaPx(holeDiameterMm, rect.pxPerMm),
+    maxChroma: chroma?.maxChroma ?? null,
+    acceptedRadiusP10Mm: chroma !== null ? acceptedRadiusQuantileMm(chroma.mask, rect) : null,
     sheet: { method: sheet.method, seedCoverage: sheet.seedCoverage, paperGray: sheet.paperGray },
     pxPerMm: rect.pxPerMm,
   };
@@ -492,12 +529,36 @@ export interface BackingPresence {
   present: boolean;
   spots: number;
   largestRatio: number;
+  /** M19 Open question 1: the fluorescence and radial measurements (see {@link BackingColourReport}). */
+  maxChroma: number;
+  acceptedRadiusP10Mm: number | null;
+  /** Why `Auto` said no, or null when it said present. */
+  reason: string | null;
+}
+
+/**
+ * `Auto`'s verdict from a neutral-chroma probe. Checked in this order, so the recorded reason names
+ * the first rule that failed: a coloured area far bigger than a hole, too few spots (§4a), nothing
+ * fluorescent (the chroma floor), or the colour lying outside the rings (the radial rule). The last
+ * two are the owner's ruling on M19 Open question 1: they fail differently — the floor catches a
+ * bright board, the radial rule a dull one — so both apply.
+ */
+function autoRefusal(probe: BackingColourReport, template: TemplateId): string | null {
+  if (probe.largestRatio > AUTO_MAX_BLOB_RATIO) return AUTO_LARGE_AREA_REASON;
+  if (probe.spots < AUTO_MIN_SPOTS) return AUTO_NO_SPOTS_REASON;
+  if ((probe.maxChroma ?? 0) < AUTO_MIN_CHROMA) return AUTO_DULL_COLOUR_REASON;
+  if (probe.acceptedRadiusP10Mm === null || probe.acceptedRadiusP10Mm > outerRadiusMm(template)) {
+    return AUTO_OUTSIDE_RINGS_REASON;
+  }
+  return null;
 }
 
 /**
  * backing-sheet.md §4a (`Auto`). Present when there are at least {@link AUTO_MIN_SPOTS} coloured
  * blobs and none of them is more than {@link AUTO_MAX_BLOB_RATIO} times a hole's area — a coloured
- * area far bigger than a hole is scenery, a backing board or a sticker in frame, not a hole.
+ * area far bigger than a hole is scenery, a backing board or a sticker in frame, not a hole — and,
+ * per M19 Open question 1, the colour is fluorescent ({@link AUTO_MIN_CHROMA}) and sits where holes
+ * can be (the accepted pixels' radius p10 inside the template's outermost circle).
  *
  * The spec writes this as `detectBackingPresence(img, calibration)`; the template and the calibre are
  * needed to rectify and to size a hole, exactly as A5 needs them (see the milestone's Open questions).
@@ -510,10 +571,14 @@ export function detectBackingPresence(
   holeDiameterMm: number,
 ): BackingPresence {
   const report = detectByBackingColour(cv, img, calibration, template, holeDiameterMm, null);
+  const reason = autoRefusal(report, template);
   return {
-    present: report.spots >= AUTO_MIN_SPOTS && report.largestRatio <= AUTO_MAX_BLOB_RATIO,
+    present: reason === null,
     spots: report.spots,
     largestRatio: report.largestRatio,
+    maxChroma: report.maxChroma ?? 0,
+    acceptedRadiusP10Mm: report.acceptedRadiusP10Mm,
+    reason,
   };
 }
 
@@ -532,7 +597,7 @@ export function estimateBackingColour(
   template: TemplateId,
 ): ColourSignature | null {
   return withBackingView(cv, img, calibration, template, ({ rgb, searchable }) => {
-    const mask = chromaMask(rgb, searchable);
+    const { mask } = chromaMask(rgb, searchable);
     const hues: number[] = [];
     const sats: number[] = [];
     const vals: number[] = [];
@@ -553,6 +618,10 @@ export function estimateBackingColour(
 export const AUTO_LARGE_AREA_REASON = 'large coloured area';
 /** §4a: the other way `Auto` says no — fewer than {@link AUTO_MIN_SPOTS} coloured blobs. */
 export const AUTO_NO_SPOTS_REASON = 'no coloured spots';
+/** M19 Open question 1: the colour is not fluorescent enough to be a backing sheet ({@link AUTO_MIN_CHROMA}). */
+export const AUTO_DULL_COLOUR_REASON = 'colour too dull for a backing';
+/** M19 Open question 1: the colour lies outside the rings — the board or scenery, not the holes. */
+export const AUTO_OUTSIDE_RINGS_REASON = 'colour outside the rings';
 /** §5.6: the colour path ran and found nothing, so the standard detector ran instead. */
 export const COLOUR_NOT_FOUND_REASON = 'no backing colour showed through';
 
@@ -602,12 +671,8 @@ export function detectShotsWithBacking(
     // the hue detection that follows reuses the same rectified view rather than warping twice.
     const decision = withBackingView(cv, img, calibration, template, (view) => {
       const probe = reportFromView(cv, view, holeDiameterMm, null);
-      if (probe.spots < AUTO_MIN_SPOTS || probe.largestRatio > AUTO_MAX_BLOB_RATIO) {
-        return {
-          present: false as const,
-          reason: probe.largestRatio > AUTO_MAX_BLOB_RATIO ? AUTO_LARGE_AREA_REASON : AUTO_NO_SPOTS_REASON,
-        };
-      }
+      const reason = autoRefusal(probe, template);
+      if (reason !== null) return { present: false as const, reason };
       // §4a: with `Auto`, a card photo is still used when the session has one.
       return {
         present: true as const,

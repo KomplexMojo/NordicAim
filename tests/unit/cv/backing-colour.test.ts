@@ -6,14 +6,16 @@
 // that differs from the spec's own probe the difference is named in the test and in the milestone's
 // Open questions, because the §7 photo set that would settle it does not exist yet.
 
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { detectAnchor } from '@/lib/cv/anchor';
 import {
+  AUTO_DULL_COLOUR_REASON,
   AUTO_LARGE_AREA_REASON,
+  AUTO_OUTSIDE_RINGS_REASON,
   COLOUR_NOT_FOUND_REASON,
   backingColourFromCard,
   detectBackingPresence,
@@ -23,8 +25,10 @@ import {
   hueDistance,
   rgbToHsv,
 } from '@/lib/cv/backing-colour';
+import { AUTO_MIN_CHROMA } from '@/lib/cv/constants';
 import { detectShotCandidates } from '@/lib/cv/holes';
 import type { OpenCv } from '@/lib/cv/opencv';
+import { outerRadiusMm } from '@/lib/cv/rectify';
 import { hintTemplate } from '@/lib/cv/template-hint';
 import type { ColourSignature } from '@/lib/domain/backing';
 import type { TemplateId } from '@/lib/domain/enums';
@@ -197,6 +201,51 @@ describe('detectBackingPresence (backing-sheet.md §4a)', () => {
     const presence = detectBackingPresence(cv, img, CAL, 'precision', HOLE_MM);
     expect(presence.largestRatio).toBeGreaterThan(2.5);
     expect(presence.present).toBe(false);
+  }, 60_000);
+
+  it('says absent when the colour is not fluorescent: wood seen through the holes (the chroma floor)', async () => {
+    // M19 Open question 1: bare wood measured max chroma 42-110 on the owner's photos. #9A7A60 is 58.
+    const holes = PRECISION_TEST_HOLES.map((hole) => ({ ...hole, fill: '#9A7A60' }));
+    const img = await syntheticTargetRgba({ ...PRECISION, holesMm: holes, numeralsDeg: 0 });
+    const presence = detectBackingPresence(cv, img, CAL, 'precision', HOLE_MM);
+    expect(presence.spots).toBeGreaterThanOrEqual(3);
+    expect(presence.largestRatio).toBeLessThanOrEqual(2.5);
+    expect(presence.maxChroma).toBeLessThan(AUTO_MIN_CHROMA);
+    expect(presence.present).toBe(false);
+    expect(presence.reason).toBe(AUTO_DULL_COLOUR_REASON);
+  }, 60_000);
+
+  it('says absent when every coloured spot lies outside the rings (the radial rule)', async () => {
+    // M19 Open question 1: the board and scenery leak into the outer band of the 150 mm search area.
+    // Six bright hole-sized spots at 110 mm, beyond the precision template's 77.2 mm outer circle.
+    const holes = [0, 60, 120, 180, 240, 300].map((deg) => ({
+      xMm: 110 * Math.cos((deg * Math.PI) / 180),
+      yMm: 110 * Math.sin((deg * Math.PI) / 180),
+      fill: PINK,
+    }));
+    const img = await syntheticTargetRgba({ ...PRECISION, holesMm: holes, numeralsDeg: 0 });
+    const presence = detectBackingPresence(cv, img, CAL, 'precision', HOLE_MM);
+    expect(presence.spots).toBeGreaterThanOrEqual(3);
+    expect(presence.maxChroma).toBeGreaterThanOrEqual(AUTO_MIN_CHROMA);
+    expect(presence.acceptedRadiusP10Mm).toBeGreaterThan(outerRadiusMm('precision'));
+    expect(presence.present).toBe(false);
+    expect(presence.reason).toBe(AUTO_OUTSIDE_RINGS_REASON);
+
+    const result = detectShotsWithBacking(cv, img, CAL, 'precision', HOLE_MM, { mode: 'auto', colour: null });
+    expect(result.detection).toEqual({
+      method: 'standard',
+      backing: 'not-detected',
+      fallbackReason: AUTO_OUTSIDE_RINGS_REASON,
+    });
+  }, 60_000);
+
+  it('a backed sheet passes both new rules', async () => {
+    const img = await syntheticTargetRgba({ ...PRECISION, holesMm: backedHoles(), numeralsDeg: 0 });
+    const presence = detectBackingPresence(cv, img, CAL, 'precision', HOLE_MM);
+    expect(presence.maxChroma).toBeGreaterThanOrEqual(AUTO_MIN_CHROMA);
+    expect(presence.acceptedRadiusP10Mm).not.toBeNull();
+    expect(presence.acceptedRadiusP10Mm!).toBeLessThanOrEqual(outerRadiusMm('precision'));
+    expect(presence.reason).toBeNull();
   }, 60_000);
 });
 
@@ -373,7 +422,11 @@ describe.skipIf(!hasBacking)("the owner's backing photos (fixtures/private/backi
     for (const name of ['IMG_5189', 'IMG_5191', 'IMG_5193', 'IMG_5194', 'IMG_5196', 'IMG_5198']) {
       const { img, cal, template } = await analysed(`${BACKING_DIR}${name}.jpeg`);
       const presence = detectBackingPresence(cv, img, cal, template, PROFILE_HOLE_MM);
-      expect(presence.present, `${name} spots=${presence.spots} ratio=${presence.largestRatio}`).toBe(true);
+      const why = `${name} spots=${presence.spots} ratio=${presence.largestRatio} chroma=${presence.maxChroma} p10=${presence.acceptedRadiusP10Mm}`;
+      expect(presence.present, why).toBe(true);
+      // M19 Open question 1's two rules, on the backed side: fluorescent, and where the holes are.
+      expect(presence.maxChroma, why).toBeGreaterThanOrEqual(AUTO_MIN_CHROMA);
+      expect(presence.acceptedRadiusP10Mm!, why).toBeLessThanOrEqual(outerRadiusMm(template));
     }
   }, 300_000);
 });
@@ -398,52 +451,57 @@ describe.skipIf(!hasReferences)("Auto on the owner's unbacked reference photos (
   }, 180_000);
 
   // ---------------------------------------------------------------------------------------------
-  // KNOWN DIVERGENCE FROM THE SPEC — pinned so it cannot change unnoticed (M19 Open question 1).
-  //
-  // backing-sheet.md §4 is explicit: "the colour path must never run on a photo without a backing",
-  // and §4a's measured table has every unbacked photo absent. These four are read as PRESENT today,
-  // so `Auto` (the default mode) would replace the standard detector's result with 3-8 colour blobs
-  // on them. The values below are what this code measures, NOT what the spec wants; the test exists
-  // to make any change to them visible, and the milestone is blocked on the owner's labels.
-  //
-  // Measured on 2026-09-18 (`pnpm exec tsx` over the same rectified view): every coloured pixel these
-  // four contribute sits in the OUTER band of the REV-36 search area — accepted-pixel radius p10 was
-  // 101 mm (IMG_4743) and 128-133 mm (the other three) against a 150 mm search cap, at hues 31-49
-  // (bare wood) and 213 (sky/shade), while the backed photos' accepted pixels sit at radius p10 4-12
-  // mm, where the holes are. The white-balance gains were 0.94-1.04, so this is not a neutralisation
-  // artefact: it is the board and surroundings around the sheet leaking into the searched area.
-  // Two of IMG_4744's blobs land exactly on labelled holes (wood seen through a hole), which is why
-  // no threshold on `AUTO_MIN_SPOTS` alone separates the sets (3-8 unbacked spots vs 6-10 backed).
+  // M19 Open question 1, ANSWERED 2026-09-18: none of these four had a backing sheet (IMG_4743 is a
+  // sighting sheet on a weathered wooden frame; the other three are white paper on a pale beige board
+  // in shade). Before the owner's ruling `Auto` read all four as backed: they pass the spot count and
+  // the area rule, which is why neither `AUTO_MIN_SPOTS` nor `AUTO_MAX_BLOB_RATIO` could separate them.
+  // They are now refused by the two rules the owner named. The chroma floor catches all four; the
+  // radial rule would catch them too (accepted-pixel radius p10 101-133 mm against the template's
+  // 57.5 / 77.2 mm outer circle, where the backed photos sit at 4-15 mm), which is asserted too, so
+  // both defences are pinned. Measured values are what this code reads with the pipeline's own A4
+  // and template hint at 1200 px.
   // ---------------------------------------------------------------------------------------------
-  const readAsBacked: Array<{ name: string; spots: number; largestRatio: number }> = [
-    { name: 'IMG_4743', spots: 3, largestRatio: 0.223 },
-    { name: 'IMG_4744', spots: 6, largestRatio: 0.515 },
-    { name: 'IMG_5182', spots: 8, largestRatio: 0.639 },
-    { name: 'IMG_5184', spots: 6, largestRatio: 0.878 },
+  const unbackedByOwner: Array<{ name: string; spots: number; maxChroma: number; radiusP10Mm: number }> = [
+    { name: 'IMG_4743', spots: 3, maxChroma: 46, radiusP10Mm: 101 },
+    { name: 'IMG_4744', spots: 6, maxChroma: 106, radiusP10Mm: 128 },
+    { name: 'IMG_5182', spots: 8, maxChroma: 110, radiusP10Mm: 128 },
+    { name: 'IMG_5184', spots: 6, maxChroma: 82, radiusP10Mm: 133 },
   ];
 
-  it.each(readAsBacked)(
-    '$name is read as BACKED today, which §4 forbids on an unbacked photo (Open question 1)',
-    async ({ name, spots, largestRatio }) => {
+  it.each(unbackedByOwner)(
+    '$name is NOT backed (owner, 2026-09-18): refused by the chroma floor, and outside the rings too',
+    async ({ name, spots, maxChroma, radiusP10Mm }) => {
       const { img, cal, template } = await analysed(`${REFERENCE_DIR}${name}.jpeg`);
       const presence = detectBackingPresence(cv, img, cal, template, PROFILE_HOLE_MM);
+      expect(presence.present, name).toBe(false);
+      // It passes the two original §4a rules, so the new ones are what refuse it.
       expect(presence.spots, `${name} spots`).toBe(spots);
-      expect(presence.largestRatio, `${name} largest blob ratio`).toBeCloseTo(largestRatio, 2);
-      // The spec's verdict is `false`. Until the owner says which of these four (if any) actually had
-      // a backing sheet, nothing is tuned on a guess, so the divergence is pinned rather than hidden.
-      expect(presence.present, `${name} — §4a expects absent`).toBe(true);
-      expect(presence.largestRatio, `${name}`).toBeLessThanOrEqual(2.5);
+      expect(presence.largestRatio, name).toBeLessThanOrEqual(2.5);
+      expect(presence.reason, name).toBe(AUTO_DULL_COLOUR_REASON);
+      expect(Math.abs(presence.maxChroma - maxChroma), `${name} max chroma`).toBeLessThanOrEqual(1);
+      expect(presence.maxChroma, name).toBeLessThan(AUTO_MIN_CHROMA);
+      // The radial rule, independently: the colour is the board around the sheet, not the holes.
+      expect(Math.abs(presence.acceptedRadiusP10Mm! - radiusP10Mm), `${name} radius p10`).toBeLessThanOrEqual(1);
+      expect(presence.acceptedRadiusP10Mm!, name).toBeGreaterThan(outerRadiusMm(template));
     },
     180_000,
   );
 
-  it('no other reference photo is read as backed', async () => {
-    // The sample is deliberately small (these are 1200 px decodes of 12 MP photos); `pnpm cv:eval`
-    // walks the whole folder and prints every photo `Auto` reads as backed under CONFIRM WITH THE OWNER.
-    for (const name of ['IMG_5183', 'IMG_5185', 'IMG_5146', 'IMG_5147']) {
-      const { img, cal, template } = await analysed(`${REFERENCE_DIR}${name}.jpeg`);
+  it('no reference photo is read as backed — every one of them is unbacked (owner, 2026-09-18)', async () => {
+    // The milestone's Tests list: `Auto` on every photo in fixtures/private. A photo with no target
+    // disc cannot reach A5, so it is skipped, as `pnpm cv:eval` skips it.
+    const names = readdirSync(REFERENCE_DIR).filter((f) => /\.jpe?g$/i.test(f)).sort();
+    let checked = 0;
+    for (const file of names) {
+      const img = await jpegFileToRgba(`${REFERENCE_DIR}${file}`, WORKING_LONGEST);
+      const detection = detectAnchor(cv, img, null, 'both');
+      if (detection === null) continue;
+      checked += 1;
+      const cal = detection.calibration;
+      const template = hintTemplate(cv, img, cal).template;
       const presence = detectBackingPresence(cv, img, cal, template, PROFILE_HOLE_MM);
-      expect(presence.present, `${name} spots=${presence.spots} ratio=${presence.largestRatio}`).toBe(false);
+      expect(presence.present, `${file} spots=${presence.spots} chroma=${presence.maxChroma}`).toBe(false);
     }
-  }, 300_000);
+    expect(checked).toBeGreaterThan(0);
+  }, 600_000);
 });

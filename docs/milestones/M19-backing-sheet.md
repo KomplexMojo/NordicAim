@@ -87,6 +87,9 @@ the Completion notes must say so.
 
 ### 1. ANSWERED 2026-09-18 — none of the four had a backing sheet
 
+**Implemented in run 2** (see *Completion notes*): both rules are in, with the chroma floor at **124** rather than 150
+— see Open question 14 for why.
+
 **All four are unbacked**, confirmed by looking at them: `IMG_4743` is a sighting sheet on a weathered **wooden frame**
 (the 31–49° hues are the bare wood at the photo's left and right edges); `IMG_4744`, `IMG_5182` and `IMG_5184` are white
 paper stapled to a **pale beige board**, photographed in shade. None carries a coloured backing — a fluorescent sheet is
@@ -173,7 +176,8 @@ four verdicts pinned by name in `tests/unit/cv/backing-colour.test.ts`, now asse
    "Schema version 1 → 2". The spec written for this milestone wins (golden rule 2: the later spec is the one this
    milestone implements), so the code and `tests/unit/domain/schemas.test.ts` use 2 — but **data-model.md §2 and its §8
    example record need the owner's edit** to match. Recorded here rather than changed, because data-model.md is not in
-   this milestone's *Files*.
+   this milestone's *Files*. **Resolved 2026-09-18** by the owner (commit `0861f39`): data-model.md now declares
+   version 2.
 12. **A5's cost, for M15's measurement.** `Auto` with a card now rectifies **once** (fix round 1: the §4a probe and the
    §5 hue mask share one `Rectified`, so the warp plus `findSheet` runs once instead of twice). What remains is §5.6's
    fallback: when the colour path yields zero blobs the standard detector rectifies again, because `detectShots` owns
@@ -184,6 +188,24 @@ four verdicts pinned by name in `tests/unit/cv/backing-colour.test.ts`, now asse
    such field). Stage B re-caps from the stored shots, where only `confidence` survives — for a colour-path shot that is
    `null`, so a re-cap after metadata falls back to the radial tie-break. Adding an area to `Shot` is a data-model
    change and was not made here.
+14. **`AUTO_MIN_CHROMA` is 124, not the owner's starting 150.** *(Not blocking.)* Open question 1's answer said "start
+   **150**, midway between 110 and 209", taking 209–223 as the backed photos' max chroma. Re-measured on this run
+   (the same white-balanced chroma the rule reads), the six backed photos give **138–223**: `IMG_5189` (pink, no card)
+   reads **138** and `IMG_5198` **167**; the orange and other red photos read 205–223. At 150 `Auto` would refuse
+   `IMG_5189`, a backed photo, which the milestone's own test forbids. Applying the owner's stated rule ("midway") to
+   the measured sets — unbacked max **110** (`IMG_5182`), backed min **138** — gives **124**, which is what
+   `src/lib/cv/constants.ts` now holds. The margin is narrow (14 either side), so the radial rule is the
+   wide-margin defence: backed photos sit at radius p10 **4–15 mm**, the four unbacked ones at **101–133 mm**, against
+   the template's outermost circle (77.2 mm precision, 57.5 mm sighting). **Owner: confirm 124, or say which of the
+   two rules should carry the decision alone.** Both are §7 constants to re-measure with the labelled backing set.
+15. **The radial rule is the p10 form, not a tighter `findSheet` mask.** *(Not blocking.)* Open question 1 called
+   tightening `findSheet`'s mask "the cleanest form". `findSheet` (M16 R3) is shared with the standard detector, so
+   changing it would move M16's gated detection results, which is outside this milestone. The fallback form was
+   implemented instead: the accepted pixels' radius p10 (`AUTO_RADIUS_QUANTILE = 0.1`) must be at most
+   `outerRadiusMm(template)` — the template's own outermost printed circle, so no new distance constant was
+   invented. **backing-sheet.md §4a does not yet list either new rule** (nor the two new fallback reasons
+   `colour too dull for a backing` and `colour outside the rings`); the spec needs the owner's edit to match, as it
+   was not in this milestone's *Files*.
 
 ## Completion notes
 **Commands** (2026-09-18, this machine):
@@ -250,3 +272,39 @@ on the holes. Raising `AUTO_MIN_SPOTS` cannot fix it (3–8 unbacked spots again
 
 **Commands re-run after the fixes** (2026-09-18): see the table at the top of these notes — all re-run and all still pass;
 `npx vitest run tests/unit/cv/backing-colour.test.ts` now reports **29** tests (was 23).
+
+### Run 2 (2026-09-18): the owner's answer to Open question 1
+
+**What changed.** `Auto` (§4a) now also refuses a photo when (a) the most coloured accepted pixel is below
+`AUTO_MIN_CHROMA` = 124 (reason `colour too dull for a backing`), or (b) the accepted pixels' radius p10 lies outside the
+template's outermost circle (reason `colour outside the rings`). Checks run in the order area → spots → chroma → radius,
+so the recorded `fallbackReason` names the first rule that failed; the old two keep their precedence. One helper,
+`autoRefusal`, serves both `detectBackingPresence` and the A5 branch, so the probe and the pipeline cannot disagree.
+`BackingColourReport` and `BackingPresence` carry `maxChroma` and `acceptedRadiusP10Mm`; `pnpm cv:eval` and
+`pnpm review:detection` print both, plus the reason.
+
+**Files:** `src/lib/cv/constants.ts`, `src/lib/cv/backing-colour.ts`, `scripts/cv-eval-backing.ts`,
+`scripts/detection-review/photo.ts`, `scripts/detection-review/template.html`, `tests/unit/cv/backing-colour.test.ts`.
+
+**Tests.** The four photos pinned as "read as BACKED" now assert **not backed**, by name, with their spots, max chroma
+(±1) and radius p10 (±1 mm), and assert the radial rule refuses them independently of the chroma floor, so both
+defences are pinned. New synthetic cases: wood-coloured holes → `colour too dull for a backing`; six bright spots at
+110 mm → `colour outside the rings` (also through `detectShotsWithBacking`); the backed sheet passes both. The six
+backed photos now also assert both rules. The "no other reference photo" sample now walks **every** aligned photo in
+`fixtures/private/additional references/` (the milestone's *Tests* list), not four.
+
+**Measured, `pnpm cv:eval`:** all 6 backed photos present (max chroma 138–223, radius p10 4–15 mm); 0 of the 40 aligned
+reference photos read as backed. The four: `IMG_4743` 46 / 101 mm, `IMG_4744` 106 / 128 mm, `IMG_5182` 110 / 128 mm,
+`IMG_5184` 82 / 133 mm (max chroma / radius p10). The per-photo colour-path counts are unchanged from run 1.
+
+| Command | Result |
+|---|---|
+| `pnpm check` | **pass** — typecheck, lint (0 errors, 4 pre-existing warnings), 631 unit tests, privacy check (16 images) |
+| `pnpm cv:eval` | **pass** — "all synthetic cases and reference photos pass"; backing section `GATE: UNVERIFIED` (0 of 10 labelled) |
+| `pnpm test:e2e` | **pass** — 46 tests, mobile Chromium and mobile WebKit |
+| `pnpm review:detection` | **pass** — 52 photos, page written inside `fixtures/private/review/` |
+| `pnpm build` | **pass** |
+
+**Still UNVERIFIED** (§7): the colour path and all four `Auto` constants wait for the owner's ≥ 10 labelled backing photos
+with cards. **Deviation:** `AUTO_MIN_CHROMA` is 124 rather than the owner's starting 150 (Open question 14).
+

@@ -13,6 +13,7 @@ import {
   detectBackingPresence,
   detectByBackingColour,
   estimateBackingColour,
+  type BackingPresence,
 } from '../src/lib/cv/backing-colour.ts';
 import { detectShotCandidates } from '../src/lib/cv/holes.ts';
 import type { OpenCv } from '../src/lib/cv/opencv.ts';
@@ -63,6 +64,15 @@ function pct(value: number): string {
 function signatureLabel(signature: ColourSignature | null, source: string): string {
   if (signature === null) return `${source} · none`;
   return `${source} · ${signature.hueDeg.toFixed(1)}° ±${signature.hueSpreadDeg.toFixed(1)}° satP10 ${signature.satP10.toFixed(2)}`;
+}
+
+/** §4a plus M19 Open question 1's two rules: the verdict and every measurement it read. */
+function autoLabel(p: BackingPresence): string {
+  const radius = p.acceptedRadiusP10Mm === null ? '—' : `${p.acceptedRadiusP10Mm.toFixed(0)} mm`;
+  return (
+    `${p.present ? 'present' : `absent: ${p.reason ?? '?'}`} (${p.spots} spots, largest ${p.largestRatio.toFixed(2)}x, ` +
+    `max chroma ${p.maxChroma.toFixed(0)}, radius p10 ${radius})`
+  );
 }
 
 function readCards(dir: string): Record<string, string> {
@@ -152,7 +162,7 @@ export async function evaluateBacking(cv: OpenCv, repoRoot: string): Promise<Bac
       String(colour.blobs.length),
       String(colour.blobs.filter((b) => b.possibleOverlap).length),
       String(standard.candidates.length),
-      `${presence.present ? 'present' : 'absent'} (${presence.spots} spots, largest ${presence.largestRatio.toFixed(2)}x)`,
+      autoLabel(presence),
       signature !== null ? signatureLabel(signature, source) : signatureLabel(estimated, source),
       matchCells.join(' · '),
     ]);
@@ -175,18 +185,21 @@ export async function evaluateBacking(cv: OpenCv, repoRoot: string): Promise<Bac
   const referenceDir = `${repoRoot}${REFERENCE_DIR}`;
   if (existsSync(referenceDir)) {
     const flagged: string[] = [];
+    const verdicts: string[] = [];
     let checked = 0;
     for (const name of readdirSync(referenceDir).filter((f) => /\.jpe?g$/i.test(f)).sort()) {
       const aligned = await align(cv, `${referenceDir}${name}`);
       if (aligned === null) continue;
       checked += 1;
       const presence = detectBackingPresence(cv, aligned.img, aligned.calibration, aligned.template, HOLE_DIAMETER_MM);
-      if (presence.present) flagged.push(`${name} (${presence.spots} spots, largest ${presence.largestRatio.toFixed(2)}x)`);
+      if (presence.spots > 0) verdicts.push(`- ${name}: ${autoLabel(presence)}`);
+      if (presence.present) flagged.push(`${name} ${autoLabel(presence)}`);
     }
     lines.push(
       `\n\`Auto\` over the ${checked} aligned photos of \`${REFERENCE_DIR}\`: ${flagged.length} read as backed.` +
+        (verdicts.length > 0 ? `\nEvery photo with a coloured spot:\n${verdicts.join('\n')}` : '') +
         (flagged.length > 0
-          ? `\nCONFIRM WITH THE OWNER — each of these either had a backing sheet or is a false positive for \`Auto\`:\n${flagged.map((f) => `- ${f}`).join('\n')}`
+          ? `\nFALSE POSITIVES — the owner confirmed on 2026-09-18 that none of these photos had a backing (M19 Open question 1):\n${flagged.map((f) => `- ${f}`).join('\n')}`
           : ''),
     );
   }
