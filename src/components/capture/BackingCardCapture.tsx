@@ -146,8 +146,7 @@ export function BackingCardCapture({ fakeCamera, onDone }: BackingCardCapturePro
         <div className="fixed inset-0 z-50 bg-background pt-[env(safe-area-inset-top)]" data-testid="card-review">
           <CaptureReview
             imageUrl={review.url}
-            frame={review.frame}
-            prior={null}
+            overlay={{ kind: 'prior', frame: review.frame, prior: null }}
             saving={busy}
             onRetake={() => setReview(null)}
             onUse={() => void onUsePhoto()}

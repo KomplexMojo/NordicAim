@@ -62,7 +62,38 @@ pnpm test:e2e
 - Photos never leave the phone; the preview uses an object URL of the local file and revokes it.
 
 ## Open questions
-_(add here)_
+- The Decisions section talks about "imports"; the Files/Out-of-scope lines also fold the native-camera fallback into
+  "sharing the same review". I routed both `origin: 'import'` and `origin: 'camera-native'` through the same
+  `CaptureReview` screen (they already shared one `ingestFiles`-style handler in `CaptureFallbacks.tsx`), with the header
+  reading "Native photo" for the native-camera path (not specified verbatim anywhere) since it isn't numbered like
+  imports are. Not blocking — the wording is my own choice where the spec was silent, and it doesn't change any stored
+  data or scoring.
+- When Import/Native camera is used before a template is picked (metadata.spec.ts's "Analyze is disabled…" test does
+  this on purpose), the review screen has no template to overlay, so it shows the photo, "Loaded", and Keep/Discard with
+  no overlay at all rather than blocking the import. Not specified either way; not blocking.
 
 ## Completion notes
-_(fill in when done)_
+- `CaptureReview.tsx` gained a `header` prop, a `loaded` state gated on the `<img>`'s `onLoad`, a `retakeLabel`/`useLabel`
+  pair, and an `overlay` union: `{kind:'prior', frame, prior}` (unchanged shutter/backing-card behaviour) or
+  `{kind:'template', template, outerDiameterFraction}` (new: renders the full `overlayLayout`/`renderOverlaySvg` template
+  overlay via the existing `OverlaySvg` component, sized to the review container — never derived from any frame-space
+  prior). `Use photo`/`Keep` is disabled until the image has rendered.
+- `CaptureFallbacks.tsx` no longer ingests on file pick. It now steps through the picked files one at a time via a
+  `Session` (`files`, `origin`, `index`, `url`), opening `CaptureReview` in `{kind:'template'}` mode with header
+  "Imported photo *N* of *M*" (or "Imported photo" / "Native photo" for a single file). Keep calls `ingestPhoto` exactly
+  as before (`capture: null`, so `prior` stays absent); Discard advances without storing. Object URLs are created in the
+  event handlers (`pickFiles`/`goTo`) and revoked in a cleanup-only effect, to satisfy the `react-hooks/set-state-in-effect`
+  lint rule already enforced in this repo.
+- `CaptureScreen.tsx` and `BackingCardCapture.tsx` updated for `CaptureReview`'s new `overlay` prop shape; `CaptureScreen`
+  now passes `template`/`outerDiameterFraction` down to `CaptureFallbacks`.
+- `docs/spec/capture-overlay.md` §1 items 5 and 8 updated for REV-50 (informational-only overlay, header text, Loaded
+  gating, prior stays absent).
+- Updated `tests/e2e/capture.spec.ts`'s import test (it previously asserted immediate ingestion) to open the review
+  screen, check `review-header`/`review-loaded`/the overlay, then click Keep; added the two-image Discard/Keep sequence
+  test the milestone's Tests section describes. Updated `tests/e2e/metadata.spec.ts`'s "Analyze is disabled…" test (which
+  imports before a template is picked) to click Keep on the new review screen.
+- Commands run: `pnpm check` (typecheck + lint + 810 unit tests + privacy check) — pass. `pnpm test:e2e` — 72/72 pass
+  (mobile Chromium + mobile WebKit). Note: `settings.spec.ts`'s "hole size … Reset returns 5.6" test is flaky
+  independent of this change — confirmed it fails intermittently on a clean `main` checkout too (unrelated
+  `hole-diameter-input` state-restoration timing), and it passed on the final `pnpm test:e2e` run reported here.
+- Not run (human-only, capture.spec.ts's own note): the iPhone device checklist.

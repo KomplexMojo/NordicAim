@@ -14,11 +14,20 @@ Implements REV-5, REV-8, REV-15 step 1. Pure math: `src/lib/capture/overlay.ts`.
    - sighting: **"Align the dark disc with the thick circle"**
    - precision: **"Align the black aiming mark with the thick circle"**
 4. Optional **size slider** (0.50–0.95 of the viewfinder's short side, default 0.85).
-5. **Shutter** (72 px) → **review screen** (captured image + overlay where it was) → **Retake** / **Use photo**.
+5. **Shutter** (72 px) → **review screen** (captured image + overlay where it was) → **Retake** / **Use photo**. The overlay is
+   the anchor circle placed from the shot's calibration prior (frame-space, contain-fit onto the review image).
 6. **Use photo** → `ingestPhoto` (§5) → Stage A starts in the background → back to the live camera; badge "N captured".
 7. **Done** → `#/sessions/:sessionId/metadata` (step 2).
 8. Fallbacks: native camera (`<input type="file" accept="image/*" capture="environment">`, `origin: 'camera-native'`) and
-   **Import from Photos** (`accept="image/*,.heic,.heif"`, `multiple`, `origin: 'import'`).
+   **Import from Photos** (`accept="image/*,.heic,.heif"`, `multiple`, `origin: 'import'`). REV-50 (issue #1): each picked
+   file — from either fallback — steps through the **same review screen** in turn, showing the chosen template's full
+   overlay (`overlayLayout` + `renderOverlaySvg`, §3–§4) fitted to the review container, not to any frame-space prior — an
+   import's framing is unknown, so this is informational only and never becomes a calibration prior
+   (`capture: null`, `calibrationPriorFramePx` stays absent). The header reads "Imported photo *N* of *M*" when more than
+   one file was picked (just "Imported photo" for one), or "Native photo" for the native-camera fallback. A "Loaded"
+   badge and the overlay itself appear only once the picked image has rendered; **Keep** ingests it exactly as before
+   (`origin: 'import'` or `'camera-native'`, no prior) and **Discard** drops it without storing anything. Cancelling the
+   OS picker partway (or discarding some of a multi-file pick) keeps whatever was already kept.
 
 ## 2. Camera and wake lock
 

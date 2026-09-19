@@ -73,6 +73,8 @@ test('metadata screen: Analyze is disabled until the imported photo is categoriz
   // (capture-overlay §1.2's remembered prefs are still unset for this brand-new session).
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
   await page.getByTestId('import-input').setInputFiles('docs/reference/IMG_5057-sighting.jpg');
+  await expect(page.getByTestId('capture-review')).toBeVisible();
+  await page.getByRole('button', { name: 'Keep' }).click();
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
   await page.getByRole('button', { name: 'Done' }).click();

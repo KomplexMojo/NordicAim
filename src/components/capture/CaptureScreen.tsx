@@ -194,6 +194,8 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
         <CaptureFallbacks
           sessionId={sessionId}
           categorization={importCategorization}
+          template={template}
+          outerDiameterFraction={outerDiameterFraction}
           onImported={() => setCount((c) => c + 1)}
         />
       </footer>
@@ -202,8 +204,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
         <div className="fixed inset-0 z-50 bg-background pt-[env(safe-area-inset-top)]" data-testid="capture-review">
           <CaptureReview
             imageUrl={review.url}
-            frame={review.frame}
-            prior={review.prior}
+            overlay={{ kind: 'prior', frame: review.frame, prior: review.prior }}
             saving={busy}
             onRetake={() => setReview(null)}
             onUse={() => void onUsePhoto()}

@@ -102,14 +102,49 @@ test('sighting + both: rounds default to 5/5', async ({ page }) => {
   expect(photo.categorization).toEqual({ template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 });
 });
 
-test('import from Photos stores the file with origin import', async ({ page }) => {
+test('import from Photos shows the overlay review screen, then Keep stores it with origin import', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=sighting`);
+  await page.getByRole('radio', { name: 'Sighting', exact: true }).click();
+  await page.getByRole('radio', { name: 'Prone', exact: true }).click();
+
   await page.getByTestId('import-input').setInputFiles(path.resolve('docs/reference/IMG_5057-sighting.jpg'));
+  await expect(page.getByTestId('capture-review')).toBeVisible();
+  await expect(page.getByTestId('review-header')).toHaveText('Imported photo');
+  await expect(page.getByTestId('review-loaded')).toHaveText('Loaded');
+  await expect(page.getByTestId('capture-review').locator('.overlay-anchor')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Keep' }).click();
+  await expect(page.getByTestId('capture-review')).toBeHidden();
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
   const photos = await listPhotos(page, sessionId);
   expect(photos).toHaveLength(1);
   expect(photos[0]!.origin).toBe('import');
   expect(photos[0]!.capture).toBeNull();
+});
+
+test('import two: "Imported photo 1 of 2", Discard the first, Keep the second → exactly one stored', async ({ page }) => {
+  const sessionId = await createSessionViaHome(page);
+  await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=sighting`);
+  await page.getByRole('radio', { name: 'Sighting', exact: true }).click();
+  await page.getByRole('radio', { name: 'Prone', exact: true }).click();
+
+  await page.getByTestId('import-input').setInputFiles([
+    path.resolve('docs/reference/IMG_5057-sighting.jpg'),
+    path.resolve('docs/reference/IMG_5057-sighting.jpg'),
+  ]);
+  await expect(page.getByTestId('review-header')).toHaveText('Imported photo 1 of 2');
+  await expect(page.getByTestId('review-loaded')).toHaveText('Loaded');
+  await page.getByRole('button', { name: 'Discard' }).click();
+
+  await expect(page.getByTestId('review-header')).toHaveText('Imported photo 2 of 2');
+  await expect(page.getByTestId('review-loaded')).toHaveText('Loaded');
+  await page.getByRole('button', { name: 'Keep' }).click();
+
+  await expect(page.getByTestId('capture-review')).toBeHidden();
+  await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
+  const photos = await listPhotos(page, sessionId);
+  expect(photos).toHaveLength(1);
+  expect(photos[0]!.origin).toBe('import');
 });

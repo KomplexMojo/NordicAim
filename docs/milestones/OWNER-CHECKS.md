@@ -255,3 +255,7 @@ during M10/M11 work._
 - [ ] Decide whether the zone-less "both" headline wording is acceptable.
 - [ ] Decide whether to accept the `settings.spec.ts` "hole size…" mobile-chromium flake as a known, pre-existing, order-dependent issue unrelated to M24, or file a follow-up to isolate that test's stored hole-size setting (`pnpm test:e2e` cannot be made to exit 0 deterministically from inside M24's scope).
 - [ ] Issue #4 (which scoring rule is correct) is still the owner's decision — M24 is presentation only and does not resolve it.
+
+## M25 — An imported photo is shown on the overlay screen (issue #1)
+
+- [ ] On the iPhone at https://komplexmojo.github.io/advanced-shooting-analysis/, import a photo from the library and confirm it appears with the template overlay and a "Loaded" confirmation before Keep is tapped.
