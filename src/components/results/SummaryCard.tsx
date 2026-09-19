@@ -15,6 +15,8 @@ import { AttachInGarminCard } from './AttachInGarminCard';
 interface SummaryCardProps {
   sessionId: string;
   sessionName: string;
+  /** Targets needing attention (or failed), which the summary image leaves out (`leftOutOfSummary`). */
+  leftOut: number;
 }
 
 /** A filesystem/URL-safe slug for the share filename (rendering-composite.md §7 step 2). */
@@ -33,7 +35,7 @@ function slugify(name: string): string {
  * steps. The image and PNG blob are loaded ahead of time (`useLiveQuery`/`latestArtifact`) so Share can
  * call `navigator.share` directly inside the tap handler (§7 pitfall).
  */
-export function SummaryCard({ sessionId, sessionName }: SummaryCardProps) {
+export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProps) {
   const { ctx } = useServices();
   const { value, loading } = useLiveQuery(() => latestArtifact(ctx, sessionId), [ctx, sessionId]);
   const pending = isSummaryPending(sessionId);
@@ -72,7 +74,11 @@ export function SummaryCard({ sessionId, sessionName }: SummaryCardProps) {
       <CardContent className="flex flex-col gap-3">
         {!loading && value === null && (
           <p className="text-sm text-muted-foreground" data-testid="summary-empty">
-            {pending ? 'Updating summary…' : 'Your summary image appears once a target is analyzed.'}
+            {pending
+              ? 'Updating summary…'
+              : leftOut > 0
+                ? `${leftOut === 1 ? '1 target needs' : `${leftOut} targets need`} attention before the summary can include ${leftOut === 1 ? 'it' : 'them'}. Check below.`
+                : 'Your summary image appears once a target is analyzed.'}
           </p>
         )}
 
@@ -96,6 +102,13 @@ export function SummaryCard({ sessionId, sessionName }: SummaryCardProps) {
                 </p>
               )}
             </div>
+            {leftOut > 0 && (
+              <p className="text-sm text-muted-foreground" data-testid="summary-left-out">
+                {leftOut === 1 ? '1 target needs' : `${leftOut} targets need`} attention and{' '}
+                {leftOut === 1 ? "isn't" : "aren't"} in the summary yet. Check {leftOut === 1 ? 'it' : 'them'} below — once
+                saved in Adjust, {leftOut === 1 ? 'it joins' : 'they join'} the summary.
+              </p>
+            )}
             <Button className="h-11" onClick={() => void handleShare()} disabled={sharing} data-testid="summary-share">
               Share
             </Button>

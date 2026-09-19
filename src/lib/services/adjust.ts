@@ -178,6 +178,13 @@ export async function saveAdjustments(
         patch.calibration === undefined
           ? analysis.pipeline.alignment
           : { method: 'manual' as const, confidence: null },
+      // analysis-pipeline §4 rule 8 / §8: `extra-candidates-dropped` asks the owner to confirm which capped
+      // marks were kept, and saving shots in Adjust is that confirmation. Stage B's reconciliation raises
+      // it again only if it actually drops shots on its next pass, so a real over-count is never hidden.
+      warnings:
+        patch.shots === undefined
+          ? analysis.pipeline.warnings
+          : analysis.pipeline.warnings.filter((w) => w !== 'extra-candidates-dropped'),
     },
     };
   });

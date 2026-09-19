@@ -301,6 +301,10 @@ when available.
   *re-projected into the saved alignment*, compared within `REPROJECT_TOLERANCE_MM` (1e-6 mm — far below any drag, far
   above floating-point drift). An `auto` shot that merely followed a re-alignment stays `auto`, so Re-analyze can still
   replace it.
+- **Saving shots in Adjust confirms the capped set** (owner report 2026-09-19): it removes `extra-candidates-dropped`, whose
+  purpose (§4 rule 8) is to ask the owner which capped marks were kept. Stage B's reconciliation raises it again only if it
+  drops shots on its next pass, so a real over-count is never hidden. A save of the alignment alone keeps it. Before this,
+  the warning survived every save, pinning the photo at `needs-attention` and so keeping it out of the summary image forever.
 - Saving in Adjust sets `stageB = 'pending'` and calls `notify()`.
 
 ## 9. Performance budget (iPhone 16 Pro Max, measured in M15)

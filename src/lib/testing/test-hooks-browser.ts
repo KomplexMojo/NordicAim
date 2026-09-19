@@ -7,6 +7,7 @@ import seedCalibrations from '@fixtures/seed-calibrations.json';
 
 import { loadAppServices } from '@/lib/app/services';
 import { Shot, type TargetAnalysis } from '@/lib/domain/analysis';
+import { Warning } from '@/lib/domain/enums';
 import { Calibration, Categorization, type TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
@@ -27,6 +28,11 @@ export interface AsaTestHooks {
   waitForIdle(): Promise<void>;
   setShots(photoId: string, shots: unknown): Promise<void>;
   setCalibration(photoId: string, calibration: unknown): Promise<void>;
+  /**
+   * Adds a pipeline warning as Stage A would have raised it (e.g. `extra-candidates-dropped` after a cap),
+   * then lets Stage B re-run. For flows that real CV produces but the fake camera cannot.
+   */
+  addWarning(photoId: string, warning: string): Promise<void>;
   loadDemo(): Promise<string>;
   /** M14: reads `artifacts` / `shares` so e2e specs can assert on the summary image without a UI hook for them. */
   getSession(sessionId: string): Promise<BiathlonSession | null>;
@@ -184,6 +190,32 @@ export function installTestHooks(): void {
     async setCalibration(photoId, calibration) {
       const { ctx } = await loadAppServices();
       await applyManual(ctx, photoId, { calibration: Calibration.parse(calibration) });
+    },
+    async addWarning(photoId, warning) {
+      const { ctx } = await loadAppServices();
+      const parsed = Warning.parse(warning);
+      const tx = ctx.db.transaction(['photos', 'analyses'], 'readwrite');
+      const photo = await getPhotoRecord(tx, photoId);
+      const analysis = await getAnalysisRecord(tx, photoId);
+      if (photo === null || analysis === null) {
+        await tx.done;
+        throw new Error(`No photo or analysis for ${photoId}`);
+      }
+      const next: TargetAnalysis = {
+        ...analysis,
+        pipeline: {
+          ...analysis.pipeline,
+          stageB: 'pending',
+          warnings: analysis.pipeline.warnings.includes(parsed) ? analysis.pipeline.warnings : [...analysis.pipeline.warnings, parsed],
+        },
+        updatedAt: ctx.now().toISOString(),
+      };
+      const { status, reasons } = photoStatus({ categorization: photo.categorization, analysis: next, result: next.computed?.result ?? null });
+      await putAnalysisRecord(tx, next);
+      await putPhotoRecord(tx, { ...photo, status, reasons });
+      await tx.done;
+      emitPipelineChanged({ sessionId: photo.sessionId, photoId });
+      pipelineHooks.notify();
     },
     loadDemo,
     async getSession(sessionId) {

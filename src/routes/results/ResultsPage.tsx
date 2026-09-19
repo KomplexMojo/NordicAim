@@ -2,6 +2,7 @@ import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { SummaryCard } from '@/components/results/SummaryCard';
+import { leftOutOfSummary } from '@/lib/composite/select-defaults';
 import { TargetCard } from '@/components/results/TargetCard';
 import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
@@ -104,7 +105,7 @@ export function ResultsPage() {
 
       {showDebug && <TimingDebugPanel />}
 
-      <SummaryCard sessionId={sid} sessionName={data.name} />
+      <SummaryCard sessionId={sid} sessionName={data.name} leftOut={leftOutOfSummary(data.photos)} />
 
       {data.photos.length === 0 ? (
         <p className="text-sm text-muted-foreground">No targets in this session yet.</p>

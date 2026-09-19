@@ -69,3 +69,12 @@ export function selectDefaultSlots(photos: TargetPhoto[], analyses: Map<string, 
     precision: selectForTemplate(photos, analyses, 'precision'),
   };
 }
+
+/**
+ * Owner report 2026-09-19: targets the summary image leaves out because they need attention (or failed).
+ * `selectDefaultSlots` only takes `analyzed` photos, and it did so silently, so a session with a new
+ * target flagged for attention looked as if the summary had never been updated. The Summary card says so.
+ */
+export function leftOutOfSummary(photos: TargetPhoto[]): number {
+  return photos.filter((p) => isTargetPhoto(p) && (p.status === 'needs-attention' || p.status === 'failed')).length;
+}

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { AnalysisResult, SubsetResult, TargetAnalysis } from '@/lib/domain/analysis';
 import { initialAnalysis } from '@/lib/domain/analysis';
-import { selectDefaultSlots } from '@/lib/composite/select-defaults';
+import { leftOutOfSummary, selectDefaultSlots } from '@/lib/composite/select-defaults';
 
 import { makePhoto } from '../../helpers/records';
 
@@ -142,5 +142,27 @@ describe('composite/select-defaults selectDefaultSlots (rendering-composite.md Â
     const slots = selectDefaultSlots([wide, tight, none], analyses);
     expect(slots.sighting).not.toContain(none.id);
     expect(slots.sighting).toContain(tight.id);
+  });
+});
+
+describe('leftOutOfSummary (owner report 2026-09-19)', () => {
+  it('counts the targets the summary image leaves out: needs-attention and failed, nothing else', () => {
+    const photos = [
+      makePhoto({ status: 'analyzed' }),
+      makePhoto({ status: 'needs-attention' }),
+      makePhoto({ status: 'failed' }),
+      makePhoto({ status: 'processing' }),
+      makePhoto({ status: 'needs-metadata' }),
+      makePhoto({ status: 'ready' }),
+    ];
+    expect(leftOutOfSummary(photos)).toBe(2);
+  });
+
+  it('is zero when every target made it in', () => {
+    expect(leftOutOfSummary([makePhoto({ status: 'analyzed' }), makePhoto({ status: 'analyzed' })])).toBe(0);
+  });
+
+  it('ignores a backing-card photo, which is never a target', () => {
+    expect(leftOutOfSummary([makePhoto({ status: 'needs-attention', origin: 'backing-card' })])).toBe(0);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Shot } from '@/lib/domain/analysis';
+import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
 import type { Calibration, Categorization } from '@/lib/domain/photo';
 import { mmToPx } from '@/lib/geometry/transform';
 import { reprojectShots } from '@/lib/geometry/reproject';
@@ -76,7 +76,12 @@ interface Seeded {
 }
 
 async function seed(
-  opts: { calibration?: Calibration | null; shots?: Shot[]; stageB?: 'pending' | 'done' } = {},
+  opts: {
+    calibration?: Calibration | null;
+    shots?: Shot[];
+    stageB?: 'pending' | 'done';
+    warnings?: TargetAnalysis['pipeline']['warnings'];
+  } = {},
 ): Promise<Seeded> {
   const db = await openTestDb();
   const ctx = makeTestContext(db);
@@ -87,7 +92,7 @@ async function seed(
   });
   const analysis = makeAnalysis(
     photo.id,
-    { stageA: 'done', stageB: opts.stageB ?? 'done' },
+    { stageA: 'done', stageB: opts.stageB ?? 'done', warnings: opts.warnings ?? [] },
     { calibration: opts.calibration === undefined ? AUTO_CAL : opts.calibration, shots: opts.shots ?? [] },
   );
 
@@ -363,6 +368,35 @@ describe('re-projection on save (REV-46)', () => {
     const now = mmToPx(analysis!.shots[0]!, analysis!.calibration!);
     expect(now.x).toBeCloseTo(was.x, 6);
     expect(now.y).toBeCloseTo(was.y, 6);
+    ctx.db.close();
+  });
+});
+
+describe('saving shots confirms the capped set (owner report 2026-09-19)', () => {
+  // Stage A capped more candidates than rounds and raised `extra-candidates-dropped` so the owner would
+  // confirm which marks were kept (analysis-pipeline §4 rule 8). Saving shots in Adjust IS that
+  // confirmation. The warning used to survive every save, pinning the photo at needs-attention and so
+  // keeping it out of the session summary forever.
+  it('clears extra-candidates-dropped when the owner saves shots', async () => {
+    const shot = autoShot('auto-1', 1, 1);
+    const { ctx, photoId } = await seed({ shots: [shot], warnings: ['extra-candidates-dropped', 'image-blurry'] });
+
+    await saveAdjustments(ctx, photoId, { shots: [shot] });
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.warnings).toEqual(['image-blurry']);
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.reasons).not.toContain('extra-candidates-dropped');
+    ctx.db.close();
+  });
+
+  it('keeps it when only the alignment was saved: the capped marks are still unconfirmed', async () => {
+    const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)], warnings: ['extra-candidates-dropped'] });
+
+    await saveAdjustments(ctx, photoId, { calibration: MOVED_CAL });
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.warnings).toContain('extra-candidates-dropped');
     ctx.db.close();
   });
 });
