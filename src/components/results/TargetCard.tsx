@@ -46,7 +46,7 @@ export function TargetCard({ sessionId, photo, analysis, onRetry }: TargetCardPr
         <CardTitle data-testid="target-title">{cardTitle(photo)}</CardTitle>
         {result !== null && !rejected && (
           <>
-            <p className="text-lg font-semibold" data-testid="target-headline">
+            <p className="tabular-score text-lg" data-testid="target-headline">
               {targetHeadline(result)}
             </p>
             {/* REV-49 (M24, issue #6): "hit" and "found" never share a sentence — a separate line

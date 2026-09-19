@@ -74,9 +74,17 @@ export default defineConfig({
       manifest: {
         name: 'Nordic Aim',
         short_name: 'Nordic Aim',
+        description: 'Take a picture of your target, add metadata, and get biathlon-style shot analysis — entirely on your phone.',
         display: 'standalone',
         start_url: './',
         scope: './',
+        background_color: '#F7FAFD',
+        theme_color: '#1F2630',
+        icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,heic,wasm,json,webmanifest}'],

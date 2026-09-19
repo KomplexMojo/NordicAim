@@ -16,6 +16,7 @@ import { pipelineHooks, registerRunner } from './hooks';
 import { planJobs, type Job } from './plan';
 import { runStageA, type CvApi } from './stage-a';
 import { runStageB } from './stage-b';
+import { recordTiming } from './timing';
 
 export interface RunnerDeps {
   /** Lazy so the CV worker (and OpenCV with it) is only created when a job actually needs it. */
@@ -89,6 +90,7 @@ async function nextJob(ctx: ServiceContext): Promise<Job | null> {
 }
 
 async function runJob(runner: { ctx: ServiceContext; deps: RunnerDeps }, job: Job): Promise<void> {
+  const startedAt = performance.now();
   try {
     if (job.kind === 'A') {
       await runStageA(runner.ctx, job.photoId, runner.deps.getCvApi(), runner.deps.imageTools);
@@ -96,6 +98,7 @@ async function runJob(runner: { ctx: ServiceContext; deps: RunnerDeps }, job: Jo
       // §5 / plan.ts: a `B` job only exists once that photo's Stage A is `done`.
       await runStageB(runner.ctx, job.photoId, runner.deps.renderTools);
     }
+    recordTiming({ kind: job.kind, photoId: job.photoId, ms: performance.now() - startedAt });
   } catch (err) {
     // runStageA/runStageB record their own failures; reaching here means the job could not even be recorded.
     poisoned.add(jobKey(job));

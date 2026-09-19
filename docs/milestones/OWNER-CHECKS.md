@@ -259,3 +259,12 @@ during M10/M11 work._
 ## M25 — An imported photo is shown on the overlay screen (issue #1)
 
 - [ ] On the iPhone at https://komplexmojo.github.io/advanced-shooting-analysis/, import a photo from the library and confirm it appears with the template overlay and a "Loaded" confirmation before Keep is tapped.
+
+## M15 — Install, offline, polish, MVP release
+
+- [ ] Add the app to the Home Screen on your iPhone, turn on airplane mode, and confirm it still works (offline.spec.ts on mobile-chromium is the automated proxy; Safari/WebKit itself needs this manual check since headless WebKit can't simulate offline navigation reliably here).
+- [ ] At a real range session, photograph sighting and precision targets with the app.
+- [ ] Add metadata → Analyze → check the scores against your own count → share the summary image → attach it in Garmin Connect.
+- [ ] Record the stage timings from `#/sessions/:sid/results?debug=1` into `docs/RELEASE-v0.1.0.md` §5 against the §9 performance budget (OpenCV cold load ≤5s, Stage A ≤3s, Stage B ≤1s, summary build ≤2s) — all four rows currently read "(owner to fill in)".
+- [ ] Check the sign-off box in `docs/RELEASE-v0.1.0.md` §7.
+- [ ] Only after sign-off: tag and push the release with `git tag v0.1.0 && git push origin v0.1.0` (deliberately not done by the agent, per Pitfalls: don't tag before sign-off).

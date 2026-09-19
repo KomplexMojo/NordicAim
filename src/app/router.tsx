@@ -1,5 +1,6 @@
 import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
 
+import { AppHeader } from '@/components/layout/AppHeader';
 import { TabBar } from '@/components/nav/TabBar';
 import { Toaster } from '@/components/ui/sonner';
 import { activeTab, showsTabBar } from '@/lib/app/nav';
@@ -34,6 +35,7 @@ function AppShell() {
   const withBar = showsTabBar(pathname);
   return (
     <>
+      {withBar && <AppHeader />}
       <div className={withBar ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]' : undefined}>
         <Outlet />
       </div>

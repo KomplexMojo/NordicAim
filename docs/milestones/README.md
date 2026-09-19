@@ -36,7 +36,7 @@ as shown (`<model> · <effort>`).
 | [M23](M23-template-guess.md) | Template guess: stop calling sighting sheets precision (issue #5) | review image · generate analysis | M16 | opus · high | opus · high | no | done |
 | [M24](M24-results-clarity.md) | Results that say what they count (issues #6, #4, #8) | receive analysis | M14, M20 | sonnet · high | opus · high | no | done |
 | [M25](M25-import-review.md) | An imported photo is shown on the overlay screen (issue #1) | take picture(s) | M07 | sonnet · medium | sonnet · high | no | done |
-| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | pending |
+| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | done |
 
 ```mermaid
 flowchart TD

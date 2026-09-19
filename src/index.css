@@ -49,24 +49,40 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    /* rendering-composite.md §1: the same palette the summary image is drawn with, reused as UI tokens
+       (M15 step 1). background=page, card=panel, primary=accent, foreground=textPrimary,
+       muted=textSecondary, border=panelBorder. */
+    --page: #f7fafd;
+    --panel: #eaf2f8;
+    --panel-border: #a9cfe3;
+    --accent-color: #4b94c3;
+    /* `accentText` (rendering-composite.md §1): the same hue as `accent`, darkened for 4.5:1 text
+       contrast on `page`/`panel` — `accent` itself is 3.17:1 and fails WCAG AA for text (M15 step 4). */
+    --accent-text: #2f6e99;
+    --text-primary: #1f2630;
+    --text-secondary: #5b6775;
+    --header: #1f2630;
+
+    --background: var(--page);
+    --foreground: var(--text-primary);
+    --card: var(--panel);
+    --card-foreground: var(--text-primary);
+    --popover: var(--panel);
+    --popover-foreground: var(--text-primary);
+    --primary: var(--accent-text);
+    --primary-foreground: #ffffff;
+    --secondary: var(--panel);
+    --secondary-foreground: var(--text-primary);
+    --muted: var(--panel);
+    --muted-foreground: var(--text-secondary);
+    --accent: var(--panel);
+    --accent-foreground: var(--text-primary);
+    /* Darkened from shadcn's default red (oklch(0.577 0.245 27.325), ~#e7000b) so the `destructive`
+       badge's text-on-tinted-background combination clears 4.5:1 (M15 step 4; was 3.81:1). */
+    --destructive: #b91c1c;
+    --border: var(--panel-border);
+    --input: var(--panel-border);
+    --ring: var(--accent-text);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -127,4 +143,14 @@
   html {
     @apply font-sans;
     }
+  /* M15 step 4: a visible focus ring on every keyboard-focused control (contrast checked against `page`/`panel`). */
+  :focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+  }
+  /* M15 step 1: bold tabular numerals for scores, so digits don't jitter width as they change. */
+  .tabular-score {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
 }

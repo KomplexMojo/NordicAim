@@ -17,9 +17,11 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:prod": "playwright test -c playwright.prod.config.ts",
+    "test:e2e:offline": "playwright test -c playwright.offline.config.ts",
     "check:privacy": "node scripts/check-privacy.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:privacy",
     "render:samples": "tsx scripts/render-samples.ts",
+    "make:icons": "tsx scripts/make-icons.ts",
     "cv:eval": "tsx --tsconfig tsconfig.test.json scripts/cv-eval.ts",
     "review:detection": "tsx --tsconfig tsconfig.test.json scripts/detection-review/build.ts"
   },
@@ -44,6 +46,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "@resvg/resvg-js": "2.6.2",

@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router';
+import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { SummaryCard } from '@/components/results/SummaryCard';
@@ -8,10 +8,35 @@ import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import { isTargetPhoto } from '@/lib/domain/backing';
 import type { TargetPhoto } from '@/lib/domain/photo';
+import { getRecentTimings } from '@/lib/pipeline/timing';
 import { retryFailedStage } from '@/lib/pipeline/runner-browser';
 import { getSession } from '@/lib/services/sessions';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
+
+/**
+ * M15 (analysis-pipeline §9): `?debug=1` shows the last 10 recorded pipeline job durations, for
+ * checking the performance budget against the owner's iPhone.
+ */
+function TimingDebugPanel() {
+  const timings = getRecentTimings(10);
+  return (
+    <section className="rounded-md border border-dashed border-border p-3 text-xs" data-testid="timing-debug">
+      <h2 className="mb-1 font-medium text-muted-foreground">Stage timings (last {timings.length})</h2>
+      {timings.length === 0 ? (
+        <p className="text-muted-foreground">No jobs run yet this page load.</p>
+      ) : (
+        <ul className="flex flex-col gap-0.5 font-mono">
+          {timings.map((t, i) => (
+            <li key={i}>
+              Stage {t.kind} · {t.photoId.slice(0, 8)} · {t.ms.toFixed(0)} ms
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 interface ResultsData {
   sid: string;
@@ -39,6 +64,8 @@ export function ResultsPage() {
   const { sid = '' } = useParams();
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadResults(ctx, sid), [ctx, sid]);
+  const [searchParams] = useSearchParams();
+  const showDebug = searchParams.get('debug') === '1';
 
   async function onRetry(photoId: string) {
     try {
@@ -74,6 +101,8 @@ export function ResultsPage() {
       </header>
 
       <h1 className="text-xl font-semibold">{data.name}</h1>
+
+      {showDebug && <TimingDebugPanel />}
 
       <SummaryCard sessionId={sid} sessionName={data.name} />
 

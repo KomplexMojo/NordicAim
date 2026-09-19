@@ -12,7 +12,8 @@
 Behind the scenes the phone reviews each image, overlays it on the target template, pulls the photo's metadata,
 incorporates yours, and generates the analysis. Photos never leave the phone.
 
-> Status: M01 scaffold in progress. Start with [`docs/milestones/README.md`](docs/milestones/README.md).
+> Status: v0.1.0 MVP. See [`docs/RELEASE-v0.1.0.md`](docs/RELEASE-v0.1.0.md) for the release evidence and sign-off, and
+> [`docs/milestones/README.md`](docs/milestones/README.md) for the milestone history.
 
 ## Development
 
@@ -30,7 +31,9 @@ pnpm typecheck
 pnpm lint
 pnpm test         # Vitest unit tests
 pnpm test:e2e     # Playwright, mobile Chromium + mobile WebKit
+pnpm test:e2e:offline  # Playwright against the production build, offline after the first load
 pnpm check:privacy
+pnpm make:icons   # regenerate public/icons/* (sharp; concentric-ring motif)
 ```
 
 Pushing to `main` deploys to GitHub Pages at `https://komplexmojo.github.io/advanced-shooting-analysis/`
@@ -53,7 +56,7 @@ differently as a standalone app.
 | [`docs/reference/`](docs/reference/) | Reference target photos (metadata stripped) and the owner's example diagrams |
 | [`fixtures/reference/`](fixtures/reference/) | Golden shot fixtures, GPS-free EXIF sidecars and sample, seed calibrations, HEIC test image |
 
-## Install (once built)
+## Install
 
 Open `https://komplexmojo.github.io/advanced-shooting-analysis/` in Safari on the iPhone → Share → **Add to Home Screen**.
 No App Store and no Apple account needed. Works offline after the first load.
