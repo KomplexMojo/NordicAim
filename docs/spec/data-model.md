@@ -147,6 +147,9 @@ export const Shot = z.object({
   source: z.enum(['auto', 'manual']),
   confidence: z.number().min(0).max(1).nullable(),
   cluster: z.boolean(),
+  possibleOverlap: z.boolean().default(false),              // REV-38 (backing-sheet.md §5.5)
+  overlapRatio: z.number().nonnegative().optional(),        // REV-39 (M20): hole area / the photo's median hole area
+  inferred: z.literal('double-punch').optional(),           // REV-39 (M20): multiplicity - 1 rounds were inferred
 }).refine(s => s.positionOverrides === null || s.positionOverrides.length === s.multiplicity);
 
 export const PipelineState = z.object({
@@ -183,11 +186,9 @@ export interface UnitResult { shotId: string; unitIndex: number; xMm: number; yM
 export interface Angular { moa: number; mrad: number }
 export interface MpiOffset { xMm: number; yMm: number; xMoa: number; yMoa: number; xMrad: number; yMrad: number }
 export interface GroupEllipse { cxMm: number; cyMm: number; rxMm: number; ryMm: number; angleDeg: number }
-export interface PrecisionScore { tally: number[]; xCount: number; identifiedTotal: number; maxPossible: number;
-  range: { optimistic: number; pessimistic: number; averaged: number } }
-export interface SightingModeOutcome { hits: number; misses: number; mpi: { xMm: number; yMm: number } | null }
-export interface SightingOutcome { zoneDiameterMm: 45 | 115 | null; hits: number; clean: number; misses: number;
-  range: { optimistic: SightingModeOutcome; pessimistic: SightingModeOutcome; averaged: SightingModeOutcome } }
+// REV-39 (M20): definite scores — the optimistic / pessimistic / averaged `range` was removed.
+export interface PrecisionScore { tally: number[]; xCount: number; identifiedTotal: number; maxPossible: number }
+export interface SightingOutcome { zoneDiameterMm: 45 | 115 | null; hits: number; clean: number; misses: number }
 export interface SubsetResult { key: 'prone' | 'standing' | 'all'; declared: number; identified: number; missing: number;
   overcount: number; units: UnitResult[]; mpi: { xMm: number; yMm: number } | null; extremeSpreadMm: number | null;
   extremeSpreadAngular: Angular | null; meanRadiusMm: number | null; mpiOffset: MpiOffset | null;

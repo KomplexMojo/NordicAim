@@ -1,5 +1,5 @@
 import type { AnalysisResult, MpiOffset, SubsetResult } from '@/lib/domain/analysis';
-import { formatAngular, formatFractionalScore, formatMm } from '@/lib/scoring/format';
+import { formatAngular, formatMm } from '@/lib/scoring/format';
 
 interface MetricsListProps {
   result: AnalysisResult;
@@ -30,31 +30,10 @@ function subsetLine(subset: SubsetResult): string {
   );
 }
 
-/**
- * Steps §3: "the range line `Range: pessimistic … · averaged … · optimistic …` when missing > 0".
- * Precision reports scores; sighting reports hits (geometry-scoring §8.1/§8.2).
- */
-function rangeLine(result: AnalysisResult): string | null {
-  const subset = result.all;
-  if (subset.missing === 0) return null;
-  if (result.template === 'precision') {
-    const range = subset.precision!.range;
-    return (
-      `Range: pessimistic ${range.pessimistic} · averaged ${formatFractionalScore(range.averaged)} · ` +
-      `optimistic ${range.optimistic}`
-    );
-  }
-  const range = subset.sighting!.range;
-  return (
-    `Range: pessimistic ${range.pessimistic.hits} · averaged ${formatFractionalScore(range.averaged.hits)} · ` +
-    `optimistic ${range.optimistic.hits} hits`
-  );
-}
-
-/** analysis-pipeline §1 step 3: the result card's key metrics — group size, MPI offset, per-position
- * lines for a `both` target, and the score range when rounds are unaccounted for. */
+/** analysis-pipeline §1 step 3: the result card's key metrics — group size, MPI offset, and per-position
+ * lines for a `both` target. REV-39 (M20): there is no score range any more; missed rounds are in the
+ * definite headline. */
 export function MetricsList({ result }: MetricsListProps) {
-  const range = rangeLine(result);
   return (
     <ul className="flex flex-col gap-1 text-sm" data-testid="metrics-list">
       <li data-metric="group-size">{groupSizeLine(result.all)}</li>
@@ -65,7 +44,6 @@ export function MetricsList({ result }: MetricsListProps) {
             {subsetLine(subset)}
           </li>
         ))}
-      {range !== null && <li data-metric="range" data-testid="range-line">{range}</li>}
     </ul>
   );
 }

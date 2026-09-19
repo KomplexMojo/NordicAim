@@ -16,7 +16,8 @@ import { shotTemplate } from '@/lib/pipeline/stage-a';
 import { positionLabel } from '@/lib/pipeline/stage-b';
 import { renderDiagramOverlaySvg } from '@/lib/render/diagram-overlay';
 import { targetHeadline } from '@/lib/render/text-lines';
-import { formatAngular, formatFractionalScore, formatMm } from '@/lib/scoring/format';
+import { formatAngular, formatMm } from '@/lib/scoring/format';
+import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
@@ -86,7 +87,7 @@ function PrecisionTally({ subset }: { subset: SubsetResult }) {
   );
 }
 
-/** geometry-scoring §5/§8.2: the sighting zone outcome, plus the modes when rounds are unaccounted. */
+/** geometry-scoring §5/§8.2: the sighting zone outcome. Misses include rounds that were not found (REV-39). */
 function SightingZones({ subset }: { subset: SubsetResult }) {
   const sighting = subset.sighting;
   if (sighting === null) return null;
@@ -96,13 +97,6 @@ function SightingZones({ subset }: { subset: SubsetResult }) {
       <Row label="Hits" value={String(sighting.hits)} />
       <Row label="Clean (inside the guide)" value={String(sighting.clean)} />
       <Row label="Misses" value={String(sighting.misses)} />
-      {subset.missing > 0 && (
-        <>
-          <Row label="Pessimistic hits" value={String(sighting.range.pessimistic.hits)} />
-          <Row label="Averaged hits" value={formatFractionalScore(sighting.range.averaged.hits)} />
-          <Row label="Optimistic hits" value={String(sighting.range.optimistic.hits)} />
-        </>
-      )}
     </div>
   );
 }
@@ -119,7 +113,7 @@ function SubsetSection({ subset }: { subset: SubsetResult }) {
       <CardContent className="flex flex-col gap-3">
         <div className="flex flex-col text-sm">
           <Row label="Shots identified" value={`${subset.identified} of ${subset.declared}`} />
-          <Row label="Rounds not found" value={String(subset.missing)} />
+          <Row label="Rounds scored as miss" value={String(subset.missing)} />
           {subset.overcount > 0 && <Row label="Shots over the declared rounds" value={String(subset.overcount)} />}
           <Row label="Group size (extreme spread)" value={`${formatMm(subset.extremeSpreadMm)} mm`} />
           <Row
@@ -146,16 +140,6 @@ function SubsetSection({ subset }: { subset: SubsetResult }) {
             <>
               <Row label="Total" value={`${precision.identifiedTotal} / ${precision.maxPossible}`} />
               <Row label="X count" value={String(precision.xCount)} />
-              {subset.missing > 0 && (
-                <Row
-                  label="Range"
-                  value={
-                    `pessimistic ${precision.range.pessimistic} · ` +
-                    `averaged ${formatFractionalScore(precision.range.averaged)} · ` +
-                    `optimistic ${precision.range.optimistic}`
-                  }
-                />
-              )}
             </>
           )}
         </div>
@@ -286,6 +270,11 @@ export function TargetPage() {
         missing={missing}
         hintTemplate={analysis?.pipeline.templateHint?.template ?? null}
         declared={declaredRoundsOrNull(photo.categorization)}
+        reconcile={
+          analysis === null
+            ? null
+            : reconcileReasonContext(analysis.shots, photo.categorization, analysis.pipeline.detection.method)
+        }
       />
 
       <div className={zoomed ? 'max-h-[70vh] overflow-auto' : ''}>

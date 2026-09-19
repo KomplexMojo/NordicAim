@@ -5,6 +5,9 @@ import type { AnalysisResult, TargetAnalysis } from './analysis';
 
 const WARNING_ORDER: Warning[] = [
   'extra-candidates-dropped',
+  'too-many-holes',
+  'double-punch-assumed',
+  'rounds-scored-as-miss',
   'backing-colour-not-found',
   'alignment-uncertain',
   'image-blurry',
@@ -57,6 +60,14 @@ export function photoStatus(input: PhotoStatusInput): PhotoStatusOutput {
     return { status: 'needs-attention', reasons: ['target-not-found', ...warnings] };
   }
 
+  // 7a. REV-39 / M20: clearly more holes than the declared rounds — the target is rejected and carries
+  // no score (`computed` is null). Evaluated here, ahead of rules 6 and 7, because a rejected target has
+  // no result: in the spec's position rule 6 would always report it as `no-shots-found` instead. See
+  // M20's Open questions.
+  if (pipeline.warnings.includes('too-many-holes')) {
+    return { status: 'needs-attention', reasons: ['too-many-holes', ...warnings.filter((w) => w !== 'too-many-holes')] };
+  }
+
   // 6. no identified shots
   if (result === null || result.all.identified === 0) {
     return { status: 'needs-attention', reasons: ['no-shots-found', ...warnings] };
@@ -86,7 +97,9 @@ export function photoStatus(input: PhotoStatusInput): PhotoStatusOutput {
   // 10. analyzed
   const totalMissing = result.subsets.reduce((sum, s) => sum + s.missing, 0);
   const reasons: Reason[] = [];
-  if (totalMissing > 0) reasons.push('rounds-unaccounted');
+  // REV-39: a round reconciliation scored as a miss is reported by `rounds-scored-as-miss`, not as an
+  // unaccounted round (the score is definite; there is no range any more).
+  if (totalMissing > 0 && !pipeline.warnings.includes('rounds-scored-as-miss')) reasons.push('rounds-unaccounted');
   reasons.push(...warnings);
   return { status: 'analyzed', reasons };
 }

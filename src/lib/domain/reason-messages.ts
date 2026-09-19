@@ -6,7 +6,21 @@ export interface ReasonMessageContext {
   hintTemplate?: TemplateId;
   /** Declared rounds, for the `extra-candidates-dropped` message (M16 step 5). */
   declared?: number;
+  /**
+   * `too-many-holes` (M20): the clear holes found and the rounds declared, for the rejected subset.
+   * `rejectedPosition` names that subset when the target holds both positions (M20 Pitfalls: "say
+   * which position was rejected"); `rejectedDeclared` is that subset's own declared rounds.
+   */
+  holesFound?: number;
+  rejectedDeclared?: number;
+  rejectedPosition?: 'prone' | 'standing';
+  /** `double-punch-assumed` (M20): holes given an inferred extra round. */
+  doublePunches?: number;
+  /** `rounds-scored-as-miss` (M20): declared rounds with no hole, scored as misses. */
+  missesAssumed?: number;
 }
+
+const POSITION_WORD = { prone: 'Prone', standing: 'Standing' } as const;
 
 /** analysis-pipeline §4 message table. */
 export function reasonMessage(reason: Reason, ctx: ReasonMessageContext = {}): string {
@@ -29,5 +43,15 @@ export function reasonMessage(reason: Reason, ctx: ReasonMessageContext = {}): s
       return `This looks like a ${ctx.hintTemplate ?? 'sighting/precision'} target — check the template.`;
     case 'backing-colour-not-found':
       return 'No backing colour showed through the holes, so standard detection was used. Check the backing card or lighting.';
+    case 'too-many-holes': {
+      const message =
+        `Found ${ctx.holesFound ?? 0} clear holes but you entered ${ctx.rejectedDeclared ?? ctx.declared ?? 0} rounds. ` +
+        'This may be the wrong target or the wrong round count.';
+      return ctx.rejectedPosition === undefined ? message : `${POSITION_WORD[ctx.rejectedPosition]}: ${message}`;
+    }
+    case 'double-punch-assumed':
+      return `${ctx.doublePunches ?? 0} hole(s) look like two shots through the same hole.`;
+    case 'rounds-scored-as-miss':
+      return `${ctx.missesAssumed ?? 0} round(s) weren't found and are scored as misses.`;
   }
 }

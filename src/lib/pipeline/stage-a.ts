@@ -8,11 +8,12 @@ import { BLUR_THRESHOLD } from '@/lib/cv/constants';
 import { SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
 import { INITIAL_DETECTION, type DetectionRecord, type Shot, type TargetAnalysis } from '@/lib/domain/analysis';
 import { isTargetPhoto } from '@/lib/domain/backing';
-import { declaredRounds, isCategorizationComplete } from '@/lib/domain/categorization';
+import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
-import { capShots, withoutArea, type CappableShot } from '@/lib/scoring/cap-shots';
+import { withoutArea } from '@/lib/scoring/cap-shots';
+import { reconcileShots } from '@/lib/scoring/reconcile-shots';
 import { scaleCalibration } from '@/lib/geometry/transform';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { AnalysisNotFoundError, PhotoNotFoundError } from '@/lib/services/photos';
@@ -188,17 +189,15 @@ export async function runStageA(
     const detection: DetectionRecord = detected?.detection ?? analysis.pipeline.detection ?? INITIAL_DETECTION;
     if (detected !== null && usedBackingFallback(detection)) warnings.push('backing-colour-not-found');
 
-    // A5 / REV-28: never report more shots than the declared rounds. Stage A runs before metadata,
-    // so it can only cap when the categorization is already complete; Stage B caps again once it is.
-    // The colour path measures a coloured area per shot (backing-sheet.md §5.4) and the cap ranks by
-    // it; a stored `Shot` carries no area, so it is dropped again once the cap has used it.
-    let measured: CappableShot[] | null = detected === null ? null : detected.shots;
-    if (measured !== null && isCategorizationComplete(photo.categorization)) {
-      const capped = capShots(measured, declaredRounds(photo.categorization));
-      measured = capped.kept;
-      if (capped.dropped.length > 0) warnings.push('extra-candidates-dropped');
+    // A5 / REV-39 (M20): the declared rounds are fact. Stage A runs before metadata, so it can only
+    // reconcile (reject / cap / double punches / misses) when the categorization is already complete;
+    // Stage B reconciles again once it is. A stored `Shot` carries no area, so the worker's is dropped.
+    let shots: Shot[] | null = detected === null ? null : withoutArea(detected.shots);
+    if (shots !== null && isCategorizationComplete(photo.categorization)) {
+      const reconciled = reconcileShots({ shots, categorization: photo.categorization, method: detection.method });
+      shots = reconciled.shots;
+      warnings.push(...reconciled.warnings);
     }
-    const shots: Shot[] | null = measured === null ? null : withoutArea(measured);
 
     await commitAnalysis(ctx, photoId, (a) => ({
       ...a,

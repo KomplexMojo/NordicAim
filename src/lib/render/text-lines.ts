@@ -5,7 +5,6 @@
 
 import type { AnalysisResult, MpiOffset, Shot, SubsetResult, UnitResult } from '../domain/analysis';
 import type { ShotPosition } from '../domain/enums';
-import { formatFractionalScore } from '../scoring/format';
 import { zoneFor } from '../scoring/sighting';
 
 function fmtMm(value: number | null): string {
@@ -66,11 +65,8 @@ export function sightingFooterLines(result: AnalysisResult, shots: Shot[], posit
   const vsProne = zoneHitMiss(subset.units, 'prone', holeDiameterMm);
   const vsStanding = zoneHitMiss(subset.units, 'standing', holeDiameterMm);
 
-  let scored = `Scored (${positionLabel}): ${sighting.hits} hit / ${sighting.misses} miss`;
-  if (subset.missing > 0) {
-    const { pessimistic, optimistic, averaged } = sighting.range;
-    scored += ` · range ${pessimistic.hits}–${optimistic.hits} hits (avg ${formatFractionalScore(averaged.hits)})`;
-  }
+  // REV-39: `misses` already counts every round that was not found (a miss), so the line is definite.
+  const scored = `Scored (${positionLabel}): ${sighting.hits} hit / ${sighting.misses} miss`;
 
   return [
     'Group metrics',
@@ -94,8 +90,7 @@ export function precisionFooterLines(result: AnalysisResult, shots: Shot[]): str
   const lines = [
     'Scoring summary',
     shotsLine(subset, shots),
-    `Total: ${precision.identifiedTotal} / ${precision.maxPossible} · X count ${precision.xCount}`,
-    `Range: pessimistic ${precision.range.pessimistic} · averaged ${formatFractionalScore(precision.range.averaged)} · optimistic ${precision.range.optimistic}`,
+    `Total: ${precision.identifiedTotal} / ${precision.maxPossible} · X count ${precision.xCount}${missesSuffix(subset.missing)}`,
     `Group size: ${fmtMm(subset.extremeSpreadMm)} mm · ${groupSizeAngular(subset)} @ 50 m`,
     mpiOffsetLine(subset.mpiOffset),
   ];
@@ -127,34 +122,35 @@ export function cellCaption(result: AnalysisResult): string {
     } else {
       head = `${sighting.hits}/${subset.declared} hit @ ${sighting.zoneDiameterMm} mm`;
     }
-    const range = subset.missing > 0 ? ` · range ${sighting.range.pessimistic.hits}–${sighting.range.optimistic.hits}` : '';
-    return `${head} · ${esText}${range}`;
+    return `${head} · ${esText}`;
   }
 
   const precision = subset.precision!;
-  const range = subset.missing > 0 ? ` · range ${precision.range.pessimistic}–${precision.range.optimistic}` : '';
-  return `${precision.identifiedTotal}/${precision.maxPossible} · X ${precision.xCount} · ${esText}${range}`;
+  return `${precision.identifiedTotal}/${precision.maxPossible} · X ${precision.xCount} · ${esText}`;
+}
+
+/** REV-39 (M20): ` · 1 miss` / ` · 5 misses` when rounds were scored as misses, else nothing. */
+export function missesSuffix(missing: number): string {
+  if (missing <= 0) return '';
+  return ` · ${missing} ${missing === 1 ? 'miss' : 'misses'}`;
 }
 
 function precisionHeadline(subset: SubsetResult): string {
   const p = subset.precision!;
-  if (subset.missing > 0) return `${p.range.pessimistic}–${p.range.optimistic} / ${p.maxPossible} · X ${p.xCount}`;
-  return `${p.identifiedTotal} / ${p.maxPossible} · X ${p.xCount}`;
+  return `${p.identifiedTotal} / ${p.maxPossible}${missesSuffix(subset.missing)} · X ${p.xCount}`;
 }
 
 function sightingHeadline(subset: SubsetResult): string {
   const s = subset.sighting!;
-  if (subset.missing > 0) {
-    return `${s.range.pessimistic.hits}–${s.range.optimistic.hits}/${subset.declared} hits @ ${s.zoneDiameterMm} mm`;
-  }
   return `${s.hits}/${subset.declared} hits @ ${s.zoneDiameterMm} mm`;
 }
 
 /**
- * Steps §3 / rendering-composite.md §3. Used by result cards (M12): precision `72 / 100 · X 1`, or
- * `<pess>–<opt> / <max> · X <x>` when missing > 0; sighting `<hits>/<declared> hits @ <45|115> mm`,
- * or the pessimistic-optimistic range form when missing > 0; `both`: `Prone <headline> · Standing <headline>`,
- * each half computed from that subset alone (not from `result.all`).
+ * Steps §3 / rendering-composite.md §3. Used by result cards (M12): precision `72 / 100 · X 1`, and
+ * `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: the total is definite, never a
+ * range); sighting `<hits>/<declared> hits @ <45|115> mm`, where a missing round is simply not a hit;
+ * `both`: `Prone <headline> · Standing <headline>`, each half computed from that subset alone (not from
+ * `result.all`).
  */
 export function targetHeadline(result: AnalysisResult): string {
   const headline = result.template === 'precision' ? precisionHeadline : sightingHeadline;

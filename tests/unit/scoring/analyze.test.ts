@@ -43,7 +43,6 @@ describe('scoring/analyze analyzeTarget: golden parity (geometry-scoring.md §9)
     expect(subset.precision!.xCount).toBe(1);
     expect(subset.identified).toBe(10);
     expect(subset.missing).toBe(0);
-    expect(subset.precision!.range).toEqual({ optimistic: 72, pessimistic: 72, averaged: 72 });
     expect(subset.extremeSpreadMm).toBeCloseTo(41.881, 3);
     expect(subset.extremeSpreadAngular!.moa).toBeCloseTo(2.8795, 3);
     expect(subset.extremeSpreadAngular!.mrad).toBeCloseTo(0.8376, 3);
@@ -127,7 +126,6 @@ describe('scoring/analyze analyzeTarget: both position (precision)', () => {
     expect(result.all.identified).toBe(2);
     expect(result.all.declared).toBe(2);
     expect(result.all.precision!.identifiedTotal).toBe(prone.precision!.identifiedTotal + standing.precision!.identifiedTotal);
-    expect(result.all.precision!.range.optimistic).toBe(prone.precision!.range.optimistic + standing.precision!.range.optimistic);
     expect(result.all.units).toHaveLength(2);
   });
 
@@ -147,7 +145,7 @@ describe('scoring/analyze analyzeTarget: both position (precision)', () => {
 describe('scoring/analyze analyzeTarget: both position (sighting)', () => {
   const categorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 1, roundsStanding: 1 };
 
-  it('combines hits/misses and unions mpi placement across prone and standing', () => {
+  it('combines hits/misses across prone and standing', () => {
     const shots = [shot({ id: 'a', xMm: 1, yMm: 0 }), shot({ id: 'b', xMm: 60, yMm: 0 })];
     const result = analyzeTarget({ template: 'sighting', categorization, shots });
 
@@ -155,8 +153,6 @@ describe('scoring/analyze analyzeTarget: both position (sighting)', () => {
     expect(result.all.sighting!.hits).toBe(
       result.subsets.reduce((sum, s) => sum + s.sighting!.hits, 0),
     );
-    expect(result.all.sighting!.range.optimistic.hits).toBe(
-      result.subsets.reduce((sum, s) => sum + s.sighting!.range.optimistic.hits, 0),
-    );
+    expect(result.all.sighting!.misses).toBe(result.subsets.reduce((sum, s) => sum + s.sighting!.misses, 0));
   });
 });

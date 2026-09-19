@@ -129,11 +129,7 @@ export function analyzeTarget(input: AnalyzeTargetInput): AnalysisResult {
     precision: template === 'precision' ? combinePrecisionScores(proneSubset.precision!, standingSubset.precision!, declaredAll) : null,
     sighting:
       template === 'sighting'
-        ? combineSightingOutcomes(
-            { units: proneUnits.map(toSightingUnit), missing: proneSubset.missing, sighting: proneSubset.sighting! },
-            { units: standingUnits.map(toSightingUnit), missing: standingSubset.missing, sighting: standingSubset.sighting! },
-            declaredAll,
-          )
+        ? combineSightingOutcomes(proneSubset.sighting!, standingSubset.sighting!)
         : null,
     warnings: warningsAll,
   };

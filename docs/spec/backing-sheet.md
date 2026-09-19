@@ -188,7 +188,8 @@ one (hue test), otherwise the neutral-chroma test of §4:
    area-weighted centroid. The distance comes from the calibre (`holeDiameterMm`): fragments of one torn hole lie within a couple of
    millimetres, while two separate touching holes are about a diameter apart — merging within a full diameter joined a real pair
    4.8 mm apart on IMG_5193.
-4. Each merged blob is one shot, `multiplicity: 1` (REV-28 still holds). Record its coloured area.
+4. Each merged blob is one shot, `multiplicity: 1` (REV-28 still holds). Record its coloured area, and (M20) its
+   `overlapRatio` = coloured area / the photo's median blob area, stored on the shot as reconciliation's overlap evidence.
 5. **Overlap hint, not a count:** a blob whose area ≥ `BACKING_OVERLAP_RATIO × median blob area` (start 1.8) is flagged
    `possibleOverlap: true`. It does not change multiplicity; Adjust (M17) shows it so the owner can add the second shot in one tap.
    **Elongated tears also enlarge the coloured area** (both flags on IMG_5193 sit on long tears), so the hint is
@@ -196,7 +197,8 @@ one (hue test), otherwise the neutral-chroma test of §4:
    already accounted for, an overlap is impossible and the flag is suppressed.
 6. **Fallback:** if the colour path yields **zero** blobs, run the standard detector (M16) instead and add warning
    `backing-colour-not-found`. The analysis records `pipeline.detection = { method: 'colour' | 'standard', fallbackReason: string | null }`.
-7. The cap to declared rounds (REV-28) and manual-shot protection (analysis-pipeline §8) apply unchanged.
+7. Reconciliation to the declared rounds (REV-39, geometry-scoring §8.3 — every colour-path hole is confident, so extra holes
+   reject the target rather than being capped) and manual-shot protection (analysis-pipeline §8) apply.
 
 **Changing the backing** (kind, card or colour) on a session sets Stage A back to pending **from A5** for each of its photos whose shots
 are all `auto`, so detection re-runs; photos with manual shots are left alone and gain nothing.

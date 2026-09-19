@@ -95,7 +95,7 @@ Layout (px):
    - "RESULTS" 18 at (68, 244); `<declared> shots` 13 at (68, 268)
    - rows (class `results-row`) n = 10…0 at y = 304 + 28·i: number right-aligned x 96; `x<count>` or `-` at x 108
    - divider y 650
-   - total 22 bold at (68, 686): `Total  <identifiedTotal> / <maxPossible>`, or `Total  <pessimistic>–<optimistic> / <maxPossible>` when missing > 0.
+   - total 22 bold at (68, 686): `Total  <identifiedTotal> / <maxPossible>` — definite; a missing round scores 0 (REV-39, M20).
 10. **Footer panel** (48, 1240, 1404, 420) rx 16; lines at x 72 from y 1290, step 34, 17 px (first line 18 px). Formats: mm 1 dp,
     MOA/MRAD 2 dp, averages 1 dp; unavailable `—`.
     - **Sighting**:
@@ -104,16 +104,16 @@ Layout (px):
       3. `Group size (extreme spread): <es> mm`
       4. `Angular size @ 50 m: <moa> MOA · <mrad> MRAD`
       5. `vs 45 mm prone: <h> hit / <m> miss   ·   vs 115 mm standing: <h> hit / <m> miss`
-      6. `Scored (<positionLabel>): <hits> hit / <misses> miss` (+ ` · range <pess>–<opt> hits (avg <avg>)` when missing > 0)
+      6. `Scored (<positionLabel>): <hits> hit / <misses> miss` (`misses` includes every missing round, REV-39)
       7. `MPI offset: <|x|> mm <R|L> · <|y|> mm <U|D> (<|xMoa|> / <|yMoa|> MOA)`
     - **Precision**:
       1. `Scoring summary`
       2. `Shots: <identified> identified of <declared>` (+ cluster note)
-      3. `Total: <identifiedTotal> / <maxPossible> · X count <xCount>`
-      4. `Range: pessimistic <p> · averaged <a> · optimistic <o>`
-      5. `Group size: <es> mm · <moa> MOA · <mrad> MRAD @ 50 m`
-      6. `MPI offset: …`
-      7. (both) `Prone: <total>/<max> · Standing: <total>/<max>`
+      3. `Total: <identifiedTotal> / <maxPossible> · X count <xCount>` (+ ` · <n> miss` / ` · <n> misses` when missing > 0)
+      4. `Group size: <es> mm · <moa> MOA · <mrad> MRAD @ 50 m`
+      5. `MPI offset: …`
+      6. (both) `Prone: <total>/<max> · Standing: <total>/<max>`
+      (M20 removed the former line 4, `Range: pessimistic … · averaged … · optimistic …`.)
 11. **Marker label placement** (`label-placement.ts`, both variants; REV-24). Labels are drawn after the shots and the MPI marker:
     "MPI" first, then `x<k>` in shot order. Text origin (x, y) = left edge, baseline.
     - Label box: left x − 2, right x + 0.62·size·chars + 2, top y − 0.75·size − 2, bottom y + 0.25·size + 2.
@@ -126,7 +126,8 @@ Layout (px):
       no collisions; if none is clear, the one with the fewest (earliest wins ties); if none fits the area, the preferred position.
 
 Expose line builders as pure functions: `sightingFooterLines`, `precisionFooterLines`, `cellCaption`, `targetHeadline` (used by
-result cards: precision `72 / 100 · X 1`, or `66–76 / 100` when missing; sighting `9/10 hits @ 45 mm`; both: `Prone … · Standing …`).
+result cards: precision `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: never a range);
+sighting `9/10 hits @ 45 mm`; both: `Prone … · Standing …`).
 
 **Golden check** (from `fixtures/reference/sample-shots-*.json`): precision SVG contains `Total  72 / 100`, `x2`, `41.9 mm`, `2.88 MOA`,
 `0.84 MRAD`. Sighting SVG contains `9 hit / 1 miss`, `10 hit / 0 miss`, `27.7 mm`, `1.90 MOA`, `0.55 MRAD`, `x4`.
@@ -139,7 +140,7 @@ result cards: precision `72 / 100 · X 1`, or `66–76 / 100` when missing; sigh
 - Caption band (0, 668, 720, 52) `panel`; centred 17 px at y 700:
   - sighting `<hits>/<declared> hit @ <45|115> mm · ES <es> mm · <moa> MOA` (both: `P <h>/<d> · S <h>/<d>`)
   - precision `<total>/<max> · X <x> · ES <es> mm · <moa> MOA`
-  - append ` · range <p>–<o>` when missing > 0.
+  - (M20: no range suffix; the total is definite.)
 
 ## 5. Session summary image (`src/lib/render/composite.ts`)
 
@@ -170,7 +171,7 @@ export function selectDefaultSlots(photos: TargetPhoto[], analyses: Map<string, 
   - Lines 18 px from y+100, step 34, each ≤ 110 chars (`…`):
     1. `Targets: <nS> sighting · <nP> precision · <lightingSummary>`
     2. One per filled slot (≤ 4): e.g. `Sighting 1 (prone): 9/10 hit @45 mm · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
-       `Precision 1 (prone): 72/100 (range 72–72) · X 1 · ES 41.9 mm (2.88 MOA)`
+       `Precision 1 (prone): 72/100 · X 1 · ES 41.9 mm (2.88 MOA)`
     3. If there are more analyzed targets than slots: `+<n> more target(s) in the app`
     4. If `session.notes`: `Notes: <notes>` (≤ 2 lines).
   - Footer 13 `textSecondary` at (40, y+572): `advanced-shooting-analysis · generated <generatedAtLocal>`.
@@ -179,7 +180,8 @@ export function selectDefaultSlots(photos: TargetPhoto[], analyses: Map<string, 
 
 **Slot selection (automatic, pure)**: candidates per template = photos with `status === 'analyzed'`, sorted by `captureTime.utc`
 descending (null last, then `importedAt` descending). Break ties with the better result (precision: higher `identifiedTotal`;
-sighting: smaller `extremeSpreadMm`, null worst). Take the first two, then order chronologically (older = slot 1). Returns photo ids.
+sighting: smaller `extremeSpreadMm`, null worst). Take the first two, then order chronologically (older = slot 1). Returns photo ids. A rejected target (`too-many-holes`,
+REV-39) is `needs-attention`, never `analyzed`, so it is never a candidate: it is **excluded** from the summary image.
 
 ## 6. `CompositeArtifact` and the share rule
 

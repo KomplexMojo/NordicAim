@@ -54,6 +54,8 @@ interface SeedOptions {
   warnings?: Warning[];
   /** `pipeline.alignment` as Stage A left it (analysis-pipeline §3). */
   alignment?: PipelineState['alignment'];
+  /** `pipeline.detection` as Stage A left it (backing-sheet.md §3). */
+  detection?: PipelineState['detection'];
 }
 
 interface Seeded {
@@ -79,6 +81,7 @@ async function seed(opts: SeedOptions = {}): Promise<Seeded> {
       templateHint: opts.templateHint ?? null,
       warnings: opts.warnings ?? [],
       ...(opts.alignment === undefined ? {} : { alignment: opts.alignment }),
+      ...(opts.detection === undefined ? {} : { detection: opts.detection }),
     },
     { calibration: opts.calibration === undefined ? MANUAL_CAL : opts.calibration, shots: opts.shots ?? [] },
   );
@@ -137,7 +140,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     expect((await getPhotoRecord(ctx.db, photoId))?.status).toBe('analyzed');
   });
 
-  it('reports a range and `rounds-unaccounted` when a round is not found', async () => {
+  it('scores a round that is not found as a miss: a definite total and `rounds-scored-as-miss` (REV-39)', async () => {
     const shots = precisionFixture.shots.map((shot) => (shot.id === 'P8' ? { ...shot, multiplicity: 1 } : shot));
     const { ctx, photoId } = await seed({ shots });
 
@@ -146,14 +149,13 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     const analysis = await getAnalysisRecord(ctx.db, photoId);
     const precision = analysis?.computed?.result.all.precision;
     expect(analysis?.computed?.result.all.missing).toBe(1);
-    // geometry-scoring §8.1 over the golden fixture's identified rings.
-    expect(precision?.range.pessimistic).toBe(71);
-    expect(precision?.range.optimistic).toBe(76);
-    expect(precision?.range.averaged).toBeCloseTo(73.333333, 6);
+    // The golden 72 less P8's second 6: the missed round scores 0.
+    expect(precision?.identifiedTotal).toBe(66);
+    expect(analysis?.pipeline.warnings).toEqual(['rounds-scored-as-miss']);
 
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.status).toBe('analyzed');
-    expect(photo?.reasons).toEqual(['rounds-unaccounted']);
+    expect(photo?.reasons).toEqual(['rounds-scored-as-miss']);
   });
 
   it('with no calibration: no result, no diagrams, and `target-not-found`', async () => {
@@ -188,7 +190,8 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
 
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.status).toBe('needs-attention');
-    expect(photo?.reasons).toEqual(['no-shots-found']);
+    // REV-39: every declared round is scored as a miss, which is appended as a note.
+    expect(photo?.reasons).toEqual(['no-shots-found', 'rounds-scored-as-miss']);
   });
 
   it('with an 11th shot: `too-many-shots`', async () => {
@@ -254,7 +257,8 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
 
     const analysis = await getAnalysisRecord(ctx.db, photoId);
     expect(analysis?.shots).toHaveLength(5);
-    expect(analysis?.pipeline.warnings).toEqual(['extra-candidates-dropped']);
+    // Sticky: Stage A's drop is still reported; the 5 rounds with no hole are now misses (REV-39).
+    expect(analysis?.pipeline.warnings).toEqual(['extra-candidates-dropped', 'rounds-scored-as-miss']);
   });
 
   it('never drops a shot the owner placed by hand, even over the declared rounds', async () => {
@@ -362,5 +366,73 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     const analysis = await getAnalysisRecord(ctx.db, photoId);
     expect(analysis?.pipeline.stageB).toBe('pending');
     expect(analysis?.computed).toBeNull();
+  });
+
+  describe('REV-39: declared rounds are fact (M20)', () => {
+    const COLOUR: PipelineState['detection'] = { method: 'colour', backing: 'forced', fallbackReason: null };
+    const holes = (n: number, ratioOf: (i: number) => number = () => 1): Shot[] =>
+      Array.from({ length: n }, (_, i) => ({
+        id: `auto-${i + 1}`,
+        xMm: (i + 1) * 3,
+        yMm: 0,
+        multiplicity: 1,
+        positionOverrides: null,
+        source: 'auto' as const,
+        confidence: null,
+        cluster: false,
+        possibleOverlap: false,
+        overlapRatio: ratioOf(i + 1),
+      }));
+
+    it('15 clear holes on 10 rounds: rejected — no score, no diagrams, needs-attention, every shot kept', async () => {
+      const { ctx, photoId } = await seed({ shots: holes(15), detection: COLOUR });
+      await putBlob(ctx.db, diagramCellSvgKey(photoId), {
+        bytes: new ArrayBuffer(1),
+        contentType: 'image/svg+xml',
+        sizeBytes: 1,
+        createdAt: '2026-09-06T00:00:00.000Z',
+      });
+
+      await runStageB(ctx, photoId, stubRenderTools());
+
+      const analysis = await getAnalysisRecord(ctx.db, photoId);
+      expect(analysis?.pipeline.stageB).toBe('done');
+      expect(analysis?.computed).toBeNull();
+      expect(analysis?.shots).toHaveLength(15);
+      expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
+      expect(await getBlob(ctx.db, diagramCellSvgKey(photoId))).toBeNull();
+
+      const photo = await getPhotoRecord(ctx.db, photoId);
+      expect(photo?.status).toBe('needs-attention');
+      expect(photo?.reasons).toEqual(['too-many-holes']);
+    });
+
+    it('8 holes on 10 rounds, one far larger: one double punch, one miss, a definite score', async () => {
+      const { ctx, photoId } = await seed({ shots: holes(8, (i) => (i === 4 ? 2.23 : 1)), detection: COLOUR });
+
+      await runStageB(ctx, photoId, stubRenderTools());
+
+      const analysis = await getAnalysisRecord(ctx.db, photoId);
+      expect(analysis?.shots.find((s) => s.id === 'auto-4')).toMatchObject({ multiplicity: 2, inferred: 'double-punch' });
+      expect(analysis?.computed?.result.all.identified).toBe(9);
+      expect(analysis?.computed?.result.all.missing).toBe(1);
+      expect(analysis?.pipeline.warnings).toEqual(['double-punch-assumed', 'rounds-scored-as-miss']);
+
+      const photo = await getPhotoRecord(ctx.db, photoId);
+      expect(photo?.status).toBe('analyzed');
+      expect(photo?.reasons).toEqual(['double-punch-assumed', 'rounds-scored-as-miss']);
+    });
+
+    it('10 holes on 10 rounds: long tears are not doubles and nothing is rewritten', async () => {
+      const shots = holes(10, (i) => (i === 1 ? 2.31 : i === 2 ? 1.87 : 1));
+      const { ctx, photoId } = await seed({ shots, detection: COLOUR });
+
+      await runStageB(ctx, photoId, stubRenderTools());
+
+      const analysis = await getAnalysisRecord(ctx.db, photoId);
+      expect(analysis?.shots).toEqual(shots);
+      expect(analysis?.pipeline.warnings).toEqual([]);
+      expect((await getPhotoRecord(ctx.db, photoId))?.status).toBe('analyzed');
+    });
   });
 });

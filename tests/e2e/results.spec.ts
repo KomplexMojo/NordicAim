@@ -80,7 +80,7 @@ test('results: View opens the target detail with the precision tally', async ({ 
   await expect(page.getByTestId('tally-row-6')).toContainText('x3');
 });
 
-test('results: raising the declared rounds shows the unaccounted reason and a score range', async ({ page }) => {
+test('results: raising the declared rounds scores the extra rounds as misses (REV-39)', async ({ page }) => {
   const sessionId = await loadDemoSession(page);
 
   await page.goto(`/#/sessions/${sessionId}/metadata`);
@@ -96,10 +96,13 @@ test('results: raising the declared rounds shows the unaccounted reason and a sc
   await waitForIdle(page);
 
   const precisionCard = page.getByTestId('target-card').nth(1);
-  await expect(precisionCard.getByTestId('reason-list')).toContainText('2 round(s) not found', { timeout: 30_000 });
-  // 10 identified of 12 declared: 82–92 / 120 (geometry-scoring §8.1).
-  await expect(precisionCard.getByTestId('target-headline')).toContainText('–');
-  await expect(precisionCard.getByTestId('range-line')).toContainText('Range: pessimistic');
+  await expect(precisionCard.getByTestId('reason-list')).toContainText(
+    "2 round(s) weren't found and are scored as misses.",
+    { timeout: 30_000 },
+  );
+  // 10 identified of 12 declared: a definite 72 / 120, the 2 missing rounds scoring 0 (geometry-scoring §8).
+  await expect(precisionCard.getByTestId('target-headline')).toHaveText('72 / 120 · 2 misses · X 1');
+  await expect(precisionCard.getByTestId('range-line')).toHaveCount(0);
 });
 
 test('results: capture → Analyze reaches a terminal status', async ({ page }) => {

@@ -26,6 +26,7 @@ import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
 import { analyzeTarget } from '@/lib/scoring/analyze';
+import { mergeReconcileWarnings, reconcileReasonContext, reconcileShots } from '@/lib/scoring/reconcile-shots';
 import { reprojectShots } from '@/lib/geometry/reproject';
 import {
   adjustStartCalibration,
@@ -162,10 +163,18 @@ export function AdjustPage() {
     const { photo, analysis, holeDiameterMm } = data;
     const categorization = photo.categorization;
     let result: AnalysisResult | null = null;
+    let warnings = analysis.pipeline.warnings;
+    const method = analysis.pipeline.detection.method;
     if (categorization.template !== null && isCategorizationComplete(categorization)) {
       const profile = { ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M;
+      // REV-39 (M20): the same reconciliation Stage B runs after Save, so the preview matches it.
+      const reconciled = reconcileShots({ shots, categorization, method });
+      warnings = mergeReconcileWarnings(warnings, reconciled);
       try {
-        result = analyzeTarget({ template: categorization.template, categorization, shots, profile });
+        result =
+          reconciled.rejected.length > 0
+            ? null
+            : analyzeTarget({ template: categorization.template, categorization, shots: reconciled.shots, profile });
       } catch {
         result = null;
       }
@@ -174,10 +183,11 @@ export function AdjustPage() {
       ...analysis,
       calibration,
       shots,
-      pipeline: { ...analysis.pipeline, stageA: 'done', stageB: 'done', error: null },
+      pipeline: { ...analysis.pipeline, stageA: 'done', stageB: 'done', error: null, warnings },
     };
     const { status, reasons } = photoStatus({ categorization, analysis: draft, result });
-    return { result, status, reasons };
+    const reconcile = reconcileReasonContext(shots, categorization, method);
+    return { result, status, reasons, reconcile };
   }, [data, calibration, shots]);
 
   if (data === undefined) return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
@@ -356,7 +366,8 @@ export function AdjustPage() {
             onShotDragEnd={onShotDragEnd}
           />
         </div>
-        {/* M17 step 1 (REV-29): one parked marker per round with no hole yet. Derived, never stored. */}
+        {/* M17 step 1 (REV-29): one parked marker per round with no hole yet. Derived, never stored.
+            M20 (REV-39): each one is scored as a miss until it is dragged onto a hole. */}
         {mode === 'shots' && <UnplacedTray count={unplaced} onPlace={placeUnplaced} />}
       </div>
 
@@ -372,7 +383,9 @@ export function AdjustPage() {
         ) : (
           <p className="text-sm text-muted-foreground">
             Tap the photo to add a shot, tap a shot to select it, or drag one to move it.
-            {unplaced > 0 ? ' Drag a numbered marker from the tray onto the hole it made.' : ''}
+            {unplaced > 0
+              ? ' Rounds in the tray are scored as misses (off target); drag one onto the hole it made to count it.'
+              : ''}
           </p>
         )
       ) : (
@@ -386,6 +399,7 @@ export function AdjustPage() {
           reasons={preview.reasons}
           hintTemplate={analysis.pipeline.templateHint?.template ?? null}
           declared={declaredRoundsOrNull(photo.categorization)}
+          reconcile={preview.reconcile}
         />
       )}
 

@@ -68,7 +68,11 @@ export function ShotInspector({ shot, position, onChange, onDelete, onClose }: S
   function setMultiplicity(raw: number) {
     if (!Number.isFinite(raw)) return;
     const multiplicity = Math.min(MAX_MULTIPLICITY, Math.max(MIN_MULTIPLICITY, Math.round(raw)));
-    onChange({ ...shot, multiplicity, positionOverrides: resizeOverrides(shot.positionOverrides, multiplicity) });
+    const next: Shot = { ...shot, multiplicity, positionOverrides: resizeOverrides(shot.positionOverrides, multiplicity) };
+    // M20 step 8: the owner has now decided how many rounds this hole holds, so it is no longer an
+    // inference (saving marks the shot manual, and reconciliation never alters a manual shot).
+    delete next.inferred;
+    onChange(next);
   }
 
   function setOverride(index: number, value: ShotPosition | null) {
@@ -121,6 +125,13 @@ export function ShotInspector({ shot, position, onChange, onDelete, onClose }: S
           +1
         </Button>
       </div>
+
+      {shot.inferred === 'double-punch' && shot.multiplicity > 1 && (
+        <p className="text-sm text-muted-foreground" data-testid="inferred-double">
+          Assumed double punch: the rounds you entered were short, and this hole looks like more than one shot. Set it
+          to 1 to score the extra round as a miss.
+        </p>
+      )}
 
       {position === 'both' && (
         <div className="flex flex-col gap-2" data-testid="position-overrides">

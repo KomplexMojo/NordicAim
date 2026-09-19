@@ -168,17 +168,17 @@ test('adjust: deleting a shot rescored live, saved, and put back again', async (
   const expectedHeadline = targetHeadline(
     analyzeTarget({ template: 'precision', categorization: FIXTURE.categorization, shots: remaining }),
   );
-  // Pessimistic adds the lowest remaining ring (6), optimistic adds 10 (geometry-scoring §8.1).
-  expect(expectedHeadline).toBe('73–77 / 100 · X 1');
+  // REV-39 (M20): the missing round is a miss and scores 0 — a definite total, never a range.
+  expect(expectedHeadline).toBe('67 / 100 · 1 miss · X 1');
   await expect(page.getByTestId('live-headline')).toHaveText(expectedHeadline);
   await expect(page.getByTestId('adjust-shot-count')).toContainText('9 shots');
 
-  // 3. Save: the card shows the range and the rounds-unaccounted reason.
+  // 3. Save: the card shows the definite total and the rounds-scored-as-miss note.
   await page.getByTestId('save-adjustments').click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
   await waitForIdle(page);
   await expect(card.getByTestId('target-headline')).toHaveText(expectedHeadline, { timeout: 30_000 });
-  await expect(card.getByTestId('reason-list')).toContainText('1 round(s) not found');
+  await expect(card.getByTestId('reason-list')).toContainText("1 round(s) weren't found and are scored as misses.");
 
   // 4. Adjust again and put a shot back near (-30.1, -28.4).
   await card.getByTestId('adjust-shots').click();
@@ -267,7 +267,7 @@ test('adjust: a parked marker dragged onto the target places the missing round (
   await page.getByTestId('delete-shot').click();
   await expect(page.getByTestId('unplaced-tray')).toHaveAttribute('data-count', '1');
   await expect(page.getByTestId('unplaced-marker')).toHaveCount(1);
-  await expect(page.getByTestId('live-preview')).toContainText('1 round(s) not found');
+  await expect(page.getByTestId('live-preview')).toContainText("1 round(s) weren't found and are scored as misses.");
 
   // Drag it onto the hole the app is missing.
   const saved = await getAnalysis(page, photoId);
@@ -299,6 +299,7 @@ test('adjust: a parked marker dragged onto the target places the missing round (
   const card = page.locator(`[data-testid="target-card"][data-photo-id="${photoId}"]`);
   await expect(card.getByTestId('status-chip')).toHaveAttribute('data-status', 'analyzed', { timeout: 30_000 });
   await expect(card.locator('[data-reason="rounds-unaccounted"]')).toHaveCount(0);
+  await expect(card.locator('[data-reason="rounds-scored-as-miss"]')).toHaveCount(0);
 });
 
 test('adjust: a placed shot dragged onto the tray is removed (M17 step 1)', async ({ page }) => {

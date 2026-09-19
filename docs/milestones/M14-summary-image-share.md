@@ -44,6 +44,7 @@ The slot picker (backlog B5), native Photos save (backlog B10).
 ## Tests
 - Height vectors, including the throw.
 - Slot selection: 3 analyzed precision targets at 10:00/11:00/12:00 → slots [11:00, 12:00]; `needs-attention` targets excluded; ties by score.
+- (from M20) A rejected target (`needs-attention`, reason `too-many-holes`, `computed` null) is absent from the summary image slots.
 - Golden render with both demo fixtures: height 2160; contains `Session analysis`, `Precision 1 (prone): 72/100`, `Sighting 1 (prone): 9/10 hit @45 mm`; two stat cards.
 - `buildComposite` (stub rasteriser): stores PNG + JSON; the JSON deep-scan has no `gps`; the 4th build prunes the oldest artifact
   (blobs gone); `loadArtifact` with tampered bytes → `ArtifactNotFoundError`.

@@ -1,5 +1,6 @@
 import type { Reason, TemplateId } from '@/lib/domain/enums';
 import { reasonMessage } from '@/lib/domain/reason-messages';
+import type { ReconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 
 interface ReasonListProps {
   reasons: Reason[];
@@ -14,10 +15,15 @@ interface ReasonListProps {
    * `analysis.computed` is still null.
    */
   declared: number | null;
+  /**
+   * REV-39 (M20): the numbers the `too-many-holes`, `double-punch-assumed` and `rounds-scored-as-miss`
+   * messages name (`reconcileReasonContext`); null while the categorization is incomplete.
+   */
+  reconcile?: ReconcileReasonContext | null;
 }
 
 /** analysis-pipeline §4: the plain-language message for every reason on the photo. */
-export function ReasonList({ reasons, missing, hintTemplate, declared }: ReasonListProps) {
+export function ReasonList({ reasons, missing, hintTemplate, declared, reconcile = null }: ReasonListProps) {
   if (reasons.length === 0) return null;
   return (
     <ul className="flex flex-col gap-1 text-sm text-muted-foreground" data-testid="reason-list">
@@ -27,6 +33,7 @@ export function ReasonList({ reasons, missing, hintTemplate, declared }: ReasonL
             missing,
             hintTemplate: hintTemplate ?? undefined,
             declared: declared ?? undefined,
+            ...(reconcile ?? {}),
           })}
         </li>
       ))}

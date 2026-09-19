@@ -1,7 +1,7 @@
 # Spec: geometry and scoring
 
 Source of truth for template geometry, coordinate conventions, scoring rules, group metrics, the `both`
-split, and missing-round modes. Everything here is **pure math**. Implementation lives in
+split, and missing rounds (scored as misses, REV-39). Everything here is **pure math**. Implementation lives in
 `src/lib/defaults/`, `src/lib/geometry/`, and `src/lib/scoring/`.
 
 Numeric tolerance in tests: `1e-6` unless a vector states otherwise. Boundary comparisons are
@@ -228,48 +228,59 @@ Units sorted: D#0, D#1, B, C, A → standing = {D#0, D#1}; prone = {B, C, A}.
 
 **Amended by REV-43 (M20):** a **located** hole on the paper outside the scoring area is a **ring-zero unit** — it scores zero and is included in §6's group metrics, because its position was measured. An **assumed miss** (a declared round with no hole found anywhere) is excluded from every group metric, because it has no position.
 
-**Amended by REV-39 (M20):** automatic analyses reconcile found holes against the declared rounds (reject / cap / double punches / misses) before scoring; unaccounted rounds after that are scored as misses, and the range below is no longer the headline. Keep the rest until M20 decides what still uses it.
+**Amended by REV-39 (M20):** before anything is scored, found holes are reconciled against the declared rounds
+(§8.3: reject / cap / double punches / misses). Every round still missing after that is a **miss**, and the score is
+**definite**. REV-18's optimistic / pessimistic / averaged range is **removed** (M20 found nothing else that used it).
 
 `identified = number of units in the subset`, `missing = max(0, declared - identified)`,
 `overcount = max(0, identified - declared)`.
-If `overcount > 0`, raise warning `overcount` and set all three modes equal to the identified-only result.
+If `overcount > 0`, raise warning `overcount`.
 
 **Since REV-28, `overcount` can only come from the owner's own edits.** Automatic detection gives every shot `multiplicity` 1 and
-is capped to the declared rounds before anything is scored (analysis-pipeline §2 A5), so a 10-round precision target cannot exceed
+is reconciled to the declared rounds before anything is scored (analysis-pipeline §2 A5), so a 10-round precision target cannot exceed
 `maxPossible = declared * 10`. The rule stays defined because Adjust lets the owner add shots or raise a multiplicity deliberately.
-In the other direction, `missing > 0` is what the Adjust screen shows as parked markers to drag onto the target (REV-29).
+In the other direction, `missing > 0` is what the Adjust screen shows as parked markers labelled **Scored as miss** (REV-29, REV-39).
 
-### 8.1 Precision modes
+### 8.1 Precision
 
-With identified ring values `v_i`:
-- **optimistic** = `identifiedTotal + missing * max(v)`
-- **pessimistic** = `identifiedTotal + missing * min(v)`
-- **averaged** = `identifiedTotal + missing * mean(v)` (may be fractional; display with 1 decimal)
-- If `identified = 0`, all three = 0.
+- A missing round scores **0**, so the total is `identifiedTotal` (the located units' total); `tally` counts located units only.
 - `maxPossible = declared * 10`.
-- For the `all` subset of a `both` target, each mode is the **sum** of the prone and standing subset values.
+- For the `all` subset of a `both` target, `tally`, `xCount` and `identifiedTotal` are the **sum** of the prone and standing subsets.
 
-**Vector:** declared 10, identified rings [10, 9, 8, 8, 7] → identifiedTotal 42, missing 5 → optimistic 92,
-pessimistic 77, averaged 84.0.
+**Vector:** declared 10, identified rings [10, 9, 8, 8, 7] → identifiedTotal 42, missing 5 → total **42 / 100**.
+**Vector (M20):** declared 10, rings [10, 9, 9, 8] + 1 inferred double on the 9 + 5 misses → **45 / 100 · 5 misses**.
 
-### 8.2 Sighting modes
+### 8.2 Sighting
 
-For the subset's zone, with identified units U and `hitsId` = hits among U:
-- **optimistic**: the `missing` units are placed at the coordinates of the unit with the **smallest** `radialMm`
-  (ties: first by sort order of §7). They are counted as that unit's outcome. hits = hitsId + missing × (best is hit ? 1 : 0).
-- **pessimistic**: the `missing` units are placed at the coordinates of the unit with the **largest** `radialMm`
-  and are **always counted as misses**. hits = hitsId.
-- **averaged**: the `missing` units are placed at the identified `mpi`. hits = hitsId + missing × (hitsId / |U|),
-  fractional.
-- For each mode, report `{ hits, misses: declared - hits, mpi }`, where the mpi is computed over identified +
-  placed units. ES and the ellipse are **identified-only** (placed duplicates never change ES).
-- If `|U| = 0`: every mode has hits 0 and mpi null.
-- `all` subset for a `both` target: hits are summed over subsets; mpi is computed over the union of each subset's placed units.
+- `hits` and `clean` count located units (§5). `misses = (located units outside the zone) + missing` — a missing round is a miss.
+- For the `all` subset of a `both` target, `hits`, `clean` and `misses` are summed over the subsets.
 
-**Vector** (prone, declared 5): identified (0,5), (10,0), (30,0) → radial 5, 10, 30 → hit, hit, miss (hitsId = 2), missing 2.
-- optimistic: place 2 at (0,5) → hits 4; mpi (8, 3).
-- pessimistic: place 2 at (30,0) → hits 2; mpi (20, 1).
-- averaged: identified mpi (13.333333, 1.666667); place 2 there → mpi unchanged; hits 2 + 2×(2/3) = 3.333333.
+**Vector** (prone, declared 5): identified (0,5), (10,0), (30,0) → radial 5, 10, 30 → hit, hit, miss, missing 2 → hits 2,
+clean 2, misses 3.
+
+### 8.3 Reconciliation (`src/lib/scoring/reconcile.ts`, REV-39)
+
+`reconcileRounds(found: FoundHole[], declared: number, evidence: RoundsEvidence): Reconciliation`, per subset (§7), for the
+automatic holes; `reconcileShots` (`reconcile-shots.ts`) applies it to a photo's shots. Manual units are fixed and use up part of
+`declared`; manual shots are never dropped or given extra rounds. While every shot is `auto` each run starts afresh (earlier
+inferred rounds are removed and re-decided); once any shot is `manual`, nothing new is inferred and stored multiplicities stay.
+
+| Constant | Value | Source |
+|---|---|---|
+| `REJECT_MARGIN` | 0 | owner, 2026-09-17 |
+| `CONFIDENT_HOLE_MIN` | 0.94 | measured, M20 (standard path; every colour-path hole is confident) |
+| `DOUBLE_PUNCH_MIN_RATIO` | 1.8 | colour path: coloured area / the photo's median hole area |
+| `DOUBLE_PUNCH_MIN_RATIO_STANDARD` | none | measured, M20: the blob area does not separate doubles, so the standard path infers none |
+
+1. `confident > declared + REJECT_MARGIN` → **rejected**: nothing is scored (`computed` null), every shot is kept, warning
+   `too-many-holes`.
+2. else `found > declared` → **cap**: keep every confident hole, fill up to `declared` with the best others (REV-28's ranking), drop
+   the rest, warning `extra-candidates-dropped`.
+3. `found = declared` → nothing inferred; overlap evidence is ignored.
+4. `found < declared`: holes whose evidence clears the ratio take one extra round each, strongest first, until the shortfall is used;
+   a third only at `2 ×` the ratio once every qualifying hole has two. Inferred rounds raise the auto shot's `multiplicity` and set
+   `inferred: 'double-punch'` (warning `double-punch-assumed`). What is still short is `missesAssumed` (warning
+   `rounds-scored-as-miss`).
 
 ## 9. Golden example parity (from the owner's example diagrams)
 
@@ -291,7 +302,7 @@ Files: `fixtures/reference/sample-shots-precision.json` and `fixtures/reference/
 | P9 | -30.1 | -28.4 | 1 | 41.383 | 5 |
 
 Expected: tally {10:1, 9:1, 8:2, 7:2, 6:3, 5:1}; identifiedTotal **72**; xCount 1; identified 10; missing 0;
-all modes 72; ES **41.881** (±0.001, pair P1–P9); ES moa **2.8795** (±0.0005); mrad **0.8376** (±0.0005);
+total 72; ES **41.881** (±0.001, pair P1–P9); ES moa **2.8795** (±0.0005); mrad **0.8376** (±0.0005);
 mpi **(-14.49, -18.55)** (±1e-6).
 
 ### 9.2 Sighting (position `prone`, roundsProne 10)

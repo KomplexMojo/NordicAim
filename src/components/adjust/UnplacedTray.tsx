@@ -34,6 +34,11 @@ function Marker({ label, className }: { label: string; className?: string }) {
  * yet, in a tray beside the target. Drag one onto the photo to place that shot; drag a placed shot
  * back here to remove it.
  *
+ * REV-39 / REV-43 (M20): a round left in the tray is **scored as a miss** — it is the "off target"
+ * control, meaning "this round is not in this photo". A hole on the paper outside the rings needs no
+ * control: it is simply a shot that scores zero. Dragging a marker onto a hole turns the miss into a
+ * shot; removing a shot (or an inferred double) returns that round here, as a miss.
+ *
  * The count is **derived** (`declaredRounds - identified units`) and never stored, so the tray
  * shrinks by itself as soon as the shot exists, and the pipeline has nothing here to overwrite
  * (analysis-pipeline §8). When nothing is unplaced the tray renders nothing at all.
@@ -70,9 +75,11 @@ export function UnplacedTray({ count, onPlace }: UnplacedTrayProps) {
       data-unplaced-tray=""
       data-count={count}
       className="flex shrink-0 flex-col items-center gap-2 rounded-lg border border-dashed border-border p-1"
-      aria-label={`${count} round(s) not placed yet`}
+      aria-label={`${count} round(s) scored as miss`}
     >
-      <span className="text-center text-[10px] leading-tight text-muted-foreground">Not placed</span>
+      <span className="text-center text-[10px] leading-tight text-muted-foreground" data-testid="unplaced-label">
+        Scored as miss
+      </span>
       {Array.from({ length: count }, (_, i) => (
         <button
           key={i}
@@ -80,7 +87,8 @@ export function UnplacedTray({ count, onPlace }: UnplacedTrayProps) {
           data-testid="unplaced-marker"
           data-index={i}
           className="touch-none select-none"
-          title={`Round ${i + 1}: drag onto the hole it made`}
+          title={`Round ${i + 1}: not found in this photo (off target), so it is scored as a miss. Drag it onto the hole it made.`}
+          aria-label={`Round ${i + 1}, scored as miss`}
           onPointerDown={(e) => onPointerDown(e, i)}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

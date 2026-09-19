@@ -61,6 +61,12 @@ const MANUAL_SHOT: Shot = {
   possibleOverlap: false,
 };
 
+/**
+ * A full set for the seeded 10-round prone target, so the alignment tests below see every round
+ * accounted for and no REV-39 reconciliation warning.
+ */
+const TEN: Shot[] = Array.from({ length: 10 }, (_, i) => ({ ...DETECTED, id: `auto-${i + 1}`, xMm: i * 3, yMm: 0 }));
+
 function review(over: Partial<ReviewAndAlignResult> = {}): ReviewAndAlignResult {
   return {
     detection: null,
@@ -74,7 +80,7 @@ function review(over: Partial<ReviewAndAlignResult> = {}): ReviewAndAlignResult 
 const ORANGE: ColourSignature = { hueDeg: 15.9, hueSpreadDeg: 2.4, satP10: 0.73, valP10: 0.85, samples: 70610 };
 const STANDARD_DETECTION: DetectionRecord = { method: 'standard', backing: 'off', fallbackReason: null };
 
-function stubCv(result: ReviewAndAlignResult | Error, shots: Shot[] = [], detectionRecord = STANDARD_DETECTION) {
+function stubCv(result: ReviewAndAlignResult | Error, shots: Shot[] = TEN, detectionRecord = STANDARD_DETECTION) {
   const calls: Array<{ prior: Calibration | null; templateHint: TemplateId | null }> = [];
   const detectCalls: Array<{
     calibration: Calibration;
@@ -368,13 +374,36 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
 
   it('does not cap, or warn, when the shots already fit the declared rounds', async () => {
     const { ctx, photoId } = await seed();
+    const { api } = stubCv(review({ detection }), TEN);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toEqual(TEN);
+    expect(analysis?.pipeline.warnings).toEqual([]);
+  });
+
+  it('reconciles fewer holes than rounds once the rounds are known: the rest are misses (REV-39)', async () => {
+    const { ctx, photoId } = await seed();
     const { api } = stubCv(review({ detection }), [DETECTED]);
 
     await runStageA(ctx, photoId, api, imageTools);
 
     const analysis = await getAnalysisRecord(ctx.db, photoId);
     expect(analysis?.shots).toEqual([DETECTED]);
-    expect(analysis?.pipeline.warnings).toEqual([]);
+    expect(analysis?.pipeline.warnings).toEqual(['rounds-scored-as-miss']);
+  });
+
+  it('rejects clearly more holes than rounds on the colour path, keeping every shot (REV-39)', async () => {
+    const { ctx, photoId } = await seed();
+    const fifteen: Shot[] = Array.from({ length: 15 }, (_, i) => ({ ...DETECTED, id: `auto-${i + 1}`, xMm: i * 3, confidence: null }));
+    const { api } = stubCv(review({ detection }), fifteen, { method: 'colour', backing: 'forced', fallbackReason: null });
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(15);
+    expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
   });
 
   it('leaves the shots uncapped while the categorization is incomplete (Stage A runs before metadata)', async () => {

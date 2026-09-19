@@ -32,11 +32,21 @@ export interface CapShotsResult<T extends CappableShot> {
   dropped: T[];
 }
 
+/** What REV-28's ranking reads. Any shot-like record carrying these can be ranked. */
+export interface Rankable {
+  id: string;
+  xMm: number;
+  yMm: number;
+  confidence: number | null;
+  areaMm2?: number;
+}
+
 /**
  * Best first: higher confidence, then larger area, then closer to the centre, then id, so the
- * ranking is total and deterministic for any two shots.
+ * ranking is total and deterministic for any two shots. REV-39's cap branch (`reconcile.ts`) fills
+ * with the same ranking.
  */
-function ranked<T extends CappableShot>(a: T, b: T): number {
+export function ranked(a: Rankable, b: Rankable): number {
   return (
     (b.confidence ?? 0) - (a.confidence ?? 0) ||
     (b.areaMm2 ?? 0) - (a.areaMm2 ?? 0) ||

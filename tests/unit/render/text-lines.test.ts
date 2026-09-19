@@ -35,12 +35,52 @@ describe('render/text-lines targetHeadline (rendering-composite.md §3, Steps §
     expect(targetHeadline(result)).toBe('9/10 hits @ 45 mm');
   });
 
-  it('precision with P8 multiplicity reduced to 1 (missing=1): "71–76 / 100 · X 1"', () => {
+  it('precision with P8 multiplicity reduced to 1 (missing=1): a definite "66 / 100 · 1 miss · X 1" (REV-39)', () => {
     const fixture = readFixture('sample-shots-precision.json');
     const shots = fixture.shots.map((s) => (s.id === 'P8' ? { ...s, multiplicity: 1 } : s));
     const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots });
     expect(result.all.missing).toBe(1);
-    expect(targetHeadline(result)).toBe('71–76 / 100 · X 1');
+    expect(targetHeadline(result)).toBe('66 / 100 · 1 miss · X 1');
+  });
+
+  it('M20 scoring vector: declared 10, rings [10, 9, 9, 8] + 1 double on the 9 + 5 misses -> "45 / 100 · 5 misses"', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null };
+    const at = (id: string, xMm: number, multiplicity = 1): Shot => ({
+      id,
+      xMm,
+      yMm: 0,
+      multiplicity,
+      positionOverrides: null,
+      source: 'auto',
+      confidence: null,
+      cluster: false,
+      possibleOverlap: false,
+    });
+    // radial 6 -> 10 (not X), 12 -> 9, 14 -> 9 (with its inferred double), 20 -> 8.
+    const shots = [at('a', 6), at('b', 12), { ...at('c', 14, 2), inferred: 'double-punch' as const }, at('d', 20)];
+    const result = analyzeTarget({ template: 'precision', categorization, shots });
+    expect(result.all.precision!.identifiedTotal).toBe(45);
+    expect(result.all.missing).toBe(5);
+    expect(targetHeadline(result)).toBe('45 / 100 · 5 misses · X 0');
+  });
+
+  it('M20 scoring vector, sighting: the 5 missing rounds count as misses', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null };
+    const at = (id: string, xMm: number, multiplicity = 1): Shot => ({
+      id,
+      xMm,
+      yMm: 0,
+      multiplicity,
+      positionOverrides: null,
+      source: 'auto',
+      confidence: null,
+      cluster: false,
+      possibleOverlap: false,
+    });
+    const shots = [at('a', 6), at('b', 12), at('c', 14, 2), at('d', 20)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    expect(result.all.sighting).toEqual({ zoneDiameterMm: 45, hits: 5, clean: 5, misses: 5 });
+    expect(targetHeadline(result)).toBe('5/10 hits @ 45 mm');
   });
 
   it('"both" position joins each subset\'s own headline as "Prone <h> · Standing <h>"', () => {
@@ -80,16 +120,17 @@ describe('render/text-lines golden checks (rendering-composite.md §3 "Golden ch
     expect(lines).toContain('x4'); // largest cluster note (S2 multiplicity 4)
   });
 
-  it('precisionFooterLines adds a 7th "Prone: … · Standing: …" line only when position is both', () => {
+  it('precisionFooterLines adds a "Prone: … · Standing: …" line only when position is both', () => {
     const fixture = readFixture('sample-shots-precision.json');
     const single = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots: fixture.shots });
-    expect(precisionFooterLines(single, fixture.shots)).toHaveLength(6);
+    // REV-39 removed the "Range:" line, so a single-position target has 5 lines.
+    expect(precisionFooterLines(single, fixture.shots)).toHaveLength(5);
 
     const both: Categorization = { template: 'precision', position: 'both', roundsProne: 5, roundsStanding: 5 };
     const bothResult = analyzeTarget({ template: fixture.template, categorization: both, shots: fixture.shots });
     const lines = precisionFooterLines(bothResult, fixture.shots);
-    expect(lines).toHaveLength(7);
-    expect(lines[6]).toMatch(/^Prone: \d+\/\d+ · Standing: \d+\/\d+$/);
+    expect(lines).toHaveLength(6);
+    expect(lines[5]).toMatch(/^Prone: \d+\/\d+ · Standing: \d+\/\d+$/);
   });
 });
 
@@ -106,11 +147,20 @@ describe('render/text-lines cellCaption (rendering-composite.md §4)', () => {
     expect(cellCaption(result)).toBe('72/100 · X 1 · ES 41.9 mm · 2.88 MOA');
   });
 
-  it('appends " · range <p>–<o>" when missing > 0', () => {
+  it('shows the definite total, never a range, when missing > 0 (REV-39)', () => {
     const fixture = readFixture('sample-shots-precision.json');
     const shots = fixture.shots.map((s) => (s.id === 'P8' ? { ...s, multiplicity: 1 } : s));
     const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots });
-    expect(cellCaption(result)).toContain('· range 71–76');
+    expect(cellCaption(result)).toBe('66/100 · X 1 · ES 41.9 mm · 2.88 MOA');
+  });
+
+  it('precisionFooterLines names the misses on the Total line (REV-39)', () => {
+    const fixture = readFixture('sample-shots-precision.json');
+    const shots = fixture.shots.map((s) => (s.id === 'P8' ? { ...s, multiplicity: 1 } : s));
+    const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots });
+    const lines = precisionFooterLines(result, shots);
+    expect(lines[2]).toBe('Total: 66 / 100 · X count 1 · 1 miss');
+    expect(lines.join('\n')).not.toContain('Range');
   });
 
   it('sighting "both" uses "P <h>/<d> · S <h>/<d>" instead of a single zone', () => {

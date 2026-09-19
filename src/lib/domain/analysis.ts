@@ -20,6 +20,19 @@ export const Shot = z
      * shots stored before REV-38 read back unchanged.
      */
     possibleOverlap: z.boolean().default(false),
+    /**
+     * REV-39 (M20): the hole's overlap evidence — its area over the photo's median hole area, as
+     * detection measured it (the coloured area on the colour path, backing-sheet.md §5.4; the blob
+     * area on the standard path). Reconciliation reads it only when rounds are short. Absent on
+     * manual shots and on shots stored before M20.
+     */
+    overlapRatio: z.number().nonnegative().optional(),
+    /**
+     * REV-39 (M20): set on an automatic shot whose extra units (`multiplicity - 1`) were inferred
+     * by reconciliation as rounds through the same hole. The hole itself was detected; only the
+     * extra rounds are assumed.
+     */
+    inferred: z.literal('double-punch').optional(),
   })
   .refine((s) => s.positionOverrides === null || s.positionOverrides.length === s.multiplicity);
 export type Shot = z.infer<typeof Shot>;
@@ -94,26 +107,26 @@ export interface GroupEllipse {
   angleDeg: number;
 }
 
+/**
+ * geometry-scoring §4, §8 (REV-39): a definite score. Rounds that were declared but not found are
+ * misses and score 0, so the total is the located units' total; `tally` counts located units only.
+ */
 export interface PrecisionScore {
   tally: number[];
   xCount: number;
   identifiedTotal: number;
   maxPossible: number;
-  range: { optimistic: number; pessimistic: number; averaged: number };
 }
 
-export interface SightingModeOutcome {
-  hits: number;
-  misses: number;
-  mpi: { xMm: number; yMm: number } | null;
-}
-
+/**
+ * geometry-scoring §5, §8 (REV-39): `misses` counts located units outside the zone **plus** the
+ * subset's `missing` rounds, each of which is a miss.
+ */
 export interface SightingOutcome {
   zoneDiameterMm: 45 | 115 | null;
   hits: number;
   clean: number;
   misses: number;
-  range: { optimistic: SightingModeOutcome; pessimistic: SightingModeOutcome; averaged: SightingModeOutcome };
 }
 
 export interface SubsetResult {

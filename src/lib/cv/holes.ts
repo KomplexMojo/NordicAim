@@ -221,7 +221,7 @@ export function detectShotCandidates(
  * analysis-pipeline §2 (A5). The bullet holes in a working image as `auto` shots in mm
  * (geometry-scoring §2: origin at the target centre, +x right, +y up). Ids are `auto-1 …` in
  * ascending radial order. Every shot has `multiplicity` 1 (REV-28); capping to the declared rounds is
- * Stage A's and Stage B's job (`capShots`).
+ * Stage A's and Stage B's job (`reconcileShots`, REV-39).
  */
 export function detectShots(
   cv: OpenCvHandle,
@@ -231,6 +231,11 @@ export function detectShots(
   holeDiameterMm: number,
 ): Shot[] {
   const report = detectShotCandidates(cv, img, calibration, template, holeDiameterMm);
+  // REV-39 (M20): each hole's blob area over the photo's median, the same evidence the colour path
+  // records. Reconciliation does not infer double punches from it on this path (measured: it does not
+  // separate them — `DOUBLE_PUNCH_MIN_RATIO_STANDARD`), but it is kept with the shot.
+  const areas = report.candidates.map((c) => c.areaMm2).sort((a, b) => a - b);
+  const median = areas.length === 0 ? 0 : (areas[areas.length >> 1] as number);
   return report.candidates.map((candidate, index) => ({
     id: `auto-${index + 1}`,
     xMm: candidate.xMm,
@@ -241,5 +246,6 @@ export function detectShots(
     confidence: candidate.confidence,
     cluster: candidate.cluster,
     possibleOverlap: false,
+    overlapRatio: median > 0 ? candidate.areaMm2 / median : 0,
   }));
 }

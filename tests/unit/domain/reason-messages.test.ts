@@ -37,3 +37,29 @@ describe('reasonMessage', () => {
     expect(reasonMessage('image-blurry')).toBe('This photo looks blurry, so results may be less accurate.');
   });
 });
+
+describe('reasonMessage: REV-39 reasons (M20, analysis-pipeline §4)', () => {
+  it('too-many-holes names the clear holes and the declared rounds', () => {
+    expect(reasonMessage('too-many-holes', { holesFound: 15, rejectedDeclared: 10 })).toBe(
+      'Found 15 clear holes but you entered 10 rounds. This may be the wrong target or the wrong round count.',
+    );
+  });
+
+  it('too-many-holes says which position was rejected on a both target', () => {
+    expect(reasonMessage('too-many-holes', { holesFound: 8, rejectedDeclared: 5, rejectedPosition: 'prone' })).toBe(
+      'Prone: Found 8 clear holes but you entered 5 rounds. This may be the wrong target or the wrong round count.',
+    );
+  });
+
+  it('double-punch-assumed', () => {
+    expect(reasonMessage('double-punch-assumed', { doublePunches: 1 })).toBe(
+      '1 hole(s) look like two shots through the same hole.',
+    );
+  });
+
+  it('rounds-scored-as-miss', () => {
+    expect(reasonMessage('rounds-scored-as-miss', { missesAssumed: 2 })).toBe(
+      "2 round(s) weren't found and are scored as misses.",
+    );
+  });
+});

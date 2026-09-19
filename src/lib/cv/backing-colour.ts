@@ -203,6 +203,8 @@ export interface BackingBlob {
   areaMm2: number;
   /** §5.5: far larger than the median blob, so two shots may share this hole. A hint, not a count. */
   possibleOverlap: boolean;
+  /** REV-39 (M20): the coloured area over the photo's median blob area — the overlap evidence. */
+  overlapRatio: number;
 }
 
 /** How the colour mask was built (§5.1 with a card, §4 without one). */
@@ -340,6 +342,7 @@ function blobsFromMask(
         areaMm2: b.area / pxPerMm ** 2,
         // §5.5: a hint only — it never changes multiplicity.
         possibleOverlap: median > 0 && b.area >= BACKING_OVERLAP_RATIO * median,
+        overlapRatio: median > 0 ? b.area / median : 0,
       };
     });
     blobs.sort((a, b) => a.radialMm - b.radialMm || a.xMm - b.xMm || a.yMm - b.yMm);
@@ -521,6 +524,8 @@ export function backingBlobsToShots(blobs: BackingBlob[]): CappableShot[] {
     confidence: null,
     cluster: false,
     possibleOverlap: blob.possibleOverlap,
+    // REV-39 (M20): reconciliation's double-punch evidence, stored on the shot.
+    overlapRatio: blob.overlapRatio,
     areaMm2: blob.areaMm2,
   }));
 }

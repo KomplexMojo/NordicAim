@@ -39,9 +39,10 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 - Top: **Session summary** card with the summary image, **Share**, and the "Attach in Garmin Connect" steps (M14).
 - Then one **target card** per photo in capture order:
   - the `cell` diagram
-  - headline (precision: `72 / 100 · X 1`; sighting: `9/10 hits @ 45 mm`; `both`: per-position headlines)
+  - headline (precision: `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses; sighting:
+    `9/10 hits @ 45 mm`; `both`: per-position headlines). The score is definite — no range (REV-39)
   - key metrics (group size mm · MOA · MRAD; MPI offset)
-  - range line when rounds are unaccounted
+  - a **rejected** target (`too-many-holes`) shows the photo and its reason instead of a diagram, headline and metrics
   - status chip plus reason messages (§4)
   - buttons **View** (target detail) and **Adjust shots**.
 - While a target is processing, its card shows a spinner with the current stage.
@@ -56,14 +57,14 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 | A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
 | A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
 | A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior, then measure every printed circle and store the sheet's tilt with it (REV-44, §3) → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
-| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); the set is capped to the declared rounds when they are known, warning `extra-candidates-dropped` (REV-28). With a coloured backing (REV-38, `backing-sheet.md` §5), holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
+| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); when the declared rounds are known the set is **reconciled** against them (REV-39, geometry-scoring §8.3): rejected (`too-many-holes`), capped (`extra-candidates-dropped`, REV-28), given inferred double punches (`double-punch-assumed`) and misses (`rounds-scored-as-miss`). With a coloured backing (REV-38, `backing-sheet.md` §5), holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
 
 **Stage B: runs when analysis has been requested for the session and the photo's metadata is complete**
 
 | Step | Name | What happens | Output |
 |---|---|---|---|
 | B1 | **Incorporate user metadata** | Read categorization and lighting | — |
-| B2 | **Generate analysis: scoring (core MVP, REV-20)** | `analyzeTarget(template, categorization, shots, profile)`: precision ring scores /100, X count, tally; sighting hits/misses/clean per zone; `both` split; missing-round ranges; group size mm/MOA/MRAD; MPI offset (geometry-scoring) | `analysis.computed` |
+| B2 | **Generate analysis: scoring (core MVP, REV-20)** | `analyzeTarget(template, categorization, shots, profile)`: precision ring scores /100, X count, tally; sighting hits/misses/clean per zone; `both` split; missing rounds scored as misses, after reconciling the shots against the declared rounds again (geometry-scoring §8.3; a rejected target gets no result); group size mm/MOA/MRAD; MPI offset (geometry-scoring) | `analysis.computed` |
 | B3 | *(diagrams)* | Render `full-svg`, `full-png`, `cell-svg`; rasterise before the transaction | diagram blobs |
 | B4 | *(status)* | `photoStatus(...)` (§4), including the `template-mismatch` warning when `templateHint.template !== categorization.template && templateHint.confidence >= 0.5` | `photo.status`, `photo.reasons` |
 | B5 | *(summary)* | After all of a session's photos are settled, schedule the summary image build (§7) | artifact |
@@ -153,7 +154,8 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 5. `calibration === null` → `needs-attention`, [`target-not-found`, ...warnings]
 6. `result === null || result.all.identified === 0` → `needs-attention`, [`no-shots-found`, ...warnings]
 7. any subset `overcount > 0` → `needs-attention`, [`too-many-shots`, ...warnings]
-7a. warnings include `too-many-holes` → `needs-attention`, [`too-many-holes`, ...other warnings] (REV-39/M20: clearly more
+7a. warnings include `too-many-holes` → `needs-attention`, [`too-many-holes`, ...other warnings]. **Evaluated before rule 6**
+   (M20): a rejected target has no result, so in this position rule 6 would always report it as `no-shots-found`. (REV-39/M20: clearly more
    holes than the declared rounds means the target is **rejected** and carries no score — it is likely the wrong target or
    the wrong round count, and the declared count is fact. `double-punch-assumed` and `rounds-scored-as-miss` are notes and
    never change the status.)
@@ -163,7 +165,9 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
    overlay fallback means **no disc was found**, so the rings sit where the owner aimed rather than where the target is. A guess
    must not present as a finished score. A `cv` alignment with `outsidePrior: true` is *not* escalated — there the disc was
    measured, so its `alignment-uncertain` warning stays an appended note.)
-10. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0), ...warnings]
+10. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0 and the warnings do not include
+    `rounds-scored-as-miss`), ...warnings] (M20: reconciliation reports its misses as `rounds-scored-as-miss`; `rounds-unaccounted`
+    remains only for a result that was never reconciled)
 
 **Vectors** (complete categorization unless stated; "done/done" = stageA done, stageB done):
 - incomplete categorization, stageA running → `needs-metadata`, []
@@ -178,6 +182,8 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 - done/done, `alignment.method` `cv` with warnings [alignment-uncertain] (the `outsidePrior` case) → `analyzed`, [alignment-uncertain]
 - done/done, precision golden fixture (missing 0) → `analyzed`, []
 - done/done, golden with P8 multiplicity 1 (missing 1) → `analyzed`, [rounds-unaccounted]
+- done/done, warnings [too-many-holes], result null → `needs-attention`, [too-many-holes] (M20)
+- done/done, missing 1, warnings [rounds-scored-as-miss, double-punch-assumed] → `analyzed`, [double-punch-assumed, rounds-scored-as-miss] (M20)
 
 **Messages** (`reasonMessage(reason, ctx)` in `src/lib/domain/reason-messages.ts`):
 

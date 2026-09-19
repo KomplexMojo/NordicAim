@@ -29,11 +29,19 @@ export const Reason = z.enum([
   'image-blurry',
   'template-mismatch',
   'backing-colour-not-found',
+  // REV-39 (M20): declared rounds are fact (analysis-pipeline §4).
+  'too-many-holes',
+  'double-punch-assumed',
+  'rounds-scored-as-miss',
 ]);
 export type Reason = z.infer<typeof Reason>;
 
 export const Warning = z.enum([
   'extra-candidates-dropped',
+  // REV-39 (M20): reconciliation of the found holes against the declared rounds.
+  'too-many-holes',
+  'double-punch-assumed',
+  'rounds-scored-as-miss',
   'backing-colour-not-found',
   'alignment-uncertain',
   'image-blurry',

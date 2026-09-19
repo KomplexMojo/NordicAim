@@ -104,10 +104,8 @@ function renderResultsPanel(subset: SubsetResult): string {
   }
 
   const divider = el('line', { x1: 68, y1: 650, x2: 296, y2: 650, stroke: PALETTE.panelBorder, 'stroke-width': 1 });
-  const totalText =
-    subset.missing > 0
-      ? `Total  ${precision.range.pessimistic}–${precision.range.optimistic} / ${precision.maxPossible}`
-      : `Total  ${precision.identifiedTotal} / ${precision.maxPossible}`;
+  // REV-39 (M20): the total is definite — a round that was not found is a miss and scores 0.
+  const totalText = `Total  ${precision.identifiedTotal} / ${precision.maxPossible}`;
   const total = text(68, 686, 22, totalText, { bold: true, color: PALETTE.textPrimary });
 
   return panel + heading + subheading + rows + divider + total;

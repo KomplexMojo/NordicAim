@@ -2,8 +2,8 @@
 // detected shots, score the target, render its diagrams, and record the status the result implies.
 
 import { BIATHLON_50M } from '@/lib/defaults/biathlon';
-import type { TargetAnalysis } from '@/lib/domain/analysis';
-import { declaredRounds, isCategorizationComplete } from '@/lib/domain/categorization';
+import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
+import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { Position, Warning } from '@/lib/domain/enums';
 import type { Categorization } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
@@ -12,7 +12,7 @@ import { summaryHooks } from '@/lib/pipeline/hooks';
 import { renderDiagramSvg, type DiagramInput } from '@/lib/render/diagram';
 import type { RenderTools } from '@/lib/render/rasterize-browser';
 import { ENGINE_VERSION, analyzeTarget } from '@/lib/scoring/analyze';
-import { capShots } from '@/lib/scoring/cap-shots';
+import { mergeReconcileWarnings, reconcileShots } from '@/lib/scoring/reconcile-shots';
 import type { ServiceContext } from '@/lib/services/context';
 import { AnalysisNotFoundError, PhotoNotFoundError } from '@/lib/services/photos';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -43,6 +43,11 @@ export function stageBWarnings(analysis: TargetAnalysis, categorization: Categor
   const hint = analysis.pipeline.templateHint;
   const mismatch = hint !== null && hint.template !== categorization.template && hint.confidence >= 0.5;
   return mismatch ? [...kept, 'template-mismatch'] : kept;
+}
+
+/** Whether reconciliation left the stored shots exactly as they were. */
+function sameShots(a: Shot[], b: Shot[]): boolean {
+  return a.length === b.length && a.every((shot, i) => JSON.stringify(shot) === JSON.stringify(b[i]));
 }
 
 /** One transaction: save the mutated analysis and the photo status it implies (data-model §7). */
@@ -127,21 +132,25 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
     const template = categorization.template!;
     const position = categorization.position!;
 
-    // REV-28: cap again now that the declared rounds are known for certain, so nothing is scored or
-    // drawn that breaks the rule — a 10-round precision target cannot score above 100.
-    const capped = capShots(analysis.shots, declaredRounds(categorization));
-    const shots = capped.kept;
+    // REV-39 (M20): the declared rounds are fact. Reconcile the stored shots against them now that
+    // they are known for certain — reject, cap, infer double punches, count misses — so nothing is
+    // scored or drawn that breaks the rule (a 10-round precision target cannot score above 100).
+    // With no calibration nothing was detected and nothing is scored, so there is nothing to reconcile.
+    const reconciled =
+      analysis.calibration === null
+        ? null
+        : reconcileShots({ shots: analysis.shots, categorization, method: analysis.pipeline.detection.method });
+    const shots = reconciled?.shots ?? analysis.shots;
+    const rejected = reconciled !== null && reconciled.rejected.length > 0;
+    const shotsChanged = !sameShots(shots, analysis.shots);
 
-    // B2: scoring only means something once the target has been located on the sheet.
+    // B2: scoring only means something once the target has been located on the sheet, and a rejected
+    // target (too many holes for the declared rounds) carries no score at all.
     const result =
-      analysis.calibration === null ? null : analyzeTarget({ template, categorization, shots, profile });
+      analysis.calibration === null || rejected ? null : analyzeTarget({ template, categorization, shots, profile });
 
     // B4 (warnings half; the status itself is computed inside the transaction below).
-    const stageAWarnings = stageBWarnings(analysis, categorization);
-    const warnings =
-      capped.dropped.length > 0 && !stageAWarnings.includes('extra-candidates-dropped')
-        ? [...stageAWarnings, 'extra-candidates-dropped' as const]
-        : stageAWarnings;
+    const warnings = mergeReconcileWarnings(stageBWarnings(analysis, categorization), reconciled ?? { warnings: [] });
 
     // B3: rasterise before the transaction (data-model §6).
     const diagrams =
@@ -171,9 +180,9 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
 
     const next: TargetAnalysis = {
       ...currentAnalysis,
-      // Only touched when the cap actually dropped something, so a re-run never rewrites shots it
-      // did not change (and never renumbers a manual one).
-      shots: capped.dropped.length > 0 ? shots : currentAnalysis.shots,
+      // Only touched when reconciliation changed something (a drop or an inferred round), so a re-run
+      // never rewrites shots it did not change (and never renumbers a manual one).
+      shots: shotsChanged ? shots : currentAnalysis.shots,
       pipeline: { ...currentAnalysis.pipeline, stageB: 'done', error: null, warnings },
       computed: result === null ? null : { engineVersion: ENGINE_VERSION, result },
       updatedAt: nowIso,

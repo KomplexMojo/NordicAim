@@ -35,6 +35,8 @@ import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
 import type { RgbaImage } from '@/lib/media/format';
 import { capShots, withoutArea } from '@/lib/scoring/cap-shots';
+import { DOUBLE_PUNCH_MIN_RATIO } from '@/lib/scoring/reconcile';
+import { reconcileShots } from '@/lib/scoring/reconcile-shots';
 
 import { loadLabelledHoles } from '../../helpers/labelled-holes';
 import { loadOpenCvForTests } from '../../helpers/opencv';
@@ -287,6 +289,27 @@ describe('detectShotsWithBacking (analysis-pipeline §2 A5, backing-sheet.md §5
       'auto-7',
       'auto-8',
     ]);
+  }, 60_000);
+
+  it('records the overlap ratio on every shot, and REV-39 reconciliation makes the pair a double punch (M20)', async () => {
+    // 9 real shots on 8 holes, declared 10: the IMG_5191 shape — one double punch, one miss.
+    const img = await syntheticTargetRgba({ ...PRECISION, holesMm: backedHoles(), numeralsDeg: 0 });
+    const result = detectShotsWithBacking(cv, img, CAL, 'precision', HOLE_MM, { mode: 'coloured', colour: pinkCard });
+    expect(result.shots.every((s) => typeof s.overlapRatio === 'number')).toBe(true);
+    const flagged = result.shots.find((s) => s.possibleOverlap)!;
+    expect(flagged.overlapRatio).toBeGreaterThanOrEqual(DOUBLE_PUNCH_MIN_RATIO);
+
+    const reconciled = reconcileShots({
+      shots: withoutArea(result.shots),
+      categorization: { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null },
+      method: result.detection.method,
+    });
+    expect(reconciled.rejected).toEqual([]);
+    expect(reconciled.doublePunches).toBe(1);
+    expect(reconciled.missesAssumed).toBe(1);
+    const doubled = reconciled.shots.find((s) => s.id === flagged.id)!;
+    expect(doubled).toMatchObject({ multiplicity: 2, inferred: 'double-punch', source: 'auto' });
+    expect(reconciled.warnings).toEqual(['double-punch-assumed', 'rounds-scored-as-miss']);
   }, 60_000);
 
   it('gives every colour-path shot its coloured area, so REV-28 caps by size (§5.4, §5.7)', async () => {

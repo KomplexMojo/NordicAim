@@ -9,6 +9,7 @@ import type { OpenCv } from '../src/lib/cv/opencv.ts';
 import { inNumeralBox } from '../src/lib/cv/print-mask.ts';
 import { hintTemplate } from '../src/lib/cv/template-hint.ts';
 import { PRECISION_TEMPLATE } from '../src/lib/defaults/templates.ts';
+import { CONFIDENT_HOLE_MIN } from '../src/lib/scoring/reconcile.ts';
 import { mmToPx } from '../src/lib/geometry/transform.ts';
 import {
   GATE_PRECISION_MIN,
@@ -81,6 +82,41 @@ async function runPhoto(cv: OpenCv, repoRoot: string, photo: LabelledPhoto, pers
     matchTolerancePx(calibration, HOLE_DIAMETER_MM),
   );
   return { photo, report, match, ms, perspectiveMs, tilted: perspective ? refined !== null : null, detectionsPx };
+}
+
+/** M20 step 2: the precision the reject rule relies on, at CONFIDENT_HOLE_MIN and around it. */
+const CONFIDENT_PRECISION_MIN = 0.98;
+
+function confidentHoleReport(gated: PhotoRun[]): string[] {
+  const scored: Array<{ confidence: number; real: boolean }> = [];
+  for (const run of gated) {
+    if (run.report === null || run.match === null) continue;
+    const unmatched = new Set(run.match.unmatchedDetections);
+    run.report.candidates.forEach((c, i) => scored.push({ confidence: c.confidence, real: !unmatched.has(i) }));
+  }
+  const at = (t: number) => {
+    const above = scored.filter((s) => s.confidence >= t);
+    const real = above.filter((s) => s.real).length;
+    return { n: above.length, real, precision: above.length === 0 ? 1 : real / above.length };
+  };
+  // The lowest threshold at which precision is at least the floor at every higher threshold too.
+  const thresholds = [...new Set(scored.map((s) => s.confidence))].sort((a, b) => a - b);
+  const stable = thresholds.find((t) => thresholds.every((u) => u < t || at(u).precision >= CONFIDENT_PRECISION_MIN)) ?? null;
+  const totalReal = scored.filter((s) => s.real).length;
+  const rows = [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, CONFIDENT_HOLE_MIN, 0.97].map((t) => {
+    const r = at(t);
+    return [t.toFixed(2), String(r.n), String(r.n - r.real), pct(r.precision), pct(totalReal === 0 ? 0 : r.real / totalReal)];
+  });
+  const chosen = at(CONFIDENT_HOLE_MIN);
+  return [
+    `\n### Confident holes (M20 step 2, REV-39)\n`,
+    `Standard-path detections on the gated photos: ${scored.length}, of which ${totalReal} match a labelled hole. ` +
+      `A hole is confident at confidence >= CONFIDENT_HOLE_MIN (${CONFIDENT_HOLE_MIN}); only confident holes can reject a target.\n`,
+    table(['confidence >=', 'detections', 'false', 'precision', 'share of real holes'], rows),
+    `- Lowest threshold with precision >= ${CONFIDENT_PRECISION_MIN} at it and every higher threshold: ${stable === null ? 'none' : stable.toFixed(4)}.`,
+    `- At CONFIDENT_HOLE_MIN: precision ${pct(chosen.precision)} on ${chosen.n} detections` +
+      `${chosen.precision >= CONFIDENT_PRECISION_MIN ? '' : ` — BELOW ${CONFIDENT_PRECISION_MIN}: re-measure CONFIDENT_HOLE_MIN`}.`,
+  ];
 }
 
 export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<LabelledEvaluation> {
@@ -206,6 +242,8 @@ export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<La
     });
     lines.push(`- ${run.photo.id}: ${items.join('; ')}`);
   }
+
+  lines.push(...confidentHoleReport(gated));
 
   const failed = !passesGate(all);
   lines.push(

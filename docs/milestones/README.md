@@ -30,7 +30,7 @@ as shown (`<model> · <effort>`).
 | [M17](M17-place-and-compare.md) | Unplaced shot markers and the diagram/photo compare slider | optional · receive analysis | M13 | opus · high | opus · high | no | done |
 | [M18](M18-alignment-perspective.md) | Alignment under perspective (the centre rings) | overlay on template · generate analysis | M16 | opus · high | opus · high | yes | done |
 | [M19](M19-backing-sheet.md) | Coloured backing sheet option | add metadata (option) · generate analysis | M16 | opus · high | opus · high | no | done |
-| [M20](M20-declared-rounds.md) | Declared rounds are fact (reject, double punches, misses) | generate analysis | M16, M19 | opus · high | opus · high | no | pending |
+| [M20](M20-declared-rounds.md) | Declared rounds are fact (reject, double punches, misses) | generate analysis | M16, M19 | opus · high | opus · high | no | done |
 | [M21](M21-session-review.md) | Session review, suggested holes and double punches | optional correction · receive analysis | M16, M17 | opus · high | opus · high | yes | pending |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20 | sonnet · medium | sonnet · high | yes | pending |
 

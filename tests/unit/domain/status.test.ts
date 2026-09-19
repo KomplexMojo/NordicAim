@@ -226,3 +226,40 @@ describe('photoStatus', () => {
     expect(out).toEqual({ status: 'analyzed', reasons: ['rounds-unaccounted'] });
   });
 });
+
+describe('photoStatus: REV-39 declared rounds (M20, analysis-pipeline §4 rule 7a)', () => {
+  it('too-many-holes with no result (a rejected target carries no score) -> needs-attention, [too-many-holes, ...others]', () => {
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ warnings: ['image-blurry', 'too-many-holes'] }),
+      result: null,
+    });
+    expect(out).toEqual({ status: 'needs-attention', reasons: ['too-many-holes', 'image-blurry'] });
+  });
+
+  it('double-punch-assumed and rounds-scored-as-miss are notes: the status stays analyzed', () => {
+    const result = resultStub({ all: subsetStub({ identified: 9, missing: 1 }) });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ warnings: ['rounds-scored-as-miss', 'double-punch-assumed'] }),
+      result,
+    });
+    // Ordered as §4 lists them; rounds-unaccounted is not added on top of rounds-scored-as-miss.
+    expect(out).toEqual({ status: 'analyzed', reasons: ['double-punch-assumed', 'rounds-scored-as-miss'] });
+  });
+
+  it('a missing round without the rounds-scored-as-miss warning still reports rounds-unaccounted', () => {
+    const result = resultStub({ all: subsetStub({ identified: 9, missing: 1 }) });
+    const out = photoStatus({ categorization: completeCategorization, analysis: analysisStub({}), result });
+    expect(out).toEqual({ status: 'analyzed', reasons: ['rounds-unaccounted'] });
+  });
+
+  it('a rejected target is never analyzed, so it is not a summary-image candidate (rendering-composite §5)', () => {
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ warnings: ['too-many-holes'] }),
+      result: null,
+    });
+    expect(out.status).not.toBe('analyzed');
+  });
+});

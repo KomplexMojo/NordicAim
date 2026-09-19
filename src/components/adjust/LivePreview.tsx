@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AnalysisResult } from '@/lib/domain/analysis';
 import type { PhotoStatus, Reason, TemplateId } from '@/lib/domain/enums';
 import { targetHeadline } from '@/lib/render/text-lines';
+import type { ReconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 
 interface LivePreviewProps {
   result: AnalysisResult | null;
@@ -13,13 +14,15 @@ interface LivePreviewProps {
   hintTemplate: TemplateId | null;
   /** `declaredRoundsOrNull(photo.categorization)`, for the `extra-candidates-dropped` message. */
   declared: number | null;
+  /** REV-39 (M20): the numbers the reconciliation reasons name; null while the categorization is incomplete. */
+  reconcile: ReconcileReasonContext | null;
 }
 
 /**
  * M13 step 3: the score this photo would get if the edits on screen were saved — `analyzeTarget`,
  * `targetHeadline` and the `photoStatus` reasons, recomputed on every edit.
  */
-export function LivePreview({ result, status, reasons, hintTemplate, declared }: LivePreviewProps) {
+export function LivePreview({ result, status, reasons, hintTemplate, declared, reconcile }: LivePreviewProps) {
   const missing = result === null ? 0 : result.subsets.reduce((sum, subset) => sum + subset.missing, 0);
 
   return (
@@ -34,9 +37,11 @@ export function LivePreview({ result, status, reasons, hintTemplate, declared }:
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {result === null ? (
-          <p className="text-sm text-muted-foreground">
-            Add this target&apos;s template, position and rounds on the metadata screen to see a score here.
-          </p>
+          reconcile === null && (
+            <p className="text-sm text-muted-foreground">
+              Add this target&apos;s template, position and rounds on the metadata screen to see a score here.
+            </p>
+          )
         ) : (
           <MetricsList result={result} />
         )}
@@ -48,6 +53,7 @@ export function LivePreview({ result, status, reasons, hintTemplate, declared }:
           missing={missing}
           hintTemplate={hintTemplate}
           declared={declared}
+          reconcile={reconcile}
         />
       </CardContent>
     </Card>
