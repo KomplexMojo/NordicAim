@@ -11,7 +11,7 @@ import type { BiathlonSession } from '@/lib/domain/session';
 import { renderDiagramSvg, type DiagramInput } from './diagram';
 import { PALETTE } from './palette';
 import { el, num, text } from './svg';
-import { fmtAngular, fmtMm, precisionFooterLines, sightingFooterLines } from './text-lines';
+import { fmtAngular, fmtMm, precisionFooterLines, sightingFooterLines, targetHeadline } from './text-lines';
 
 export interface SlotData {
   photo: TargetPhoto;
@@ -142,22 +142,22 @@ function mpiCompactLine(offset: MpiOffset | null): string | null {
   return `MPI ${fmtMm(Math.abs(offset.xMm))} ${xDir} / ${fmtMm(Math.abs(offset.yMm))} ${yDir} mm`;
 }
 
-/** §5 line 2: one summary line per filled slot, e.g.
- * "Sighting 1 (prone): 9/10 hit @45 mm · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm"
- * "Precision 1 (prone): 72/100 · X 1 · ES 41.9 mm (2.88 MOA)". */
+/** §5 line 2: one summary line per filled slot, built from the same `targetHeadline` the results card
+ * and target detail screen use (M24: all three stay in step), e.g.
+ * "Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm"
+ * "Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)". */
 function slotSummaryLine(label: string, slot: SlotData): string {
   const subset = slot.result.all;
   const position = shortPositionLabel(slot.result.position);
   const esText = `ES ${fmtMm(subset.extremeSpreadMm)} mm (${fmtAngular(subset.extremeSpreadAngular?.moa ?? null)} MOA)`;
+  const headline = targetHeadline(slot.result);
 
   if (slot.result.template === 'precision') {
-    const p = subset.precision!;
-    return `${label} (${position}): ${p.identifiedTotal}/${p.maxPossible} · X ${p.xCount} · ${esText}`;
+    return `${label} (${position}): ${headline} · ${esText}`;
   }
 
-  const s = subset.sighting!;
   const mpi = mpiCompactLine(subset.mpiOffset);
-  const head = `${label} (${position}): ${s.hits}/${subset.declared} hit @${s.zoneDiameterMm} mm · ${esText}`;
+  const head = `${label} (${position}): ${headline} · ${esText}`;
   return mpi === null ? head : `${head} · ${mpi}`;
 }
 

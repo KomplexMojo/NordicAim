@@ -245,3 +245,13 @@ during M10/M11 work._
 - [ ] In Settings, set Backing sheet to Coloured (optionally photograph the backing card and check the swatch matches). Capture and analyze a target shot over a coloured backing, and confirm detection uses the colour path (target detail or results shows "Holes found by backing colour").
 - [ ] If the phone holds data from an older build (REV-38 or M19-era, with a session that has a backing card), open the new build once and confirm the migration lifts the previously measured backing colour into Settings → Backing sheet, that old sessions still open normally, and that nothing is re-analyzed.
 - [ ] In Settings → About, confirm the build SHA shown matches the commit deployed to Pages (from GITHUB_SHA in CI).
+
+## M24 — Results that say what they count (issues #6, #4, #8)
+
+- [ ] iPhone check (per AGENTS.md): at 375 px, open the results card, target detail, and a shared summary image with a real or fixture-seeded touch-credited shot. Confirm the headline (e.g. "9 hits · 1 miss — 45 mm prone") and the "N of M shots found" line fit without overflow, including on a 'both'-position card/summary line.
+- [ ] On the target detail diagram, check that a real touch-credited shot's dashed true-hole ring and the footer note "Dashed ring around a shot: scored by touching the line, not a solid hit" read clearly.
+- [ ] Check `docs/reference/generated/sample-precision-full.png` by eye and confirm the stale M20 "Range:" footer line is gone.
+- [ ] Decide whether `cellCaption` (rendering-composite.md §4, the cell-diagram thumbnail caption) should also drop the "<hits>/<declared> hit @ <zone> mm" shape now that targetHeadline no longer uses it, and whether it should be reworded — currently left unchanged pending this decision.
+- [ ] Decide whether the zone-less "both" headline wording is acceptable.
+- [ ] Decide whether to accept the `settings.spec.ts` "hole size…" mobile-chromium flake as a known, pre-existing, order-dependent issue unrelated to M24, or file a follow-up to isolate that test's stored hole-size setting (`pnpm test:e2e` cannot be made to exit 0 deterministically from inside M24's scope).
+- [ ] Issue #4 (which scoring rule is correct) is still the owner's decision — M24 is presentation only and does not resolve it.

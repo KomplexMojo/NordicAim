@@ -151,6 +151,67 @@ describe('render/diagram renderDiagramSvg golden checks (rendering-composite.md 
   });
 });
 
+describe('render/diagram renderDiagramSvg touch-credit marker (M24, REV-49: rendering-composite §3 item 7a)', () => {
+  function shot(id: string, xMm: number): Shot {
+    return { id, xMm, yMm: 0, multiplicity: 1, positionOverrides: null, source: 'auto', confidence: null, cluster: false, possibleOverlap: false };
+  }
+
+  it('a precision unit scored by touching the line (7.05 mm) draws the touch-credit ring and the footer explains it', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 1, roundsStanding: null };
+    const shots = [shot('a', 7.05)];
+    const result = analyzeTarget({ template: 'precision', categorization, shots });
+    const svg = renderDiagramSvg(
+      { template: 'precision', result, shots, positionLabel: 'Prone', captureLocal: null, lighting: 'daylight', holeDiameterMm: BIATHLON_50M.holeDiameterMm },
+      'full',
+    );
+    expect(svg).toContain('class="touch-credit"');
+    expect(svg).toContain('scored by touching the line');
+  });
+
+  it('a precision unit within its ring (3.55 mm) draws no touch-credit ring', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 1, roundsStanding: null };
+    const shots = [shot('a', 3.55)];
+    const result = analyzeTarget({ template: 'precision', categorization, shots });
+    const svg = renderDiagramSvg(
+      { template: 'precision', result, shots, positionLabel: 'Prone', captureLocal: null, lighting: 'daylight', holeDiameterMm: BIATHLON_50M.holeDiameterMm },
+      'full',
+    );
+    expect(svg).not.toContain('class="touch-credit"');
+    expect(svg).not.toContain('scored by touching the line');
+  });
+
+  it('the golden fixtures (no touch-credited unit) draw no touch-credit ring or note', () => {
+    expect(renderDiagramSvg(buildInput(sightingFixture, sightingResult), 'full')).not.toContain('class="touch-credit"');
+    expect(renderDiagramSvg(buildInput(precisionFixture, precisionResult), 'full')).not.toContain('class="touch-credit"');
+  });
+
+  it('a sighting unit scored by touching the line (23.4 mm, 45 mm prone zone) draws the touch-credit ring', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 1, roundsStanding: null };
+    const shots = [shot('a', 23.4)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    expect(result.all.sighting).toMatchObject({ hits: 1, misses: 0 });
+    const svg = renderDiagramSvg(
+      { template: 'sighting', result, shots, positionLabel: 'Prone', captureLocal: null, lighting: 'daylight', holeDiameterMm: BIATHLON_50M.holeDiameterMm },
+      'full',
+    );
+    expect(svg).toContain('class="touch-credit"');
+    expect(svg).toContain('scored by touching the line');
+  });
+
+  it('a sighting unit outside the zone (26.2 mm, 45 mm prone zone) is a miss and draws no touch-credit ring', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 1, roundsStanding: null };
+    const shots = [shot('a', 26.2)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    expect(result.all.sighting).toMatchObject({ hits: 0, misses: 1 });
+    const svg = renderDiagramSvg(
+      { template: 'sighting', result, shots, positionLabel: 'Prone', captureLocal: null, lighting: 'daylight', holeDiameterMm: BIATHLON_50M.holeDiameterMm },
+      'full',
+    );
+    expect(svg).not.toContain('class="touch-credit"');
+    expect(svg).not.toContain('scored by touching the line');
+  });
+});
+
 describe('render/diagram renderDiagramSvg snapshots', () => {
   it('sighting full', () => {
     expect(renderDiagramSvg(buildInput(sightingFixture, sightingResult), 'full')).toMatchSnapshot();

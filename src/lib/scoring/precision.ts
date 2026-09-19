@@ -34,3 +34,15 @@ export function scoreRing(radialMm: number, holeDiameterMm: number = BIATHLON_50
   }
   return { ring: 0, isX: false };
 }
+
+/**
+ * rendering-composite.md §3 item 7a (M24, REV-49): whether the ring `scoreRing` credited was reached
+ * only because the hole's edge touches its line — the unit's centre (`radialMm`) itself lies outside
+ * that ring's own solid circle (`ringDiameterMm[ring]/2`). A miss (`ring === 0`) is never touch-credited.
+ * Uses the same `ringDiameterMm` constants as `scoreRing`, not a second copy of the thresholds.
+ */
+export function isTouchCredited(radialMm: number, ring: number): boolean {
+  if (ring <= 0) return false;
+  const ringRadiusMm = PRECISION_TEMPLATE.ringDiameterMm[ring as RingKey] / 2;
+  return radialMm > ringRadiusMm + EPS;
+}

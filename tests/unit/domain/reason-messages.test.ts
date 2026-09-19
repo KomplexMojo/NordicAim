@@ -7,6 +7,12 @@ describe('reasonMessage', () => {
     expect(reasonMessage('rounds-unaccounted', { missing: 2 })).toContain('2 round(s)');
   });
 
+  // M24 (issue #8 point 5, REV-49): the message no longer says "score shown as a range" — M20 made
+  // the total definite. This reason is reworded, not retired (analysis-pipeline §4 rule 10).
+  it('rounds-unaccounted matches the reworded spec table string', () => {
+    expect(reasonMessage('rounds-unaccounted', { missing: 2 })).toBe('2 round(s) not found — re-analyze to score them as misses.');
+  });
+
   it("template-mismatch with hint 'sighting' contains 'sighting'", () => {
     expect(reasonMessage('template-mismatch', { hintTemplate: 'sighting' })).toContain('sighting');
   });

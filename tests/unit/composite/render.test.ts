@@ -87,8 +87,9 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
 
   it('contains the required golden substrings', () => {
     expect(svg).toContain('Session analysis');
-    expect(svg).toContain('Precision 1 (prone): 72/100');
-    expect(svg).toContain('Sighting 1 (prone): 9/10 hit @45 mm');
+    // REV-49 (M24): the analysis band's per-slot line now reuses `targetHeadline` (issue #6).
+    expect(svg).toContain('Precision 1 (prone): 72 / 100');
+    expect(svg).toContain('Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone');
   });
 
   it('has two stat cards (one filled slot per row)', () => {
@@ -140,5 +141,27 @@ describe('render/composite renderCompositeSvg slot layout', () => {
     });
     const svg = renderCompositeSvg(input);
     expect(svg).toContain('+2 more target(s) in the app');
+  });
+});
+
+describe('render/composite renderCompositeSvg "both" slot line (fix round 1: §5\'s 110-char cap)', () => {
+  it('a sighting "both" slot line stays at or under 110 chars and keeps ES visible', () => {
+    const bothCategorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
+    const bothResult = analyzeTarget({ template: 'sighting', categorization: bothCategorization, shots: sightingFixture.shots });
+    const bothSlot = slot({ ...sightingFixture, categorization: bothCategorization }, bothResult);
+    const input = baseInput({ slots: { sighting: [bothSlot, null], precision: [null, null] } });
+    const svg = renderCompositeSvg(input);
+
+    // The headline drops the zone size for "both" (fix round 1), so the line reads "hits · miss(es)"
+    // for each half without "— <zone> mm" repeated twice.
+    expect(svg).toContain('Sighting 1 (prone + standing): Prone 5 hits · 0 misses · Standing 5 hits · 0 misses');
+
+    const match = /<text[^>]*>(Sighting 1 \(prone \+ standing\): [^<]*)<\/text>/.exec(svg);
+    expect(match).not.toBeNull();
+    const lineText = match![1]!;
+    expect(lineText.length).toBeLessThanOrEqual(110);
+    // ES stays visible; the trailing "…" shows only the MPI part got cut (fix round 1).
+    expect(lineText).toContain('ES 27.7 mm (1.90 MOA)');
+    expect(lineText.endsWith('…')).toBe(true);
   });
 });

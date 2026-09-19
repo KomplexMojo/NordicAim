@@ -1,9 +1,19 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import type { Shot } from '../../src/lib/domain/analysis';
+
+interface HookAnalysis {
+  calibration: { anchorDiameterMm: number } | null;
+  shots: Shot[];
+}
+
 type HookWindow = Window & {
   __asaTest?: {
     loadDemo(): Promise<string>;
     waitForIdle(): Promise<void>;
+    listPhotos(sessionId: string): Promise<Array<{ id: string }>>;
+    getAnalysis(photoId: string): Promise<HookAnalysis | null>;
+    setShots(photoId: string, shots: unknown): Promise<void>;
   };
 };
 
@@ -16,6 +26,27 @@ async function loadDemoSession(page: Page): Promise<string> {
   const sessionId = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   return sessionId;
+}
+
+async function waitForIdle(page: Page): Promise<void> {
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+}
+
+async function getAnalysis(page: Page, photoId: string): Promise<HookAnalysis> {
+  const analysis = await page.evaluate((pid) => (window as HookWindow).__asaTest!.getAnalysis(pid), photoId);
+  if (analysis === null) throw new Error(`no analysis for ${photoId}`);
+  return analysis;
+}
+
+/** The demo session's precision sheet, found by its anchor size (112.4 mm) rather than by index (shared
+ * with adjust.spec.ts's own copy of this helper). */
+async function precisionPhotoId(page: Page, sessionId: string): Promise<string> {
+  const photos = await page.evaluate((sid) => (window as HookWindow).__asaTest!.listPhotos(sid), sessionId);
+  for (const photo of photos) {
+    const analysis = await getAnalysis(page, photo.id);
+    if (analysis.calibration?.anchorDiameterMm === 112.4) return photo.id;
+  }
+  throw new Error('no precision photo in the demo session');
 }
 
 /** Opens the precision target's detail screen (M12 step 4's route, unchanged by M17). */
@@ -88,4 +119,29 @@ test('target: the rest of the detail screen is unchanged (M12 step 4)', async ({
   await expect(page.getByTestId('tally-row-8')).toContainText('x2');
   await expect(page.getByTestId('photo-facts')).toBeVisible();
   await expect(page.getByTestId('zoom-toggle')).toBeVisible();
+});
+
+/**
+ * M24 Tests (third bullet), REV-49, issues #4/#6/#8: the target detail diagram must mark a unit that
+ * was credited only by the touch rule (rendering-composite.md §3 item 7a). Moves P1 to a radial
+ * distance of 7.05 mm — the milestone's own precision vector (`scoring/precision.ts` `isTouchCredited`,
+ * geometry-scoring §4): it scores ring 10 only because the 5.6 mm hole's edge reaches the 10.4 mm ring,
+ * not because the unit's own centre is inside it.
+ */
+test('target: a touch-credited unit draws the dashed ring and footer note (M24, REV-49)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  const photoId = await precisionPhotoId(page, sessionId);
+
+  const before = await getAnalysis(page, photoId);
+  const shots = before.shots.map((shot) => (shot.id === 'P1' ? { ...shot, xMm: 7.05, yMm: 0 } : shot));
+  await page.evaluate(([pid, s]) => (window as HookWindow).__asaTest!.setShots(pid, s), [photoId, shots] as const);
+  await waitForIdle(page);
+
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}`);
+  await expect(page.getByTestId('target-detail-title')).toBeVisible({ timeout: 30_000 });
+
+  const diagram = page.getByTestId('diagram-full');
+  await expect(diagram).toBeVisible({ timeout: 30_000 });
+  await expect(diagram.locator('circle.touch-credit')).toHaveCount(1);
+  await expect(diagram).toContainText('scored by touching the line');
 });

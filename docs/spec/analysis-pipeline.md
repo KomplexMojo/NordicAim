@@ -176,7 +176,9 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
    measured, so its `alignment-uncertain` warning stays an appended note.)
 10. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0 and the warnings do not include
     `rounds-scored-as-miss`), ...warnings] (M20: reconciliation reports its misses as `rounds-scored-as-miss`; `rounds-unaccounted`
-    remains only for a result that was never reconciled)
+    remains only for a result that was never reconciled. M24, issue #8 point 5: this rule is unchanged — `rounds-unaccounted`
+    is **reworded, not retired** (a result stored before M20 and not yet re-analyzed still produces it); only its message text
+    changed, to drop the stale "score shown as a range".)
 
 **Vectors** (complete categorization unless stated; "done/done" = stageA done, stageB done):
 - incomplete categorization, stageA running → `needs-metadata`, []
@@ -202,7 +204,7 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 | `no-shots-found` | No shots detected. Use Adjust to add them. |
 | `too-many-shots` | More shots found than the rounds you entered. Check the rounds or adjust shots. |
 | `extra-candidates-dropped` | Some detected marks were ignored because you fired `<N>` rounds. |
-| `rounds-unaccounted` | `<N>` round(s) not found (often overlapping holes) — score shown as a range. |
+| `rounds-unaccounted` | `<N>` round(s) not found — re-analyze to score them as misses. |
 | `alignment-uncertain` | Used your on-screen alignment — check the rings line up. |
 | `image-blurry` | This photo looks blurry, so results may be less accurate. |
 | `template-mismatch` | This looks like a `<sighting/precision>` target — check the template. |

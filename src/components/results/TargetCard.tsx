@@ -6,7 +6,7 @@ import type { TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { positionLabel } from '@/lib/pipeline/stage-b';
-import { targetHeadline } from '@/lib/render/text-lines';
+import { shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 
 import { DiagramSvg } from './DiagramSvg';
@@ -45,9 +45,16 @@ export function TargetCard({ sessionId, photo, analysis, onRetry }: TargetCardPr
       <CardHeader>
         <CardTitle data-testid="target-title">{cardTitle(photo)}</CardTitle>
         {result !== null && !rejected && (
-          <p className="text-lg font-semibold" data-testid="target-headline">
-            {targetHeadline(result)}
-          </p>
+          <>
+            <p className="text-lg font-semibold" data-testid="target-headline">
+              {targetHeadline(result)}
+            </p>
+            {/* REV-49 (M24, issue #6): "hit" and "found" never share a sentence — a separate line
+                directly under the headline. */}
+            <p className="text-sm text-muted-foreground" data-testid="shots-found-line">
+              {shotsFoundLine(result)}
+            </p>
+          </>
         )}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

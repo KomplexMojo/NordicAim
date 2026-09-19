@@ -5,9 +5,24 @@
 
 import type { GroupEllipse, Shot, UnitResult } from '../domain/analysis';
 import type { Lighting } from '../domain/enums';
+import { isTouchCredited as isPrecisionTouchCredited } from '../scoring/precision';
+import { isTouchCredited as isSightingTouchCredited } from '../scoring/sighting';
 import { placeLabels, type Box, type Circle, type LabelRequest, type PlacedLabel } from './label-placement';
 import { PALETTE } from './palette';
 import { el, num, text } from './svg';
+
+/**
+ * rendering-composite.md §3 item 7a (M24, REV-49): true for a unit whose scored ring or zone credited
+ * it only via the touch rule (its centre is outside the solid boundary it scored). Delegates to the
+ * scoring engine's own threshold functions (`scoring/precision.ts`, `scoring/sighting.ts`) — never a
+ * second copy of geometry-scoring §4/§5's numbers. A `UnitResult` carries either `ring` (precision) or
+ * `zone` (sighting), never both.
+ */
+export function isUnitTouchCredited(unit: UnitResult): boolean {
+  if (unit.ring !== null) return isPrecisionTouchCredited(unit.radialMm, unit.ring);
+  if (unit.zone !== null) return isSightingTouchCredited(unit.radialMm, unit.zone, unit.position);
+  return false;
+}
 
 export function svgRoot(width: number, height: number, children: string): string {
   return el('svg', { xmlns: 'http://www.w3.org/2000/svg', width, height, viewBox: `0 0 ${width} ${height}` }, children);
@@ -69,12 +84,37 @@ function shotFillColor(shot: Shot, units: UnitResult[]): string {
 }
 
 /** §3 item 7 / §4: one circle per `Shot` (not per unit), coloured by unit 0's assigned position. The radius
- * is a fixed display size (full 8, cell 5), not the true hole size, so tight groups stay readable (REV-22). */
-export function renderShots(shots: Shot[], units: UnitResult[], cx: number, cy: number, s: number, radiusPx: number): string {
+ * is a fixed display size (full 8, cell 5), not the true hole size, so tight groups stay readable (REV-22).
+ * §3 item 7a (M24): a shot whose unit was touch-credited (`isUnitTouchCredited`) also gets a thin dashed
+ * ring at its true hole radius (`holeDiameterMm/2 * s`), drawn under the display dot, so a shot credited
+ * only because its hole edge touches the line is visibly outside its own marker. */
+export function renderShots(
+  shots: Shot[],
+  units: UnitResult[],
+  cx: number,
+  cy: number,
+  s: number,
+  radiusPx: number,
+  holeDiameterMm: number,
+): string {
   let out = '';
+  const trueRadiusPx = (holeDiameterMm / 2) * s;
   for (const shot of shots) {
     const { x, y } = projectMm(cx, cy, s, shot.xMm, shot.yMm);
     const r = shotRadius(shot, radiusPx);
+    const unit = units.find((u) => u.shotId === shot.id);
+    if (unit !== undefined && isUnitTouchCredited(unit)) {
+      out += el('circle', {
+        cx: x,
+        cy: y,
+        r: trueRadiusPx,
+        fill: 'none',
+        stroke: PALETTE.textSecondary,
+        'stroke-width': 1.5,
+        'stroke-dasharray': '3 3',
+        class: 'touch-credit',
+      });
+    }
     out += el('circle', { cx: x, cy: y, r, fill: shotFillColor(shot, units), stroke: '#FFFFFF', 'stroke-width': 2, class: 'shot' });
   }
   return out;

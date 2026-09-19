@@ -6,7 +6,14 @@ import { describe, expect, it } from 'vitest';
 import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { Shot } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
-import { cellCaption, precisionFooterLines, sightingFooterLines, targetHeadline } from '@/lib/render/text-lines';
+import {
+  cellCaption,
+  precisionFooterLines,
+  shotsFoundLine,
+  sightingFooterLines,
+  targetHeadline,
+  touchCreditNote,
+} from '@/lib/render/text-lines';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 
 interface ShotsFixture {
@@ -29,10 +36,10 @@ describe('render/text-lines targetHeadline (rendering-composite.md §3, Steps §
     expect(targetHeadline(result)).toBe('72 / 100 · X 1');
   });
 
-  it('sighting fixture (prone): "9/10 hits @ 45 mm"', () => {
+  it('sighting fixture (prone), REV-49 (issue #6): "9 hits · 1 miss — 45 mm prone"', () => {
     const fixture = readFixture('sample-shots-sighting.json');
     const result = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots: fixture.shots });
-    expect(targetHeadline(result)).toBe('9/10 hits @ 45 mm');
+    expect(targetHeadline(result)).toBe('9 hits · 1 miss — 45 mm prone');
   });
 
   it('precision with P8 multiplicity reduced to 1 (missing=1): a definite "66 / 100 · 1 miss · X 1" (REV-39)', () => {
@@ -80,7 +87,88 @@ describe('render/text-lines targetHeadline (rendering-composite.md §3, Steps §
     const shots = [at('a', 6), at('b', 12), at('c', 14, 2), at('d', 20)];
     const result = analyzeTarget({ template: 'sighting', categorization, shots });
     expect(result.all.sighting).toEqual({ zoneDiameterMm: 45, hits: 5, clean: 5, misses: 5 });
-    expect(targetHeadline(result)).toBe('5/10 hits @ 45 mm');
+    expect(targetHeadline(result)).toBe('5 hits · 5 misses — 45 mm prone');
+  });
+
+  it('the milestone\'s literal sighting vector: 7 of 10 -> "7 hits · 3 misses — 45 mm prone" (M24 Tests)', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null };
+    const at = (id: string, xMm: number, yMm: number): Shot => ({
+      id,
+      xMm,
+      yMm,
+      multiplicity: 1,
+      positionOverrides: null,
+      source: 'auto',
+      confidence: null,
+      cluster: false,
+      possibleOverlap: false,
+    });
+    // 7 hits inside the 45 mm prone zone, 3 declared rounds never found (misses per REV-39/§8).
+    const shots = [
+      at('a', 1, 1),
+      at('b', 2, 2),
+      at('c', 3, 3),
+      at('d', 4, 4),
+      at('e', 5, 5),
+      at('f', 6, 6),
+      at('g', 7, 7),
+    ];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    expect(result.all.sighting).toEqual({ zoneDiameterMm: 45, hits: 7, clean: 7, misses: 3 });
+    expect(targetHeadline(result)).toBe('7 hits · 3 misses — 45 mm prone');
+  });
+
+  it('singular "hit" at exactly 1 hit, matching "miss"/"misses" (fix round 1)', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null };
+    const at = (id: string, xMm: number, yMm: number): Shot => ({
+      id,
+      xMm,
+      yMm,
+      multiplicity: 1,
+      positionOverrides: null,
+      source: 'auto',
+      confidence: null,
+      cluster: false,
+      possibleOverlap: false,
+    });
+    // One hole inside the zone (a hit) and nine declared rounds never found (nine misses).
+    const shots = [at('a', 1, 1)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    expect(result.all.sighting).toEqual({ zoneDiameterMm: 45, hits: 1, clean: 1, misses: 9 });
+    expect(targetHeadline(result)).toBe('1 hit · 9 misses — 45 mm prone');
+  });
+
+  it('the milestone\'s literal precision vector: "86 / 100 · X 1" (M24 Tests)', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null };
+    const at = (id: string, xMm: number, yMm: number): Shot => ({
+      id,
+      xMm,
+      yMm,
+      multiplicity: 1,
+      positionOverrides: null,
+      source: 'auto',
+      confidence: null,
+      cluster: false,
+      possibleOverlap: false,
+    });
+    // 1 X (radial 0), 8 on ring 9 (radial 12.8, netRadius 10.0), 1 on ring 4 (radial 52.8, netRadius
+    // 50.0): total 10 + 8*9 + 4 = 86, X count 1, all 10 declared rounds identified.
+    const shots = [
+      at('x', 0, 0),
+      at('a', 12.8, 0),
+      at('b', 9.0509, 9.0509),
+      at('c', 0, 12.8),
+      at('d', -9.0509, 9.0509),
+      at('e', -12.8, 0),
+      at('f', -9.0509, -9.0509),
+      at('g', 0, -12.8),
+      at('h', 9.0509, -9.0509),
+      at('i', 52.8, 0),
+    ];
+    const result = analyzeTarget({ template: 'precision', categorization, shots });
+    expect(result.all.precision).toMatchObject({ identifiedTotal: 86, maxPossible: 100, xCount: 1 });
+    expect(result.all.missing).toBe(0);
+    expect(targetHeadline(result)).toBe('86 / 100 · X 1');
   });
 
   it('"both" position joins each subset\'s own headline as "Prone <h> · Standing <h>"', () => {
@@ -168,5 +256,49 @@ describe('render/text-lines cellCaption (rendering-composite.md §4)', () => {
     const categorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
     const result = analyzeTarget({ template: fixture.template, categorization, shots: fixture.shots });
     expect(cellCaption(result)).toMatch(/^P \d+\/\d+ · S \d+\/\d+ · ES/);
+  });
+});
+
+function atShot(id: string, xMm: number, multiplicity = 1): Shot {
+  return { id, xMm, yMm: 0, multiplicity, positionOverrides: null, source: 'auto', confidence: null, cluster: false, possibleOverlap: false };
+}
+
+describe('render/text-lines shotsFoundLine (M24, REV-49 issue #6: "hit" and "found" never share a sentence)', () => {
+  it('10 of 10 shots found (nothing missing)', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null };
+    const shots = [atShot('a', 6), atShot('b', 12), atShot('c', 14), atShot('d', 20), atShot('e', 1), atShot('f', 2), atShot('g', 3), atShot('h', 4), atShot('i', 5), atShot('j', 7)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    expect(result.all.identified).toBe(10);
+    expect(result.all.declared).toBe(10);
+    expect(shotsFoundLine(result)).toBe('10 of 10 shots found');
+  });
+
+  it('8 of 10 shots found — 2 not placed (2 declared rounds not identified)', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null };
+    const shots = [atShot('a', 6), atShot('b', 12), atShot('c', 14), atShot('d', 20), atShot('e', 1), atShot('f', 2), atShot('g', 3), atShot('h', 4)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    expect(result.all.identified).toBe(8);
+    expect(result.all.missing).toBe(2);
+    expect(shotsFoundLine(result)).toBe('8 of 10 shots found — 2 not placed');
+  });
+});
+
+describe('render/text-lines touchCreditNote (M24, REV-49: rendering-composite §3 item 7a)', () => {
+  it('null when no unit was touch-credited', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 1, roundsStanding: null };
+    const result = analyzeTarget({ template: 'precision', categorization, shots: [atShot('a', 3.55)] });
+    expect(touchCreditNote(result.all.units)).toBeNull();
+  });
+
+  it('a note when a precision unit scores its ring only by touching the line', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 1, roundsStanding: null };
+    const result = analyzeTarget({ template: 'precision', categorization, shots: [atShot('a', 7.05)] });
+    expect(touchCreditNote(result.all.units)).not.toBeNull();
+  });
+
+  it('a note when a sighting unit is a touch-credited hit', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 1, roundsStanding: null };
+    const result = analyzeTarget({ template: 'sighting', categorization, shots: [atShot('a', 23.4)] });
+    expect(touchCreditNote(result.all.units)).not.toBeNull();
   });
 });

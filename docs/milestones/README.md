@@ -34,7 +34,7 @@ as shown (`<model> · <effort>`).
 | [M21](M21-session-review.md) | Session review, suggested holes and double punches | optional correction · receive analysis | M16, M17 | opus · high | opus · high | yes | done |
 | [M22](M22-settings-and-navigation.md) | Three main screens and a Settings screen (issue #2) | navigation · settings | M19, M21 | opus · high | opus · high | no | done |
 | [M23](M23-template-guess.md) | Template guess: stop calling sighting sheets precision (issue #5) | review image · generate analysis | M16 | opus · high | opus · high | no | done |
-| [M24](M24-results-clarity.md) | Results that say what they count (issues #6, #4, #8) | receive analysis | M14, M20 | sonnet · high | opus · high | no | pending |
+| [M24](M24-results-clarity.md) | Results that say what they count (issues #6, #4, #8) | receive analysis | M14, M20 | sonnet · high | opus · high | no | done |
 | [M25](M25-import-review.md) | An imported photo is shown on the overlay screen (issue #1) | take picture(s) | M07 | sonnet · medium | sonnet · high | no | pending |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | pending |
 

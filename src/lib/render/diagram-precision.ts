@@ -112,7 +112,7 @@ function renderResultsPanel(subset: SubsetResult): string {
 }
 
 export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVariant, slotLabel?: string): string {
-  const { result, shots, positionLabel, captureLocal, lighting } = input;
+  const { result, shots, positionLabel, captureLocal, lighting, holeDiameterMm } = input;
   const subset = result.all;
   const isBoth = result.position === 'both';
 
@@ -120,7 +120,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     const target =
       renderTarget(CELL.cx, CELL.cy, CELL.s, CELL.s >= 4) +
       renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, CELL.s) +
-      renderShots(shots, subset.units, CELL.cx, CELL.cy, CELL.s, 5) +
+      renderShots(shots, subset.units, CELL.cx, CELL.cy, CELL.s, 5, holeDiameterMm) +
       renderMpiMarker(subset.mpi, CELL.cx, CELL.cy, CELL.s) +
       renderMarkerLabels(shots, subset.mpi, CELL.cx, CELL.cy, CELL.s, 5, 'cell');
 
@@ -135,7 +135,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
   const target =
     renderTarget(FULL.cx, FULL.cy, FULL.s, FULL.s >= 4) +
     renderGroupEllipse(subset.groupEllipse, FULL.cx, FULL.cy, FULL.s) +
-    renderShots(shots, subset.units, FULL.cx, FULL.cy, FULL.s, 8) +
+    renderShots(shots, subset.units, FULL.cx, FULL.cy, FULL.s, 8, holeDiameterMm) +
     renderMpiMarker(subset.mpi, FULL.cx, FULL.cy, FULL.s) +
     renderMarkerLabels(shots, subset.mpi, FULL.cx, FULL.cy, FULL.s, 8, 'full');
 

@@ -41,9 +41,12 @@ test('results: the demo session scores both reference targets', async ({ page })
   const cards = page.getByTestId('target-card');
   await expect(cards).toHaveCount(2, { timeout: 30_000 });
 
-  // geometry-scoring §9.1 / §9.2 headlines (rendering-composite `targetHeadline`).
-  await expect(page.getByTestId('target-headline').nth(0)).toHaveText('9/10 hits @ 45 mm');
+  // geometry-scoring §9.1 / §9.2 headlines (rendering-composite `targetHeadline`; REV-49/M24 issue #6).
+  await expect(page.getByTestId('target-headline').nth(0)).toHaveText('9 hits · 1 miss — 45 mm prone');
   await expect(page.getByTestId('target-headline').nth(1)).toHaveText('72 / 100 · X 1');
+  // REV-49 (M24, issue #6): a separate "found" line, never merged into the hit/miss headline.
+  await expect(page.getByTestId('shots-found-line').nth(0)).toHaveText('10 of 10 shots found');
+  await expect(page.getByTestId('shots-found-line').nth(1)).toHaveText('10 of 10 shots found');
 
   const chips = page.getByTestId('status-chip');
   await expect(chips).toHaveCount(2);

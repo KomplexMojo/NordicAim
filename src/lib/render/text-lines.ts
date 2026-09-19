@@ -6,6 +6,7 @@
 import type { AnalysisResult, MpiOffset, Shot, SubsetResult, UnitResult } from '../domain/analysis';
 import type { ShotPosition } from '../domain/enums';
 import { zoneFor } from '../scoring/sighting';
+import { isUnitTouchCredited } from './diagram-shared';
 
 /** mm 1 dp, unavailable `—` (§3 item 10's stated rule). Exported for `render/composite.ts`. */
 export function fmtMm(value: number | null): string {
@@ -70,7 +71,7 @@ export function sightingFooterLines(result: AnalysisResult, shots: Shot[], posit
   // REV-39: `misses` already counts every round that was not found (a miss), so the line is definite.
   const scored = `Scored (${positionLabel}): ${sighting.hits} hit / ${sighting.misses} miss`;
 
-  return [
+  const lines = [
     'Group metrics',
     shotsLine(subset, shots),
     `Group size (extreme spread): ${fmtMm(subset.extremeSpreadMm)} mm`,
@@ -79,6 +80,9 @@ export function sightingFooterLines(result: AnalysisResult, shots: Shot[], posit
     scored,
     mpiOffsetLine(subset.mpiOffset),
   ];
+  const touchNote = touchCreditNote(subset.units);
+  if (touchNote !== null) lines.push(touchNote);
+  return lines;
 }
 
 /**
@@ -106,6 +110,8 @@ export function precisionFooterLines(result: AnalysisResult, shots: Shot[]): str
     );
   }
 
+  const touchNote = touchCreditNote(subset.units);
+  if (touchNote !== null) lines.push(touchNote);
   return lines;
 }
 
@@ -142,26 +148,65 @@ function precisionHeadline(subset: SubsetResult): string {
   return `${p.identifiedTotal} / ${p.maxPossible}${missesSuffix(subset.missing)} · X ${p.xCount}`;
 }
 
-function sightingHeadline(subset: SubsetResult): string {
+/**
+ * REV-49 (M24, issue #6): say what is counted — hits and misses, never "hits" alongside a "found"
+ * denominator that reads as a shot count. `positionWord` (lowercase "prone"/"standing") is appended
+ * after the zone so a single-position headline reads "7 hits · 3 misses — 45 mm prone"; `null` for a
+ * `both` headline, where the "Prone "/"Standing " prefix already names the position — the zone is
+ * then dropped too (fix round 1: the zone is fixed per position and repeating it in both halves is
+ * redundant, and keeping it pushed the composite image's per-slot line, §5, past its 110-char cap).
+ */
+function sightingHeadline(subset: SubsetResult, positionWord: 'prone' | 'standing' | null): string {
   const s = subset.sighting!;
-  return `${s.hits}/${subset.declared} hits @ ${s.zoneDiameterMm} mm`;
+  const hitWord = s.hits === 1 ? 'hit' : 'hits';
+  const missWord = s.misses === 1 ? 'miss' : 'misses';
+  const zoneSuffix = positionWord === null || s.zoneDiameterMm === null ? '' : ` — ${s.zoneDiameterMm} mm ${positionWord}`;
+  return `${s.hits} ${hitWord} · ${s.misses} ${missWord}${zoneSuffix}`;
 }
 
 /**
- * Steps §3 / rendering-composite.md §3. Used by result cards (M12): precision `72 / 100 · X 1`, and
- * `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: the total is definite, never a
- * range); sighting `<hits>/<declared> hits @ <45|115> mm`, where a missing round is simply not a hit;
- * `both`: `Prone <headline> · Standing <headline>`, each half computed from that subset alone (not from
- * `result.all`).
+ * Steps §3 / rendering-composite.md §3. Used by result cards (M12), the target detail screen and the
+ * summary image (M24: all three call this one helper, so they stay in step): precision `72 / 100 · X
+ * 1`, and `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: the total is definite,
+ * never a range); sighting `<hits> hit(s) · <misses> miss(es) — <45|115> mm <prone|standing>` (REV-49,
+ * issue #6: "hit(s)" and "found" never share a sentence — see `shotsFoundLine`); `both`: `Prone
+ * <headline> · Standing <headline>`, each half computed from that subset alone (not from `result.all`).
  */
 export function targetHeadline(result: AnalysisResult): string {
-  const headline = result.template === 'precision' ? precisionHeadline : sightingHeadline;
+  if (result.template === 'precision') {
+    if (result.position === 'both') {
+      const prone = result.subsets.find((s) => s.key === 'prone')!;
+      const standing = result.subsets.find((s) => s.key === 'standing')!;
+      return `Prone ${precisionHeadline(prone)} · Standing ${precisionHeadline(standing)}`;
+    }
+    return precisionHeadline(result.all);
+  }
 
   if (result.position === 'both') {
     const prone = result.subsets.find((s) => s.key === 'prone')!;
     const standing = result.subsets.find((s) => s.key === 'standing')!;
-    return `Prone ${headline(prone)} · Standing ${headline(standing)}`;
+    return `Prone ${sightingHeadline(prone, null)} · Standing ${sightingHeadline(standing, null)}`;
   }
+  return sightingHeadline(result.all, result.position);
+}
 
-  return headline(result.all);
+/**
+ * REV-49 (M24, issue #6): the "found" line, always separate from `targetHeadline`'s hit/miss count so
+ * "hit" and "found" never share a sentence. `result.all.missing` is every declared round that was not
+ * identified (geometry-scoring §8) — "not placed" in the app's own Adjust-shots language.
+ */
+export function shotsFoundLine(result: AnalysisResult): string {
+  const subset = result.all;
+  const base = `${subset.identified} of ${subset.declared} shots found`;
+  return subset.missing > 0 ? `${base} — ${subset.missing} not placed` : base;
+}
+
+/**
+ * rendering-composite.md §3 item 7a (M24, REV-49): when any unit in `units` was touch-credited (its
+ * scored ring/zone was reached only because the hole's edge touches the line — the same check
+ * `renderShots` draws the marker from), a line explaining the diagram's dashed-ring marker; `null`
+ * when no unit was touch-credited, so an unaffected diagram's footer is unchanged.
+ */
+export function touchCreditNote(units: UnitResult[]): string | null {
+  return units.some(isUnitTouchCredited) ? 'Dashed ring around a shot: scored by touching the line, not a solid hit' : null;
 }

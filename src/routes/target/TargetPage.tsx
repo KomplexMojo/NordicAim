@@ -15,7 +15,7 @@ import type { TargetPhoto } from '@/lib/domain/photo';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
 import { positionLabel } from '@/lib/pipeline/stage-b';
 import { renderDiagramOverlaySvg } from '@/lib/render/diagram-overlay';
-import { targetHeadline } from '@/lib/render/text-lines';
+import { shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
 import { formatAngular, formatMm } from '@/lib/scoring/format';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -255,9 +255,15 @@ export function TargetPage() {
         {position !== null ? ` · ${positionLabel(position)}` : ''}
       </h1>
       {result !== null && (
-        <p className="text-lg font-semibold" data-testid="target-headline">
-          {targetHeadline(result)}
-        </p>
+        <>
+          <p className="text-lg font-semibold" data-testid="target-headline">
+            {targetHeadline(result)}
+          </p>
+          {/* REV-49 (M24, issue #6): "hit" and "found" never share a sentence. */}
+          <p className="text-sm text-muted-foreground" data-testid="shots-found-line">
+            {shotsFoundLine(result)}
+          </p>
+        </>
       )}
 
       <StatusChip

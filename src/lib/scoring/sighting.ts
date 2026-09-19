@@ -23,3 +23,15 @@ export function zoneFor(radialMm: number, position: ShotPosition, holeDiameterMm
   if (radialMm - h <= solidRadiusMm + EPS) return 'hit';
   return 'miss';
 }
+
+/**
+ * rendering-composite.md §3 item 7a (M24, REV-49): whether a `'hit'` was reached only because the
+ * hole's edge touches the solid circle — the unit's centre (`radialMm`) itself lies outside that
+ * circle (`solidDiameterMm/2`). `'clean'` and `'miss'` are never touch-credited. Uses the same
+ * `SIGHTING_TEMPLATE` radii as `zoneFor`, not a second copy of the thresholds.
+ */
+export function isTouchCredited(radialMm: number, zone: SightingZone, position: ShotPosition): boolean {
+  if (zone !== 'hit') return false;
+  const solidRadiusMm = SIGHTING_TEMPLATE.zones[position].solidDiameterMm / 2;
+  return radialMm > solidRadiusMm + EPS;
+}

@@ -88,6 +88,13 @@ Layout (px):
 7. **Shots** (class `shot`): one circle per `Shot`, fixed display marker r = 8 px (not the true hole size, so tight groups stay
    readable; REV-22), × 1.25 if multiplicity > 1; fill by the position
    of unit 0; white stroke 2. `x<k>` label 15 bold `accentText` when k > 1, preferred position (X + 10, Y − 14), placed per item 11.
+7a. **Touch-credit ring** (class `touch-credit`, M24, REV-49, issues #4/#6/#8): drawn under the shot's display dot, only for a
+   shot whose unit was credited only because its hole's edge touches the line it scored — its centre sits outside the ring or
+   zone's own solid circle (`scoring/precision.ts` `isTouchCredited`, `scoring/sighting.ts` `isTouchCredited`; the same
+   thresholds `scoreRing`/`zoneFor` use, never a second copy). A thin dashed ring, r = `holeDiameterMm/2 · s` (the true hole
+   radius, not the fixed display size), stroke `textSecondary` 1.5, dash `3 3`, fill none, centred on the shot. `renderShots`
+   takes `holeDiameterMm` to size it. When any unit in the diagram carries this marker, the footer panel (item 10) gets one
+   extra line explaining it; a diagram with no touch-credited unit is unchanged.
 8. **MPI** (`all` subset): ±14 px lines stroke `mpi` 2.5, circle r 6, "MPI" 15 bold `mpi`, preferred position (X + 18, Y − 8), placed per item 11.
    The `x<k>` and "MPI" labels carry a white outline (`stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"
    paint-order="stroke"`) so they stay legible on the black precision disc and over shots (REV-23).
@@ -114,6 +121,8 @@ Layout (px):
       5. `MPI offset: …`
       6. (both) `Prone: <total>/<max> · Standing: <total>/<max>`
       (M20 removed the former line 4, `Range: pessimistic … · averaged … · optimistic …`.)
+    - **Both templates, appended only when item 7a's marker is present** (M24): one more line,
+      `Dashed ring around a shot: scored by touching the line, not a solid hit` (`touchCreditNote`).
 11. **Marker label placement** (`label-placement.ts`, both variants; REV-24). Labels are drawn after the shots and the MPI marker:
     "MPI" first, then `x<k>` in shot order. Text origin (x, y) = left edge, baseline.
     - Label box: left x − 2, right x + 0.62·size·chars + 2, top y − 0.75·size − 2, bottom y + 0.25·size + 2.
@@ -125,9 +134,19 @@ Layout (px):
     - Skip candidates whose box leaves the label area (full x 8–1500, y 180–1230; cell x 8–720, y 60–664). Take the first with
       no collisions; if none is clear, the one with the fewest (earliest wins ties); if none fits the area, the preferred position.
 
-Expose line builders as pure functions: `sightingFooterLines`, `precisionFooterLines`, `cellCaption`, `targetHeadline` (used by
-result cards: precision `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: never a range);
-sighting `9/10 hits @ 45 mm`; both: `Prone … · Standing …`).
+Expose line builders as pure functions: `sightingFooterLines`, `precisionFooterLines`, `cellCaption`, `targetHeadline`,
+`shotsFoundLine`, `touchCreditNote` (M24). `targetHeadline` is used by result cards, the target detail screen and the summary
+image's per-slot line (`composite.ts` `slotSummaryLine`) — all three call the same helper, so they stay in step: precision
+`72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: never a range); sighting `<hits>
+hit(s) · <misses> miss(es) — <45|115> mm <prone|standing>` (REV-49, issue #6: never "hits @ mm", which reads as a shot count;
+"hit" singular at exactly 1, matching `miss`/`misses`); both: `Prone <hits> hit(s) · <misses> miss(es) · Standing <hits>
+hit(s) · <misses> miss(es)`, each half without its own position word (the "Prone "/"Standing " prefix already names it) and
+without the zone size (fix round 1: repeating "— 45 mm"/"— 115 mm" in both halves is redundant once each is already labelled,
+and it is what pushed the summary image's per-slot line, below, past its 110-char cap).
+
+`shotsFoundLine(result)` (REV-49, issue #6) is a second line, always shown directly under the headline, never merged into it:
+`<identified> of <declared> shots found`, or `<identified> of <declared> shots found — <missing> not placed` when
+`result.all.missing > 0`. "Hit" and "found" never share a sentence.
 
 **Golden check** (from `fixtures/reference/sample-shots-*.json`): precision SVG contains `Total  72 / 100`, `x2`, `41.9 mm`, `2.88 MOA`,
 `0.84 MRAD`. Sighting SVG contains `9 hit / 1 miss`, `10 hit / 0 miss`, `27.7 mm`, `1.90 MOA`, `0.55 MRAD`, `x4`.
@@ -170,8 +189,11 @@ export function selectDefaultSlots(photos: TargetPhoto[], analyses: Map<string, 
   - `Session analysis` 24 bold at (40, y+56).
   - Lines 18 px from y+100, step 34, each ≤ 110 chars (`…`):
     1. `Targets: <nS> sighting · <nP> precision · <lightingSummary>`
-    2. One per filled slot (≤ 4): e.g. `Sighting 1 (prone): 9/10 hit @45 mm · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
-       `Precision 1 (prone): 72/100 · X 1 · ES 41.9 mm (2.88 MOA)`
+    2. One per filled slot (≤ 4), built from `targetHeadline` (M24: the same helper the card and target detail use, so they
+       stay in step), e.g. `Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
+       `Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)`, or for a `both` slot (fix round 1: `targetHeadline`'s
+       `both` form omits the zone size, keeping this line's ES visible under the 110-char cap even when MPI still gets cut),
+       `Sighting 1 (prone + standing): Prone 9 hits · 1 miss · Standing 10 hits · 0 misses · ES 27.7 mm (1.90 MOA) · …`
     3. If there are more analyzed targets than slots: `+<n> more target(s) in the app`
     4. If `session.notes`: `Notes: <notes>` (≤ 2 lines).
   - Footer 13 `textSecondary` at (40, y+572): `advanced-shooting-analysis · generated <generatedAtLocal>`.

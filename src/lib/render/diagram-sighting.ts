@@ -93,7 +93,7 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
     const target =
       renderTarget(CELL.cx, CELL.cy, CELL.s) +
       renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, CELL.s) +
-      renderShots(shots, subset.units, CELL.cx, CELL.cy, CELL.s, 5) +
+      renderShots(shots, subset.units, CELL.cx, CELL.cy, CELL.s, 5, holeDiameterMm) +
       renderMpiMarker(subset.mpi, CELL.cx, CELL.cy, CELL.s) +
       renderMarkerLabels(shots, subset.mpi, CELL.cx, CELL.cy, CELL.s, 5, 'cell');
 
@@ -109,7 +109,7 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
     renderTarget(FULL.cx, FULL.cy, FULL.s) +
     renderZoneLabels(FULL.cx, FULL.cy, FULL.s) +
     renderGroupEllipse(subset.groupEllipse, FULL.cx, FULL.cy, FULL.s) +
-    renderShots(shots, subset.units, FULL.cx, FULL.cy, FULL.s, 8) +
+    renderShots(shots, subset.units, FULL.cx, FULL.cy, FULL.s, 8, holeDiameterMm) +
     renderMpiMarker(subset.mpi, FULL.cx, FULL.cy, FULL.s) +
     renderMarkerLabels(shots, subset.mpi, FULL.cx, FULL.cy, FULL.s, 8, 'full');
 

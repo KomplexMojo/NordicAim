@@ -34,7 +34,10 @@ export function reasonMessage(reason: Reason, ctx: ReasonMessageContext = {}): s
     case 'extra-candidates-dropped':
       return `Some detected marks were ignored because you fired ${ctx.declared ?? 0} rounds.`;
     case 'rounds-unaccounted':
-      return `${ctx.missing ?? 0} round(s) not found (often overlapping holes) — score shown as a range.`;
+      // REV-49 (M24, issue #8 point 5): M20 made the score definite, so "score shown as a range" is
+      // stale. This reason now appears only for a result stored before M20 that has not been
+      // re-analyzed (analysis-pipeline §4 rule 10); re-running the pipeline scores it as misses.
+      return `${ctx.missing ?? 0} round(s) not found — re-analyze to score them as misses.`;
     case 'alignment-uncertain':
       return 'Used your on-screen alignment — check the rings line up.';
     case 'image-blurry':
