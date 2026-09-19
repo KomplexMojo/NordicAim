@@ -43,6 +43,7 @@ const MANUAL_CAL: Calibration = {
   anchorDiameterMm: 112.4,
   source: 'manual',
   confidence: null,
+  perspective: null,
 };
 
 interface SeedOptions {

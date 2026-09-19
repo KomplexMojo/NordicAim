@@ -4,6 +4,7 @@
 
 import { overlayCircles } from '@/lib/capture/overlay';
 import type { TemplateId } from '@/lib/domain/enums';
+import { homographyFromCalibration, multiplyHomography, type Homography } from '@/lib/geometry/homography';
 import { mmToPx, type CalibrationLike } from '@/lib/geometry/transform';
 import type { RgbaImage } from '@/lib/media/format';
 
@@ -115,10 +116,26 @@ export function mmToRectified(p: { xMm: number; yMm: number }, geom: RectifiedGe
 }
 
 /**
+ * REV-44: the homography from rectified px to working px — rectified px -> target mm (the exact
+ * inverse of {@link mmToRectified}), then the calibration's own `E · P`.
+ */
+export function rectifiedToWorking(calibration: CalibrationLike, geom: RectifiedGeometry): Homography {
+  const centre = geom.side / 2;
+  const k = geom.pxPerMm;
+  const toMm: Homography = [1 / k, 0, -centre / k, 0, -1 / k, centre / k, 0, 0, 1];
+  return multiplyHomography(homographyFromCalibration(calibration), toMm);
+}
+
+/**
  * M11 step 1. Builds the affine that takes target mm to working px by evaluating `mmToPx` at
  * (0,0), (10,0) and (0,10) — three points are exactly what an affine needs, and going through
  * `mmToPx` keeps the one transform definition (geometry-scoring §2.1) — then inverts it and warps
  * the gray working image into the canonical square.
+ *
+ * REV-44 (M18): a calibration with a `perspective` is not affine, so three points cannot describe it.
+ * Then the warp is the full homography — `homographyFromCalibration` (the same `E · P` geometry-scoring
+ * §2.1 defines) composed with rectified px -> mm — applied with `warpPerspective`. A calibration with
+ * `perspective` null takes the affine path exactly as before, so its output is unchanged.
  */
 export function rectify(
   cv: OpenCv,
@@ -159,20 +176,27 @@ export function rectify(
   const rgb = rgbSource === null ? null : new cv.Mat();
 
   try {
-    forward = cv.getAffineTransform(fromPoints, toPoints); // rectified px -> working px
-    cv.invertAffineTransform(forward, inverse); // working px -> rectified px
-
     const size = new cv.Size(side, side);
     const outside = new cv.Scalar(0, 0, 0, 0);
-    cv.warpAffine(gray, out, inverse, size, cv.INTER_LINEAR, cv.BORDER_CONSTANT, outside);
+    const projective = (calibration.perspective ?? null) !== null;
+    let warp: (src: CvMat, dst: CvMat, interpolation: number) => void;
+    if (projective) {
+      // rectified px -> working px, in float64; WARP_INVERSE_MAP says the matrix maps dst -> src.
+      forward = cv.matFromArray(3, 3, cv.CV_64F, [...rectifiedToWorking(calibration, geom)]);
+      warp = (src, dst, interpolation) =>
+        cv.warpPerspective(src, dst, forward, size, interpolation | cv.WARP_INVERSE_MAP, cv.BORDER_CONSTANT, outside);
+    } else {
+      forward = cv.getAffineTransform(fromPoints, toPoints); // rectified px -> working px
+      cv.invertAffineTransform(forward, inverse); // working px -> rectified px
+      warp = (src, dst, interpolation) =>
+        cv.warpAffine(src, dst, inverse, size, interpolation, cv.BORDER_CONSTANT, outside);
+    }
+
+    warp(gray, out, cv.INTER_LINEAR);
     // Nearest neighbour: the mask must stay strictly 0 or 255, with no blended edge.
-    cv.warpAffine(ones, valid, inverse, size, cv.INTER_NEAREST, cv.BORDER_CONSTANT, outside);
-    if (chromaSource !== null && chroma !== null) {
-      cv.warpAffine(chromaSource, chroma, inverse, size, cv.INTER_LINEAR, cv.BORDER_CONSTANT, outside);
-    }
-    if (rgbSource !== null && rgb !== null) {
-      cv.warpAffine(rgbSource, rgb, inverse, size, cv.INTER_LINEAR, cv.BORDER_CONSTANT, outside);
-    }
+    warp(ones, valid, cv.INTER_NEAREST);
+    if (chromaSource !== null && chroma !== null) warp(chromaSource, chroma, cv.INTER_LINEAR);
+    if (rgbSource !== null && rgb !== null) warp(rgbSource, rgb, cv.INTER_LINEAR);
 
     return { gray: out, valid, chroma, rgb, side, pxPerMm };
   } catch (err) {

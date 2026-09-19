@@ -11,8 +11,17 @@
 // Pure over `RgbaImage`: no DOM, no OpenCV, no clock, no randomness.
 
 import type { TemplateId } from '@/lib/domain/enums';
+import type { Calibration } from '@/lib/domain/photo';
 import { fitCircleHomography, radialErrorsMm, type CirclePoint } from '@/lib/geometry/fit-homography';
-import { centrePx, invertHomography, pxToMmH, type Homography } from '@/lib/geometry/homography';
+import {
+  affinePartAtCentre,
+  calibrationFromHomography,
+  centrePx,
+  homographyFromCalibration,
+  invertHomography,
+  pxToMmH,
+  type Homography,
+} from '@/lib/geometry/homography';
 import type { RgbaImage } from '@/lib/media/format';
 
 import { measureRingEdges, type RingEdgeCircle, type RingEdgeOptions } from './ring-edges';
@@ -150,7 +159,9 @@ export function estimatePerspective(
   if (used.length < MIN_CIRCLES) return null;
   const points: CirclePoint[] = used.flatMap((c) => c.points);
 
-  const ellipse = fitCircleHomography(points, base, { affineOnly: true });
+  // An affine correction of a projective init is still projective, so the ellipse fit starts from the
+  // affine part of `base` — the identity when `base` is already an ellipse calibration.
+  const ellipse = fitCircleHomography(points, affinePartAtCentre(base), { affineOnly: true });
   const projective = fitCircleHomography(points, ellipse.homography);
 
   return {
@@ -192,4 +203,29 @@ export function circleErrorMm(
 export function centreOffsetMm(a: Homography, b: Homography): number {
   const mm = pxToMmH(centrePx(b), a, invertHomography(a));
   return Math.hypot(mm.xMm, mm.yMm);
+}
+
+/**
+ * REV-44 (M18 step 2, switched on in Stage A A4). The calibration `detectAnchor` measured, refined so
+ * the drawn rings sit on the printed rings under perspective: every printed circle is measured, the
+ * projective model is fitted to them, and the result is stored as the seven numbers data-model §3
+ * holds (the five ellipse fields plus `perspective`). `source` and `confidence` are carried over.
+ *
+ * Returns null — and the caller keeps `cal` with `perspective: null`, which is exactly the pre-M18
+ * calibration — when the ring measurement fails: fewer than {@link MIN_CIRCLES} printed circles
+ * found, a projective fit that fits its own points worse than the ellipse does, or a homography that
+ * is not a calibration at all (mirrored, degenerate, or flatter than the `axisRatio` floor).
+ */
+export function calibrationWithPerspective(
+  img: RgbaImage,
+  cal: Calibration,
+  template: TemplateId,
+  options: RingEdgeOptions = {},
+): Calibration | null {
+  const estimate = estimatePerspective(img, homographyFromCalibration(cal), template, options);
+  if (estimate === null) return null;
+  if (!(estimate.projectiveRmsMm <= estimate.ellipseRmsMm)) return null;
+  const geometry = calibrationFromHomography(estimate.projective, cal.anchorDiameterMm);
+  if (geometry === null) return null;
+  return { ...cal, ...geometry };
 }

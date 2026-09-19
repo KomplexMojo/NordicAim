@@ -32,6 +32,7 @@ const MEASURED: Calibration = {
   anchorDiameterMm: 112.4,
   source: 'auto',
   confidence: 0.96,
+  perspective: null,
 };
 
 function stubCv(): { api: CvApi; calls: number } {

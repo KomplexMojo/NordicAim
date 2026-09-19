@@ -1,5 +1,6 @@
 import * as Comlink from 'comlink';
 
+import { calibrationWithPerspective } from '@/lib/cv/alignment-perspective';
 import { ANCHOR_DIAMETER_MM, detectAnchor } from '@/lib/cv/anchor';
 import { detectShotsWithBacking } from '@/lib/cv/backing-colour';
 import { loadOpenCv } from '@/lib/cv/opencv';
@@ -53,7 +54,22 @@ const api: CvWorkerApi = {
     const hintCalibration = detection?.calibration ?? prior;
     const hint = hintCalibration === null ? null : hintTemplate(cv, img, hintCalibration);
 
-    return { detection, sharpness: sharpnessScore, templateHint: hint };
+    // A4, REV-44 (M18): measure every printed circle and store the sheet's tilt with the disc, so the
+    // rings land on the printed rings at the centre too. The circles measured are the template's: the
+    // overlay's when the photo was captured through it, else A3's hint, else the one whose anchor size
+    // the disc was measured at. A failed measurement keeps the disc with `perspective: null` — the
+    // pre-M18 calibration.
+    if (detection === null) return { detection, sharpness: sharpnessScore, templateHint: hint };
+    const template: TemplateId =
+      templateHint ??
+      hint?.template ??
+      (detection.calibration.anchorDiameterMm === ANCHOR_DIAMETER_MM.sighting ? 'sighting' : 'precision');
+    const refined = calibrationWithPerspective(img, detection.calibration, template);
+    return {
+      detection: { ...detection, calibration: refined ?? detection.calibration },
+      sharpness: sharpnessScore,
+      templateHint: hint,
+    };
   },
 
   async detectShots(

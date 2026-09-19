@@ -21,6 +21,7 @@ type HookWindow = Window & {
     waitForIdle(): Promise<void>;
     listPhotos(sessionId: string): Promise<Array<{ id: string }>>;
     getAnalysis(photoId: string): Promise<HookAnalysis | null>;
+    setCalibration(photoId: string, calibration: unknown): Promise<void>;
   };
 };
 
@@ -384,4 +385,56 @@ test('adjust: re-aligning keeps every shot on its hole, and Re-analyze uses the 
   const after = await getAnalysis(page, photoId);
   expect(after.calibration?.cx).toBe(cx2);
   expect(after.calibration?.source).toBe('manual');
+});
+
+test('adjust: a manual edit keeps the sheet\'s tilt and Reset alignment clears it (REV-44)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  const photoId = await precisionPhotoId(page, sessionId);
+  const before = await getAnalysis(page, photoId);
+  // The demo seeds its calibrations as manual, so Stage A never measures a tilt for it (the measurement
+  // itself is unit-tested); give the stored calibration one, the shape Stage A would store.
+  const tilt = { p: 1.2e-4, q: -6.1e-4 };
+  await page.evaluate(
+    ([pid, cal]) => (window as HookWindow).__asaTest!.setCalibration(pid, cal),
+    [photoId, { ...before.calibration!, perspective: tilt }] as const,
+  );
+  await waitForIdle(page);
+
+  // A manual edit to the ellipse keeps the measured tilt.
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+  await page.getByTestId('mode-alignment').click();
+  await expect(page.getByTestId('cal-reset-alignment')).toBeEnabled();
+  await page.getByTestId('cal-cx').fill(String(Math.round(before.calibration!.cx + 5)));
+  await page.getByTestId('save-adjustments').click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  await waitForIdle(page);
+  const edited = await getAnalysis(page, photoId);
+  expect(edited.calibration?.source).toBe('manual');
+  expect(edited.calibration?.cx).toBe(Math.round(before.calibration!.cx + 5));
+  expect(edited.calibration?.perspective).toEqual(tilt);
+
+  // Re-analyze with the tilt: A5's rectification takes the perspective warp in the real worker.
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+  await page.getByTestId('reanalyze').click();
+  await expect(page.getByText('Re-analyzed with your alignment and shots.')).toBeVisible({ timeout: 120_000 });
+  await waitForIdle(page);
+  const reanalyzed = await getAnalysis(page, photoId);
+  expect(reanalyzed.calibration?.perspective).toEqual(tilt);
+  expect(reanalyzed.shots.length).toBeGreaterThan(0);
+
+  // Reset alignment clears it, and a tilt-only change is saved like any other alignment change.
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+  await page.getByTestId('mode-alignment').click();
+  await page.getByTestId('cal-reset-alignment').click();
+  await expect(page.getByTestId('cal-reset-alignment')).toBeDisabled();
+  await page.getByTestId('save-adjustments').click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  await waitForIdle(page);
+  const reset = await getAnalysis(page, photoId);
+  expect(reset.calibration?.perspective).toBeNull();
+  expect(reset.calibration?.cx).toBe(edited.calibration?.cx);
+  expect(reset.calibration?.source).toBe('manual');
 });

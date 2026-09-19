@@ -136,6 +136,7 @@ export function calibrationPriorFromOverlay(
     anchorDiameterMm: spec.anchorDiameterMm,
     source: 'overlay',
     confidence: null,
+    perspective: null,
   };
 }
 

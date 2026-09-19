@@ -12,6 +12,7 @@ const sightingCal: Calibration = {
   anchorDiameterMm: 115,
   source: 'overlay',
   confidence: null,
+  perspective: null,
 };
 
 describe('geometry/transform', () => {
@@ -66,6 +67,7 @@ describe('geometry/transform', () => {
         anchorDiameterMm: 112.4,
         source: 'auto',
         confidence: null,
+        perspective: null,
       };
       const p = { xMm: (rand() - 0.5) * 100, yMm: (rand() - 0.5) * 100 };
       const roundTrip = pxToMm(mmToPx(p, cal), cal);
@@ -84,6 +86,7 @@ describe('geometry/transform', () => {
       anchorDiameterMm: 112.4,
       source: 'overlay',
       confidence: null,
+      perspective: null,
     };
     const scaled = scaleCalibration(cal, 0.5);
     expect(scaled.cx).toBeCloseTo(270, 3);

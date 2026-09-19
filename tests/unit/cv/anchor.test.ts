@@ -50,6 +50,7 @@ function priorFor(spec: SyntheticTargetSpec, radiusPx: number): Calibration {
     anchorDiameterMm: spec.template === 'sighting' ? 115 : 112.4,
     source: 'overlay',
     confidence: null,
+    perspective: null,
   };
 }
 
@@ -219,6 +220,7 @@ describe('detectAnchor on the reference photos (REV-26)', () => {
       anchorDiameterMm: seed.anchorDiameterMm,
       source: 'overlay',
       confidence: null,
+      perspective: null,
     };
   }
 

@@ -12,6 +12,7 @@ const prior: Calibration = {
   anchorDiameterMm: 112.4,
   source: 'overlay',
   confidence: null,
+  perspective: null,
 };
 
 const measured: Calibration = {
@@ -23,6 +24,7 @@ const measured: Calibration = {
   anchorDiameterMm: 112.4,
   source: 'auto',
   confidence: 0.97,
+  perspective: null,
 };
 
 describe('chooseAlignment (analysis-pipeline §3)', () => {
@@ -33,6 +35,17 @@ describe('chooseAlignment (analysis-pipeline §3)', () => {
     expect(out.calibration).toEqual({ ...measured, source: 'auto', confidence: 0.97 });
     expect(out.confidence).toBe(0.97);
     expect(out.warnings).toEqual([]);
+  });
+
+  it("keeps the sheet's measured tilt with the detection (REV-44)", () => {
+    const tilted: Calibration = { ...measured, perspective: { p: 1.2e-4, q: -6.1e-4 } };
+    const out = chooseAlignment({ prior, detection: { calibration: tilted, confidence: 0.97, outsidePrior: false } });
+    expect(out.calibration?.perspective).toEqual({ p: 1.2e-4, q: -6.1e-4 });
+  });
+
+  it('a prior fallback is always square on (REV-44)', () => {
+    const out = chooseAlignment({ prior, detection: null });
+    expect(out.calibration?.perspective).toBeNull();
   });
 
   it('still uses a detection outside the prior gate, with alignment-uncertain (REV-25)', () => {

@@ -86,12 +86,23 @@ export function pxToMm(p: { x: number; y: number }, cal: Calibration): { xMm: nu
 ```
 
 Algorithm for `mmToPx`, with θ = `angleDeg` in radians and `s` = scale:
+0. **Perspective (REV-44, M18).** When `perspective` is not null, first divide by
+   `w = perspective.p * xMm + perspective.q * yMm + 1`: `xMm ← xMm / w`, `yMm ← yMm / w`. When it is null this step
+   is skipped, so the result is bit-for-bit the pre-M18 one. `(p, q)` is the target plane's vanishing line in mm
+   (units 1/mm); the target centre always maps to `(cx, cy)`.
 1. `u = xMm * s`, `v = -yMm * s` (flip y into image orientation).
 2. Compress the minor axis. Rotate into the ellipse frame: `u' = u cosθ + v sinθ`, `v' = -u sinθ + v cosθ`;
    then `v' *= axisRatio`.
 3. Rotate back: `x = cx + u' cosθ - v' sinθ`, `y = cy + u' sinθ + v' cosθ`.
 
-`pxToMm` is the exact inverse (undo step 3, divide `v'` by `axisRatio`, undo step 2, divide by `s`, flip y).
+`pxToMm` is the exact inverse (undo step 3, divide `v'` by `axisRatio`, undo step 2, divide by `s`, flip y), and
+then, when `perspective` is not null, undoes step 0: with `(X', Y')` the result so far,
+`X = X' / (1 - p X' - q Y')` and `Y = Y' / (1 - p X' - q Y')`.
+
+Together steps 0–3 are the homography `E · P(p, q)` (`src/lib/geometry/homography.ts`, `homographyFromCalibration`):
+the ellipse map after `P = [[1,0,0],[0,1,0],[p,q,1]]`. Stage A stores a fitted homography in this shape with
+`calibrationFromHomography`, which drops the sheet's in-plane rotation (concentric circles cannot observe it).
+`scaleCalibration` leaves `perspective` unchanged: it is in mm, and `diag(f, f, 1) · E · P` has the same `P`.
 
 **Vectors** (cal = `{cx: 1000, cy: 800, radiusPx: 460, axisRatio: 1, angleDeg: 0}`, sighting anchor 115 mm → s = 8):
 - `mmToPx({0,0})` → `{1000, 800}`
@@ -101,6 +112,12 @@ Algorithm for `mmToPx`, with θ = `angleDeg` in radians and `s` = scale:
   image-vertical, so vertical offsets are unchanged (−40 px) and horizontal offsets are halved (+80 → +40 px).
   Round-trip `pxToMm({1040, 760})` → `{10, 5}`.
 - Property test: for 100 random points and random calibrations, `pxToMm(mmToPx(p)) ≈ p` within 1e-9.
+- Every vector above holds unchanged with `perspective: null` and with `perspective: { p: 0, q: 0 }`.
+- With `perspective: { p: 0.002, q: 0.004 }` (and `axisRatio: 1, angleDeg: 0`): `mmToPx({0, 0})` → `{1000, 800}`;
+  `mmToPx({10, 5})` → `{1076.923076923, 761.538461538}` (w = 1.04, so the offset `{80, −40}` shrinks to `{76.923…, −38.461…}`);
+  `pxToMm({1076.923076923077, 761.538461538462})` → `{10, 5}`.
+- Property test with random perspectives (|p|, |q| ≤ 1e-3 per mm, points within 80 mm): `pxToMm(mmToPx(p)) ≈ p`
+  within 1e-6 mm (M18 Tests).
 
 ## 3. Shot units
 

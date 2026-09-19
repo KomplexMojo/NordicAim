@@ -71,6 +71,7 @@ function analysisStub(opts: {
       anchorDiameterMm: 112.4,
       source: 'auto',
       confidence: 1,
+      perspective: null,
     };
   }
   return analysis;

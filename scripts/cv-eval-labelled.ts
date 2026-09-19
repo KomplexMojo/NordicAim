@@ -2,6 +2,7 @@
 // `scripts/cv-eval.ts`. The labels and photos are gitignored, so everything here is skipped — loudly —
 // when they are absent (CI).
 
+import { calibrationWithPerspective } from '../src/lib/cv/alignment-perspective.ts';
 import { detectAnchor } from '../src/lib/cv/anchor.ts';
 import { detectShotCandidates, type DetectionReport } from '../src/lib/cv/holes.ts';
 import type { OpenCv } from '../src/lib/cv/opencv.ts';
@@ -46,18 +47,31 @@ interface PhotoRun {
   report: DetectionReport | null;
   match: LabelledMatch | null;
   ms: number;
+  /** REV-44: time spent measuring the printed circles for the tilt (0 when not run). */
+  perspectiveMs: number;
+  /** REV-44: whether the tilt measurement succeeded (null when not run). */
+  tilted: boolean | null;
   /** Detections in working px, parallel to `report.candidates`. */
   detectionsPx: Array<{ x: number; y: number }>;
 }
 
-/** The pipeline's own A4 and template hint, then A5 — exactly what the review page showed the owner. */
-async function runPhoto(cv: OpenCv, repoRoot: string, photo: LabelledPhoto): Promise<PhotoRun> {
+/**
+ * The pipeline's own A4 and template hint, then A5 — exactly what the app runs. `perspective: false`
+ * is the pre-M18 A4 (the detected disc alone), kept so the report shows what REV-44 changed.
+ */
+async function runPhoto(cv: OpenCv, repoRoot: string, photo: LabelledPhoto, perspective: boolean): Promise<PhotoRun> {
   const img = await jpegFileToRgba(`${repoRoot}fixtures/private/additional references/${photo.name}`, WORKING_LONGEST);
   const t0 = performance.now();
   const detection = detectAnchor(cv, img, null, 'both');
-  if (detection === null) return { photo, report: null, match: null, ms: performance.now() - t0, detectionsPx: [] };
-  const calibration = detection.calibration;
-  const template = hintTemplate(cv, img, calibration).template;
+  if (detection === null) {
+    return { photo, report: null, match: null, ms: performance.now() - t0, perspectiveMs: 0, tilted: null, detectionsPx: [] };
+  }
+  const template = hintTemplate(cv, img, detection.calibration).template;
+  // The worker's A4 (REV-44): no overlay template on an import, so the hint picks the circles.
+  const t1 = performance.now();
+  const refined = perspective ? calibrationWithPerspective(img, detection.calibration, template) : null;
+  const perspectiveMs = perspective ? performance.now() - t1 : 0;
+  const calibration = refined ?? detection.calibration;
   const report = detectShotCandidates(cv, img, calibration, template, HOLE_DIAMETER_MM);
   const ms = performance.now() - t0;
   const detectionsPx = report.candidates.map((c) => mmToPx(c, calibration));
@@ -66,7 +80,7 @@ async function runPhoto(cv: OpenCv, repoRoot: string, photo: LabelledPhoto): Pro
     photo.holes.map((h) => ({ x: h.xPx, y: h.yPx })),
     matchTolerancePx(calibration, HOLE_DIAMETER_MM),
   );
-  return { photo, report, match, ms, detectionsPx };
+  return { photo, report, match, ms, perspectiveMs, tilted: perspective ? refined !== null : null, detectionsPx };
 }
 
 export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<LabelledEvaluation> {
@@ -82,7 +96,11 @@ export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<La
   }
 
   const runs: PhotoRun[] = [];
-  for (const photo of set.photos) runs.push(await runPhoto(cv, repoRoot, photo));
+  const squareOnRuns: PhotoRun[] = [];
+  for (const photo of set.photos) {
+    runs.push(await runPhoto(cv, repoRoot, photo, true));
+    squareOnRuns.push(await runPhoto(cv, repoRoot, photo, false));
+  }
 
   const rows = runs.map((run) => {
     const { photo, report, match } = run;
@@ -126,6 +144,15 @@ export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<La
       `${pct(REVIEW_BASELINE[key].recall)} / ${pct(REVIEW_BASELINE[key].precision)}`,
     ]);
   }
+  const squareOnGated = pooled(squareOnRuns.filter((run) => run.photo.caveat === null).map(matchOf));
+  summary.push([
+    'gated · all, pre-M18 A4 (no tilt)',
+    String(gated.length),
+    `${squareOnGated.truePositives}/${squareOnGated.falsePositives}/${squareOnGated.falseNegatives}`,
+    pct(squareOnGated.recall),
+    pct(squareOnGated.precision),
+    '—',
+  ]);
   const cav = pooled(caveated.map(matchOf));
   summary.push(['caveated (not gated)', String(caveated.length), `${cav.truePositives}/${cav.falsePositives}/${cav.falseNegatives}`, pct(cav.recall), pct(cav.precision), '—']);
   lines.push('\nPer template, pooled over photos, against the 2026-09-17 review baseline:\n');
@@ -142,6 +169,13 @@ export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<La
   );
   const times = runs.map((run) => run.ms).sort((a, b) => a - b);
   lines.push(`- A4+A5 time in Node per photo: median ${Math.round(times[times.length >> 1] ?? 0)} ms, max ${Math.round(times[times.length - 1] ?? 0)} ms.`);
+  const tiltRuns = runs.filter((run) => run.tilted !== null);
+  const tiltTimes = tiltRuns.map((run) => run.perspectiveMs).sort((a, b) => a - b);
+  const notTilted = tiltRuns.filter((run) => run.tilted === false).map((run) => run.photo.id);
+  lines.push(
+    `- REV-44 tilt measurement (part of A4): median ${Math.round(tiltTimes[tiltTimes.length >> 1] ?? 0)} ms, max ${Math.round(tiltTimes[tiltTimes.length - 1] ?? 0)} ms in Node; ` +
+      `fell back to perspective null on ${notTilted.length} of ${tiltRuns.length}${notTilted.length > 0 ? ` (${notTilted.join(', ')})` : ''}.`,
+  );
 
   // R2: labelled holes that sit on a numeral, and what the numeral mask cost.
   let onNumeral = 0;

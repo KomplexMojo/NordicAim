@@ -12,6 +12,11 @@ export const Calibration = z.object({
   anchorDiameterMm: z.number().positive(), // 115 (sighting) or 112.4 (precision)
   source: z.enum(['overlay', 'auto', 'manual']),
   confidence: z.number().min(0).max(1).nullable(),
+  // REV-44 (M18): the target plane's vanishing line, in target mm. null = square on, which computes
+  // bit-for-bit the pre-M18 behaviour, so stored analyses need no migration. Applied BEFORE the
+  // ellipse map: mmToPx(p) = ellipse( p / (perspective.p * p.xMm + perspective.q * p.yMm + 1) ).
+  // A manual handle drag in Adjust keeps it; only "reset alignment" clears it.
+  perspective: z.object({ p: z.number(), q: z.number() }).nullable().default(null),
 });
 export type Calibration = z.infer<typeof Calibration>;
 

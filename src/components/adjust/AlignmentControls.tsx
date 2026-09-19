@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Calibration } from '@/lib/domain/photo';
@@ -46,7 +47,10 @@ function NumberField({
   );
 }
 
-/** M13 step 2 (Alignment): numeric cx/cy/radiusPx, plus the axis ratio and angle the ellipse needs. */
+/**
+ * M13 step 2 (Alignment): numeric cx/cy/radiusPx, plus the axis ratio and angle the ellipse needs.
+ * REV-44: every edit here keeps `perspective`; "Reset alignment" is the one action that clears it.
+ */
 export function AlignmentControls({ calibration, onChange }: AlignmentControlsProps) {
   return (
     <div className="flex flex-col gap-3" data-testid="alignment-controls">
@@ -107,6 +111,24 @@ export function AlignmentControls({ calibration, onChange }: AlignmentControlsPr
       <p className="text-sm text-muted-foreground">
         Drag the yellow centre handle to move the target, and the handle on the ring edge to resize it.
       </p>
+
+      {/* REV-44: the handles keep the sheet's measured tilt; only this clears it. */}
+      <div className="flex flex-col gap-1">
+        <Button
+          variant="outline"
+          className="h-11"
+          data-testid="cal-reset-alignment"
+          disabled={calibration.perspective === null}
+          onClick={() => onChange({ ...calibration, perspective: null })}
+        >
+          Reset alignment
+        </Button>
+        <p className="text-sm text-muted-foreground" data-testid="cal-perspective-state">
+          {calibration.perspective === null
+            ? 'The rings are drawn as if the photo was taken square on.'
+            : 'The rings follow the tilt measured in the photo. Reset alignment draws them square on.'}
+        </p>
+      </div>
     </div>
   );
 }

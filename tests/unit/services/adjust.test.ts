@@ -41,6 +41,7 @@ const AUTO_CAL: Calibration = {
   anchorDiameterMm: 112.4,
   source: 'auto',
   confidence: 0.94,
+  perspective: null,
 };
 
 /** Where the user dragged it in Adjust. */
@@ -438,6 +439,7 @@ describe('adjustStartCalibration', () => {
       anchorDiameterMm: 112.4,
       source: 'manual',
       confidence: null,
+      perspective: null,
     });
     ctx.db.close();
   });

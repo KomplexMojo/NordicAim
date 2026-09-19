@@ -63,8 +63,15 @@ function sameCalibration(a: Calibration, b: Calibration): boolean {
     a.radiusPx === b.radiusPx &&
     a.axisRatio === b.axisRatio &&
     a.angleDeg === b.angleDeg &&
-    a.anchorDiameterMm === b.anchorDiameterMm
+    a.anchorDiameterMm === b.anchorDiameterMm &&
+    samePerspective(a.perspective, b.perspective)
   );
+}
+
+/** REV-44: a tilt-only change (e.g. "Reset alignment") is a change, and must be saved like one. */
+function samePerspective(a: Calibration['perspective'], b: Calibration['perspective']): boolean {
+  if (a === null || b === null) return a === b;
+  return a.p === b.p && a.q === b.q;
 }
 
 /**

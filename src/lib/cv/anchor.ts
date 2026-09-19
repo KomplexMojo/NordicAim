@@ -374,6 +374,7 @@ export function detectAnchor(
     anchorDiameterMm: diameterMm,
     source: 'auto',
     confidence,
+    perspective: null,
   };
 
   return { calibration, confidence, outsidePrior };

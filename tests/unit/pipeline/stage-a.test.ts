@@ -30,6 +30,7 @@ const MEASURED: Calibration = {
   anchorDiameterMm: 112.4,
   source: 'auto',
   confidence: 0.96,
+  perspective: null,
 };
 
 const MANUAL: Calibration = { ...MEASURED, cx: 500, cy: 500, source: 'manual', confidence: null };

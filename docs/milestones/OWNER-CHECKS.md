@@ -158,6 +158,29 @@ during M10/M11 work._
 - [ ] Decide whether the unplaced tray should also show in Alignment mode (the implementer restricted it to Shots mode because the stage's pointer is used by the centre/radius handles in Alignment; the milestone states no mode), and whether the tray should stay visible as a permanent drop zone when `unplaced === 0` so drag-to-delete keeps working (Open question 4).
 - [ ] Confirm two write-in corrections: (1) the compare slider's direction — milestone step 3's formula `inset(0 <(1−value)·100%> 0 0)` is the reverse of its own sentence and its Tests vectors; the implementation follows the vectors (0 = whole diagram, 1 = whole photo), and the formula text should be corrected; (2) that always rendering the working photo under the diagram on target detail is acceptable now that M12 step 4's explicit "show the photo" toggle is gone (M17 step 3 sanctions this replacement).
 
+## M18 — Alignment under perspective (the centre rings)
+
+- [ ] On the iPhone, open the Pages build and import or capture a photo of a precision or sighting sheet taken at a
+      slant (not square on). After Stage A finishes, open Adjust > Alignment and re-analyze if needed: confirm the
+      drawn centre rings (10/9 on precision, the inner circle on sighting) sit on the printed rings at the centre, not
+      only at the black-mark edge (M18 Acceptance, human step).
+- [ ] On the iPhone, measure how long Stage A takes per photo now that it includes the tilt measurement, against the
+      3 s/photo budget in `docs/spec/analysis-pipeline.md` §9 (in Node: 182–183 ms median, 230 ms max, up to 457 ms
+      under load, per 1200 px photo). If the phone is over budget, report it — the tilt step can be dropped, falling
+      back to `perspective: null`.
+- [ ] In Adjust > Alignment on a tilted photo: drag the centre and radius handles and confirm the tilted rings track
+      your finger and keep their tilted shape. Then tap **Reset alignment**: the rings should redraw as a plain
+      ellipse, the button should become disabled, and the change should stick after Save.
+- [ ] Decide Open question 6: accept the ~1.9-point drop in M16 labelled recall (74.3%, still above the 72% floor;
+      precision 92.9%, above the 85% floor) in exchange for more accurate centre rings, or approve a minimum
+      rms-improvement floor constant instead (measured example: a 25% floor would give 77.4% recall / 94.6% precision).
+- [ ] Decide Open question 7: should **Reset alignment** clear only the tilt (as implemented), or the whole alignment?
+- [ ] Decide Open question 2: provide owner-confirmed ring ground truth (export from Adjust, or a review-page
+      confirmation) so the centre-ring measurement can be checked against it instead of against printed circles found
+      in each photo.
+- [ ] Correct Open question 3: the owner's labelled ground-truth set records `IMG_5057 2` as a precision sheet, but it
+      is actually a sighting sheet.
+
 ## M19 — Coloured backing sheet option
 
 - [ ] BLOCKING, OWNER-ONLY (M19 Open question 1): say which (if any) of `IMG_4743`, `IMG_4744`, `IMG_5182`, `IMG_5184` in `fixtures/private/additional references/` actually had a coloured backing sheet behind the target. `Auto` — the default mode, which the v1→v2 migration sets on every existing session — currently reads all four as backed, which `backing-sheet.md` §4 forbids on an unbacked photo. Measured evidence: on those four, the coloured pixels sit at accepted-pixel radius p10 101 mm (IMG_4743) and 128–133 mm (the others) against a 150 mm search cap, at hues 31–49° (bare wood) and 213° (sky/shade), with max chroma 82–110; the six confirmed-backed photos' coloured pixels sit at radius p10 4–12 mm with max chroma 209–223. No `AUTO_MIN_SPOTS` threshold separates unbacked (3–8 spots) from backed (6–10 spots) — the fix must be either a tighter sheet mask or a chroma/saturation floor, and nothing should be tuned without this answer.

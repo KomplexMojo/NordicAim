@@ -46,6 +46,7 @@ export function makePrior(over: Partial<Calibration> = {}): Calibration {
     anchorDiameterMm: 112.4,
     source: 'overlay',
     confidence: null,
+    perspective: null,
     ...over,
   };
 }

@@ -7,8 +7,11 @@
 // Pure math, no DOM. Coordinates follow geometry-scoring §2: mm with +y UP, px with +y DOWN. The flip
 // lives inside the matrix, exactly as it does inside `mmToPx`.
 //
-// NOTE (M18 step 2 is an owner gate): nothing here is stored. `Calibration` still holds the ellipse,
-// and this module is used by the measurement scripts and tests only until the owner ratifies a shape.
+// REV-44 ratified the stored shape: `Calibration` keeps its five ellipse fields and gains
+// `perspective: { p, q } | null`. A fitted homography is stored as those seven numbers
+// ({@link calibrationFromHomography}), and {@link homographyFromCalibration} rebuilds it.
+
+import type { Calibration } from '../domain/photo';
 
 import { mmToPx, type CalibrationLike } from './transform';
 
@@ -20,14 +23,93 @@ import { mmToPx, type CalibrationLike } from './transform';
 export type Homography = readonly [number, number, number, number, number, number, number, number, number];
 
 /**
- * The ellipse calibration as a homography, read straight out of `mmToPx` so the two can never drift
- * apart: an affine map is determined by the images of the origin and the two unit vectors.
+ * The calibration as a homography: the ellipse map `E` (read straight out of `mmToPx` with the
+ * perspective stripped, so the two can never drift apart — an affine map is determined by the images
+ * of the origin and the two unit vectors) times the perspective factor, `E · P(p, q)`. That is exactly
+ * geometry-scoring §2.1: step 0 divides by `p·x + q·y + 1`, then the ellipse map runs.
  */
 export function homographyFromCalibration(cal: CalibrationLike): Homography {
-  const o = mmToPx({ xMm: 0, yMm: 0 }, cal);
-  const ex = mmToPx({ xMm: 1, yMm: 0 }, cal);
-  const ey = mmToPx({ xMm: 0, yMm: 1 }, cal);
-  return [ex.x - o.x, ey.x - o.x, o.x, ex.y - o.y, ey.y - o.y, o.y, 0, 0, 1];
+  const ellipse: CalibrationLike = { ...cal, perspective: null };
+  const o = mmToPx({ xMm: 0, yMm: 0 }, ellipse);
+  const ex = mmToPx({ xMm: 1, yMm: 0 }, ellipse);
+  const ey = mmToPx({ xMm: 0, yMm: 1 }, ellipse);
+  const affine: Homography = [ex.x - o.x, ey.x - o.x, o.x, ex.y - o.y, ey.y - o.y, o.y, 0, 0, 1];
+  const perspective = cal.perspective ?? null;
+  return perspective === null ? affine : multiplyHomography(affine, perspectiveMm(perspective.p, perspective.q));
+}
+
+/** The seven numbers REV-44 stores, as {@link calibrationFromHomography} reads them out of a homography. */
+export type CalibrationGeometry = Pick<Calibration, 'cx' | 'cy' | 'radiusPx' | 'axisRatio' | 'angleDeg' | 'perspective'>;
+
+/**
+ * REV-44: a homography as the stored calibration shape. Every homography factors as
+ * `E · P(p, q) · R` — the ellipse map, the perspective factor, and a rotation of the sheet in its own
+ * plane. Concentric circles cannot see `R`, so it is dropped: the returned calibration maps every
+ * circle about the target centre onto exactly the same conic as `h` does, and its mm frame is the one
+ * in which the linear part at the centre is a pure ellipse (as a pre-M18 calibration's always was).
+ *
+ * The derivation, with `h` normalised so `h[8] = 1`: the last row of `E · P` is `[p, q, 1]` and its
+ * translation is the centre, so `A = J_h(0)` (the Jacobian at the centre) equals `E_lin · R`.
+ * With the y flip `F = diag(1, -1)`, `A · F = S · U` is a polar decomposition: `S` is the symmetric
+ * ellipse (major radius, axis ratio, angle from its eigenvectors) and `U` a rotation. Moving `R` past
+ * `P(w)` rotates the vanishing line, `R · P(w) = P(R w) · R`, so the stored pair is `R w`.
+ *
+ * `anchorDiameterMm` converts the px-per-mm scale into `radiusPx`. Returns null when `h` is not a
+ * calibration at all: mirrored, degenerate, non-finite, or flatter than data-model §3's `axisRatio`
+ * floor.
+ */
+export function calibrationFromHomography(h: Homography, anchorDiameterMm: number): CalibrationGeometry | null {
+  let n: Homography;
+  try {
+    n = normalize(h);
+  } catch {
+    return null;
+  }
+  if (n.some((v) => !Number.isFinite(v))) return null;
+  const [a0, a1, a2, a3] = jacobianAtCentre(n);
+  // M = A · F: flip the second column.
+  const m00 = a0;
+  const m01 = -a1;
+  const m10 = a2;
+  const m11 = -a3;
+  if (m00 * m11 - m01 * m10 <= 0) return null; // mirrored or degenerate: not an ellipse calibration
+
+  // Polar decomposition M = S · U, U = rotation by phi.
+  const phi = Math.atan2(m10 - m01, m00 + m11);
+  const c = Math.cos(phi);
+  const s = Math.sin(phi);
+  // S = M · Uᵀ
+  const s00 = m00 * c - m01 * s;
+  const s01 = m00 * s + m01 * c;
+  const s11 = m10 * s + m11 * c;
+  // Eigen-decomposition of the symmetric S.
+  const mean = (s00 + s11) / 2;
+  const radius = Math.hypot((s00 - s11) / 2, s01);
+  const major = mean + radius;
+  const minor = mean - radius;
+  if (!(minor > 0) || !(major > 0)) return null;
+  const axisRatio = minor / major;
+  if (!(axisRatio > 0.3)) return null;
+  let angleDeg = (0.5 * Math.atan2(2 * s01, s00 - s11) * 180) / Math.PI;
+  angleDeg = ((angleDeg % 180) + 180) % 180;
+  if (angleDeg >= 180) angleDeg = 0;
+
+  // E_lin · R = A, with E_lin = S · F and R = F · U · F (a rotation by -phi). Rotate w by R.
+  const p0 = n[6];
+  const q0 = n[7];
+  const cr = Math.cos(-phi);
+  const sr = Math.sin(-phi);
+  const p = cr * p0 - sr * q0;
+  const q = sr * p0 + cr * q0;
+
+  return {
+    cx: n[2],
+    cy: n[5],
+    radiusPx: major * (anchorDiameterMm / 2),
+    axisRatio,
+    angleDeg,
+    perspective: { p, q },
+  };
 }
 
 /** `a · b`, row-major. */

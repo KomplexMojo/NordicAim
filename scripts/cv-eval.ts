@@ -103,6 +103,7 @@ for (const entry of SYNTHETIC) {
     anchorDiameterMm: entry.spec.template === 'sighting' ? 115 : 112.4,
     source: 'overlay',
     confidence: null,
+    perspective: null,
   };
 
   const detection = detectAnchor(cv, img, prior, entry.spec.template === 'sighting' ? 115 : 112.4);
@@ -207,6 +208,7 @@ for (const ref of REFERENCE) {
     anchorDiameterMm: seed.anchorDiameterMm,
     source: 'overlay',
     confidence: null,
+    perspective: null,
   };
 
   // M16 step 7 (REV-31): the owner's hand-checked calibration supersedes the seed estimate.
@@ -343,7 +345,7 @@ for (const ref of REFERENCE) {
   const seed = seeds[ref.key];
   const img = images.get(ref.key);
   if (seed === undefined || typeof seed === 'string' || img === undefined) continue;
-  const seedCalibration: Calibration = { ...seed, source: 'manual', confidence: null };
+  const seedCalibration: Calibration = { ...seed, source: 'manual', confidence: null, perspective: null };
 
   const fixture = readShotFile(`${REPO_ROOT}${ref.truth}`);
   const truthFile = existsSync(groundTruthPath(ref.key)) ? readShotFile(groundTruthPath(ref.key)) : null;

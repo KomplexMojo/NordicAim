@@ -55,7 +55,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 | A1 | *(store)* | `ingestPhoto` saves original/working/thumb and the photo record | photo, blobs |
 | A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
 | A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
-| A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
+| A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior, then measure every printed circle and store the sheet's tilt with it (REV-44, §3) → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
 | A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); the set is capped to the declared rounds when they are known, warning `extra-candidates-dropped` (REV-28). With a coloured backing (REV-38, `backing-sheet.md` §5), holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
 
 **Stage B: runs when analysis has been requested for the session and the photo's metadata is complete**
@@ -113,6 +113,16 @@ shot's mm position by ~28%. Two rules apply together:
    smallest change correct on every measured case; a single-candidate pool is unaffected, since any monotone score picks it.
 
 Detection returns `null` — and the prior fallback above applies — only when neither an outer candidate nor any nested candidate passes.
+
+**The sheet's tilt (REV-44, M18).** A circle photographed off-axis projects to an ellipse whose centre is *not* the image
+of the circle's centre, so rings drawn concentric around the fitted disc drift off the printed rings, most visibly at the
+10 and 9 rings. After `detectAnchor` finds a disc, the worker measures every printed circle of the template
+(`src/lib/cv/ring-edges.ts`) and fits a homography to them (`src/lib/geometry/fit-homography.ts`), then stores it as the
+calibration's five ellipse fields plus `perspective` (`calibrationWithPerspective` in `src/lib/cv/alignment-perspective.ts`).
+The template measured is `capture.overlayTemplate`, else A3's hint, else the one whose anchor size the disc was measured
+at. When the measurement fails (fewer than 3 printed circles found, a projective fit worse than the ellipse fit on the
+same points, or a homography that is not a valid calibration) the detected disc is kept with `perspective: null`,
+which is the pre-M18 calibration. A prior (`method: 'overlay'`) always has `perspective: null`.
 
 Prior scaling: `scaleCalibration(capture.calibrationPriorFramePx, max(working.w, working.h) / max(frameWidthPx, frameHeightPx))`.
 

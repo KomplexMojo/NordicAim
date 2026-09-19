@@ -291,6 +291,7 @@ export function adjustStartCalibration(photo: TargetPhoto, analysis: TargetAnaly
       template === 'sighting' ? SIGHTING_TEMPLATE.anchor.diameterMm : PRECISION_TEMPLATE.anchor.diameterMm,
     source: 'manual',
     confidence: null,
+    perspective: null,
   };
 }
 

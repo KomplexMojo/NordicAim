@@ -156,6 +156,7 @@ export function syntheticCalibration(spec: SyntheticTargetSpec): Calibration {
     anchorDiameterMm: ANCHOR_DIAMETER_MM[spec.template],
     source: 'auto',
     confidence: null,
+    perspective: null,
   };
 }
 

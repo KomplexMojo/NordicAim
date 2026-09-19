@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   affinePartAtCentre,
   alignRotationGauge,
+  calibrationFromHomography,
   centrePx,
   homographyFromCalibration,
   invertHomography,
@@ -171,5 +172,80 @@ describe('perspectiveMm', () => {
     // The point 100 mm along +x has w = 1 + 0.01 * 100 = 2, so it maps to half the distance.
     const mapped = mmToPxH({ xMm: 100, yMm: 0 }, p);
     expect(mapped.x).toBeCloseTo(50, 9);
+  });
+});
+
+describe('REV-44: the stored seven numbers', () => {
+  const CAL: CalibrationLike = {
+    cx: 600,
+    cy: 800,
+    radiusPx: 260,
+    axisRatio: 0.82,
+    angleDeg: 37,
+    anchorDiameterMm: 112.4,
+    perspective: { p: 2e-4, q: -7e-4 },
+  };
+  const RING_POINTS = [5.2, 50, 80].flatMap((r) =>
+    Array.from({ length: 36 }, (_, k) => ({ r, xMm: r * Math.cos((k * Math.PI) / 18), yMm: r * Math.sin((k * Math.PI) / 18) })),
+  );
+
+  it('homographyFromCalibration applies the perspective exactly as mmToPx does', () => {
+    const h = homographyFromCalibration(CAL);
+    for (const p of RING_POINTS) {
+      const a = mmToPxH(p, h);
+      const b = mmToPx(p, CAL);
+      expect(a.x).toBeCloseTo(b.x, 9);
+      expect(a.y).toBeCloseTo(b.y, 9);
+    }
+  });
+
+  it('calibrationFromHomography reads the seven numbers back out', () => {
+    const back = calibrationFromHomography(homographyFromCalibration(CAL), CAL.anchorDiameterMm)!;
+    expect(back.cx).toBeCloseTo(600, 9);
+    expect(back.cy).toBeCloseTo(800, 9);
+    expect(back.radiusPx).toBeCloseTo(260, 9);
+    expect(back.axisRatio).toBeCloseTo(0.82, 9);
+    expect(back.angleDeg).toBeCloseTo(37, 9);
+    expect(back.perspective!.p).toBeCloseTo(2e-4, 12);
+    expect(back.perspective!.q).toBeCloseTo(-7e-4, 12);
+  });
+
+  it('drops the unobservable in-plane rotation: every ring lands on the same conic', () => {
+    for (const deg of [11, -63, 170]) {
+      const h = multiplyHomography(homographyFromCalibration(CAL), rotationMm(deg));
+      const cal = { ...CAL, ...calibrationFromHomography(h, CAL.anchorDiameterMm)! };
+      for (const p of RING_POINTS) {
+        const px = mmToPxH(p, h);
+        const mm = pxToMm(px, cal);
+        expect(Math.abs(Math.hypot(mm.xMm, mm.yMm) - p.r)).toBeLessThan(1e-9);
+      }
+    }
+  });
+
+  it('a fitted tilted sheet decomposes into a calibration that reproduces it', () => {
+    const h = tilted();
+    const cal = { ...CAL, ...calibrationFromHomography(h, CAL.anchorDiameterMm)! };
+    expect(cal.perspective).not.toBeNull();
+    for (const p of RING_POINTS) {
+      const mm = pxToMm(mmToPxH(p, h), cal);
+      expect(Math.abs(Math.hypot(mm.xMm, mm.yMm) - p.r)).toBeLessThan(1e-9);
+    }
+    // The centre is the image of the target centre, not an ellipse centre.
+    expect(mmToPx({ xMm: 0, yMm: 0 }, cal).x).toBeCloseTo(centrePx(h).x, 9);
+    expect(mmToPx({ xMm: 0, yMm: 0 }, cal).y).toBeCloseTo(centrePx(h).y, 9);
+  });
+
+  it('an ellipse calibration decomposes with a zero perspective', () => {
+    const back = calibrationFromHomography(homographyFromCalibration(COMPRESSED), 115)!;
+    expect(back.perspective).toEqual({ p: 0, q: 0 });
+    expect(back.axisRatio).toBeCloseTo(0.5, 9);
+    expect(back.angleDeg).toBeCloseTo(90, 9);
+  });
+
+  it('refuses a mirrored or over-flattened homography', () => {
+    const mirrored: Homography = [8, 0, 1000, 0, 8, 800, 0, 0, 1]; // no y flip: +y up in the image
+    expect(calibrationFromHomography(mirrored, 115)).toBeNull();
+    const flat: Homography = [8, 0, 1000, 0, -1, 800, 0, 0, 1];
+    expect(calibrationFromHomography(flat, 115)).toBeNull();
   });
 });

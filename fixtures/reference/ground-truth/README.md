@@ -11,7 +11,8 @@ They supersede `fixtures/reference/seed-calibrations.json`, which was estimated 
 ```json
 {
   "calibration": { "cx": 620, "cy": 838, "radiusPx": 265, "axisRatio": 0.934, "angleDeg": 0,
-                   "anchorDiameterMm": 112.4, "source": "manual", "confidence": null },
+                   "anchorDiameterMm": 112.4, "source": "manual", "confidence": null,
+                   "perspective": { "p": 0.00012, "q": -0.00041 } },
   "shots": [ { "id": "…", "xMm": 1.4, "yMm": -0.8, "multiplicity": 1, "positionOverrides": null,
                "source": "manual", "confidence": null, "cluster": false } ],
   "imageSize": { "widthPx": 1200, "heightPx": 1600 }
@@ -19,6 +20,9 @@ They supersede `fixtures/reference/seed-calibrations.json`, which was estimated 
 ```
 
 - `calibration` is in **working image pixels** (`imageSize`), the space `docs/reference/*.jpg` are stored in.
+- `calibration.perspective` (REV-44, M18) is the sheet's tilt: its vanishing line in target mm, applied before the
+  ellipse map (geometry-scoring §2.1). `null` means square on. A file exported before M18 has no `perspective` at all,
+  which reads as `null` — exactly how that calibration was drawn when it was exported.
 - `shots` are in **millimetres**, origin at the target centre, +x right, +y up (geometry-scoring §2).
 - **No image data and no EXIF** — nothing here identifies where or when the photo was taken.
 

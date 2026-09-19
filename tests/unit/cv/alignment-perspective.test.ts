@@ -9,14 +9,18 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { detectAnchor } from '@/lib/cv/anchor';
 import {
+  calibrationWithPerspective,
   centreOffsetMm,
   circleErrorMm,
   estimatePerspective,
   type PerspectiveEstimate,
 } from '@/lib/cv/alignment-perspective';
+import { mmToRectified, rectifiedToMm, rectify } from '@/lib/cv/rectify';
 import { measureRingEdges, printedCircles } from '@/lib/cv/ring-edges';
 import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
+import type { Calibration } from '@/lib/domain/photo';
 import { homographyFromCalibration, mmToPxH, pxToMmH, type Homography } from '@/lib/geometry/homography';
+import { mmToPx, pxToMm } from '@/lib/geometry/transform';
 import type { RgbaImage } from '@/lib/media/format';
 
 import { loadOpenCvForTests } from '../../helpers/opencv';
@@ -188,5 +192,146 @@ describe('measureRingEdges', () => {
       anchorDiameterMm: PRECISION_TEMPLATE.anchor.diameterMm,
     });
     expect(estimatePerspective(blank, model, 'precision')).toBeNull();
+  });
+});
+
+// REV-44: what Stage A stores. `calibrationWithPerspective` turns the fit into data-model §3's seven
+// numbers, and everything downstream reads them through `mmToPx` — so the tests below go through it.
+describe('calibrationWithPerspective (the stored calibration)', () => {
+  async function detected(spec: TiltedTargetSpec): Promise<{ img: RgbaImage; cal: Calibration }> {
+    const cv = await loadOpenCvForTests();
+    const run = await prepare(spec);
+    const anchorMm = spec.template === 'sighting' ? SIGHTING_TEMPLATE.anchor.diameterMm : PRECISION_TEMPLATE.anchor.diameterMm;
+    const detection = detectAnchor(cv, run.img, null, anchorMm);
+    return { img: run.img, cal: detection!.calibration };
+  }
+
+  /** Distance from where a calibration puts the target centre to the printed centre, in mm. */
+  function storedCentreErrorMm(cal: Calibration, truth: Homography): number {
+    const mm = pxToMmH(mmToPx({ xMm: 0, yMm: 0 }, cal), truth);
+    return Math.hypot(mm.xMm, mm.yMm);
+  }
+
+  it('recovers the printed centre of a sheet tilted 25 degrees within 0.5 mm; the ellipse does not', async () => {
+    const { img, cal } = await detected(TILTED);
+    const refined = calibrationWithPerspective(img, cal, 'precision');
+    expect(refined).not.toBeNull();
+    expect(refined!.perspective).not.toBeNull();
+    expect(refined!.source).toBe(cal.source);
+    expect(refined!.confidence).toBe(cal.confidence);
+    const truth = tiltHomography(TILTED);
+    expect(storedCentreErrorMm(cal, truth)).toBeGreaterThan(0.5);
+    expect(storedCentreErrorMm(refined!, truth)).toBeLessThan(0.5);
+  });
+
+  it('puts every printed ring within 0.3 mm through mmToPx (centre and anchor edge alike)', async () => {
+    const { img, cal } = await detected(TILTED);
+    const refined = calibrationWithPerspective(img, cal, 'precision')!;
+    const truth = tiltHomography(TILTED);
+    for (const diameterMm of [PRECISION_TEMPLATE.ringDiameterMm[10], PRECISION_TEMPLATE.blackDiameterMm]) {
+      const r = diameterMm / 2;
+      for (let k = 0; k < 24; k += 1) {
+        const t = (k * Math.PI) / 12;
+        const printed = mmToPxH({ xMm: r * Math.cos(t), yMm: r * Math.sin(t) }, truth);
+        const mm = pxToMmH(printed, homographyFromCalibration(refined));
+        expect(Math.abs(Math.hypot(mm.xMm, mm.yMm) - r)).toBeLessThan(0.3);
+      }
+    }
+  });
+
+  it('a square-on sheet: the stored calibration agrees with the ellipse within 0.2 mm', async () => {
+    const { img, cal } = await detected(SQUARE_ON);
+    const refined = calibrationWithPerspective(img, cal, 'precision')!;
+    expect(refined).not.toBeNull();
+    for (const p of [
+      { xMm: 0, yMm: 0 },
+      { xMm: 5.2, yMm: 0 },
+      { xMm: -45, yMm: 28 },
+    ]) {
+      const a = mmToPx(p, cal);
+      const b = mmToPx(p, refined);
+      expect(Math.hypot(a.x - b.x, a.y - b.y) / SQUARE_ON.pxPerMm).toBeLessThan(0.2);
+    }
+  });
+
+  it('returns null on a blank image, so Stage A keeps perspective null', () => {
+    const blank: RgbaImage = { data: new Uint8ClampedArray(200 * 200 * 4).fill(240), width: 200, height: 200 };
+    const cal: Calibration = {
+      cx: 100,
+      cy: 100,
+      radiusPx: 56.2,
+      axisRatio: 1,
+      angleDeg: 0,
+      anchorDiameterMm: PRECISION_TEMPLATE.anchor.diameterMm,
+      source: 'auto',
+      confidence: 0.9,
+      perspective: null,
+    };
+    expect(calibrationWithPerspective(blank, cal, 'precision')).toBeNull();
+  });
+
+  it('rectify warps with the perspective: a dot lands where pxToMm and the sheet put it', async () => {
+    const cv = await loadOpenCvForTests();
+    const { img, cal } = await detected(TILTED);
+    const refined = calibrationWithPerspective(img, cal, 'precision')!;
+    // A bright 7x7 dot on the black mark at r = 41.2 mm, midway between the printed 5 and 6 rings (which
+    // are light lines there too); its true mm position comes from the sheet's own geometry, at the dot's
+    // actual (whole-pixel) centre.
+    const truth = tiltHomography(TILTED);
+    const near = mmToPxH({ xMm: 29.13, yMm: 29.13 }, truth);
+    const dot = { x: Math.round(near.x), y: Math.round(near.y) };
+    const dotMm = pxToMmH(dot, truth);
+    const data = new Uint8ClampedArray(img.data);
+    for (let dy = -3; dy <= 3; dy += 1) {
+      for (let dx = -3; dx <= 3; dx += 1) {
+        const i = ((dot.y + dy) * img.width + dot.x + dx) * 4;
+        data[i] = 255;
+        data[i + 1] = 255;
+        data[i + 2] = 255;
+      }
+    }
+
+    /** The dot's centroid after rectifying with `c`, read back in target mm. */
+    function rectifiedDotMm(c: Calibration): { xMm: number; yMm: number } {
+      const rect = rectify(cv, { ...img, data }, c, 'precision', { pxPerMm: 10, radiusMm: 60 });
+      try {
+        const gray = rect.gray.data as Uint8Array;
+        const geom = { side: rect.side, pxPerMm: rect.pxPerMm };
+        const expected = mmToRectified(pxToMm(dot, c), geom);
+        const reach = 2 * rect.pxPerMm;
+        let sum = 0;
+        let sx = 0;
+        let sy = 0;
+        for (let y = Math.floor(expected.y - reach); y <= expected.y + reach; y += 1) {
+          for (let x = Math.floor(expected.x - reach); x <= expected.x + reach; x += 1) {
+            const v = gray[y * rect.side + x] as number;
+            if (v < 128) continue;
+            sum += v;
+            sx += v * x;
+            sy += v * y;
+          }
+        }
+        expect(sum).toBeGreaterThan(0);
+        return rectifiedToMm({ x: sx / sum, y: sy / sum }, geom);
+      } finally {
+        rect.gray.delete();
+        rect.valid.delete();
+        rect.chroma?.delete();
+        rect.rgb?.delete();
+      }
+    }
+
+    // Rectify and pxToMm agree: the warp is the calibration's own E · P, not a 3-point affine of it.
+    const projective = rectifiedDotMm(refined);
+    const own = pxToMm(dot, refined);
+    expect(Math.hypot(projective.xMm - own.xMm, projective.yMm - own.yMm)).toBeLessThan(0.1);
+    // And against the sheet: the dot's distance from the printed centre (the frame's in-plane rotation is
+    // unobservable from concentric circles, so the radius is what can be compared).
+    const trueR = Math.hypot(dotMm.xMm, dotMm.yMm);
+    const projectiveR = Math.hypot(projective.xMm, projective.yMm);
+    const affine = rectifiedDotMm({ ...refined, perspective: null });
+    const affineR = Math.hypot(affine.xMm, affine.yMm);
+    expect(Math.abs(projectiveR - trueR)).toBeLessThan(0.3);
+    expect(Math.abs(projectiveR - trueR)).toBeLessThan(Math.abs(affineR - trueR));
   });
 });
