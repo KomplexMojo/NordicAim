@@ -16,9 +16,10 @@ import { clientNow } from '@/lib/media/capture-time';
 import type { ServiceContext } from '@/lib/services/context';
 import { ingestPhoto } from '@/lib/services/ingest';
 import { requestAnalysis } from '@/lib/services/photos';
-import { createSession } from '@/lib/services/sessions';
+import { createSession, getSession } from '@/lib/services/sessions';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { getPhotoRecord, listPhotosBySession, putPhotoRecord } from '@/lib/store/photos-repo';
+import type { BiathlonSession } from '@/lib/domain/session';
 
 export interface AsaTestHooks {
   listPhotos(sessionId: string): Promise<TargetPhoto[]>;
@@ -27,6 +28,8 @@ export interface AsaTestHooks {
   setShots(photoId: string, shots: unknown): Promise<void>;
   setCalibration(photoId: string, calibration: unknown): Promise<void>;
   loadDemo(): Promise<string>;
+  /** M14: reads `artifacts` / `shares` so e2e specs can assert on the summary image without a UI hook for them. */
+  getSession(sessionId: string): Promise<BiathlonSession | null>;
 }
 
 declare global {
@@ -183,5 +186,9 @@ export function installTestHooks(): void {
       await applyManual(ctx, photoId, { calibration: Calibration.parse(calibration) });
     },
     loadDemo,
+    async getSession(sessionId) {
+      const { ctx } = await loadAppServices();
+      return getSession(ctx, sessionId);
+    },
   };
 }

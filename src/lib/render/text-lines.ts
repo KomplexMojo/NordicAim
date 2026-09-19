@@ -7,11 +7,13 @@ import type { AnalysisResult, MpiOffset, Shot, SubsetResult, UnitResult } from '
 import type { ShotPosition } from '../domain/enums';
 import { zoneFor } from '../scoring/sighting';
 
-function fmtMm(value: number | null): string {
+/** mm 1 dp, unavailable `—` (§3 item 10's stated rule). Exported for `render/composite.ts`. */
+export function fmtMm(value: number | null): string {
   return value === null ? '—' : value.toFixed(1);
 }
 
-function fmtAngular(value: number | null): string {
+/** MOA/MRAD 2 dp, unavailable `—`. Exported for `render/composite.ts`. */
+export function fmtAngular(value: number | null): string {
   return value === null ? '—' : value.toFixed(2);
 }
 

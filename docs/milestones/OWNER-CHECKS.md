@@ -207,3 +207,7 @@ during M10/M11 work._
 - [ ] Confirm the decisions in M20 Open questions 3-8, especially: rule 7a (too-many-holes) runs before rule 6 and a rejected target stores computed: null; a rejected `both` target withholds the score for the whole target; the standard (no-backing) path never infers double punches (DOUBLE_PUNCH_MIN_RATIO_STANDARD = null); an inferred double is stored as the shot's multiplicity plus `inferred`; and once any shot is manual, nothing new is inferred.
 - [ ] Confirm CONFIDENT_HOLE_MIN = 0.94 is acceptable even though it makes only about 9% of real standard-path holes confident, so rejection rarely fires there.
 - [ ] Re-measure DOUBLE_PUNCH_MIN_RATIO = 1.8 once backing-sheet §7 has 10 or more labelled backing photos (it currently rests on only two known doubles).
+
+## M14 — Session summary image and share
+
+- [ ] On the iPhone: Share → Save Image → attach in Garmin Connect → confirm it looks right (milestone Acceptance human-required step; not attempted here, no physical device available).

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { AppRouter } from '@/app/router';
 import { loadAppServices } from '@/lib/app/services';
+import { startSummaryScheduler } from '@/lib/composite/scheduler-browser';
 import { startPipelineRunner } from '@/lib/pipeline/runner-browser';
 import { getCvClient } from '@/workers/cv-client';
 
@@ -17,9 +18,11 @@ if (import.meta.env.VITE_FAKE_CAMERA === '1') {
 // analysis-pipeline §5: the pipeline runner starts on app load, resets interrupted jobs and picks up any
 // Stage A or Stage B work left over from a previous visit. The CV worker is created lazily, on the first job.
 void loadAppServices()
-  .then(({ ctx, imageTools, renderTools }) =>
-    startPipelineRunner(ctx, { getCvApi: getCvClient, imageTools, renderTools }),
-  )
+  .then(({ ctx, imageTools, renderTools }) => {
+    startPipelineRunner(ctx, { getCvApi: getCvClient, imageTools, renderTools });
+    // analysis-pipeline §7: rebuilds the session summary image after Stage B settles.
+    startSummaryScheduler(ctx, renderTools);
+  })
   .catch((err: unknown) => {
     console.error('[pipeline] runner failed to start', err);
   });

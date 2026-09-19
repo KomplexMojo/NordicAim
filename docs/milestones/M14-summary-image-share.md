@@ -68,7 +68,71 @@ pnpm test:e2e
 - Nested cell `<svg>`s need a `viewBox`.
 
 ## Open questions
-_(add here)_
+
+- **`CompositeInput` (rendering-composite.md §5) has no field for "how many more analyzed targets exist
+  beyond the four slots"**, yet §5's analysis-band line 3 ("`+<n> more target(s) in the app`") needs
+  exactly that count, and it isn't derivable from the four `SlotData | null` slots alone. Added an extra
+  `moreCount: number` field to `CompositeInput` (computed in `composite/build.ts` from the full
+  candidate list `selectDefaultSlots` saw). Not blocking.
+- **The notes-wrapping algorithm for "≤ 2 lines" isn't specified** (word-boundary wrap vs. a flat
+  character cut). Implemented as a flat cut at `MAX_LINE_CHARS` (110) with an ellipsis on line 2 if more
+  remains — simplest reading consistent with the "≤110 chars (…)" rule stated for every other line. Not
+  blocking (cosmetic only).
+- **The `sha256` and stored `sizeBytes` do not go through the "≤16MB" note anywhere** — not relevant here
+  since these are on-device blobs, not published Artifacts; noted only because the spec's "no image data
+  and no GPS" JSON rule is the one this milestone's tests actually check (`build.test.ts`).
 
 ## Completion notes
-_(fill in when done)_
+
+- Implemented `src/lib/composite/{select-defaults,artifact,build,scheduler-browser}.ts`,
+  `src/lib/render/composite.ts`, `src/lib/share/share-browser.ts`, `src/lib/services/shares.ts`,
+  `src/components/results/{SummaryCard,AttachInGarminCard}.tsx`. Wired `startSummaryScheduler` from
+  `main.tsx` alongside the existing pipeline runner, and replaced the M12-era summary placeholder in
+  `ResultsPage.tsx` with `<SummaryCard>`. Exported `fmtMm`/`fmtAngular` from `render/text-lines.ts` (were
+  module-private) so `render/composite.ts` reuses the same mm/MOA formatting rule. Added a `getSession`
+  test hook (`src/lib/testing/test-hooks-browser.ts`) so the new e2e spec can assert on `session.artifacts`
+  / `session.shares` without a dedicated UI affordance for them.
+- `selectDefaultSlots` filters `isTargetPhoto` defensively per backing-sheet.md §3's explicit statement
+  that backing-card photos are excluded from the summary image (in practice a card photo's status can
+  never be `analyzed`, since it never reaches Stage B, so this is belt-and-braces).
+- Commands run: `pnpm check` passes end to end (`typecheck`, `lint` — 0 errors, the 4 warnings in
+  `ui/badge.tsx`, `ui/button.tsx`, `ui/toggle.tsx`, `cv/opencv.ts` predate this milestone — `test`
+  717/717, `check:privacy` 16 images). `pnpm test:e2e` (both projects, full suite): 52/52 pass; on the
+  first parallel run one unrelated test (`adjust.spec.ts` REV-44, mobile-webkit) hit a `window.__asaTest`
+  race under worker load and failed, then passed cleanly alone — a pre-existing flake, not touched by
+  this milestone.
+  - `tests/e2e/summary.spec.ts` itself: 3/3 on `mobile-chromium` and 3/3 on `mobile-webkit`.
+  - **WebKit pitfall found and fixed**: `navigator.share()` opens WebKit's real OS share sheet even
+    under Playwright automation, which has no UI to dismiss headlessly, so the Share test hung forever
+    on `mobile-webkit` until killed. Fixed by having that one test disable `navigator.canShare` via
+    `page.addInitScript` before navigating, forcing the same download fallback branch a browser without
+    file-sharing support takes — this is also what the milestone's own acceptance line ("Playwright
+    download event") describes, so this is a test-determinism fix, not a change to `shareArtifact`
+    itself (still tries native share first on a real phone).
+- **Human required (owner):** on the iPhone, Share → Save Image → attach in Garmin Connect → confirm it
+  looks right, per the milestone's Acceptance note. Not attempted here (no physical device).
+
+### Fix round 1 (review finding: §6 step 2 must run `analyzeTarget` per slot)
+
+- The reviewer confirmed a real internal-consistency bug: `toSlotData` in `src/lib/composite/build.ts`
+  reused each slot's stored `analysis.computed.result` (from that photo's own earlier Stage B run)
+  instead of calling `analyzeTarget` fresh, while the stat-card/footer lines (`sightingFooterLines`,
+  `precisionFooterLines`) were already built from *current* `holeDiameterMm`. If Settings' hole diameter
+  changed between a photo's Stage B run and a later composite rebuild, the composite could show two
+  disagreeing hit/miss counts for the same target in one shared image.
+- **Fix**: `toSlotData` now calls `analyzeTarget({ template, categorization, shots: analysis.shots, profile })`
+  per slot, with `profile` built from the *current* settings' `holeDiameterMm` (same
+  `{ ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M` pattern `runStageB` uses), exactly per
+  rendering-composite.md §6 step 2's literal wording. `analysis.shots` is the final reconciled shot list
+  Stage B stored (verified against `stage-b.ts`), so the recompute uses the same shots, just the current
+  profile. Removed the now-resolved "not blocking" Open-questions bullet about this; the `moreCount` and
+  notes-wrapping bullets stand as before (unaffected by this fix).
+- Added a regression test in `tests/unit/composite/build.test.ts` reproducing the reviewer's exact repro:
+  a sighting fixture analyzed at `holeDiameterMm=8` (stale, 9 hit / 1 miss) with current settings then
+  changed to `holeDiameterMm=15`; asserts the rendered composite SVG contains neither a stale "9 hit / 1
+  miss" nor a disagreement between the stat-card line (`vs 45 mm prone: …`) and the `Scored (Prone): …`
+  line — both now read `10 hit / 0 miss`.
+- Commands re-run after the fix: `pnpm check` (typecheck clean; lint 0 errors / the same 4 pre-existing
+  warnings in `ui/badge.tsx`, `ui/button.tsx`, `ui/toggle.tsx`, `cv/opencv.ts`; test 718/718 across 73
+  files — 717 prior + the new regression test; `check:privacy` 16 images) and `pnpm test:e2e` (52/52,
+  both projects, no flake this run). Both pass end to end.

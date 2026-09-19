@@ -1,8 +1,8 @@
 import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { SummaryCard } from '@/components/results/SummaryCard';
 import { TargetCard } from '@/components/results/TargetCard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
@@ -75,15 +75,7 @@ export function ResultsPage() {
 
       <h1 className="text-xl font-semibold">{data.name}</h1>
 
-      {/* The session summary image and Share arrive with M14; the card holds its place in the layout. */}
-      <Card data-testid="summary-placeholder">
-        <CardHeader>
-          <CardTitle>Session summary</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          The shareable summary image for this session will appear here.
-        </CardContent>
-      </Card>
+      <SummaryCard sessionId={sid} sessionName={data.name} />
 
       {data.photos.length === 0 ? (
         <p className="text-sm text-muted-foreground">No targets in this session yet.</p>
