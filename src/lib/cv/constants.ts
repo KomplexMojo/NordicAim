@@ -162,3 +162,23 @@ export const AUTO_MIN_CHROMA = 124;
  * Measured p10: 101-133 mm on the four unbacked photos, 4-12 mm on the six backed ones. Provisional (§7).
  */
 export const AUTO_RADIUS_QUANTILE = 0.1;
+
+// --- M21 / REV-40: suggested holes -----------------------------------------------------------------
+// Measured on the owner's 41 rated targets (DESIGN-REVISIONS 2026-09-18, the v2 review export
+// `fixtures/private/review/detection-review-v2-2026-09-17.json`): with these values the rule shows a
+// median of 3 suggestions per photo and contains 22 of the 30 real holes the filters discarded (24 at
+// a cap of 4). Accepting every real one takes recall to 83.3% with precision unchanged at 94.7%. One
+// camera and one range: re-measure when the sample set grows (M21 Open questions 3), particularly
+// SUGGEST_RADIAL_MAX_MM, which encodes where this owner's misses happen to fall.
+
+/** REV-40: a discarded candidate further than this from the target centre is never offered. */
+export const SUGGEST_RADIAL_MAX_MM = 60;
+/** REV-40: nor one whose blob is longer than this (major / minor) — a printed stroke, not a hole. */
+export const SUGGEST_ELONGATION_MAX = 6;
+/** REV-40: nor one whose maximum inscribed radius is below this — too thin to be a hole. */
+export const SUGGEST_STROKE_MIN_MM = 0.7;
+/** REV-40: the best this many, by rank, are offered per photo. */
+export const SUGGEST_MAX = 3;
+/** REV-40: the rank is `score − SUGGEST_RADIAL_WEIGHT × radialMm − SUGGEST_ELONGATION_WEIGHT × elongation`. */
+export const SUGGEST_RADIAL_WEIGHT = 0.004;
+export const SUGGEST_ELONGATION_WEIGHT = 0.03;

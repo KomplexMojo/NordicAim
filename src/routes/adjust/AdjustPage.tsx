@@ -1,12 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { AlignmentControls } from '@/components/adjust/AlignmentControls';
-import { ImageStage, type StageApi } from '@/components/adjust/ImageStage';
-import { LivePreview } from '@/components/adjust/LivePreview';
-import { ShotInspector } from '@/components/adjust/ShotInspector';
-import { UnplacedTray } from '@/components/adjust/UnplacedTray';
+import { AdjustSurface } from '@/components/adjust/AdjustSurface';
+import { loadAdjust, useAdjustDraft } from '@/components/adjust/useAdjustDraft';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,177 +15,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useServices } from '@/lib/app/services';
-import { BIATHLON_50M } from '@/lib/defaults/biathlon';
-import type { AnalysisResult, Shot, TargetAnalysis } from '@/lib/domain/analysis';
-import { declaredRoundsOrNull, isCategorizationComplete } from '@/lib/domain/categorization';
-import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
-import { photoStatus } from '@/lib/domain/status';
-import { shotTemplate } from '@/lib/pipeline/stage-a';
-import { analyzeTarget } from '@/lib/scoring/analyze';
-import { mergeReconcileWarnings, reconcileReasonContext, reconcileShots } from '@/lib/scoring/reconcile-shots';
-import { reprojectShots } from '@/lib/geometry/reproject';
-import {
-  adjustStartCalibration,
-  buildGroundTruth,
-  reanalyze,
-  saveAdjustments,
-  unplacedRounds,
-} from '@/lib/services/adjust';
-import { getAnalysisRecord } from '@/lib/store/analyses-repo';
-import { photoWorkingKey } from '@/lib/store/blob-keys';
-import { getBlob } from '@/lib/store/blobs-repo';
-import { getPhotoRecord } from '@/lib/store/photos-repo';
-import { getSettings } from '@/lib/store/settings-repo';
+import { buildGroundTruth, reanalyze, saveAdjustments } from '@/lib/services/adjust';
 import { getCvClient } from '@/workers/cv-client';
-
-interface AdjustData {
-  photo: TargetPhoto;
-  analysis: TargetAnalysis;
-  holeDiameterMm: number;
-}
-
-async function loadAdjust(ctx: ReturnType<typeof useServices>['ctx'], pid: string): Promise<AdjustData | null> {
-  const photo = await getPhotoRecord(ctx.db, pid);
-  if (photo === null) return null;
-  const analysis = await getAnalysisRecord(ctx.db, pid);
-  if (analysis === null) return null;
-  const settings = await getSettings(ctx.db);
-  return { photo, analysis, holeDiameterMm: settings.profileOverrides.holeDiameterMm };
-}
-
-function sameCalibration(a: Calibration, b: Calibration): boolean {
-  return (
-    a.cx === b.cx &&
-    a.cy === b.cy &&
-    a.radiusPx === b.radiusPx &&
-    a.axisRatio === b.axisRatio &&
-    a.angleDeg === b.angleDeg &&
-    a.anchorDiameterMm === b.anchorDiameterMm &&
-    samePerspective(a.perspective, b.perspective)
-  );
-}
-
-/** REV-44: a tilt-only change (e.g. "Reset alignment") is a change, and must be saved like one. */
-function samePerspective(a: Calibration['perspective'], b: Calibration['perspective']): boolean {
-  if (a === null || b === null) return a === b;
-  return a.p === b.p && a.q === b.q;
-}
 
 /**
  * Route `#/sessions/:sid/photos/:pid/adjust` (analysis-pipeline §1, M13). The photo with the template
  * rings drawn on it: move, add and delete shots, or line the target up by hand, with a live score
  * preview. Saving writes `manual` data the pipeline never overwrites (analysis-pipeline §8).
  *
- * The record is read once and then edited locally — a live query would throw the draft away every
- * time the background runner touched the same photo.
+ * The editor itself is `AdjustSurface` over `useAdjustDraft`, which the session review (M21) embeds too.
  */
 export function AdjustPage() {
   const { sid = '', pid = '' } = useParams();
-  const { ctx } = useServices();
   const navigate = useNavigate();
-
-  const [data, setData] = useState<AdjustData | null | undefined>(undefined);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [calibration, setCalibration] = useState<Calibration | null>(null);
-  const [shots, setShots] = useState<Shot[]>([]);
-  const [mode, setMode] = useState<'shots' | 'alignment'>('shots');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const draft = useAdjustDraft(pid);
+  const { ctx, data, calibration, shots } = draft;
   const [busy, setBusy] = useState(false);
-  // M17 step 1: the stage's live transform, so a dragged tray marker lands under the finger.
-  const stageApi = useRef<StageApi | null>(null);
-  // REV-46: the alignment the on-screen shots are currently expressed in. A ref, not state, because a drag
-  // delivers several changes between renders and each must re-project from the one before it.
-  const shotsCalibration = useRef<Calibration | null>(null);
-
-  /** Loads a fresh record's alignment and shots as they are — nothing to re-project. */
-  function resetDraft(next: AdjustData) {
-    const start = adjustStartCalibration(next.photo, next.analysis);
-    shotsCalibration.current = start;
-    setCalibration(start);
-    setShots(next.analysis.shots);
-    setSelectedId(null);
-  }
-
-  /** REV-46: the user moved the alignment. The rings move; the holes do not, so every shot follows its hole. */
-  function changeCalibration(next: Calibration) {
-    const previous = shotsCalibration.current;
-    shotsCalibration.current = next;
-    if (previous !== null) setShots((current) => reprojectShots(current, previous, next));
-    setCalibration(next);
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-    loadAdjust(ctx, pid).then(
-      (next) => {
-        if (cancelled) return;
-        setData(next);
-        if (next === null) return;
-        resetDraft(next);
-      },
-      (err: unknown) => {
-        if (cancelled) return;
-        toast.error(`Could not open this target: ${err instanceof Error ? err.message : String(err)}`);
-        setData(null);
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [ctx, pid]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    getBlob(ctx.db, photoWorkingKey(pid)).then(
-      (blob) => {
-        if (cancelled || blob === null) return;
-        objectUrl = URL.createObjectURL(blob);
-        setImageUrl(objectUrl);
-      },
-      () => {
-        // No working image stored: the stage still draws the rings and shots on a blank background.
-      },
-    );
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [ctx, pid]);
-
-  // M13 step 3: the score the edits on screen would produce, recomputed on every change.
-  const preview = useMemo(() => {
-    if (!data || calibration === null) return null;
-    const { photo, analysis, holeDiameterMm } = data;
-    const categorization = photo.categorization;
-    let result: AnalysisResult | null = null;
-    let warnings = analysis.pipeline.warnings;
-    const method = analysis.pipeline.detection.method;
-    if (categorization.template !== null && isCategorizationComplete(categorization)) {
-      const profile = { ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M;
-      // REV-39 (M20): the same reconciliation Stage B runs after Save, so the preview matches it.
-      const reconciled = reconcileShots({ shots, categorization, method });
-      warnings = mergeReconcileWarnings(warnings, reconciled);
-      try {
-        result =
-          reconciled.rejected.length > 0
-            ? null
-            : analyzeTarget({ template: categorization.template, categorization, shots: reconciled.shots, profile });
-      } catch {
-        result = null;
-      }
-    }
-    const draft: TargetAnalysis = {
-      ...analysis,
-      calibration,
-      shots,
-      pipeline: { ...analysis.pipeline, stageA: 'done', stageB: 'done', error: null, warnings },
-    };
-    const { status, reasons } = photoStatus({ categorization, analysis: draft, result });
-    const reconcile = reconcileReasonContext(shots, categorization, method);
-    return { result, status, reasons, reconcile };
-  }, [data, calibration, shots]);
 
   if (data === undefined) return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
   if (data === null || calibration === null) {
@@ -202,66 +44,16 @@ export function AdjustPage() {
     );
   }
 
-  const { photo, analysis, holeDiameterMm } = data;
-  const template = shotTemplate(photo, analysis.pipeline.templateHint, calibration);
-  const selected = shots.find((shot) => shot.id === selectedId) ?? null;
+  const { photo, analysis } = data;
   const units = shots.reduce((sum, shot) => sum + shot.multiplicity, 0);
-  const unplaced = unplacedRounds(photo.categorization, shots);
-
-  function addShot(mm: { xMm: number; yMm: number }) {
-    const shot: Shot = {
-      id: ctx.newId(),
-      xMm: mm.xMm,
-      yMm: mm.yMm,
-      multiplicity: 1,
-      positionOverrides: null,
-      source: 'manual',
-      confidence: null,
-      cluster: false,
-      possibleOverlap: false,
-    };
-    setShots((current) => [...current, shot]);
-    setSelectedId(shot.id);
-  }
-
-  function moveShot(id: string, mm: { xMm: number; yMm: number }) {
-    setShots((current) => current.map((shot) => (shot.id === id ? { ...shot, xMm: mm.xMm, yMm: mm.yMm } : shot)));
-  }
-
-  function changeShot(next: Shot) {
-    setShots((current) => current.map((shot) => (shot.id === next.id ? next : shot)));
-  }
-
-  function deleteShot(id: string) {
-    setShots((current) => current.filter((shot) => shot.id !== id));
-    setSelectedId((current) => (current === id ? null : current));
-  }
-
-  function deleteSelected() {
-    if (selectedId !== null) deleteShot(selectedId);
-  }
-
-  /** M17 step 1: a parked marker let go over the photo becomes a manual shot where the finger was. */
-  function placeUnplaced(client: { x: number; y: number }) {
-    const mm = stageApi.current?.clientToMm(client) ?? null;
-    if (mm === null) return;
-    addShot(mm);
-  }
-
-  /** M17 step 1: a placed shot dragged back onto the tray is removed. */
-  function onShotDragEnd(id: string, client: { x: number; y: number }) {
-    const dropped = document.elementFromPoint(client.x, client.y);
-    if (dropped?.closest('[data-unplaced-tray]') != null) deleteShot(id);
-  }
 
   async function onSave() {
-    if (calibration === null) return;
+    // §8: a manual calibration stops Stage A re-aligning this photo, so only send one the user moved.
+    const patch = draft.patch();
+    if (patch === null) return;
     setBusy(true);
     try {
-      const stored = analysis.calibration;
-      // §8: a manual calibration stops Stage A re-aligning this photo, so only send one the user moved.
-      const moved = stored === null || !sameCalibration(stored, calibration);
-      await saveAdjustments(ctx, pid, { ...(moved ? { calibration } : {}), shots });
+      await saveAdjustments(ctx, pid, patch);
       void navigate(`/sessions/${sid}/results`);
     } catch (err) {
       toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
@@ -275,15 +67,12 @@ export function AdjustPage() {
    * and threw unsaved edits away.
    */
   async function onReanalyze() {
-    if (calibration === null) return;
+    const patch = draft.patch();
+    if (patch === null) return;
     setBusy(true);
     try {
-      const stored = analysis.calibration;
-      const moved = stored === null || !sameCalibration(stored, calibration);
-      await reanalyze(ctx, pid, { ...(moved ? { calibration } : {}), shots }, getCvClient());
-      const next = await loadAdjust(ctx, pid);
-      setData(next);
-      if (next !== null) resetDraft(next);
+      await reanalyze(ctx, pid, patch, getCvClient());
+      draft.setData(await loadAdjust(ctx, pid));
       toast.success('Re-analyzed with your alignment and shots.');
     } catch (err) {
       toast.error(`Could not re-analyze: ${err instanceof Error ? err.message : String(err)}`);
@@ -322,86 +111,7 @@ export function AdjustPage() {
 
       <h1 className="text-xl font-semibold">Adjust shots</h1>
 
-      <div className="flex gap-2" role="group" aria-label="Edit mode">
-        <Button
-          variant={mode === 'shots' ? 'default' : 'outline'}
-          className="h-11 flex-1"
-          aria-pressed={mode === 'shots'}
-          data-testid="mode-shots"
-          onClick={() => setMode('shots')}
-        >
-          Shots
-        </Button>
-        <Button
-          variant={mode === 'alignment' ? 'default' : 'outline'}
-          className="h-11 flex-1"
-          aria-pressed={mode === 'alignment'}
-          data-testid="mode-alignment"
-          onClick={() => {
-            setMode('alignment');
-            setSelectedId(null);
-          }}
-        >
-          Alignment
-        </Button>
-      </div>
-
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <ImageStage
-            imageUrl={imageUrl}
-            imageSize={photo.working}
-            calibration={calibration}
-            template={template}
-            mode={mode}
-            shots={shots}
-            selectedShotId={selectedId}
-            mpiMm={preview?.result?.all.mpi ?? null}
-            holeDiameterMm={holeDiameterMm}
-            onSelectShot={setSelectedId}
-            onAddShot={addShot}
-            onMoveShot={moveShot}
-            onCalibrationChange={changeCalibration}
-            apiRef={stageApi}
-            onShotDragEnd={onShotDragEnd}
-          />
-        </div>
-        {/* M17 step 1 (REV-29): one parked marker per round with no hole yet. Derived, never stored.
-            M20 (REV-39): each one is scored as a miss until it is dragged onto a hole. */}
-        {mode === 'shots' && <UnplacedTray count={unplaced} onPlace={placeUnplaced} />}
-      </div>
-
-      {mode === 'shots' ? (
-        selected !== null ? (
-          <ShotInspector
-            shot={selected}
-            position={photo.categorization.position ?? 'prone'}
-            onChange={changeShot}
-            onDelete={deleteSelected}
-            onClose={() => setSelectedId(null)}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Tap the photo to add a shot, tap a shot to select it, or drag one to move it.
-            {unplaced > 0
-              ? ' Rounds in the tray are scored as misses (off target); drag one onto the hole it made to count it.'
-              : ''}
-          </p>
-        )
-      ) : (
-        <AlignmentControls calibration={calibration} onChange={changeCalibration} />
-      )}
-
-      {preview !== null && (
-        <LivePreview
-          result={preview.result}
-          status={preview.status}
-          reasons={preview.reasons}
-          hintTemplate={analysis.pipeline.templateHint?.template ?? null}
-          declared={declaredRoundsOrNull(photo.categorization)}
-          reconcile={preview.reconcile}
-        />
-      )}
+      <AdjustSurface draft={draft} />
 
       <div className="flex gap-2">
         <Button className="h-11 flex-1" data-testid="save-adjustments" disabled={busy} onClick={() => void onSave()}>

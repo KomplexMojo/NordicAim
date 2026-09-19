@@ -98,7 +98,7 @@ function stubCv(result: ReviewAndAlignResult | Error, shots: Shot[] = TEN, detec
     async detectShots(workingJpeg, calibration, template, holeDiameterMm, backing) {
       void workingJpeg;
       detectCalls.push({ calibration, template, holeDiameterMm, backing });
-      return { shots, detection: detectionRecord };
+      return { shots, detection: detectionRecord, suggestions: [], holeWidths: [] };
     },
   };
   return { api, calls, detectCalls };

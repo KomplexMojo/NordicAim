@@ -110,5 +110,96 @@ target with no suggestions shows no extra interface.
 3. Suggestion constants are measured on 41 photos from one camera and one range. They should be re-measured when the sample set
    grows, particularly `SUGGEST_RADIAL_MAX_MM`, which encodes where this owner's misses happen to fall.
 
+Raised during implementation (2026-09-19):
+
+4. **Answered provisionally for Q1 and Q2 — review is stateless, entered from results.** No field was added (Q1): re-entering
+   the review walks every photo again. The entry point (Q2) is a **Review session** link on the results screen, between the
+   target cards and *Edit metadata*, shown only when the session has targets. Owner: confirm both on the phone.
+5. **The milestone's `60 mm → 20` vector contradicts its own rule (non-blocking).** Step 3 says "the whole number of hole widths
+   that fit, capped at 20"; 60 / 5.6 = 10.7, so no reading of that rule reaches the cap at 60 mm (the cap needs ≥ 112 mm). The rule
+   is implemented as `ceil(width / holeDiameter)` beyond the tolerance — ceil, not floor or round, because it is the only reading
+   that satisfies the milestone's `11 mm → 2` vector *and* REV-41's "materially wider than 5.6 mm ± 5% offers 2 shots" (with
+   round, 5.9–8.3 mm would propose 1). The test asserts `60 mm → 11` and tests the cap at 113 mm and 500 mm. Owner: confirm, or
+   give the intended formula.
+6. **Where a hole's width comes from is not specified, and on the standard path no measurement tried works (non-blocking,
+   owner decision).** `suggestedMultiplicity(widthMm, …)` needs a width per shot; a stored `Shot` has none. Measured on the
+   owner's labelled holes (`pnpm cv:eval`, 237 matched detections, nearly all single shots): the blob's equivalent diameter reads
+   p10 4.8 / p50 6.3 / p90 10.3 mm and **64.6 % read wider than one shot**; the moment-ellipse major axis reads wider on 94 %; the
+   inscribed diameter never exceeds one shot. Any of them would put "looks like 2 shots" on most holes — M20 Open question 5
+   found the same for its area ratio. So the **standard path supplies no width and shows no prompt**; the **colour path**
+   (backing-sheet §5.4, the coloured area *is* the opening) supplies its equivalent-disc diameter. The prompt, the pure rule and
+   the Inspector wiring are complete and tested; only the width source is withheld. This means the owner check "confirm a double
+   punch" can only be done on a **backed** target today. Owner: accept colour-path-only, or name a width measurement to try.
+7. **`DetectShotsResult` also gains `holeWidths` (non-blocking).** Step 1 names only `suggestions`; the widths for step 3 have to
+   cross the same worker boundary, so they ride on the same result. Both are derived and ignored by Stage A. analysis-pipeline §1
+   (route table) and §6 (worker result) were updated to match.
+8. **The colour path offers no suggestions (non-blocking).** It discards no candidates (backing-sheet §5 merges coloured blobs), so
+   `suggestions` is `[]` whenever holes were found by colour. The rule was measured on the standard path only.
+9. **Adjust asks the worker for the suggestions each time it opens (non-blocking).** Suggestions are never stored, so Adjust
+   re-runs `detectShots` against the stored alignment in the background (its shots are ignored). Suggestions appear a moment after
+   the page; on iPhone this is one A5 run per open (M15 budget). A photo with no stored alignment (`target-not-found`) gets none.
+10. **Two interpretations in the Adjust layer (non-blocking).** (a) A suggestion is hidden while any shot on screen lies within
+    `SAME_HOLE_DIAMETERS` (0.8 hole diameters, analysis-pipeline §8) of it — that is how a tapped one disappears, and deleting that
+    shot brings it back; it also hides suggestions the user already placed by hand. (b) "A shot the user has already set is never
+    re-proposed" is read as: no prompt on a `manual` shot, nor on one whose multiplicity was changed on screen in this visit.
+11. **Refactor to embed Adjust (non-blocking).** Step 4 forbids forking Adjust, and the editor's state lived in `AdjustPage`. It
+    now lives in `src/components/adjust/useAdjustDraft.ts` (state, preview, suggestions) and `AdjustSurface.tsx` (the editor
+    UI); `AdjustPage` and `ReviewPage` each wrap them with their own actions. Behaviour of the Adjust route is unchanged (all 12
+    existing Adjust e2e runs pass). Two helper files are outside the *Files* list: `src/lib/services/detection-aids.ts` (the
+    worker call for Adjust) and those two components; `reprojectShots` became generic so suggestions re-project with the
+    alignment like shots (REV-46).
+12. **The review's headline is the live draft's** (`targetHeadline` of the Adjust preview), so it moves as the user edits; a
+    target with no result shows "No score yet".
+
 ## Completion notes
-_(fill in when done)_
+
+Implemented by the `milestone-implementer` agent (orchestrated run), 2026-09-19. Per the orchestration overrides this milestone
+was **not** committed or pushed, and its Status is left `in-progress`.
+
+### Commands
+
+| Command | Result |
+|---|---|
+| `pnpm check` | **pass** — typecheck clean, lint 0 errors (the same 4 pre-existing warnings), **759 unit tests in 76 files** (41 new in 3 files; was 718 in 73), privacy check passed (16 images) |
+| `pnpm test:e2e` | **pass** — 56/56 (28 per project), including the new `review.spec.ts` and the new M21 test in `adjust.spec.ts` |
+| `pnpm cv:eval` | **pass** — detection unchanged: every per-photo TP/FP/FN row identical to the run before the change (only the timing column differs); gated all **74.3 % / 92.9 %** (237/18/82), pre-M18 A4 row **76.2 % / 93.8 %** (M16's recorded numbers) |
+
+### Suggestion rule yield (step 5, reported by `pnpm cv:eval`, never gated)
+
+On the 35 gated photos: **59 suggestions** (median 2 per photo, max 3); **34** (57.6 %) land within 0.8 hole diameters of a
+labelled hole; **30** labelled holes no detection found have a suggestion on them. Accepting every real suggestion would take
+recall **74.3 % → 83.7 %** with precision **93.7 %** by position-matching (REV-40 measured 83.3 % / 94.7 % from the owner's own
+per-candidate ratings — same direction; the labels here are the owner's approximate taps). No threshold in `holes.ts` changed.
+
+### What was built
+
+- **Step 1** — `src/lib/cv/suggestions.ts`: `suggestShots(rejected, holeDiameterMm)` (reasons glyph/paper/mark-score only;
+  radial ≤ 60, elongation ≤ 6, stroke ≥ 0.70; rank `score − 0.004·radial − 0.03·elongation`; best 3; ties by radial, x, y),
+  plus `visibleSuggestions` and `shotFromSuggestion`. Constants in `src/lib/cv/constants.ts` with the measurement. The worker's
+  `detectShots` result gains `suggestions` (and `holeWidths`, Open question 7) via `detectShotsWithBacking`; `holes.ts` only gained
+  `shotsFromReport` (extracted, no logic change). Stage A ignores both.
+- **Step 2** — `SuggestionLayer.tsx`: hollow dashed pink rings (no fill, dot or number) drawn under the shots; a tap (not a drag)
+  makes a manual multiplicity-1 shot; a **Hide/Show N suggested holes** control appears only when there are suggestions; nothing
+  on results or any diagram. `src/lib/services/detection-aids.ts` asks the worker when Adjust opens and after Re-analyze.
+- **Step 3** — `src/lib/cv/multiplicity.ts`: `suggestedMultiplicity`, `HOLE_DIAMETER_TOLERANCE = 0.05`, `doublePunchProposal`,
+  `measuredWidthMm`, `equivalentDiameterMm`; `ShotInspector` shows **Looks like N shots**, which sets the multiplicity and marks
+  the shot manual (Open questions 5 and 6).
+- **Step 4** — `#/review/:sessionId` (`src/routes/review/ReviewPage.tsx`): order fixed at entry from `reviewOrder`
+  (needs-attention first, each group by `captureTime.utc` ascending with null last, then `importedAt`, then id); "Photo N of M",
+  the live headline, the embedded Adjust editor, **Confirm** (saves through `saveAdjustments` only when `hasAdjustEdits` says the
+  draft differs from where it started) and **Skip**; a final step listing each photo as *Changes saved* / *Confirmed, no changes* /
+  *Skipped* with **See results**. Entry: **Review session** on the results screen.
+
+### Tests added
+
+`tests/unit/cv/suggestions.test.ts` (13), `tests/unit/cv/multiplicity.test.ts` (15), `tests/unit/services/review.test.ts` (13),
+`tests/e2e/review.spec.ts` (1 × 2 projects), one new test in `tests/e2e/adjust.spec.ts` (× 2). The demo's seeded alignment
+yields no suggestion on either sheet, so the Adjust e2e moves the precision alignment 80 px down first (measured in Node to make
+the detector discard three ring-sized marks inside 60 mm) — it tests the mechanics, not what the marks are. Existing stubs of
+`detectShots` in three unit files gained `suggestions: [], holeWidths: []`.
+
+### For the reviewer
+
+Open questions 5 (the 60 mm vector) and 6 (no standard-path width) are the substantive deviations. The Adjust refactor
+(Open question 11) moved code rather than changing it; the diff of `AdjustPage.tsx` is mostly deletion.
+

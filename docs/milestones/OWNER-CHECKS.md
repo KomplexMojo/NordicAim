@@ -211,3 +211,12 @@ during M10/M11 work._
 ## M14 — Session summary image and share
 
 - [ ] On the iPhone: Share → Save Image → attach in Garmin Connect → confirm it looks right (milestone Acceptance human-required step; not attempted here, no physical device available).
+
+## M21 — Session review, suggested holes and double punches
+
+- [ ] On the iPhone (https://komplexmojo.github.io/advanced-shooting-analysis/ after the push), open a real session's results, tap "Review session", and walk it end to end: photos needing attention should come first, the header should read "Photo N of M" with the live headline score, Confirm with no edits just moves on, Confirm after an edit saves it, Skip moves on, and the final screen should list each photo's outcome with "See results" going back to the results screen.
+- [ ] In Adjust on a real target that has suggestions (hollow dashed pink rings, which appear a moment after the page opens because one extra detection runs in the background), tap one and confirm it becomes a manual shot, the live score updates, and after Save the results card shows the new shot; confirm the rings don't read as counted shots, and that the "Hide/Show N suggested holes" control works.
+- [ ] Open Adjust on a target with no suggestions and confirm nothing extra appears: no rings, no hide/show button, no extra help text.
+- [ ] Double punch: on a target shot with a coloured backing sheet, select a hole wider than one shot and confirm "Looks like N shots" appears and one tap sets the count and marks the shot manual. On a target without a backing sheet the prompt will not appear (Open question 6, since nothing on an unbacked target measures hole width) — decide whether that's acceptable or name a width measurement to try.
+- [ ] Note how long suggestions take to appear after opening Adjust on the phone (one extra detection runs each time), for M15's performance budget.
+- [ ] Confirm the milestone's provisional answers to its Open questions: review is stateless and entered via the "Review session" link on the results screen (Q1/Q4), the 60 mm vector / round-up rule (Q5), and double-punch prompts appearing only on backed targets (Q6/Q9).

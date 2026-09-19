@@ -6,6 +6,8 @@ import { calibrationWithPerspective } from '../src/lib/cv/alignment-perspective.
 import { detectAnchor } from '../src/lib/cv/anchor.ts';
 import { detectShotCandidates, type DetectionReport } from '../src/lib/cv/holes.ts';
 import type { OpenCv } from '../src/lib/cv/opencv.ts';
+import { equivalentDiameterMm, HOLE_DIAMETER_TOLERANCE } from '../src/lib/cv/multiplicity.ts';
+import { suggestShots } from '../src/lib/cv/suggestions.ts';
 import { inNumeralBox } from '../src/lib/cv/print-mask.ts';
 import { hintTemplate } from '../src/lib/cv/template-hint.ts';
 import { PRECISION_TEMPLATE } from '../src/lib/defaults/templates.ts';
@@ -82,6 +84,83 @@ async function runPhoto(cv: OpenCv, repoRoot: string, photo: LabelledPhoto, pers
     matchTolerancePx(calibration, HOLE_DIAMETER_MM),
   );
   return { photo, report, match, ms, perspectiveMs, tilted: perspective ? refined !== null : null, detectionsPx };
+}
+
+/**
+ * M21 step 5 (REV-40): the suggestion rule's yield on the gated photos, REPORTED and never gated, so the
+ * rule can be re-measured as the sample grows. A suggestion "lands on" a labelled hole within the same
+ * 0.8 hole diameters the detection match uses; "new" counts labelled holes no detection matched that a
+ * suggestion lands on, i.e. the recall accepting every real suggestion would add.
+ */
+function suggestionYieldReport(gated: PhotoRun[]): string[] {
+  const perPhoto: number[] = [];
+  let total = 0;
+  let onHole = 0;
+  let newHoles = 0;
+  let labelled = 0;
+  let detected = 0;
+  let falseDetections = 0;
+  for (const run of gated) {
+    labelled += run.photo.holes.length;
+    if (run.report === null || run.match === null) {
+      perPhoto.push(0);
+      continue;
+    }
+    detected += run.match.truePositives;
+    falseDetections += run.match.falsePositives;
+    const suggestions = suggestShots(run.report.rejected, HOLE_DIAMETER_MM);
+    perPhoto.push(suggestions.length);
+    total += suggestions.length;
+    const radius = 0.8 * HOLE_DIAMETER_MM;
+    const matchedDetections = run.report.candidates.filter((_, i) => !run.match!.unmatchedDetections.includes(i));
+    const credited = new Set<number>();
+    for (const s of suggestions) {
+      const hit = run.photo.holes.findIndex((h) => Math.hypot(h.xMm - s.xMm, h.yMm - s.yMm) <= radius);
+      if (hit < 0) continue;
+      onHole += 1;
+      const hole = run.photo.holes[hit]!;
+      const alreadyFound = matchedDetections.some((c) => Math.hypot(c.xMm - hole.xMm, c.yMm - hole.yMm) <= radius);
+      if (!alreadyFound && !credited.has(hit)) {
+        credited.add(hit);
+        newHoles += 1;
+      }
+    }
+  }
+  const sorted = [...perPhoto].sort((a, b) => a - b);
+  const median = sorted[sorted.length >> 1] ?? 0;
+  const recallNow = labelled === 0 ? 0 : detected / labelled;
+  const recallAll = labelled === 0 ? 0 : (detected + newHoles) / labelled;
+  const precisionAll = detected + newHoles + falseDetections === 0 ? 1 : (detected + newHoles) / (detected + newHoles + falseDetections);
+  return [
+    '\n### Suggested holes (M21 step 5, REV-40; REPORTED, never gated)\n',
+    `Rule: reason glyph/paper/mark-score, radial <= 60 mm, elongation <= 6, stroke >= 0.70 mm, best 3 by rank. On ${gated.length} gated photos:`,
+    `- suggestions: ${total} (median ${median} per photo, max ${sorted[sorted.length - 1] ?? 0}); ${onHole} land within 0.8 hole diameters of a labelled hole (${pct(total === 0 ? 0 : onHole / total)} of suggestions).`,
+    `- labelled holes no detection found that a suggestion lands on: ${newHoles}. Accepting every real suggestion: recall ${pct(recallNow)} -> ${pct(recallAll)}, precision ${pct(precisionAll)} (unconfirmed suggestions are never counted).`,
+    '- NOTE: the labels are approximate (the owner tapped by eye); this matches positions, not the owner\'s per-candidate judgement in the review export.',
+  ];
+}
+
+/**
+ * M21 step 3 (REV-41), REPORTED: why the standard path supplies no hole width. Over detections that match
+ * a labelled hole (nearly all single shots: 13 of 41 targets hold one multi-shot hole), the blob's
+ * equivalent diameter against the one-shot bound 5.6 mm x (1 + 5%). A usable width would sit near 5.6 mm.
+ */
+function standardWidthReport(gated: PhotoRun[]): string[] {
+  const widths: number[] = [];
+  for (const run of gated) {
+    if (run.report === null || run.match === null) continue;
+    run.report.candidates.forEach((c, i) => {
+      if (!run.match!.unmatchedDetections.includes(i)) widths.push(equivalentDiameterMm(c.areaMm2));
+    });
+  }
+  widths.sort((a, b) => a - b);
+  const q = (p: number) => (widths[Math.floor(p * (widths.length - 1))] ?? 0).toFixed(1);
+  const bound = HOLE_DIAMETER_MM * (1 + HOLE_DIAMETER_TOLERANCE);
+  const wide = widths.filter((w) => w > bound).length;
+  return [
+    `- REV-41 width on the standard path: equivalent diameter of ${widths.length} matched detections p10 ${q(0.1)} / p50 ${q(0.5)} / p90 ${q(0.9)} mm; ` +
+      `${pct(widths.length === 0 ? 0 : wide / widths.length)} read wider than ${bound.toFixed(2)} mm, so the standard path offers no double-punch prompt (M21 Open questions).`,
+  ];
 }
 
 /** M20 step 2: the precision the reject rule relies on, at CONFIDENT_HOLE_MIN and around it. */
@@ -244,6 +323,8 @@ export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<La
   }
 
   lines.push(...confidentHoleReport(gated));
+  lines.push(...suggestionYieldReport(gated));
+  lines.push(...standardWidthReport(gated));
 
   const failed = !passesGate(all);
   lines.push(

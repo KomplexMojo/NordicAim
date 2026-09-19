@@ -15,6 +15,11 @@ interface ShotInspectorProps {
   onChange(shot: Shot): void;
   onDelete(): void;
   onClose(): void;
+  /**
+   * M21 step 3 (REV-41): "looks like N shots" for a hole wider than one shot, or `null` for no prompt.
+   * Only ever a prompt — the user's tap sets the count.
+   */
+  proposedMultiplicity?: number | null;
 }
 
 /** Keeps `positionOverrides` the same length as `multiplicity` (the `Shot` schema refines on it). */
@@ -62,17 +67,35 @@ function OverrideRow({
 }
 
 /** M13 step 2 (Shots): the selected shot's multiplicity, per-unit positions for a `both` target, and Delete. */
-export function ShotInspector({ shot, position, onChange, onDelete, onClose }: ShotInspectorProps) {
+export function ShotInspector({
+  shot,
+  position,
+  onChange,
+  onDelete,
+  onClose,
+  proposedMultiplicity = null,
+}: ShotInspectorProps) {
   const overrides = shot.positionOverrides ?? new Array<ShotPosition | null>(shot.multiplicity).fill(null);
 
-  function setMultiplicity(raw: number) {
-    if (!Number.isFinite(raw)) return;
+  function withMultiplicity(raw: number): Shot | null {
+    if (!Number.isFinite(raw)) return null;
     const multiplicity = Math.min(MAX_MULTIPLICITY, Math.max(MIN_MULTIPLICITY, Math.round(raw)));
     const next: Shot = { ...shot, multiplicity, positionOverrides: resizeOverrides(shot.positionOverrides, multiplicity) };
     // M20 step 8: the owner has now decided how many rounds this hole holds, so it is no longer an
     // inference (saving marks the shot manual, and reconciliation never alters a manual shot).
     delete next.inferred;
-    onChange(next);
+    return next;
+  }
+
+  function setMultiplicity(raw: number) {
+    const next = withMultiplicity(raw);
+    if (next !== null) onChange(next);
+  }
+
+  /** M21 step 3: one tap sets the proposed count and marks the shot the user's. */
+  function acceptProposal(n: number) {
+    const next = withMultiplicity(n);
+    if (next !== null) onChange({ ...next, source: 'manual', confidence: null });
   }
 
   function setOverride(index: number, value: ShotPosition | null) {
@@ -125,6 +148,17 @@ export function ShotInspector({ shot, position, onChange, onDelete, onClose }: S
           +1
         </Button>
       </div>
+
+      {proposedMultiplicity !== null && proposedMultiplicity > shot.multiplicity && (
+        <Button
+          variant="secondary"
+          className="h-11"
+          data-testid="accept-double-punch"
+          onClick={() => acceptProposal(proposedMultiplicity)}
+        >
+          Looks like {proposedMultiplicity} shots
+        </Button>
+      )}
 
       {shot.inferred === 'double-punch' && shot.multiplicity > 1 && (
         <p className="text-sm text-muted-foreground" data-testid="inferred-double">

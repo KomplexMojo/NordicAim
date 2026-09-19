@@ -9,6 +9,7 @@ import { polylineAttr, templateRingPolylines } from '@/lib/geometry/rings';
 import { mmToPx, pxToMm } from '@/lib/geometry/transform';
 
 import { ShotLayer } from './ShotLayer';
+import { SuggestionLayer, type ScreenSuggestion } from './SuggestionLayer';
 
 /** M13 step 1: "zoom 1x-6x (buttons and pinch)". */
 export const MIN_ZOOM = 1;
@@ -17,6 +18,7 @@ const ZOOM_STEP = 1.5;
 /** A press that never moves further than this is a tap, not a drag. */
 const TAP_SLOP_CSS = 6;
 const MIN_RADIUS_PX = 10;
+const NO_SUGGESTIONS: ScreenSuggestion[] = [];
 
 interface Point {
   x: number;
@@ -33,7 +35,7 @@ export interface StageApi {
 }
 
 type Gesture =
-  | { kind: 'pan'; pointerId: number; start: Point; startPan: Point; moved: boolean }
+  | { kind: 'pan'; pointerId: number; start: Point; startPan: Point; moved: boolean; suggestionId?: string }
   | { kind: 'shot'; pointerId: number; id: string }
   | { kind: 'handle'; pointerId: number; handle: 'centre' | 'radius' }
   | { kind: 'pinch'; startDist: number; startZoom: number; anchorCss: Point; anchorImage: Point };
@@ -56,6 +58,10 @@ interface ImageStageProps {
   apiRef?: React.RefObject<StageApi | null>;
   /** M17 step 1: where a dragged shot was let go, so the page can drop it on the tray to delete it. */
   onShotDragEnd?(id: string, client: Point): void;
+  /** M21 step 2 (REV-40): the suggested holes to draw — derived, never shots. Empty draws nothing. */
+  suggestions?: ScreenSuggestion[];
+  /** M21 step 2: a tap on a suggestion (not a drag) accepts it. */
+  onAcceptSuggestion?(id: string): void;
 }
 
 function clampAxis(pan: number, originAtZoom: number, content: number, container: number): number {
@@ -72,7 +78,19 @@ function distance(a: Point, b: Point): number {
  * Zoom 1x-6x with the buttons or a pinch, one-finger pan when no shot (or handle) is grabbed.
  */
 export function ImageStage(props: ImageStageProps) {
-  const { imageUrl, imageSize, calibration, template, mode, shots, selectedShotId, mpiMm, holeDiameterMm } = props;
+  const {
+    imageUrl,
+    imageSize,
+    calibration,
+    template,
+    mode,
+    shots,
+    selectedShotId,
+    mpiMm,
+    holeDiameterMm,
+    suggestions = NO_SUGGESTIONS,
+    onAcceptSuggestion,
+  } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const [container, setContainer] = useState<Size | null>(null);
   const [zoom, setZoom] = useState(MIN_ZOOM);
@@ -178,6 +196,7 @@ export function ImageStage(props: ImageStageProps) {
     const target = e.target as Element;
     const shotEl = target.closest?.('[data-shot-id]');
     const handleEl = target.closest?.('[data-handle]');
+    const suggestionEl = mode === 'shots' ? target.closest?.('[data-suggestion-id]') : null;
     if (mode === 'shots' && shotEl !== null && shotEl !== undefined) {
       const id = shotEl.getAttribute('data-shot-id') ?? '';
       props.onSelectShot(id);
@@ -189,7 +208,9 @@ export function ImageStage(props: ImageStageProps) {
       gesture.current = { kind: 'handle', pointerId: e.pointerId, handle };
       return;
     }
-    gesture.current = { kind: 'pan', pointerId: e.pointerId, start: p, startPan: pan, moved: false };
+    // A press on a suggestion pans like bare paper if it moves; only a tap accepts it (M21 step 2).
+    const suggestionId = suggestionEl?.getAttribute('data-suggestion-id') ?? undefined;
+    gesture.current = { kind: 'pan', pointerId: e.pointerId, start: p, startPan: pan, moved: false, suggestionId };
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
@@ -239,8 +260,11 @@ export function ImageStage(props: ImageStageProps) {
     }
 
     if (g !== null && g.kind === 'pan' && !g.moved && base !== null) {
-      // A tap on bare paper: add a shot in the Shots mode, otherwise clear the selection.
-      if (mode === 'shots') props.onAddShot(pxToMm(toImage(p), calibration));
+      // A tap on a suggestion accepts it; a tap on bare paper adds a shot in the Shots mode, otherwise
+      // it clears the selection.
+      if (mode === 'shots' && g.suggestionId !== undefined && onAcceptSuggestion !== undefined) {
+        onAcceptSuggestion(g.suggestionId);
+      } else if (mode === 'shots') props.onAddShot(pxToMm(toImage(p), calibration));
       else props.onSelectShot(null);
     }
 
@@ -302,6 +326,14 @@ export function ImageStage(props: ImageStageProps) {
                     opacity={0.85}
                   />
                 ))}
+                {/* M21 step 2: under the shots, so a real shot always wins the tap. */}
+                <SuggestionLayer
+                  suggestions={suggestions}
+                  calibration={calibration}
+                  scale={scale}
+                  holeDiameterMm={holeDiameterMm}
+                  interactive={mode === 'shots'}
+                />
                 <ShotLayer
                   shots={shots}
                   calibration={calibration}

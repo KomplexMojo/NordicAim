@@ -8,6 +8,7 @@ import { DiagnosticsPage } from '@/routes/diagnostics/DiagnosticsPage';
 import { HomePage } from '@/routes/home/HomePage';
 import { MetadataPage } from '@/routes/metadata/MetadataPage';
 import { ResultsPage } from '@/routes/results/ResultsPage';
+import { ReviewPage } from '@/routes/review/ReviewPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { SessionsPage } from '@/routes/sessions/SessionsPage';
 import { TargetPage } from '@/routes/target/TargetPage';
@@ -34,6 +35,8 @@ const router = createHashRouter([
       { path: '/sessions/:sid/results', element: <ResultsPage /> },
       { path: '/sessions/:sid/photos/:pid', element: <TargetPage /> },
       { path: '/sessions/:sid/photos/:pid/adjust', element: <AdjustPage /> },
+      // M21 step 4 (REV-42): the session review pass.
+      { path: '/review/:sessionId', element: <ReviewPage /> },
     ],
   },
   { path: '/diagnostics', element: <DiagnosticsPage /> },

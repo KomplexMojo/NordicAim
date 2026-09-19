@@ -93,6 +93,17 @@ export function ResultsPage() {
         </div>
       )}
 
+      {/* M21 step 4 (REV-42): walk every target once, the ones needing attention first. */}
+      {data.photos.length > 0 && (
+        <Link
+          to={`/review/${sid}`}
+          className="inline-flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium"
+          data-testid="review-session-link"
+        >
+          Review session
+        </Link>
+      )}
+
       <Link
         to={`/sessions/${sid}/metadata`}
         className="inline-flex h-11 items-center justify-center text-sm text-primary underline underline-offset-4"

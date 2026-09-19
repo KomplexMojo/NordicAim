@@ -17,6 +17,7 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/sessions/:sid/results` | **Step 3: receive analysis** (summary image + target cards) | M12, M14 |
 | `#/sessions/:sid/photos/:pid` | Target detail (full diagram + all metrics) | M12 |
 | `#/sessions/:sid/photos/:pid/adjust` | Optional: adjust alignment and shots | M13 |
+| `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with Adjust embedded | M21 |
 | `#/diagnostics` | Device capability checks | M01 |
 
 **Step 1: take picture(s)** (spec/capture-overlay.md): quick start → pick Sighting/Precision and position → overlay →
@@ -246,10 +247,17 @@ interface CvWorkerApi {
   reviewAndAlign(workingJpeg: ArrayBuffer, prior: Calibration | null, templateHint: TemplateId | null):
     Promise<{ detection: { calibration: Calibration; confidence: number; outsidePrior: boolean } | null;
               sharpness: number; templateHint: { template: TemplateId; confidence: number } | null }>; // M10
-  detectShots(workingJpeg: ArrayBuffer, calibration: Calibration, template: TemplateId, holeDiameterMm: number):
-    Promise<{ shots: Shot[] }>;                                                             // M11
+  detectShots(workingJpeg: ArrayBuffer, calibration: Calibration, template: TemplateId, holeDiameterMm: number,
+    backing: BackingInput):
+    Promise<{ shots: Shot[]; detection: DetectionRecord;                                    // M11, M19
+              suggestions: ShotCandidate[]; holeWidths: HoleWidth[] }>;                     // M21
 }
 ```
+
+`suggestions` (M21, REV-40) are the few discarded candidates worth offering in Adjust (`suggestShots` in
+`src/lib/cv/suggestions.ts`), and `holeWidths` (REV-41) each detected hole's measured width for Adjust's double-punch
+prompt (colour path only; the standard path returns none — M21 Open questions). Both are **derived**: Stage A ignores
+them, and they are never stored, scored or drawn on a diagram.
 
 The worker decodes JPEG bytes with `createImageBitmap` → `OffscreenCanvas` → `getImageData` → `RgbaImage`, then calls pure
 functions. `reviewAndAlign` searches for both anchor sizes when `templateHint` is null (imports); it uses `capture.overlayTemplate`

@@ -1,5 +1,7 @@
 import * as Comlink from 'comlink';
 
+import type { HoleWidth } from '@/lib/cv/backing-colour';
+import type { ShotCandidate } from '@/lib/cv/holes';
 import type { PointMm } from '@/lib/cv/split-cluster';
 import type { DetectionRecord } from '@/lib/domain/analysis';
 import type { BackingMode, ColourSignature } from '@/lib/domain/backing';
@@ -27,6 +29,14 @@ export interface DetectShotsResult {
   shots: CappableShot[];
   /** backing-sheet.md §3, §5.6: which path ran, and why it fell back. */
   detection: DetectionRecord;
+  /**
+   * M21 step 1 (REV-40): the discarded candidates worth offering in Adjust, best first (`suggestShots`).
+   * **Derived**: never written to IndexedDB, never part of `analysis.shots`, never scored or drawn on a
+   * diagram. Stage A ignores it.
+   */
+  suggestions: ShotCandidate[];
+  /** M21 step 3 (REV-41): each detected hole's measured width, read only by Adjust's double-punch prompt. */
+  holeWidths: HoleWidth[];
 }
 
 export interface CvWorkerApi {

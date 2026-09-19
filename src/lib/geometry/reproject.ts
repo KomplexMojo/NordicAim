@@ -14,7 +14,11 @@ import { type CalibrationLike, mmToPx, pxToMm } from './transform';
 export const REPROJECT_TOLERANCE_MM = 1e-6;
 
 /** Moves each shot's millimetre position so it stays on the same image pixel under `to` as under `from`. */
-export function reprojectShots(shots: Shot[], from: CalibrationLike, to: CalibrationLike): Shot[] {
+export function reprojectShots<T extends { xMm: number; yMm: number } = Shot>(
+  shots: T[],
+  from: CalibrationLike,
+  to: CalibrationLike,
+): T[] {
   return shots.map((shot) => {
     const mm = pxToMm(mmToPx({ xMm: shot.xMm, yMm: shot.yMm }, from), to);
     return { ...shot, xMm: mm.xMm, yMm: mm.yMm };

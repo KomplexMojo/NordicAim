@@ -230,7 +230,11 @@ export function detectShots(
   template: TemplateId,
   holeDiameterMm: number,
 ): Shot[] {
-  const report = detectShotCandidates(cv, img, calibration, template, holeDiameterMm);
+  return shotsFromReport(detectShotCandidates(cv, img, calibration, template, holeDiameterMm));
+}
+
+/** {@link detectShots} over a report already made, so a caller can also read what was discarded (M21). */
+export function shotsFromReport(report: DetectionReport): Shot[] {
   // REV-39 (M20): each hole's blob area over the photo's median, the same evidence the colour path
   // records. Reconciliation does not infer double punches from it on this path (measured: it does not
   // separate them — `DOUBLE_PUNCH_MIN_RATIO_STANDARD`), but it is kept with the shot.

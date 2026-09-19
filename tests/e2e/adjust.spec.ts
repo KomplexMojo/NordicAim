@@ -22,6 +22,7 @@ type HookWindow = Window & {
     listPhotos(sessionId: string): Promise<Array<{ id: string }>>;
     getAnalysis(photoId: string): Promise<HookAnalysis | null>;
     setCalibration(photoId: string, calibration: unknown): Promise<void>;
+    setShots(photoId: string, shots: unknown): Promise<void>;
   };
 };
 
@@ -438,4 +439,80 @@ test('adjust: a manual edit keeps the sheet\'s tilt and Reset alignment clears i
   expect(reset.calibration?.perspective).toBeNull();
   expect(reset.calibration?.cx).toBe(edited.calibration?.cx);
   expect(reset.calibration?.source).toBe('manual');
+});
+
+/**
+ * M21 step 2 (REV-40). The demo's seeded alignment leaves no suggestion on either sheet, so the alignment
+ * is moved 80 px down first: measured in Node (`detectShotsWithBacking`) the detector then discards three
+ * ring-sized marks inside 60 mm that the rule offers. What they are does not matter here — the test is
+ * that a suggestion is drawn, a tap turns it into exactly one manual shot, and nothing else is stored.
+ */
+test('adjust: a suggested hole becomes a manual shot with one tap and nothing else is stored (M21)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  const photoId = await precisionPhotoId(page, sessionId);
+  const before = await getAnalysis(page, photoId);
+  const shifted = { ...before.calibration!, cy: before.calibration!.cy + 80 };
+  await page.evaluate(([pid, cal]) => (window as HookWindow).__asaTest!.setCalibration(pid, cal), [photoId, shifted] as const);
+  // One round short, so the new shot visibly changes the score (the miss goes).
+  const nine = before.shots.filter((shot) => shot.id !== 'P9');
+  await page.evaluate(([pid, shots]) => (window as HookWindow).__asaTest!.setShots(pid, shots), [photoId, nine] as const);
+  await waitForIdle(page);
+
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+  // The worker measures them after the page opens.
+  const suggestions = page.getByTestId('suggested-hole');
+  await expect(suggestions.first()).toBeAttached({ timeout: 120_000 });
+  const offered = await suggestions.count();
+  expect(offered).toBeGreaterThan(0);
+  expect(offered).toBeLessThanOrEqual(3);
+  await expect(page.getByTestId('toggle-suggestions')).toBeVisible();
+
+  const headlineBefore = await page.getByTestId('live-headline').textContent();
+  expect(headlineBefore).toContain('1 miss');
+
+  // Tap one whose own hit circle is on top at its centre (a shot could sit over it).
+  await scrollStageIntoView(page);
+  let tapped: { id: string; at: { x: number; y: number } } | null = null;
+  for (let i = 0; i < offered; i += 1) {
+    const el = suggestions.nth(i);
+    const box = await el.boundingBox();
+    const id = await el.getAttribute('data-suggestion-id');
+    if (box === null || id === null) continue;
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const onTop = await page.evaluate(
+      (pt) => document.elementFromPoint(pt.x, pt.y)?.closest('[data-suggestion-id]')?.getAttribute('data-suggestion-id') ?? null,
+      at,
+    );
+    if (onTop === id) {
+      tapped = { id, at };
+      break;
+    }
+  }
+  if (tapped === null) throw new Error('no suggestion is tappable at its own centre');
+  await page.mouse.click(tapped.at.x, tapped.at.y);
+
+  // One manual shot more, that suggestion gone, and the live score moved.
+  await expect(page.getByTestId('adjust-shot-count')).toContainText('10 shots');
+  await expect(page.locator(`[data-suggestion-id="${tapped.id}"]`)).toHaveCount(0);
+  await expect(page.getByTestId('live-headline')).not.toHaveText(headlineBefore ?? '');
+
+  // The layer can be hidden entirely.
+  if ((await suggestions.count()) > 0) {
+    await page.getByTestId('toggle-suggestions').click();
+    await expect(suggestions).toHaveCount(0);
+  }
+
+  await page.getByTestId('save-adjustments').click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  await waitForIdle(page);
+  const after = await getAnalysis(page, photoId);
+  // Exactly one shot was added: the tapped suggestion. The others were never stored.
+  expect(after.shots).toHaveLength(nine.length + 1);
+  const known = new Set(nine.map((shot) => shot.id));
+  const added = after.shots.filter((shot) => !known.has(shot.id));
+  expect(added).toHaveLength(1);
+  expect(added[0]!.source).toBe('manual');
+  expect(added[0]!.multiplicity).toBe(1);
+  expect(JSON.stringify(after)).not.toContain('suggestion');
 });

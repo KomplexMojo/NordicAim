@@ -37,10 +37,12 @@ import {
   NEUTRAL_WHITE_MIN_MAX,
   SHEET_SEARCH_CAP_MM,
 } from './constants';
-import { detectShots, holeAreaPx } from './holes';
+import { detectShotCandidates, holeAreaPx, shotsFromReport, type ShotCandidate } from './holes';
+import { equivalentDiameterMm } from './multiplicity';
 import type { CvMat, OpenCv } from './opencv';
 import { outerRadiusMm, rectify, rectifiedToMm, type Rectified } from './rectify';
 import { findSheet, type SheetMethod } from './sheet';
+import { suggestShots } from './suggestions';
 
 // --- HSV, hue statistics -------------------------------------------------------------------------
 
@@ -642,6 +644,20 @@ export interface BackingShotsResult {
   /** Colour-path shots carry the blob's coloured area (§5.4); the standard path carries confidence. */
   shots: CappableShot[];
   detection: DetectionRecord;
+  /**
+   * M21 step 1 (REV-40): the discarded candidates worth offering in Adjust. Derived — never stored or
+   * scored. The colour path has no discarded candidates, so it offers none (M21 Open questions).
+   */
+  suggestions: ShotCandidate[];
+  /** M21 step 3 (REV-41): each detected hole's measured width, for Adjust's double-punch prompt. */
+  holeWidths: HoleWidth[];
+}
+
+/** M21 step 3: one detected hole's position and measured width, in target mm. */
+export interface HoleWidth {
+  xMm: number;
+  yMm: number;
+  widthMm: number;
 }
 
 /**
@@ -657,10 +673,18 @@ export function detectShotsWithBacking(
   holeDiameterMm: number,
   backing: { mode: BackingMode; colour: ColourSignature | null },
 ): BackingShotsResult {
-  const standard = (record: DetectionRecord): BackingShotsResult => ({
-    shots: detectShots(cv, img, calibration, template, holeDiameterMm),
-    detection: record,
-  });
+  const standard = (record: DetectionRecord): BackingShotsResult => {
+    const found = detectShotCandidates(cv, img, calibration, template, holeDiameterMm);
+    return {
+      shots: shotsFromReport(found),
+      detection: record,
+      suggestions: suggestShots(found.rejected, holeDiameterMm),
+      // M21 Open questions: the standard path's blob is not a hole measurement (on the owner's labelled
+      // holes 66% of real single holes read wider than 5.6 mm + 5% by area, 94% by major axis), so it
+      // offers no width and no double-punch prompt. M20 found the same for its area ratio.
+      holeWidths: [],
+    };
+  };
 
   if (backing.mode === 'none') {
     return standard({ method: 'standard', backing: 'off', fallbackReason: null });
@@ -698,5 +722,8 @@ export function detectShotsWithBacking(
   return {
     shots: backingBlobsToShots(report.blobs),
     detection: { method: 'colour', backing: state, fallbackReason: null },
+    suggestions: [],
+    // M21 step 3: the coloured area is the opening itself (§5.4), so its equivalent disc is the width.
+    holeWidths: report.blobs.map((b) => ({ xMm: b.xMm, yMm: b.yMm, widthMm: equivalentDiameterMm(b.areaMm2) })),
   };
 }

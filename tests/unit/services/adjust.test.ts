@@ -106,7 +106,7 @@ function stubDetect(shots: Shot[]) {
     async detectShots(workingJpeg, calibration, template, holeDiameterMm) {
       void workingJpeg;
       calls.push({ calibration, template, holeDiameterMm });
-      return { shots, detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null } };
+      return { shots, detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null }, suggestions: [], holeWidths: [] };
     },
   };
   return { api, calls };
@@ -234,7 +234,7 @@ describe('saveAdjustments (analysis-pipeline §8)', () => {
       },
       async detectShots(...args) {
         detectCalls.push(args);
-        return { shots: [autoShot('auto-9', 0, 0)], detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null } };
+        return { shots: [autoShot('auto-9', 0, 0)], detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null }, suggestions: [], holeWidths: [] };
       },
     };
 
