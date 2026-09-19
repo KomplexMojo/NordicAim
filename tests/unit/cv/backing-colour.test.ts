@@ -464,8 +464,11 @@ describe.skipIf(!hasReferences)("Auto on the owner's unbacked reference photos (
     }
   }, 180_000);
 
-  it('IMG_5057 2 and IMG_5084 are refused by the spot count', async () => {
-    for (const name of ['IMG_5057 2', 'IMG_5084']) {
+  // M23: IMG_4743 is a sighting sheet. Until M23 the hint called it precision, and on the precision
+  // search area it passed the spot count (3 spots) and was refused by the chroma floor (below). Read as
+  // the sighting sheet it is, no coloured spot is found at all (max chroma 45).
+  it('IMG_5057 2, IMG_5084 and IMG_4743 are refused by the spot count', async () => {
+    for (const name of ['IMG_5057 2', 'IMG_5084', 'IMG_4743']) {
       const { img, cal, template } = await analysed(`${REFERENCE_DIR}${name}.jpeg`);
       const presence = detectBackingPresence(cv, img, cal, template, PROFILE_HOLE_MM);
       expect(presence.spots, name).toBeLessThan(3);
@@ -474,18 +477,17 @@ describe.skipIf(!hasReferences)("Auto on the owner's unbacked reference photos (
   }, 180_000);
 
   // ---------------------------------------------------------------------------------------------
-  // M19 Open question 1, ANSWERED 2026-09-18: none of these four had a backing sheet (IMG_4743 is a
-  // sighting sheet on a weathered wooden frame; the other three are white paper on a pale beige board
-  // in shade). Before the owner's ruling `Auto` read all four as backed: they pass the spot count and
-  // the area rule, which is why neither `AUTO_MIN_SPOTS` nor `AUTO_MAX_BLOB_RATIO` could separate them.
-  // They are now refused by the two rules the owner named. The chroma floor catches all four; the
-  // radial rule would catch them too (accepted-pixel radius p10 101-133 mm against the template's
-  // 57.5 / 77.2 mm outer circle, where the backed photos sit at 4-15 mm), which is asserted too, so
-  // both defences are pinned. Measured values are what this code reads with the pipeline's own A4
-  // and template hint at 1200 px.
+  // M19 Open question 1, ANSWERED 2026-09-18: none of these had a backing sheet (white paper on a pale
+  // beige board in shade; IMG_4743, a sighting sheet on a weathered wooden frame, was the fourth and is
+  // now refused by the spot count above, M23). Before the owner's ruling `Auto` read them as backed:
+  // they pass the spot count and the area rule, which is why neither `AUTO_MIN_SPOTS` nor
+  // `AUTO_MAX_BLOB_RATIO` could separate them. They are now refused by the two rules the owner named.
+  // The chroma floor catches all of them; the radial rule would catch them too (accepted-pixel radius
+  // p10 128-133 mm against the template's 57.5 / 77.2 mm outer circle, where the backed photos sit at
+  // 4-15 mm), which is asserted too, so both defences are pinned. Measured values are what this code
+  // reads with the pipeline's own A4 and template hint at 1200 px.
   // ---------------------------------------------------------------------------------------------
   const unbackedByOwner: Array<{ name: string; spots: number; maxChroma: number; radiusP10Mm: number }> = [
-    { name: 'IMG_4743', spots: 3, maxChroma: 46, radiusP10Mm: 101 },
     { name: 'IMG_4744', spots: 6, maxChroma: 106, radiusP10Mm: 128 },
     { name: 'IMG_5182', spots: 8, maxChroma: 110, radiusP10Mm: 128 },
     { name: 'IMG_5184', spots: 6, maxChroma: 82, radiusP10Mm: 133 },

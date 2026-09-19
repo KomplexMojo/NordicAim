@@ -12,7 +12,8 @@
 //   * detection on the owner's labelled holes falls below the R4 floors (skipped when absent), or
 //   * a synthetic sheet with a known homography is outside M18's centre tolerances, or
 //   * the coloured-backing path is below the backing-sheet.md §7 floors (only once >= 10 labelled
-//     backing photos exist; skipped when absent).
+//     backing photos exist; skipped when absent), or
+//   * the template hint calls any sheet the other template (M23; the private photos skipped when absent).
 
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +33,7 @@ import { MATCH_TOLERANCE_MM, matchShots, type MatchResult } from '../tests/helpe
 import { evaluateAlignment } from './cv-eval-alignment.ts';
 import { evaluateBacking } from './cv-eval-backing.ts';
 import { evaluateLabelled } from './cv-eval-labelled.ts';
+import { evaluateTemplateHint } from './cv-eval-template.ts';
 import {
   PRECISION_TEST_HOLES,
   SIGHTING_TEST_HOLES,
@@ -391,6 +393,7 @@ for (const ref of REFERENCE) {
 const labelled = await evaluateLabelled(cv, REPO_ROOT);
 const alignment = await evaluateAlignment(cv, REPO_ROOT);
 const backing = await evaluateBacking(cv, REPO_ROOT);
+const templateHint = await evaluateTemplateHint(cv, REPO_ROOT);
 
 // --- Report -------------------------------------------------------------------------------------
 
@@ -424,6 +427,7 @@ console.log(table(['case', 'truth', 'detected', 'units', 'recall', 'precision', 
 for (const line of labelled.lines) console.log(line);
 for (const line of alignment.lines) console.log(line);
 for (const line of backing.lines) console.log(line);
+for (const line of templateHint.lines) console.log(line);
 
 const minSharp = Math.min(...sharpScores);
 const maxBlurred = Math.max(...blurredScores);
@@ -441,7 +445,8 @@ if (
   capFailures > 0 ||
   labelled.failed ||
   alignment.failed ||
-  backing.failed
+  backing.failed ||
+  templateHint.failed
 ) {
   if (syntheticFailures > 0) console.error(`\n${syntheticFailures} synthetic anchor case(s) failed`);
   if (referenceFailures > 0) {
@@ -456,6 +461,7 @@ if (
   if (labelled.failed) console.error('detection is below the R4 recall/precision floors on the labelled holes (M16 Open questions)');
   if (alignment.failed) console.error('a synthetic perspective case failed (M18 Tests)');
   if (backing.failed) console.error('the colour path is below the backing-sheet §7 floors on the labelled backing photos');
+  if (templateHint.failed) console.error('the template hint called a sheet the other template (M23)');
   process.exit(1);
 }
 console.log('\nall synthetic cases and reference photos pass');

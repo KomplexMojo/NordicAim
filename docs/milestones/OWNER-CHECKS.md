@@ -221,6 +221,23 @@ during M10/M11 work._
 - [ ] Note how long suggestions take to appear after opening Adjust on the phone (one extra detection runs each time), for M15's performance budget.
 - [ ] Confirm the milestone's provisional answers to its Open questions: review is stateless and entered via the "Review session" link on the results screen (Q1/Q4), the 60 mm vector / round-up rule (Q5), and double-punch prompts appearing only on backed targets (Q6/Q9).
 
+## M23 — Template guess: stop calling sighting sheets precision (issue #5)
+
+- [ ] Review the 3 relabelled entries in the gitignored `fixtures/private/review/ground-truth-holes-v2.json` (IMG_4743,
+      IMG_4770, IMG_4771): now marked sighting with anchor 115 mm and hole mm rescaled by 115/112.4, each with a
+      `templateCorrected` note, judged from the images themselves.
+- [ ] Confirm the `SHEET_TRUTH` table in `scripts/cv-eval-template.ts` (41 private photos plus 2 committed): the
+      reviewer eyeballed IMG_4770 (sighting) and IMG_4745 (precision); IMG_4447 has no detectable disc and is unverified.
+- [ ] On the iPhone after deploy: import a Caledonia sighting-sheet photo with no template set and confirm the Target
+      screen draws the sighting template at 115 mm, not the precision rings; confirm it is not flagged as a template
+      mismatch. Then import/set a precision sheet as sighting on the metadata screen and confirm the "This looks like a
+      precision target — check the template" warning appears (hint confidence is now 1.0 on most photos).
+- [ ] Decide Open question 1: should changing the template on the metadata screen after Stage A has run re-run Stage A
+      (and pass the template into `reviewAndAlign`), so the anchor size (115 vs 112.4 mm) and the detected shots follow
+      the user's chosen template? Non-blocking for M23, but needs a decision before the M15 release.
+- [ ] Not M23, track separately: `pnpm test:e2e settings.spec.ts:105` (hole size Reset) reportedly fails on
+      mobile-chromium even on the unchanged tree; this is from M22.
+
 ## M22 — Three main screens and a Settings screen (issue #2)
 
 - [ ] On the iPhone (https://komplexmojo.github.io/advanced-shooting-analysis/ after the push), move between Shooting, Settings and Diagnostics one-handed. Confirm the tab bar clears the home indicator and never covers content on any page (Home, a session's metadata/results, target detail, Adjust, Review, Settings, Diagnostics).

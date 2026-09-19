@@ -5,7 +5,7 @@ import type { ColourSignature } from '@/lib/domain/backing';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
 import { defaultAppSettings } from '@/lib/domain/settings';
-import { NotATargetPhotoError, runStageA, priorInWorkingPx, type CvApi } from '@/lib/pipeline/stage-a';
+import { NotATargetPhotoError, runStageA, priorInWorkingPx, shotTemplate, type CvApi } from '@/lib/pipeline/stage-a';
 import type { ServiceContext } from '@/lib/services/context';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
@@ -493,5 +493,44 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     await runStageA(ctx, photoId, api, imageTools);
 
     expect(detectCalls[0]?.template).toBe('sighting');
+  });
+
+  it("detects with the user's template, not a confident hint that disagrees (M23 step 4)", async () => {
+    const { ctx, photoId } = await seed({ withPrior: false, template: 'sighting' });
+    const { api, detectCalls } = stubCv(
+      review({ detection, templateHint: { template: 'precision', confidence: 1 } }),
+      [],
+    );
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect(detectCalls[0]?.template).toBe('sighting');
+  });
+});
+
+describe('shotTemplate (M23 step 4: the user\'s choice wins)', () => {
+  const precisionDisc: Calibration = { ...MEASURED, anchorDiameterMm: 112.4 };
+  const sightingDisc: Calibration = { ...MEASURED, anchorDiameterMm: 115 };
+  const confidentPrecision = { template: 'precision' as const, confidence: 1 };
+
+  function photoWith(template: TemplateId | null, overlayTemplate: TemplateId | null) {
+    return makePhoto({
+      capture: overlayTemplate === null ? null : makeCapture({ overlayTemplate, calibrationPriorFramePx: makePrior() }),
+      categorization: { template, position: null, roundsProne: null, roundsStanding: null },
+    });
+  }
+
+  it("prefers the user's categorization over the overlay, a confident hint and the anchor size", () => {
+    expect(shotTemplate(photoWith('sighting', 'precision'), confidentPrecision, precisionDisc)).toBe('sighting');
+    expect(shotTemplate(photoWith('precision', 'sighting'), { template: 'sighting', confidence: 1 }, sightingDisc)).toBe(
+      'precision',
+    );
+  });
+
+  it('then the capture overlay, then the hint, then the anchor size the disc was measured at', () => {
+    expect(shotTemplate(photoWith(null, 'sighting'), confidentPrecision, precisionDisc)).toBe('sighting');
+    expect(shotTemplate(photoWith(null, null), confidentPrecision, sightingDisc)).toBe('precision');
+    expect(shotTemplate(photoWith(null, null), null, sightingDisc)).toBe('sighting');
+    expect(shotTemplate(photoWith(null, null), null, precisionDisc)).toBe('precision');
   });
 });

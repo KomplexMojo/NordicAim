@@ -320,6 +320,20 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     expect(photo?.reasons).toEqual(['template-mismatch']);
   });
 
+  it("scores with the user's template, never the hint's (M23 step 4)", async () => {
+    const { ctx, photoId } = await seed({
+      shots: precisionFixture.shots,
+      templateHint: { template: 'sighting', confidence: 1 },
+    });
+
+    await runStageB(ctx, photoId, stubRenderTools());
+
+    const result = (await getAnalysisRecord(ctx.db, photoId))?.computed?.result;
+    // geometry-scoring §9.1: the precision golden fixture, scored as precision.
+    expect(result?.all.precision?.identifiedTotal).toBe(72);
+    expect(result?.all.sighting ?? null).toBeNull();
+  });
+
   it('does not add `template-mismatch` below confidence 0.5, and drops a stale one', async () => {
     const { ctx, photoId } = await seed({
       shots: precisionFixture.shots,

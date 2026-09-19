@@ -182,3 +182,21 @@ export const SUGGEST_MAX = 3;
 /** REV-40: the rank is `score − SUGGEST_RADIAL_WEIGHT × radialMm − SUGGEST_ELONGATION_WEIGHT × elongation`. */
 export const SUGGEST_RADIAL_WEIGHT = 0.004;
 export const SUGGEST_ELONGATION_WEIGHT = 0.03;
+
+// --- M23 (issue #5): the template hint (`src/lib/cv/template-hint.ts`) ----------------------------
+// Measured with `pnpm cv:eval` (its template-hint section) on the 40 target photos in `fixtures/private/
+// additional references/` whose disc A4 finds, plus the two committed reference JPEGs, each sheet's
+// type read off the sheet itself (M23 Completion notes). `ringPeriodicity` on A4's own disc:
+//   sighting  (19 sheets): 0.198-0.296
+//   precision (23 sheets): 0.495-0.734 (0.495 is IMG_4745, whose A4 disc sits on ring 6)
+// With the disc radius scaled by 0.85 or 1.2 (a poor prior) the ranges stay 0.186-0.285 / 0.534-0.741.
+// Synthetic sheets (tests/helpers/synthetic-target.ts, disc radius x 0.7-1.4): sighting 0.246-0.332,
+// precision 0.653-0.838. M10's transition count tied on 5 of the sighting photos and called them precision.
+
+/** M23: `ringPeriodicity` at or above this → precision, below → sighting. The midpoint of the real photos' gap. */
+export const TEMPLATE_PERIODICITY_THRESHOLD = 0.4;
+/**
+ * M23: the hint's confidence reaches 1 this far from the threshold. The closest photos measured (0.296
+ * sighting, 0.495 precision) then sit at 0.69 and 0.63 — above B4's `template-mismatch` bar of 0.5.
+ */
+export const TEMPLATE_PERIODICITY_SPAN = 0.15;
