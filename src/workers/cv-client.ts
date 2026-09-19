@@ -16,7 +16,7 @@ export interface ReviewAndAlignResult {
   templateHint: { template: TemplateId; confidence: number } | null;
 }
 
-/** backing-sheet.md §5: the session's backing, as A5 needs it. */
+/** backing-sheet.md §5 (REV-48): the Settings backing, as A5 and Re-analyze need it. */
 export interface BackingInput {
   mode: BackingMode;
   /** The card's measured colour, when the session has one. */

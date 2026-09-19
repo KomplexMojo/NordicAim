@@ -1,20 +1,28 @@
-// backing-sheet.md §2, §3, §4, §5 (REV-38). The session's backing: inheriting the last choice,
-// changing it (which re-queues detection), the card photo, and the exclusions a card photo carries.
+// backing-sheet.md §2, §3, §4 (REV-38, REV-48). The Settings backing and hole size (changing either
+// re-runs nothing), measuring a card (whose photo is not kept), and the exclusions an old card photo
+// still carries until the migration removes it.
 
 import { describe, expect, it } from 'vitest';
 
 import type { Shot } from '@/lib/domain/analysis';
 import type { BackingSheet } from '@/lib/domain/backing';
 import { planJobs } from '@/lib/pipeline/plan';
-import { addBackingCard } from '@/lib/services/backing-card';
+import { measureBackingCard } from '@/lib/services/backing-card';
 import { ingestPhoto } from '@/lib/services/ingest';
-import { deletePhoto, requestAnalysis } from '@/lib/services/photos';
-import { createSession, deleteSession, setSessionBacking } from '@/lib/services/sessions';
+import { requestAnalysis } from '@/lib/services/photos';
+import { createSession, deleteSession } from '@/lib/services/sessions';
+import {
+  InvalidHoleDiameterError,
+  clearBacking,
+  resetHoleDiameterMm,
+  setBacking,
+  setBackingMode,
+  setHoleDiameterMm,
+} from '@/lib/services/settings';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { getPhotoRecord, listPhotoRecords, listPhotosBySession, putPhotoRecord } from '@/lib/store/photos-repo';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
-import { getSettings, putSettings } from '@/lib/store/settings-repo';
-import { defaultAppSettings } from '@/lib/domain/settings';
+import { getSettings } from '@/lib/store/settings-repo';
 import type { RgbaImage } from '@/lib/media/format';
 
 import { openTestDb } from '../../helpers/db';
@@ -60,164 +68,107 @@ function autoShot(id: string): Shot {
   };
 }
 
-describe('createSession inherits the last backing (backing-sheet.md §2)', () => {
-  it('copies AppSettings.lastBackingMode and lastBacking onto a new session', async () => {
-    const db = await openTestDb();
-    const ctx = makeTestContext(db);
-    await putSettings(db, {
-      ...defaultAppSettings(),
-      lastBackingMode: 'coloured',
-      lastBacking: colouredBacking(null),
-    });
-
-    const session = await createSession(ctx);
-    expect(session.backingMode).toBe('coloured');
-    expect(session.backing).toEqual(colouredBacking(null));
-    db.close();
-  });
-
-  it('defaults to Auto with no backing when nothing was chosen before', async () => {
+describe('Settings backing (REV-48, backing-sheet.md §2)', () => {
+  it('a new session carries no backing of its own', async () => {
     const db = await openTestDb();
     const session = await createSession(makeTestContext(db));
-    expect(session.backingMode).toBe('auto');
-    expect(session.backing).toBeNull();
+    expect(session.schemaVersion).toBe(3);
+    expect(session).not.toHaveProperty('backingMode');
+    expect(session).not.toHaveProperty('backing');
     db.close();
   });
-});
 
-describe('setSessionBacking (backing-sheet.md §2, §5)', () => {
-  it('re-queues Stage A for auto-only photos and leaves a photo with a manual shot alone', async () => {
+  it('changing the setting marks nothing pending, not even auto-only photos', async () => {
     const db = await openTestDb();
     const ctx = makeTestContext(db);
     const session = makeSession();
-    await putSessionRecord(db, session);
-
-    const autoPhoto = makePhoto({ sessionId: session.id, categorization: completeCategorization() });
-    const manualPhoto = makePhoto({ sessionId: session.id, categorization: completeCategorization() });
-    await putPhotoRecord(db, autoPhoto);
-    await putPhotoRecord(db, manualPhoto);
-    await putAnalysisRecord(db, {
-      ...makeAnalysis(autoPhoto.id, { stageA: 'done', stageB: 'done' }),
-      shots: [autoShot('auto-1')],
-    });
-    await putAnalysisRecord(db, {
-      ...makeAnalysis(manualPhoto.id, { stageA: 'done', stageB: 'done' }),
-      shots: [{ ...autoShot('manual-1'), source: 'manual', confidence: null }],
-    });
-
-    await setSessionBacking(ctx, session.id, { backingMode: 'coloured', backing: colouredBacking() });
-
-    const auto = await getAnalysisRecord(db, autoPhoto.id);
-    expect(auto?.pipeline.stageA).toBe('pending');
-    expect(auto?.pipeline.stageB).toBe('pending');
-    const manual = await getAnalysisRecord(db, manualPhoto.id);
-    expect(manual?.pipeline.stageA).toBe('done');
-    expect(manual?.pipeline.stageB).toBe('done');
-    db.close();
-  });
-
-  it('does not re-queue anything when the backing has not actually changed', async () => {
-    const db = await openTestDb();
-    const ctx = makeTestContext(db);
-    const backing = colouredBacking();
-    const session = makeSession({ backingMode: 'coloured', backing });
     await putSessionRecord(db, session);
     const photo = makePhoto({ sessionId: session.id, categorization: completeCategorization() });
     await putPhotoRecord(db, photo);
-    await putAnalysisRecord(db, { ...makeAnalysis(photo.id, { stageA: 'done', stageB: 'done' }), shots: [autoShot('auto-1')] });
+    const analysis = { ...makeAnalysis(photo.id, { stageA: 'done', stageB: 'done' }), shots: [autoShot('auto-1')] };
+    await putAnalysisRecord(db, analysis);
 
-    await setSessionBacking(ctx, session.id, { backingMode: 'coloured', backing: { ...backing } });
+    await setBackingMode(ctx, 'coloured');
+    await setBacking(ctx, colouredBacking());
+    await clearBacking(ctx);
+    await setHoleDiameterMm(ctx, 7);
+    await resetHoleDiameterMm(ctx);
 
-    expect((await getAnalysisRecord(db, photo.id))?.pipeline.stageA).toBe('done');
+    expect(await getAnalysisRecord(db, photo.id)).toEqual(analysis);
+    expect((await getPhotoRecord(db, photo.id))?.status).toBe(photo.status);
+    const jobs = planJobs([(await getSessionRecord(db, session.id))!], [photo], [analysis]);
+    expect(jobs).toEqual([]);
     db.close();
   });
 
-  it('remembers the choice as the app default, never with a card photo id', async () => {
+  it('stores the mode and backing, never with a card photo id; Clear keeps the mode', async () => {
     const db = await openTestDb();
     const ctx = makeTestContext(db);
-    const session = makeSession();
-    await putSessionRecord(db, session);
+    await setBackingMode(ctx, 'coloured');
+    await setBacking(ctx, colouredBacking('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'));
+    let settings = await getSettings(db);
+    expect(settings.backingMode).toBe('coloured');
+    expect(settings.backing).toEqual(colouredBacking(null));
 
-    await setSessionBacking(ctx, session.id, {
-      backingMode: 'coloured',
-      backing: colouredBacking('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
-    });
-
-    const settings = await getSettings(db);
-    expect(settings.lastBackingMode).toBe('coloured');
-    expect(settings.lastBacking?.cardPhotoId).toBeNull();
-    expect(settings.lastBacking?.colour).toEqual(ORANGE);
-    // ...while the session keeps its own card.
-    expect((await getSessionRecord(db, session.id))?.backing?.cardPhotoId).toBe('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    await clearBacking(ctx);
+    settings = await getSettings(db);
+    expect(settings.backingMode).toBe('coloured');
+    expect(settings.backing).toBeNull();
     db.close();
   });
 });
 
-describe('addBackingCard (backing-sheet.md §4)', () => {
-  it('measures the card, stores it as a backing-card photo and points the session at it', async () => {
+describe('Hole size (data-model §5)', () => {
+  it('stores 2-12 mm and resets to 5.6', async () => {
     const db = await openTestDb();
     const ctx = makeTestContext(db);
-    const session = await createSession(ctx);
+    await setHoleDiameterMm(ctx, 7.62);
+    expect((await getSettings(db)).profileOverrides.holeDiameterMm).toBe(7.62);
+    await resetHoleDiameterMm(ctx);
+    expect((await getSettings(db)).profileOverrides.holeDiameterMm).toBe(5.6);
+    db.close();
+  });
+
+  it('rejects a size outside 2-12 mm and stores nothing', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    await expect(setHoleDiameterMm(ctx, 1.5)).rejects.toBeInstanceOf(InvalidHoleDiameterError);
+    await expect(setHoleDiameterMm(ctx, 12.5)).rejects.toBeInstanceOf(InvalidHoleDiameterError);
+    expect(await db.get('settings', 'app')).toBeUndefined();
+    db.close();
+  });
+});
+
+describe('measureBackingCard (backing-sheet.md §4, REV-48)', () => {
+  it('measures the card and stores its colour in settings, keeping no photo', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    await setBackingMode(ctx, 'auto');
     const imageTools = stubImageTools({ async toRgba() { return flatRgba(0xff, 0x6a, 0x1f); } });
 
-    const result = await addBackingCard(
-      ctx,
-      { sessionId: session.id, blob: jpegBlob(), originalFilename: 'card.jpg', clientLocal: '2026-09-05T23:40:00', clientOffset: '+02:00' },
-      imageTools,
-    );
+    const result = await measureBackingCard(ctx, jpegBlob(), imageTools);
 
-    expect(result.photo).not.toBeNull();
-    expect(result.photo!.origin).toBe('backing-card');
     expect(result.colour).not.toBeNull();
-    const stored = await getSessionRecord(db, session.id);
-    expect(stored?.backing).toEqual({
-      kind: 'coloured',
-      source: 'card',
-      cardPhotoId: result.photo!.id,
-      colour: result.colour,
-    });
-    // backing-sheet.md §3: a card photo is not one of the session's targets.
-    expect(stored?.photoIds).toEqual([]);
+    const settings = await getSettings(db);
+    expect(settings.backing).toEqual({ kind: 'coloured', source: 'card', cardPhotoId: null, colour: result.colour });
+    expect(result.settings).toEqual(settings);
+    // The mode is left as the user set it (Auto uses the card colour when there is one, §4a).
+    expect(settings.backingMode).toBe('auto');
+    expect(await listPhotoRecords(db)).toEqual([]);
     db.close();
   });
 
   it('stores nothing when the card shows no clear colour (§4.3)', async () => {
     const db = await openTestDb();
     const ctx = makeTestContext(db);
-    const session = await createSession(ctx);
+    await setBacking(ctx, colouredBacking());
     const imageTools = stubImageTools({ async toRgba() { return flatRgba(0x9a, 0x9a, 0x9a); } });
 
-    const result = await addBackingCard(
-      ctx,
-      { sessionId: session.id, blob: jpegBlob(), originalFilename: null, clientLocal: '2026-09-05T23:40:00', clientOffset: '+02:00' },
-      imageTools,
-    );
+    const result = await measureBackingCard(ctx, jpegBlob(), imageTools);
 
-    expect(result).toEqual({ photo: null, colour: null });
+    expect(result).toEqual({ colour: null, settings: null });
+    expect((await getSettings(db)).backing).toEqual(colouredBacking(null));
     expect(await listPhotoRecords(db)).toEqual([]);
-    expect((await getSessionRecord(db, session.id))?.backing).toBeNull();
-    db.close();
-  });
-
-  it('replacing a card removes the previous card photo', async () => {
-    const db = await openTestDb();
-    const ctx = makeTestContext(db);
-    const session = await createSession(ctx);
-    const imageTools = stubImageTools({ async toRgba() { return flatRgba(0xff, 0x6a, 0x1f); } });
-    const input = {
-      sessionId: session.id,
-      blob: jpegBlob(),
-      originalFilename: null,
-      clientLocal: '2026-09-05T23:40:00',
-      clientOffset: '+02:00',
-    };
-
-    const first = await addBackingCard(ctx, input, imageTools);
-    const second = await addBackingCard(ctx, input, imageTools);
-
-    expect(await getPhotoRecord(db, first.photo!.id)).toBeNull();
-    expect(await getPhotoRecord(db, second.photo!.id)).not.toBeNull();
-    expect((await getSessionRecord(db, session.id))?.backing?.cardPhotoId).toBe(second.photo!.id);
     db.close();
   });
 });
@@ -291,25 +242,6 @@ describe('a card photo is never a target (backing-sheet.md §3)', () => {
     const { db, ctx, session } = await seedWithCard();
     await deleteSession(ctx, session.id);
     expect(await listPhotoRecords(db)).toEqual([]);
-    db.close();
-  });
-
-  it('deleting the card photo clears the session pointer to it', async () => {
-    const db = await openTestDb();
-    const ctx = makeTestContext(db);
-    const session = await createSession(ctx);
-    const imageTools = stubImageTools({ async toRgba() { return flatRgba(0xff, 0x6a, 0x1f); } });
-    const { photo } = await addBackingCard(
-      ctx,
-      { sessionId: session.id, blob: jpegBlob(), originalFilename: null, clientLocal: '2026-09-05T23:40:00', clientOffset: '+02:00' },
-      imageTools,
-    );
-
-    await deletePhoto(ctx, photo!.id);
-
-    const stored = await getSessionRecord(db, session.id);
-    expect(stored?.backing?.cardPhotoId).toBeNull();
-    expect(stored?.backing?.colour).not.toBeNull();
     db.close();
   });
 });

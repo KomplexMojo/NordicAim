@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 
-import { BackingCardCapture } from '@/components/capture/BackingCardCapture';
 import { CaptureScreen } from '@/components/capture/CaptureScreen';
 import { useServices } from '@/lib/app/services';
 import type { BiathlonSession } from '@/lib/domain/session';
@@ -41,11 +40,6 @@ export function CapturePage() {
         </Link>
       </main>
     );
-  }
-
-  // backing-sheet.md §2: `?mode=card` photographs the backing card, not a target.
-  if (searchParams.get('mode') === 'card') {
-    return <BackingCardCapture key={sid} sessionId={sid} fakeCamera={searchParams.get('fakeCamera')} />;
   }
 
   return (

@@ -11,7 +11,7 @@ import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo'
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { putBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
-import { listSessionRecords, putSessionRecord } from '@/lib/store/sessions-repo';
+import { putSessionRecord } from '@/lib/store/sessions-repo';
 import { putSettings } from '@/lib/store/settings-repo';
 import type { BackingInput, ReviewAndAlignResult } from '@/workers/cv-client';
 
@@ -418,11 +418,10 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     expect(analysis?.pipeline.warnings).toEqual([]);
   });
 
-  it('passes the session backing to A5 and records the detection (backing-sheet.md §3, §5)', async () => {
+  it('passes the Settings backing to A5 and records the detection (backing-sheet.md §3, §5, REV-48)', async () => {
     const { ctx, photoId } = await seed();
-    const session = (await listSessionRecords(ctx.db))[0]!;
-    await putSessionRecord(ctx.db, {
-      ...session,
+    await putSettings(ctx.db, {
+      ...defaultAppSettings(),
       backingMode: 'coloured',
       backing: { kind: 'coloured', source: 'card', cardPhotoId: null, colour: ORANGE },
     });

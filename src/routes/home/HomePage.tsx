@@ -37,10 +37,6 @@ export function HomePage() {
       </section>
 
       <p className="mt-auto text-center text-xs text-muted-foreground">Results are stored only on this phone.</p>
-
-      <Link to="/diagnostics" className="text-center text-xs text-muted-foreground underline underline-offset-4">
-        Diagnostics
-      </Link>
     </main>
   );
 }

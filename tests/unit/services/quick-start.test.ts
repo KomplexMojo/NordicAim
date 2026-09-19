@@ -18,7 +18,7 @@ describe('quickStartLabel', () => {
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const sessions = [
       {
-        schemaVersion: 2 as const,
+        schemaVersion: 3 as const,
         id: 'x',
         name: 'Session',
         sessionDate: today,
@@ -29,8 +29,6 @@ describe('quickStartLabel', () => {
         artifacts: [],
         shares: [],
         notes: '',
-        backingMode: 'auto' as const,
-        backing: null,
       },
     ];
     expect(quickStartLabel(sessions, now)).toBe("Capture (today's session)");

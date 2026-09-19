@@ -18,7 +18,15 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/sessions/:sid/photos/:pid` | Target detail (full diagram + all metrics) | M12 |
 | `#/sessions/:sid/photos/:pid/adjust` | Optional: adjust alignment and shots | M13 |
 | `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with Adjust embedded | M21 |
+| `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |
+| `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
 | `#/diagnostics` | Device capability checks | M01 |
+
+**Three main screens (REV-47).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has three tabs of at
+least 44 px, each an icon and a label, with the active one marked: **Shooting** (`#/` and every `#/sessions/...` and
+`#/review/...` route), **Settings** (`#/settings`) and **Diagnostics** (`#/diagnostics`). It is **hidden on the full-screen
+capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`). Scrolling content is padded by the bar's height plus
+the safe-area inset so the bar never covers it.
 
 **Step 1: take picture(s)** (spec/capture-overlay.md): quick start → pick Sighting/Precision and position → overlay →
 capture → Use photo (Stage A starts in the background) → next target → **Done** → metadata screen.
@@ -58,7 +66,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 | A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
 | A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
 | A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior, then measure every printed circle and store the sheet's tilt with it (REV-44, §3) → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
-| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); when the declared rounds are known the set is **reconciled** against them (REV-39, geometry-scoring §8.3): rejected (`too-many-holes`), capped (`extra-candidates-dropped`, REV-28), given inferred double punches (`double-punch-assumed`) and misses (`rounds-scored-as-miss`). With a coloured backing (REV-38, `backing-sheet.md` §5), holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
+| A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); when the declared rounds are known the set is **reconciled** against them (REV-39, geometry-scoring §8.3): rejected (`too-many-holes`), capped (`extra-candidates-dropped`, REV-28), given inferred double punches (`double-punch-assumed`) and misses (`rounds-scored-as-miss`). With a coloured backing (REV-38, `backing-sheet.md` §5) — the **Settings** backing mode and colour as they are when A5 runs (REV-48) — holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
 
 **Stage B: runs when analysis has been requested for the session and the photo's metadata is complete**
 
@@ -276,7 +284,8 @@ when available.
 - If the user saves a calibration in Adjust, its `source` is `'manual'` and `pipeline.alignment.method = 'manual'`.
 - Stage A never runs A4 when `calibration?.source === 'manual'`, and never runs A5 when any shot has `source === 'manual'`.
 - Adjust offers **Re-analyze** (explicit; REV-46, formerly *Re-detect shots*): it first **saves what is on screen** —
-  the alignment and every shot, exactly as Save does — then runs detection against **that** alignment, replaces `auto`
+  the alignment and every shot, exactly as Save does — then runs detection against **that** alignment, with the **Settings**
+  backing and hole size as they are now (REV-48; changing a setting never re-runs anything by itself), replaces `auto`
   shots with what it finds, keeps `manual` ones, and re-scores. Nothing the user has on screen is discarded.
   A detected shot within **0.8 hole diameters** (`SAME_HOLE_DIAMETERS`, the tolerance M16 R4 uses to match detections
   to the owner's taps) of a kept `manual` shot is the same hole and is dropped: the user's shot wins, so re-analyzing

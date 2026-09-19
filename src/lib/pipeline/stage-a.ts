@@ -11,6 +11,7 @@ import { isTargetPhoto } from '@/lib/domain/backing';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
+import { backingInputFromSettings } from '@/lib/domain/settings';
 import { photoStatus } from '@/lib/domain/status';
 import { withoutArea } from '@/lib/scoring/cap-shots';
 import { reconcileShots } from '@/lib/scoring/reconcile-shots';
@@ -23,7 +24,6 @@ import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo'
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
-import { getSessionRecord } from '@/lib/store/sessions-repo';
 import { getSettings } from '@/lib/store/settings-repo';
 import type { CvWorkerApi, ReviewAndAlignResult } from '@/workers/cv-client';
 
@@ -141,12 +141,8 @@ export async function runStageA(
     const bytesForShots = bytes.slice(0);
     // data-model §5: the hole diameter the touch rule and A5 use is a profile override.
     const settings = await getSettings(ctx.db);
-    // backing-sheet.md §5: the session's backing decides which A5 path runs.
-    const session = await getSessionRecord(ctx.db, photo.sessionId);
-    const backing = {
-      mode: session?.backingMode ?? 'auto',
-      colour: session?.backing?.colour ?? null,
-    };
+    // backing-sheet.md §5 (REV-48): the Settings backing, as it is now, decides which A5 path runs.
+    const backing = backingInputFromSettings(settings);
 
     // §8: a calibration the user saved in Adjust is never replaced, so A4 is skipped for it.
     const manual = analysis.calibration?.source === 'manual';

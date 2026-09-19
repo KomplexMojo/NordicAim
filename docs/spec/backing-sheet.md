@@ -1,7 +1,7 @@
 # Spec: coloured backing sheet (optional)
 
-Implements REV-38. Code: `src/lib/domain/backing.ts`, `src/lib/cv/backing-colour.ts` (pure), the Session options panel on the
-metadata screen, the card capture mode, and the colour path in Stage A step A5.
+Implements REV-38, placed by REV-48. Code: `src/lib/domain/backing.ts`, `src/lib/cv/backing-colour.ts` (pure), the **Backing
+sheet** section of the Settings screen (`src/components/settings/*`), the card capture mode, and the colour path in Stage A step A5.
 
 ## 1. What it is
 
@@ -46,18 +46,25 @@ inside the 5.6 mm merge distance. Tuned on both orange photos together:
 
 Two photos of one sheet type on one backing is still thin evidence; §7's photo set is what sets the constants.
 
-**It is optional and out of the way.** The three-step flow does not change. A shooter who never uses a backing never sees more than
-one collapsed row.
+**It is optional and out of the way.** The three-step flow does not change. A shooter who never uses a backing never meets it: it
+lives on the Settings screen (REV-47, REV-48), not in the capture → metadata → analysis flow.
 
 ## 2. Where the option lives
 
-- **Metadata screen (step 2), bottom:** a collapsed row **Session options**. Expanded, it holds one field today:
-  **Backing sheet** — **`Auto` (default)** / `None` / `Coloured backing` (owner, 2026-09-17). `Auto` decides per photo whether a
-  coloured backing is present (§4a); `None` never uses colour; `Coloured backing` always does.
-- With `Coloured backing` selected, the row shows the backing's colour swatch and source, and two secondary actions:
-  **Photograph backing card** and **Choose card photo** (import). Both are optional.
-- **New sessions inherit the last choice** (`AppSettings.lastBacking`), so a shooter who always uses the same backing sets it once.
-  The choice and colour are copied onto the session; later changes to the default never alter an existing session.
+> REV-38 first placed this per session, in a collapsed **Session options** row on the metadata screen. **Superseded by REV-48**
+> (issue #2): the backing is a **Settings** choice that applies to every session, and Session options is removed.
+
+- **Settings screen (`#/settings`), section Backing sheet:** a select **`Auto` (default)** / `None` / `Coloured backing`
+  (owner, 2026-09-17). `Auto` decides per photo whether a coloured backing is present (§4a); `None` never uses colour;
+  `Coloured backing` always does.
+- **Photograph backing card** opens the capture screen in card mode (`#/settings/backing-card`, full screen, no tab bar) and,
+  on *Use photo*, measures the card's colour (§4). A card with a clear colour stores that colour and returns to Settings, which
+  shows it as a swatch; a card without one stores nothing and shows the §4.3 message. **Choose card photo** does the same from
+  an imported photo. **The card photo itself is not kept** (issue #2 default): the colour signature is all detection uses, and
+  the swatch is drawn from it. **Clear** removes the measured colour.
+- The mode and colour apply to every session. **Changing them re-runs nothing** (issue #2 default): the setting applies to new
+  photos and to any photo the user re-analyzes in Adjust, so a finished session's numbers never change behind the user's back.
+  Each analysis records which backing it used (`pipeline.detection`, §3).
 - No other screen shows it. The results screen and target detail may show a one-line note, `Holes found by backing colour`, only when
   the colour path was used (§5).
 
@@ -75,20 +82,35 @@ export const ColourSignature = z.object({
 export const BackingSheet = z.object({
   kind: z.literal('coloured'),
   source: z.enum(['card', 'estimated']),
-  cardPhotoId: Id.nullable(),               // a Photo with origin 'backing-card', or null
+  cardPhotoId: Id.nullable(),               // always null since REV-48 (the card photo is not kept); kept so old records parse
   colour: ColourSignature.nullable(),       // null until a card is measured or an estimate succeeds
 });
 ```
 
-- `BiathlonSession` gains `backingMode: 'auto' | 'none' | 'coloured'` and `backing: BackingSheet | null` (the card and colour, when
-  known). **Schema version 1 → 2**; the migration sets `backingMode: 'auto'`, `backing: null`.
-- `AppSettings` gains `lastBackingMode` (default `'auto'`) and `lastBacking: BackingSheet | null`, with **`cardPhotoId` always null**
-  there (card photos belong to a session).
+- **`AppSettings.backingMode: 'auto' | 'none' | 'coloured'`** (default `'auto'`) and **`AppSettings.backing: BackingSheet | null`**
+  are the setting itself (data-model §5). They replace REV-38's `lastBackingMode` / `lastBacking`.
+- **`BiathlonSession` has no backing fields** (schema version **3**, REV-48). REV-38's `backingMode` / `backing` on the session
+  (schema version 2) are removed by the migration in §3a.
 - Each analysis records `pipeline.detection = { method: 'colour' | 'standard', backing: 'detected' | 'not-detected' | 'forced' | 'off',
-  fallbackReason: string | null }`, so the owner can see why a photo was or wasn't treated as backed.
-- `PhotoOrigin` gains `'backing-card'`. A backing-card photo is **not a target**: it is excluded from Stage A and B, from photo counts,
-  "Analyze N targets", results cards, the summary image and every share. It is removed with its session.
+  fallbackReason: string | null }`, so the owner can see why a photo was or wasn't treated as backed, and which setting it ran under.
+- `PhotoOrigin` keeps `'backing-card'` so a record stored before REV-48 still parses during the migration; **nothing new is
+  written with it**. Such a photo is **not a target**: it is excluded from Stage A and B, from photo counts, "Analyze N targets",
+  results cards, the summary image and every share.
 - Zod-validate on read, as for every store record.
+
+## 3a. Migration (REV-48)
+
+Runs once, when the app opens its database, in one transaction, before any screen or the pipeline reads a record:
+1. **Settings:** `lastBackingMode` / `lastBacking` are copied to `backingMode` / `backing` (also done on every read, data-model §5).
+2. **Lift:** if settings then holds **no backing** (`backing === null`), the most recently updated (`updatedAt`) schema-2
+   session whose `backing` has a measured colour gives settings its `backingMode` and `backing` (with `cardPhotoId: null`).
+   A backing already in settings is **never** replaced by a session's.
+3. **Sessions:** every schema-2 session is rewritten as schema 3 without `backingMode` / `backing` (a schema-1 session is
+   upgraded straight to 3).
+4. **Card photos:** every photo with `origin: 'backing-card'` is deleted, with its analysis and its `photo:<pid>:*` /
+   `diagram:<pid>:*` blobs — after step 2 has lifted its colour. Card photos were never in `session.photoIds`.
+
+Nothing is re-analyzed by the migration.
 
 ## 4. Measuring the colour
 
@@ -154,7 +176,22 @@ Without the area rule those four unbacked photos would have been read as backed 
 sets on this data, with a wide gap (0.76 vs 4.6); the sheet-area search of REV-36 should shrink the problem further by excluding
 the board around the sheet. **Pen marks inside the target have not been tested** and are the known way to fool `Auto`.
 
-With `Auto`, a card photo is still used when the session has one; otherwise the neutral-chroma rule applies.
+**Two more rules (M19, owner's ruling on M19 Open question 1, issue #7).** Both are measured by the neutral-chroma probe only
+(no card), and both must also hold for **present**:
+- **Colour floor:** the most coloured accepted pixel's chroma (after the white balance, 0–255) must be at least
+  `AUTO_MIN_CHROMA` (**124**). A backing sheet is fluorescent. Measured: backed photos 138–223 (IMG_5189, pink: 138;
+  IMG_5198: 167), unbacked 42–110 (IMG_5182: 110); 124 is midway between 110 and 138 — a margin of only 14 either side.
+  Fallback reason **`colour too dull for a backing`**.
+- **Radial rule:** the coloured pixels' **10th-percentile distance** from the target centre (`AUTO_RADIUS_QUANTILE` 0.1) must
+  be **at most the template's outer ring radius** (57.5 mm sighting / 77.2 mm precision) — holes are inside the rings, the board
+  and scenery are not. Measured: 4–15 mm on backed photos against 101–133 mm on unbacked ones. Fallback reason
+  **`colour outside the rings`**.
+
+The rules are checked in order — large area, fewer than `AUTO_MIN_SPOTS` spots (`no coloured spots`), colour floor, radial rule —
+and the first that fails is the recorded `fallbackReason`. The floor catches a bright board, the radial rule a dull one, so both
+apply. All four Auto constants are provisional until the labelled backing set of §7 exists.
+
+With `Auto`, the card colour in Settings is still used when there is one; otherwise the neutral-chroma rule applies.
 
 **Backed sighting sheets (IMG_5194, 5196, 5198; red backing, no card), 2026-09-17:**
 
@@ -175,8 +212,9 @@ the hint rather than rely on the user.
 
 ## 5. Detection with a backing (Stage A, step A5)
 
-When the session's `backingMode` is `coloured`, or it is `auto` and §4a says present — using the card's colour when the session has
-one (hue test), otherwise the neutral-chroma test of §4:
+When the Settings `backingMode` is `coloured`, or it is `auto` and §4a says present — using the card's colour when Settings has
+one (hue test), otherwise the neutral-chroma test of §4. A5 and Adjust's **Re-analyze** both read the backing from Settings at the
+moment they run (REV-48):
 1. **Colour mask:** a pixel is backing-coloured when its circular hue distance to `hueDeg` is ≤ `hueSpreadDeg + BACKING_HUE_MARGIN_DEG`
    (start **25°** — backing seen through a hole is shaded, and shaded orange reads redder than the card; 12° missed a shaded hole
    on IMG_5193). **No minimum brightness** is applied: a shaded hole's backing measured value 0.19 at saturation 0.86 and `sat ≥ max(0.25, 0.7 × satP10)`, within the searched sheet area (REV-36). Then apply a **3×3 morphological
@@ -200,8 +238,9 @@ one (hue test), otherwise the neutral-chroma test of §4:
 7. Reconciliation to the declared rounds (REV-39, geometry-scoring §8.3 — every colour-path hole is confident, so extra holes
    reject the target rather than being capped) and manual-shot protection (analysis-pipeline §8) apply.
 
-**Changing the backing** (kind, card or colour) on a session sets Stage A back to pending **from A5** for each of its photos whose shots
-are all `auto`, so detection re-runs; photos with manual shots are left alone and gain nothing.
+**Changing the backing** (mode, card or colour) in Settings **re-runs nothing** (REV-48, issue #2 default). It applies to photos
+analyzed from then on and to any photo the user re-analyzes. REV-38's rule — changing a session's backing set its photos' Stage A
+back to pending — is superseded with the per-session backing.
 
 ## 6. Reasons
 

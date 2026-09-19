@@ -85,7 +85,62 @@ pnpm cv:eval   # unchanged
 - Hole size feeds detection **and** scoring; changing it must not silently re-score stored results (same rule as the backing).
 
 ## Open questions
-_(add here)_
+1. **Which session is lifted (non-blocking).** Step 3 says "lift the most recently updated session's mode and colour". Read
+   literally, a newest session with no backing would lift nothing even when an older one had a measured colour. Implemented as
+   *the most recently updated schema-2 session **whose backing has a measured colour*** (`backingToLift` in
+   `src/lib/domain/session.ts`), so nothing measured is lost; recorded in `backing-sheet.md` §3a step 2. The owner may prefer
+   the literal reading.
+2. **Where the migration runs (non-blocking).** The spec was silent. It runs once per app open in `loadAppServices`
+   (`migrateBackingToSettings`, `src/lib/store/migrate-backing.ts`), in one transaction, before the pipeline runner or any screen
+   reads a record; the IndexedDB version stays 1 (data-model §6 unchanged). Settings keep `schemaVersion: 1` — the field rename
+   is also applied on every read (`upgradeSettings`), as REV-38's own additions were.
+3. **Card-capture route and "Choose card photo" (non-blocking).** The milestone names no route for the Settings card capture;
+   added `#/settings/backing-card` (analysis-pipeline §1, backing-sheet.md §2). Kept REV-38's existing **Choose card photo**
+   (import) beside **Photograph backing card**, since it is part of the card capture being moved and is how the card path is
+   tested on desktop/CI. The card controls are shown in every mode (Auto uses a card colour too).
+4. **Build version (non-blocking).** "The git SHA Vite embeds at build time" did not exist yet. Added a `define` in
+   `vite.config.ts` (`GITHUB_SHA` in CI, else `git rev-parse --short=7 HEAD`, else `dev`) read by `src/lib/app/build-info.ts`.
 
 ## Completion notes
-_(fill in when done)_
+**Implemented (2026-09-19).**
+- Specs first: `data-model.md` (§2 session schema 3, §5 `AppSettings.backingMode` / `backing`, hole size 2–12 mm, migration,
+  §8 example), `backing-sheet.md` (§2 and §3 rewritten for Settings with REV-38's placement marked superseded by REV-48; new §3a
+  migration; §4a gains `AUTO_MIN_CHROMA` 124 and the radial rule with their fallback reasons "colour too dull for a backing"
+  and "colour outside the rings"; §5 reads the Settings backing and changing it re-runs nothing), `analysis-pipeline.md`
+  (§1 `#/settings`, `#/settings/backing-card` and the tab bar; §2 A5 and §8 Re-analyze read the Settings backing).
+- Tab bar (`src/components/nav/TabBar.tsx`, pure route logic in `src/lib/app/nav.ts`), an `AppShell` layout in
+  `src/app/router.tsx` padding the page by 3.5rem + `env(safe-area-inset-bottom)`; hidden on `/sessions/:sid/capture` and
+  `/settings/backing-card`. Home's Diagnostics link removed.
+- Settings route (`src/routes/settings/SettingsPage.tsx`, `src/components/settings/*`), writes via the new
+  `src/lib/services/settings.ts` (settings row only; nothing marked pending). `measureBackingCard` replaces `addBackingCard`
+  and keeps no photo. `BackingCardCapture` now returns to Settings.
+- `BiathlonSession` schema 3 (no backing), `BiathlonSessionV2` kept for the migration; `setSessionBacking` and
+  `forSettings` removed; `SessionOptions.tsx` removed; `?mode=card` removed from the session capture route.
+- A5 (`stage-a.ts`), Re-analyze/`redetectShots` (`adjust.ts`) and Adjust's detection aids (`detection-aids.ts`) pass
+  `backingInputFromSettings(settings)` to the worker.
+
+**Commands run**
+- `pnpm check` — pass (typecheck, lint with the 4 pre-existing warnings only, 77 files / 782 unit tests, privacy check).
+- `pnpm test:e2e` — pass, 68/68 (mobile-chromium + mobile-webkit), including the new `tests/e2e/settings.spec.ts`.
+- `pnpm cv:eval` — pass ("all synthetic cases and reference photos pass"); no file under `src/lib/cv` or `scripts/` changed,
+  and cv:eval imports none of the changed modules, so its numbers are unchanged.
+- `pnpm build` — pass; the short SHA appears in the bundle.
+
+**Tests added/changed**
+- Unit: `tests/unit/store/session-migration.test.ts` (settings rename from a REV-38 fixture; v1/v2 sessions → v3; lift into
+  empty settings; "settings already has a backing — the session's is not lifted over it"; "a backing-card photo is deleted after
+  its colour is lifted" incl. analysis and blobs; no analysis touched; idempotent; fresh DB writes nothing),
+  `tests/unit/domain/settings.test.ts`, `tests/unit/domain/backing.test.ts` (`upgradeSession`, `backingToLift`),
+  `tests/unit/services/backing.test.ts` (settings writes mark nothing pending; hole size range and reset; `measureBackingCard`),
+  `tests/unit/pipeline/stage-a.test.ts` and `tests/unit/services/adjust.test.ts` (A5, `redetectShots` and `reanalyze` pass the
+  **settings** backing), `tests/unit/app/nav.test.ts`.
+- E2E: `tests/e2e/settings.spec.ts` (tabs navigate and mark active, ≥ 44 px; no tab bar on capture or card capture; card colour
+  set/cleared; hole size kept and Reset returns 5.6; About; Coloured in Settings → the analyzed photo records
+  `detection.backing: 'forced'`), `metadata.spec.ts` (no Session options), `smoke.spec.ts` (Diagnostics is now a tab).
+
+**Deviations / reviewer notes**
+- The e2e "detection record says colour" asserts `pipeline.detection.backing === 'forced'`: the fake camera's target has no real
+  backing, so the forced colour path may legitimately fall back to `method: 'standard'` (with a fallback reason). `forced` is
+  what proves the Settings mode reached the worker.
+- See Open questions 1–4 for the four places the spec was silent.
+- Human (owner): iPhone one-handed tab use, and a real backed target analyzed with the backing set in Settings — not done here.

@@ -25,6 +25,10 @@ import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { putBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
+import { putSettings } from '@/lib/store/settings-repo';
+import { defaultAppSettings } from '@/lib/domain/settings';
+import type { ColourSignature } from '@/lib/domain/backing';
+import type { BackingInput } from '@/workers/cv-client';
 
 import { openTestDb } from '../../helpers/db';
 import { makeTestContext } from '../../helpers/fixtures';
@@ -100,12 +104,15 @@ async function seed(
   return { ctx, photoId: photo.id, sessionId: session.id };
 }
 
+/** The owner's orange backing card (backing-sheet.md §4). */
+const ORANGE: ColourSignature = { hueDeg: 15.9, hueSpreadDeg: 2.4, satP10: 0.73, valP10: 0.85, samples: 70610 };
+
 function stubDetect(shots: Shot[]) {
-  const calls: Array<{ calibration: Calibration; template: string; holeDiameterMm: number }> = [];
+  const calls: Array<{ calibration: Calibration; template: string; holeDiameterMm: number; backing: BackingInput }> = [];
   const api: DetectShotsApi = {
-    async detectShots(workingJpeg, calibration, template, holeDiameterMm) {
+    async detectShots(workingJpeg, calibration, template, holeDiameterMm, backing) {
       void workingJpeg;
-      calls.push({ calibration, template, holeDiameterMm });
+      calls.push({ calibration, template, holeDiameterMm, backing });
       return { shots, detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null }, suggestions: [], holeWidths: [] };
     },
   };
@@ -283,6 +290,23 @@ describe('redetectShots (M13 step 5)', () => {
     ctx.db.close();
   });
 
+  it('passes the Settings backing and hole size, as they are now, to the worker (REV-48)', async () => {
+    const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1.4, -0.8)] });
+    await putSettings(ctx.db, {
+      ...defaultAppSettings(),
+      profileOverrides: { holeDiameterMm: 4.5 },
+      backingMode: 'coloured',
+      backing: { kind: 'coloured', source: 'card', cardPhotoId: null, colour: ORANGE },
+    });
+    const { api, calls } = stubDetect([autoShot('auto-1', 2, -1)]);
+
+    await redetectShots(ctx, photoId, api);
+
+    expect(calls[0]?.backing).toEqual({ mode: 'coloured', colour: ORANGE });
+    expect(calls[0]?.holeDiameterMm).toBe(4.5);
+    ctx.db.close();
+  });
+
   it('refuses to run without a calibration', async () => {
     const { ctx, photoId } = await seed({ calibration: null });
     const { api } = stubDetect([]);
@@ -344,6 +368,17 @@ describe('re-projection on save (REV-46)', () => {
 });
 
 describe('reanalyze (REV-46)', () => {
+  it('passes the Settings backing to the worker (REV-48)', async () => {
+    const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)] });
+    await putSettings(ctx.db, { ...defaultAppSettings(), backingMode: 'none', backing: null });
+    const { api, calls } = stubDetect([autoShot('d-1', 20, 20)]);
+
+    await reanalyze(ctx, photoId, { shots: [autoShot('auto-1', 1, 1)] }, api);
+
+    expect(calls[0]?.backing).toEqual({ mode: 'none', colour: null });
+    ctx.db.close();
+  });
+
   it('detects against the alignment on screen, not the one stored before', async () => {
     const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)] });
     const { api, calls } = stubDetect([autoShot('d-1', 20, 20)]);

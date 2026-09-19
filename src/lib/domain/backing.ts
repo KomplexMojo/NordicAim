@@ -20,7 +20,8 @@ export type ColourSignature = z.infer<typeof ColourSignature>;
 export const BackingSheet = z.object({
   kind: z.literal('coloured'),
   source: z.enum(['card', 'estimated']),
-  cardPhotoId: Id.nullable(), // a Photo with origin 'backing-card', or null
+  // Always null since REV-48 (the card photo is not kept); kept so records stored before it still parse.
+  cardPhotoId: Id.nullable(),
   colour: ColourSignature.nullable(), // null until a card is measured or an estimate succeeds
 });
 export type BackingSheet = z.infer<typeof BackingSheet>;
@@ -35,7 +36,10 @@ export type BackingMode = z.infer<typeof BackingMode>;
 /** backing-sheet.md §2: the default for a shooter who has never chosen. */
 export const DEFAULT_BACKING_MODE: BackingMode = 'auto';
 
-/** backing-sheet.md §3: `PhotoOrigin` for a backing-card photo — never a target. */
+/**
+ * backing-sheet.md §3: `PhotoOrigin` for a backing-card photo — never a target. Since REV-48 nothing new
+ * is written with it; the migration (§3a) deletes the ones stored before.
+ */
 export const BACKING_CARD_ORIGIN = 'backing-card' satisfies PhotoOrigin;
 
 /**
@@ -46,12 +50,7 @@ export function isTargetPhoto(photo: { origin: PhotoOrigin }): boolean {
   return photo.origin !== BACKING_CARD_ORIGIN;
 }
 
-/** backing-sheet.md §3: `lastBacking` never carries a session's card photo id. */
-export function forSettings(backing: BackingSheet | null): BackingSheet | null {
-  return backing === null ? null : { ...backing, cardPhotoId: null };
-}
-
-/** The label the Session options panel shows for a mode (backing-sheet.md §2). */
+/** The label the Settings screen's Backing sheet select shows for a mode (backing-sheet.md §2). */
 export const BACKING_MODE_LABEL: Record<BackingMode, string> = {
   auto: 'Auto',
   none: 'None',
@@ -59,7 +58,7 @@ export const BACKING_MODE_LABEL: Record<BackingMode, string> = {
 };
 
 /**
- * backing-sheet.md §2: the colour swatch the Session options row shows. It is drawn from the measured
+ * backing-sheet.md §2: the colour swatch the Settings screen shows. It is drawn from the measured
  * signature itself (hue with the 10th-percentile saturation and value), so what the shooter sees is
  * what detection matches, not a prettified version of it.
  */

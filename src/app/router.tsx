@@ -1,6 +1,8 @@
-import { createHashRouter, Outlet, RouterProvider } from 'react-router';
+import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
 
+import { TabBar } from '@/components/nav/TabBar';
 import { Toaster } from '@/components/ui/sonner';
+import { activeTab, showsTabBar } from '@/lib/app/nav';
 import { ServicesProvider } from '@/lib/app/services';
 import { AdjustPage } from '@/routes/adjust/AdjustPage';
 import { CapturePage } from '@/routes/capture/CapturePage';
@@ -11,6 +13,8 @@ import { ResultsPage } from '@/routes/results/ResultsPage';
 import { ReviewPage } from '@/routes/review/ReviewPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { SessionsPage } from '@/routes/sessions/SessionsPage';
+import { BackingCardPage } from '@/routes/settings/BackingCardPage';
+import { SettingsPage } from '@/routes/settings/SettingsPage';
 import { TargetPage } from '@/routes/target/TargetPage';
 
 function ServicesLayout() {
@@ -21,25 +25,50 @@ function ServicesLayout() {
   );
 }
 
+/**
+ * REV-47 (analysis-pipeline §1): every screen sits above the three-tab bar, except the full-screen capture
+ * screens. The page is padded by the bar's height plus the safe-area inset so the bar never covers content.
+ */
+function AppShell() {
+  const { pathname } = useLocation();
+  const withBar = showsTabBar(pathname);
+  return (
+    <>
+      <div className={withBar ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]' : undefined}>
+        <Outlet />
+      </div>
+      {withBar && <TabBar active={activeTab(pathname)} />}
+    </>
+  );
+}
+
 // Routes: docs/spec/analysis-pipeline.md §1. Diagnostics stays outside the services provider so it still runs
 // when IndexedDB cannot be opened.
 const router = createHashRouter([
   {
-    element: <ServicesLayout />,
+    element: <AppShell />,
     children: [
-      { path: '/', element: <HomePage /> },
-      { path: '/sessions', element: <SessionsPage /> },
-      { path: '/sessions/:sid', element: <SessionRedirect /> },
-      { path: '/sessions/:sid/capture', element: <CapturePage /> },
-      { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
-      { path: '/sessions/:sid/results', element: <ResultsPage /> },
-      { path: '/sessions/:sid/photos/:pid', element: <TargetPage /> },
-      { path: '/sessions/:sid/photos/:pid/adjust', element: <AdjustPage /> },
-      // M21 step 4 (REV-42): the session review pass.
-      { path: '/review/:sessionId', element: <ReviewPage /> },
+      {
+        element: <ServicesLayout />,
+        children: [
+          { path: '/', element: <HomePage /> },
+          { path: '/sessions', element: <SessionsPage /> },
+          { path: '/sessions/:sid', element: <SessionRedirect /> },
+          { path: '/sessions/:sid/capture', element: <CapturePage /> },
+          { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
+          { path: '/sessions/:sid/results', element: <ResultsPage /> },
+          { path: '/sessions/:sid/photos/:pid', element: <TargetPage /> },
+          { path: '/sessions/:sid/photos/:pid/adjust', element: <AdjustPage /> },
+          // M21 step 4 (REV-42): the session review pass.
+          { path: '/review/:sessionId', element: <ReviewPage /> },
+          // M22 (REV-47, REV-48): Settings, and its full-screen backing-card capture.
+          { path: '/settings', element: <SettingsPage /> },
+          { path: '/settings/backing-card', element: <BackingCardPage /> },
+        ],
+      },
+      { path: '/diagnostics', element: <DiagnosticsPage /> },
     ],
   },
-  { path: '/diagnostics', element: <DiagnosticsPage /> },
 ]);
 
 export function AppRouter() {

@@ -160,8 +160,8 @@ export async function ingestPhoto(
   await putBlob(tx, photoWorkingKey(photoId), workingRecord);
   await putBlob(tx, photoThumbKey(photoId), thumbRecord);
   // backing-sheet.md §3: `photoIds` is the session's TARGETS. A backing-card photo is not one, so it
-  // never enters the list the metadata screen, the results screen and every count walk; it is reached
-  // through `session.backing.cardPhotoId`, and removed with the session by its `sessionId`.
+  // never enters the list the metadata screen, the results screen and every count walk. Since REV-48 no
+  // card photo is written at all (the Settings keeps only its colour); an old one goes with its session.
   const photoIds = isTargetPhoto(photo) ? [...session.photoIds, photoId] : session.photoIds;
   await putSessionRecord(tx, { ...session, photoIds, updatedAt: nowIso });
   await tx.done;

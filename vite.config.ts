@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { fileURLToPath, URL } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -37,9 +38,24 @@ function injectCsp(): Plugin {
   };
 }
 
+/**
+ * M22 (Settings → About): the git SHA of this build, so a tester can say which build they are on. CI
+ * (GitHub Pages) provides GITHUB_SHA; a local build asks git; anything else is 'dev'.
+ */
+function buildSha(): string {
+  const fromCi = process.env.GITHUB_SHA;
+  if (fromCi) return fromCi.slice(0, 7);
+  try {
+    return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'dev';
+  } catch {
+    return 'dev';
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
+  define: { 'import.meta.env.VITE_BUILD_SHA': JSON.stringify(buildSha()) },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

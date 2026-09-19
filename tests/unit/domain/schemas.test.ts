@@ -65,7 +65,7 @@ describe('Calibration', () => {
 describe('BiathlonSession', () => {
   it('parses data-model §8 example', () => {
     const example = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       id: '6f1d7c1e-3b1e-4f5e-9a3e-1c2d3e4f5a6b',
       name: 'Session 2026-09-05',
       sessionDate: '2026-09-05',
@@ -76,9 +76,6 @@ describe('BiathlonSession', () => {
       artifacts: [],
       shares: [],
       notes: '',
-      // backing-sheet.md §3 (REV-38), schema version 2.
-      backingMode: 'auto',
-      backing: null,
     };
     const result = BiathlonSession.safeParse(example);
     expect(result.success).toBe(true);

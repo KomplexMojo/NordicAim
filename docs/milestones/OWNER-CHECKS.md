@@ -220,3 +220,11 @@ during M10/M11 work._
 - [ ] Double punch: on a target shot with a coloured backing sheet, select a hole wider than one shot and confirm "Looks like N shots" appears and one tap sets the count and marks the shot manual. On a target without a backing sheet the prompt will not appear (Open question 6, since nothing on an unbacked target measures hole width) — decide whether that's acceptable or name a width measurement to try.
 - [ ] Note how long suggestions take to appear after opening Adjust on the phone (one extra detection runs each time), for M15's performance budget.
 - [ ] Confirm the milestone's provisional answers to its Open questions: review is stateless and entered via the "Review session" link on the results screen (Q1/Q4), the 60 mm vector / round-up rule (Q5), and double-punch prompts appearing only on backed targets (Q6/Q9).
+
+## M22 — Three main screens and a Settings screen (issue #2)
+
+- [ ] On the iPhone (https://komplexmojo.github.io/advanced-shooting-analysis/ after the push), move between Shooting, Settings and Diagnostics one-handed. Confirm the tab bar clears the home indicator and never covers content on any page (Home, a session's metadata/results, target detail, Adjust, Review, Settings, Diagnostics).
+- [ ] Start a capture and confirm the tab bar is hidden on the camera screen; then do Settings → Photograph backing card and confirm that capture is also full screen with no tab bar.
+- [ ] In Settings, set Backing sheet to Coloured (optionally photograph the backing card and check the swatch matches). Capture and analyze a target shot over a coloured backing, and confirm detection uses the colour path (target detail or results shows "Holes found by backing colour").
+- [ ] If the phone holds data from an older build (REV-38 or M19-era, with a session that has a backing card), open the new build once and confirm the migration lifts the previously measured backing colour into Settings → Backing sheet, that old sessions still open normally, and that nothing is re-analyzed.
+- [ ] In Settings → About, confirm the build SHA shown matches the commit deployed to Pages (from GITHUB_SHA in CI).

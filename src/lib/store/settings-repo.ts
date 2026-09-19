@@ -1,4 +1,4 @@
-import { AppSettings, defaultAppSettings } from '@/lib/domain/settings';
+import { AppSettings, defaultAppSettings, upgradeSettings } from '@/lib/domain/settings';
 
 import type { AppDb, AppTx } from './db';
 import { CorruptRecordError } from './errors';
@@ -9,11 +9,14 @@ function isTx(x: Executor): x is AppTx {
   return 'objectStore' in x;
 }
 
-/** Returns `defaultAppSettings()` if no row is stored yet. */
+/**
+ * Returns `defaultAppSettings()` if no row is stored yet. A row written by REV-38 is migrated on read
+ * (`lastBacking*` -> `backing*`, data-model §5).
+ */
 export async function getSettings(dbOrTx: Executor): Promise<AppSettings> {
   const raw = isTx(dbOrTx) ? await dbOrTx.objectStore('settings').get('app') : await dbOrTx.get('settings', 'app');
   if (raw == null) return defaultAppSettings();
-  const parsed = AppSettings.safeParse(raw);
+  const parsed = AppSettings.safeParse(upgradeSettings(raw));
   if (!parsed.success) throw new CorruptRecordError('settings', 'app');
   return parsed.data;
 }

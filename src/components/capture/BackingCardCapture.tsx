@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -8,26 +7,26 @@ import type { CameraErrorCode } from '@/lib/capture/camera';
 import { cameraErrorMessage, ingestErrorMessage } from '@/lib/capture/messages';
 import type { Size } from '@/lib/capture/overlay';
 import { CARD_NO_COLOUR_MESSAGE } from '@/lib/domain/backing';
-import { clientNow } from '@/lib/media/capture-time';
-import { addBackingCard } from '@/lib/services/backing-card';
+import { measureBackingCard } from '@/lib/services/backing-card';
 import { maybeRequestPersistence } from '@/lib/store/persistence-browser';
 
 import { CameraView, type CameraHandle } from './CameraView';
 import { CaptureReview } from './CaptureReview';
 
 interface BackingCardCaptureProps {
-  sessionId: string;
   fakeCamera: string | null;
+  /** Leaves card mode: after a colour was stored, or on Cancel. */
+  onDone(): void;
 }
 
 /**
- * backing-sheet.md §2: the capture screen in **card mode**. No target overlay and no template picker
- * — the card is just a flat colour — only a guide to fill the frame with it. `Use photo` measures the
- * colour (§4) and, when there is one, saves the card as the session's backing card.
+ * backing-sheet.md §2: the capture screen in **card mode** (`#/settings/backing-card`). No target
+ * overlay and no template picker — the card is just a flat colour — only a guide to fill the frame
+ * with it. `Use photo` measures the colour (§4) and, when there is one, stores it as the Settings
+ * backing. The card photo itself is not kept (REV-48).
  */
-export function BackingCardCapture({ sessionId, fakeCamera }: BackingCardCaptureProps) {
+export function BackingCardCapture({ fakeCamera, onDone }: BackingCardCaptureProps) {
   const { ctx, imageTools } = useServices();
-  const navigate = useNavigate();
   const cameraRef = useRef<CameraHandle>(null);
   const [ready, setReady] = useState(false);
   const [cameraError, setCameraError] = useState<CameraErrorCode | null>(null);
@@ -60,13 +59,9 @@ export function BackingCardCapture({ sessionId, fakeCamera }: BackingCardCapture
     if (!review) return;
     setBusy(true);
     try {
-      const result = await addBackingCard(
-        ctx,
-        { sessionId, blob: review.blob, originalFilename: null, ...clientNow(new Date()) },
-        imageTools,
-      );
+      const result = await measureBackingCard(ctx, review.blob, imageTools);
       if (result.colour === null) {
-        // §4.3: not saved as the session's card; the shooter retakes it in even light.
+        // §4.3: nothing stored; the shooter retakes it in even light.
         setNoColour(true);
         setReview(null);
         setBusy(false);
@@ -80,11 +75,11 @@ export function BackingCardCapture({ sessionId, fakeCamera }: BackingCardCapture
     try {
       await maybeRequestPersistence(ctx);
     } catch {
-      // The card is saved; persistence is best-effort.
+      // The colour is saved; persistence is best-effort.
     }
     setReview(null);
     setBusy(false);
-    navigate(`/sessions/${sessionId}/metadata`);
+    onDone();
   }
 
   return (
@@ -93,7 +88,7 @@ export function BackingCardCapture({ sessionId, fakeCamera }: BackingCardCapture
         <Button
           variant="ghost"
           className="h-11 px-3 text-sm"
-          onClick={() => navigate(`/sessions/${sessionId}/metadata`)}
+          onClick={onDone}
         >
           Cancel
         </Button>

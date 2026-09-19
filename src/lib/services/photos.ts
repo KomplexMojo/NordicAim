@@ -108,15 +108,9 @@ export async function deletePhoto(ctx: ServiceContext, photoId: string): Promise
 
   await deleteByPrefix(tx, photoPrefix(photoId));
   await deleteByPrefix(tx, diagramPrefix(photoId));
-  // backing-sheet.md §3: a session never points at a card photo that no longer exists.
-  const backing =
-    session.backing !== null && session.backing.cardPhotoId === photoId
-      ? { ...session.backing, cardPhotoId: null }
-      : session.backing;
   await putSessionRecord(tx, {
     ...session,
     photoIds: session.photoIds.filter((id) => id !== photoId),
-    backing,
     updatedAt: nowIso,
   });
   await deletePhotoRecord(tx, photoId);

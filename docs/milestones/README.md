@@ -32,7 +32,7 @@ as shown (`<model> · <effort>`).
 | [M19](M19-backing-sheet.md) | Coloured backing sheet option | add metadata (option) · generate analysis | M16 | opus · high | opus · high | no | done |
 | [M20](M20-declared-rounds.md) | Declared rounds are fact (reject, double punches, misses) | generate analysis | M16, M19 | opus · high | opus · high | no | done |
 | [M21](M21-session-review.md) | Session review, suggested holes and double punches | optional correction · receive analysis | M16, M17 | opus · high | opus · high | yes | done |
-| [M22](M22-settings-and-navigation.md) | Three main screens and a Settings screen (issue #2) | navigation · settings | M19, M21 | opus · high | opus · high | no | pending |
+| [M22](M22-settings-and-navigation.md) | Three main screens and a Settings screen (issue #2) | navigation · settings | M19, M21 | opus · high | opus · high | no | done |
 | [M23](M23-template-guess.md) | Template guess: stop calling sighting sheets precision (issue #5) | review image · generate analysis | M16 | opus · high | opus · high | no | pending |
 | [M24](M24-results-clarity.md) | Results that say what they count (issues #6, #4, #8) | receive analysis | M14, M20 | sonnet · high | opus · high | no | pending |
 | [M25](M25-import-review.md) | An imported photo is shown on the overlay screen (issue #1) | take picture(s) | M07 | sonnet · medium | sonnet · high | no | pending |

@@ -13,7 +13,7 @@ function idOf(raw: unknown): string {
   return raw !== null && typeof raw === 'object' && 'id' in raw && typeof raw.id === 'string' ? raw.id : 'unknown';
 }
 
-/** Records written before REV-38 are migrated on read (backing-sheet.md §3, milestone step 1). */
+/** Schema-1 and schema-2 records are upgraded to schema 3 on read (backing-sheet.md §3a step 3). */
 function parse(id: string, raw: unknown): BiathlonSession {
   const parsed = BiathlonSession.safeParse(upgradeSession(raw));
   if (!parsed.success) throw new CorruptRecordError('sessions', id);

@@ -15,6 +15,7 @@ import * as Comlink from 'comlink';
 import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
 import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
+import { backingInputFromSettings } from '@/lib/domain/settings';
 import { photoStatus } from '@/lib/domain/status';
 import type { Calibration, Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { reprojectShots, samePositionMm } from '@/lib/geometry/reproject';
@@ -204,15 +205,14 @@ export async function redetectShots(
   if (workingBlob === null) throw new WorkingImageMissingError(photoId);
   const bytes = await workingBlob.arrayBuffer();
   const settings = await getSettings(ctx.db);
-  // backing-sheet.md §5: an explicit re-detect uses the session's backing, like A5 does.
-  const session = await getSessionRecord(ctx.db, photo.sessionId);
 
   const detected = await cvApi.detectShots(
     Comlink.transfer(bytes, [bytes]),
     calibration,
     shotTemplate(photo, analysis.pipeline.templateHint, calibration),
     settings.profileOverrides.holeDiameterMm,
-    { mode: session?.backingMode ?? 'auto', colour: session?.backing?.colour ?? null },
+    // backing-sheet.md §5 (REV-48): an explicit re-detect uses the Settings backing, like A5 does.
+    backingInputFromSettings(settings),
   );
 
   const holeDiameterMm = settings.profileOverrides.holeDiameterMm;

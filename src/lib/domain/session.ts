@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { BackingMode, BackingSheet, DEFAULT_BACKING_MODE } from './backing';
+import { BackingMode, BackingSheet } from './backing';
 import { LocalDate, Id, UtcIso } from './primitives';
 
 export const ArtifactMeta = z.object({
@@ -39,18 +39,60 @@ const sessionBase = {
 export const BiathlonSessionV1 = z.object({ schemaVersion: z.literal(1), ...sessionBase });
 export type BiathlonSessionV1 = z.infer<typeof BiathlonSessionV1>;
 
-export const BiathlonSession = z.object({
+/**
+ * data-model §2 as REV-38 (M19) left it: the session carried its own backing. Read only by the REV-48
+ * migration (backing-sheet.md §3a), which lifts a measured backing into settings before dropping it.
+ */
+export const BiathlonSessionV2 = z.object({
   schemaVersion: z.literal(2),
   ...sessionBase,
-  // REV-38: the optional coloured backing for this session (backing-sheet.md §3).
   backingMode: BackingMode,
   backing: BackingSheet.nullable(),
 });
+export type BiathlonSessionV2 = z.infer<typeof BiathlonSessionV2>;
+
+/** data-model §2. REV-48 (M22): schema 3, no backing fields — the backing is a Settings choice. */
+export const BiathlonSession = z.object({
+  schemaVersion: z.literal(3),
+  ...sessionBase,
+});
 export type BiathlonSession = z.infer<typeof BiathlonSession>;
 
-/** backing-sheet.md §3, milestone step 1: schema version 1 -> 2 sets `backingMode: 'auto'`, `backing: null`. */
+/**
+ * backing-sheet.md §3a step 3: a schema-1 or schema-2 record becomes schema 3. Schema 2's
+ * `backingMode` / `backing` are dropped here — lifting a measured backing into settings is the
+ * store migration's job (`migrateBackingToSettings`), which runs before anything reads a session.
+ * Anything else (including a current record) is returned unchanged for the schema to judge.
+ */
 export function upgradeSession(raw: unknown): unknown {
   const v1 = BiathlonSessionV1.safeParse(raw);
-  if (!v1.success) return raw;
-  return { ...v1.data, schemaVersion: 2, backingMode: DEFAULT_BACKING_MODE, backing: null };
+  if (v1.success) return { ...v1.data, schemaVersion: 3 };
+  const v2 = BiathlonSessionV2.safeParse(raw);
+  if (v2.success) {
+    const { backingMode, backing, ...rest } = v2.data;
+    void backingMode;
+    void backing;
+    return { ...rest, schemaVersion: 3 };
+  }
+  return raw;
+}
+
+/**
+ * backing-sheet.md §3a step 2 (pure). When settings holds no backing yet, the most recently updated
+ * schema-2 session whose backing has a measured colour gives settings its mode and backing, so nothing
+ * the owner measured is lost. A backing already in settings is never replaced. The card photo id is
+ * dropped: the card photo is not kept (REV-48). Returns null when there is nothing to lift.
+ */
+export function backingToLift(
+  settingsBacking: BackingSheet | null,
+  sessions: readonly BiathlonSessionV2[],
+): { backingMode: BackingMode; backing: BackingSheet } | null {
+  if (settingsBacking !== null) return null;
+  let best: BiathlonSessionV2 | null = null;
+  for (const session of sessions) {
+    if (session.backing === null || session.backing.colour === null) continue;
+    if (best === null || session.updatedAt > best.updatedAt) best = session;
+  }
+  if (best === null || best.backing === null) return null;
+  return { backingMode: best.backingMode, backing: { ...best.backing, cardPhotoId: null } };
 }

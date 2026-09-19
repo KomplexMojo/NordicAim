@@ -1,7 +1,7 @@
 # Spec: data model, on-device storage, services
 
 Implementation: `src/lib/domain/*.ts` (zod schemas; types are `z.infer`), `src/lib/store/*` (IndexedDB),
-`src/lib/services/*`, `src/lib/pipeline/*`. Every persisted record has `schemaVersion: 1`, except `BiathlonSession`, which REV-38 (M19) raised to **2** when it gained the backing fields (`backing-sheet.md` §3).
+`src/lib/services/*`, `src/lib/pipeline/*`. Every persisted record has `schemaVersion: 1`, except `BiathlonSession`, which REV-38 (M19) raised to **2** when it gained the backing fields and REV-48 (M22) raised to **3** when they moved to `AppSettings` (`backing-sheet.md` §3, §3a).
 
 Formats: `UtcIso` = ISO-8601 with `Z`; `LocalDateTime` = `YYYY-MM-DDTHH:mm:ss`; `Offset` = `±HH:MM`;
 `LocalDate` = `YYYY-MM-DD`.
@@ -36,8 +36,9 @@ export const ShareRecord = z.object({
   createdAt: UtcIso, method: z.enum(['web-share', 'download']),
 });
 export const BiathlonSession = z.object({
-  // REV-38 (M19) raised this to 2 when the session gained its backing fields; see backing-sheet.md §3.
-  schemaVersion: z.literal(2),
+  // REV-38 (M19) raised this to 2 (session backing fields); REV-48 (M22) raised it to 3 when they moved to
+  // AppSettings (§5). Migration: backing-sheet.md §3a.
+  schemaVersion: z.literal(3),
   id: Id,
   name: z.string().trim().min(1).max(80),
   sessionDate: LocalDate,
@@ -48,8 +49,7 @@ export const BiathlonSession = z.object({
   artifacts: z.array(ArtifactMeta),      // newest last; at most 3 kept
   shares: z.array(ShareRecord),
   notes: z.string().max(2000),
-  // REV-38: the optional coloured backing for this session. Shape in `backing-sheet.md` §3
-  // (`backingMode` Auto/None/Coloured, and the measured `BackingSheet` when a card was photographed).
+  // REV-48: no backing fields. The backing is a Settings choice for every session (§5, backing-sheet.md §2).
 });
 ```
 
@@ -111,7 +111,7 @@ export const Categorization = z.object({
 export const TargetPhoto = z.object({
   schemaVersion: z.literal(1),
   id: Id, sessionId: Id,
-  origin: PhotoOrigin,                   // REV-38 adds `backing-card` for a photo of the backing (`backing-sheet.md` §3)
+  origin: PhotoOrigin,                   // REV-38 added `backing-card`; since REV-48 nothing new is written with it (`backing-sheet.md` §3)
   originalFormat: z.enum(['jpeg', 'png', 'heic']),
   originalFilename: z.string().max(255).nullable(),
   importedAt: UtcIso,
@@ -208,10 +208,20 @@ export const AppSettings = z.object({
   profileOverrides: z.object({ holeDiameterMm: z.number().positive() }),
   persistRequested: z.boolean(),
   persisted: z.boolean().nullable(),
-  // REV-38: the last backing the user chose, so a new session can offer it again (`backing-sheet.md` §3).
+  // REV-48: the backing setting itself, for every session (`backing-sheet.md` §2, §3). `backing.cardPhotoId`
+  // is always null: the card photo is not kept, only its measured colour.
+  backingMode: BackingMode,              // 'auto' | 'none' | 'coloured'
+  backing: BackingSheet.nullable(),
 });
-// default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null }
+// default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null,
+//            backingMode 'auto', backing null }
 ```
+
+- **Hole size** (REV-47 Settings screen): `profileOverrides.holeDiameterMm` is editable in Settings, **2–12 mm**, reset to
+  **5.6** (.22 LR). It feeds detection and scoring; changing it re-runs and re-scores nothing already stored.
+- **Migration (REV-48).** A settings row written by REV-38 carries `lastBackingMode` / `lastBacking`; on read they are
+  copied to `backingMode` / `backing` (the schema version stays 1, as REV-38's own additions did). A row with neither
+  reads as `'auto'` / `null`.
 
 ## 6. IndexedDB schema (`src/lib/store/db.ts`)
 
@@ -269,7 +279,7 @@ After committing, services call `pipelineHooks.notify()` (`src/lib/pipeline/hook
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "id": "6f1d7c1e-3b1e-4f5e-9a3e-1c2d3e4f5a6b",
   "name": "Session 2026-09-05",
   "sessionDate": "2026-09-05",

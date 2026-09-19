@@ -1,6 +1,33 @@
 import { describe, expect, it } from 'vitest';
 
-import { AppSettings, defaultAppSettings } from '@/lib/domain/settings';
+import type { BackingSheet } from '@/lib/domain/backing';
+import {
+  AppSettings,
+  DEFAULT_HOLE_DIAMETER_MM,
+  MAX_HOLE_DIAMETER_MM,
+  MIN_HOLE_DIAMETER_MM,
+  backingInputFromSettings,
+  defaultAppSettings,
+  isValidHoleDiameterMm,
+  upgradeSettings,
+} from '@/lib/domain/settings';
+
+const ORANGE = { hueDeg: 15.9, hueSpreadDeg: 2.4, satP10: 0.73, valP10: 0.85, samples: 70610 };
+const BACKING: BackingSheet = { kind: 'coloured', source: 'card', cardPhotoId: null, colour: ORANGE };
+
+/** A settings row exactly as REV-38 (M19) stored it. */
+function storedRev38(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schemaVersion: 1,
+    key: 'app',
+    profileOverrides: { holeDiameterMm: 5.6 },
+    persistRequested: true,
+    persisted: true,
+    lastBackingMode: 'coloured',
+    lastBacking: BACKING,
+    ...over,
+  };
+}
 
 describe('defaultAppSettings', () => {
   it('returns the spec default', () => {
@@ -10,13 +37,62 @@ describe('defaultAppSettings', () => {
       profileOverrides: { holeDiameterMm: 5.6 },
       persistRequested: false,
       persisted: null,
-      // backing-sheet.md §3: the last backing a new session inherits.
-      lastBackingMode: 'auto',
-      lastBacking: null,
+      // REV-48 (data-model §5): the backing setting for every session.
+      backingMode: 'auto',
+      backing: null,
     });
   });
 
   it('validates against AppSettings', () => {
     expect(AppSettings.safeParse(defaultAppSettings()).success).toBe(true);
+  });
+});
+
+describe('upgradeSettings (REV-48, data-model §5 migration)', () => {
+  it('copies lastBackingMode / lastBacking to backingMode / backing and drops the old names', () => {
+    const upgraded = AppSettings.parse(upgradeSettings(storedRev38()));
+    expect(upgraded.backingMode).toBe('coloured');
+    expect(upgraded.backing).toEqual(BACKING);
+    expect(upgradeSettings(storedRev38())).not.toHaveProperty('lastBackingMode');
+    expect(upgradeSettings(storedRev38())).not.toHaveProperty('lastBacking');
+    expect(upgraded.persistRequested).toBe(true);
+  });
+
+  it('reads a row from before REV-38 as Auto with no backing', () => {
+    const { lastBackingMode, lastBacking, ...old } = storedRev38();
+    void lastBackingMode;
+    void lastBacking;
+    const upgraded = AppSettings.parse(upgradeSettings(old));
+    expect(upgraded.backingMode).toBe('auto');
+    expect(upgraded.backing).toBeNull();
+  });
+
+  it('leaves a current row exactly as it is', () => {
+    const current = defaultAppSettings();
+    expect(upgradeSettings(current)).toBe(current);
+  });
+});
+
+describe('Hole size (data-model §5)', () => {
+  it('defaults to .22 LR 5.6 mm and accepts 2-12 mm', () => {
+    expect(DEFAULT_HOLE_DIAMETER_MM).toBe(5.6);
+    expect(MIN_HOLE_DIAMETER_MM).toBe(2);
+    expect(MAX_HOLE_DIAMETER_MM).toBe(12);
+    expect(isValidHoleDiameterMm(2)).toBe(true);
+    expect(isValidHoleDiameterMm(12)).toBe(true);
+    expect(isValidHoleDiameterMm(5.6)).toBe(true);
+    expect(isValidHoleDiameterMm(1.99)).toBe(false);
+    expect(isValidHoleDiameterMm(12.01)).toBe(false);
+    expect(isValidHoleDiameterMm(Number.NaN)).toBe(false);
+  });
+});
+
+describe('backingInputFromSettings (backing-sheet.md §5, REV-48)', () => {
+  it('is the Settings mode and the card colour', () => {
+    expect(backingInputFromSettings({ ...defaultAppSettings(), backingMode: 'coloured', backing: BACKING })).toEqual({
+      mode: 'coloured',
+      colour: ORANGE,
+    });
+    expect(backingInputFromSettings(defaultAppSettings())).toEqual({ mode: 'auto', colour: null });
   });
 });

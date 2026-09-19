@@ -18,10 +18,10 @@ const CHECK_IDS = [
   'user-agent',
 ];
 
-test('home page shows the heading and a diagnostics link', async ({ page }) => {
+test('home page shows the heading and the Diagnostics tab (REV-47)', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Nordic Aim' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Diagnostics' })).toBeVisible();
+  await expect(page.getByTestId('tab-bar').getByRole('link', { name: 'Diagnostics' })).toBeVisible();
 });
 
 test('diagnostics page runs every check', async ({ page }) => {

@@ -7,20 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PhotoMetadataCard } from '@/components/metadata/PhotoMetadataCard';
-import { SessionOptions } from '@/components/metadata/SessionOptions';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import { isTargetPhoto, type BackingMode, type BackingSheet } from '@/lib/domain/backing';
+import { isTargetPhoto } from '@/lib/domain/backing';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import type { Lighting } from '@/lib/domain/enums';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
-import { clientNow } from '@/lib/media/capture-time';
-import { addBackingCard } from '@/lib/services/backing-card';
 import { deletePhoto, requestAnalysis, updatePhotoMetadata } from '@/lib/services/photos';
-import { getSession, setSessionBacking, updateSession } from '@/lib/services/sessions';
+import { getSession, updateSession } from '@/lib/services/sessions';
 
 const NAME_NOTES_DEBOUNCE_MS = 600;
 
@@ -28,8 +25,6 @@ interface MetadataData {
   sid: string;
   name: string;
   notes: string;
-  backingMode: BackingMode;
-  backing: BackingSheet | null;
   photos: TargetPhoto[];
   analyses: Map<string, TargetAnalysis | null>;
 }
@@ -50,8 +45,6 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
     sid,
     name: session.name,
     notes: session.notes,
-    backingMode: session.backingMode,
-    backing: session.backing,
     photos: ordered,
     analyses: new Map(analysisEntries),
   };
@@ -60,7 +53,7 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
 /** Route `#/sessions/:sid/metadata` (analysis-pipeline §1 step 2), replacing M07's stub. */
 export function MetadataPage() {
   const { sid = '' } = useParams();
-  const { ctx, imageTools } = useServices();
+  const { ctx } = useServices();
   const navigate = useNavigate();
 
   const { value: data } = useLiveQuery(() => loadData(ctx, sid), [ctx, sid]);
@@ -72,8 +65,6 @@ export function MetadataPage() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [cardBusy, setCardBusy] = useState(false);
-  const [cardError, setCardError] = useState(false);
 
   if (data && data.sid === sid && seededFor !== sid) {
     setSeededFor(sid);
@@ -129,38 +120,6 @@ export function MetadataPage() {
       await deletePhoto(ctx, photoId);
     } catch (err) {
       toast.error(`Could not remove photo: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
-  async function onBackingModeChange(backingMode: BackingMode) {
-    setCardError(false);
-    try {
-      await setSessionBacking(ctx, sid, { backingMode, backing: data?.backing ?? null });
-    } catch (err) {
-      toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
-  async function onChooseCardPhoto(file: File) {
-    setCardBusy(true);
-    setCardError(false);
-    try {
-      const result = await addBackingCard(
-        ctx,
-        {
-          sessionId: sid,
-          blob: file,
-          originalFilename: file.name ? file.name.slice(0, 255) : null,
-          ...clientNow(new Date()),
-        },
-        imageTools,
-      );
-      // backing-sheet.md §4.3: a card with no clear colour is not saved as the session's card.
-      if (result.colour === null) setCardError(true);
-    } catch (err) {
-      toast.error(`Could not read that card: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setCardBusy(false);
     }
   }
 
@@ -233,16 +192,6 @@ export function MetadataPage() {
       <Button variant="outline" className="h-11" onClick={() => navigate(`/sessions/${sid}/capture`)}>
         Add more photos
       </Button>
-
-      <SessionOptions
-        backingMode={data.backingMode}
-        backing={data.backing}
-        busy={cardBusy}
-        cardError={cardError}
-        onModeChange={(m) => void onBackingModeChange(m)}
-        onPhotographCard={() => navigate(`/sessions/${sid}/capture?mode=card`)}
-        onChooseCardPhoto={(file) => void onChooseCardPhoto(file)}
-      />
 
       <Button
         className="h-11"

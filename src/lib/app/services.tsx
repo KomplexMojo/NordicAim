@@ -6,6 +6,7 @@ import { browserImageTools } from '@/lib/media/image-browser';
 import { browserRenderTools, type RenderTools } from '@/lib/render/rasterize-browser';
 import type { ServiceContext } from '@/lib/services/context';
 import { openAppDb } from '@/lib/store/db';
+import { migrateBackingToSettings } from '@/lib/store/migrate-backing';
 
 export interface AppServices {
   ctx: ServiceContext;
@@ -19,11 +20,15 @@ let servicesPromise: Promise<AppServices> | null = null;
 // eslint-disable-next-line react-refresh/only-export-components -- shared by the provider and test hooks
 export function loadAppServices(): Promise<AppServices> {
   if (servicesPromise === null) {
-    servicesPromise = openAppDb().then((db) => ({
-      ctx: { db, now: () => new Date(), newId: () => crypto.randomUUID() },
-      imageTools: browserImageTools,
-      renderTools: browserRenderTools,
-    }));
+    servicesPromise = openAppDb().then(async (db) => {
+      // backing-sheet.md §3a (REV-48): before any screen or the pipeline reads a record.
+      await migrateBackingToSettings(db);
+      return {
+        ctx: { db, now: () => new Date(), newId: () => crypto.randomUUID() },
+        imageTools: browserImageTools,
+        renderTools: browserRenderTools,
+      };
+    });
     servicesPromise.catch(() => {
       servicesPromise = null;
     });

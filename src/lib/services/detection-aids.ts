@@ -8,12 +8,12 @@ import * as Comlink from 'comlink';
 import type { HoleWidth } from '@/lib/cv/backing-colour';
 import type { ShotCandidate } from '@/lib/cv/holes';
 import type { Calibration } from '@/lib/domain/photo';
+import { backingInputFromSettings } from '@/lib/domain/settings';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord } from '@/lib/store/photos-repo';
-import { getSessionRecord } from '@/lib/store/sessions-repo';
 import { getSettings } from '@/lib/store/settings-repo';
 
 import type { DetectShotsApi } from './adjust';
@@ -46,14 +46,13 @@ export async function loadDetectionAids(
   if (workingBlob === null) return null;
   const bytes = await workingBlob.arrayBuffer();
   const settings = await getSettings(ctx.db);
-  const session = await getSessionRecord(ctx.db, photo.sessionId);
 
   const detected = await cvApi.detectShots(
     Comlink.transfer(bytes, [bytes]),
     calibration,
     shotTemplate(photo, analysis.pipeline.templateHint, calibration),
     settings.profileOverrides.holeDiameterMm,
-    { mode: session?.backingMode ?? 'auto', colour: session?.backing?.colour ?? null },
+    backingInputFromSettings(settings),
   );
   return { calibration, suggestions: detected.suggestions, holeWidths: detected.holeWidths };
 }
