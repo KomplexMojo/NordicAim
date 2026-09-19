@@ -78,7 +78,7 @@ ratings export. Nothing new is sent anywhere; there are no runtime network calls
 ## Tests
 - `suggestShots`: a candidate rejected for `area` is never suggested; one at 75 mm radial is dropped; one at 55 mm with
   elongation 5 and stroke 0.9 is kept; 10 eligible candidates return the 3 best by rank; ties are ordered deterministically.
-- `suggestedMultiplicity`: 5.6 mm → 1; 5.8 mm (inside ±5%) → 1; 11 mm → 2; 60 mm → 20 (the cap).
+- `suggestedMultiplicity`: 5.6 mm → 1; 5.8 mm (inside ±5%) → 1; 11 mm → 2; 60 mm → 11 (`ceil(60 / 5.6)`; the cap of 20 is reached only past ~112 mm). *Corrected 2026-09-19: the original "60 mm → 20" contradicted this step's own rule — an authoring error, see Open questions.*
 - Review ordering: three photos, one `needs-attention` → it comes first; equal statuses order by capture time; pure, no `Date.now()`.
 - Adjust: tapping a suggestion adds one `manual` shot with `multiplicity` 1 and removes that suggestion; suggestions never reach
   `analysis.shots`; a stored analysis round-trips without them.
@@ -102,6 +102,17 @@ target with no suggestions shows no extra interface.
 - Suggestions are recomputed, never persisted, so the pipeline can never overwrite a user's decision (analysis-pipeline §8).
 
 ## Open questions
+
+**Resolved 2026-09-19 (so the run is not blocked):**
+- **Q5 — the 60 mm vector was an authoring error in this file**, not a design question. Step 3's rule ("the whole number of
+  hole widths that fit, capped at 20") gives `ceil(60 / 5.6) = 11`; the Tests line said 20 by mistake and is corrected. The
+  implementation was right.
+- **Q6 — the double-punch prompt appears on backed targets only**, by measurement: on bare paper every width measure tried
+  reads 64.6% (area) to 94% (length) of real *single* holes as wider than one shot, so a prompt there would be wrong most of
+  the time. Nothing is lost — the Inspector's manual multiplicity control works on every target. Accepted as shipped; the
+  owner confirms or names a width measure in issue #9. Same finding as M20 open question 5.
+- Q4 (stateless review, entry link on results) and Q8 (no suggestions on backed targets) — provisional answers kept; owner
+  confirms in issue #9.
 1. **Does confirming a photo need to be recorded?** Step 4's Confirm with no edits changes nothing, so re-entering review shows
    the photo again as if untouched. Marking it reviewed would need a field on the photo or analysis (data-model §4), which is a
    storage decision and not one to guess. Either add it deliberately or accept that review is stateless.

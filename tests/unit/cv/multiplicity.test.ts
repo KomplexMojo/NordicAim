@@ -36,8 +36,8 @@ describe('suggestedMultiplicity (M21 step 3, REV-41)', () => {
     expect(suggestedMultiplicity(11, HOLE_MM)).toBe(2);
   });
 
-  it('60 mm -> 11 by the stated rule, not the milestone vector 20 (M21 Open questions)', () => {
-    // "the whole number of hole widths that fit": ceil(60 / 5.6) = 11. The milestone's vector says 20.
+  it('60 mm -> 11: the whole number of hole widths that fit, ceil(60 / 5.6)', () => {
+    // The milestone once said 20 here; that was an authoring error, corrected 2026-09-19 (M21 Open questions).
     expect(suggestedMultiplicity(60, HOLE_MM)).toBe(11);
   });
 
