@@ -20,7 +20,7 @@ import { getSettings } from '@/lib/store/settings-repo';
 
 import { ArtifactNotFoundError, EmptyCompositeError, type CompositeArtifact } from './artifact';
 import { selectDefaultSlots, type SlotIds } from './select-defaults';
-import { renderComposite, type CompositeInput, type SlotData } from '@/lib/render/composite';
+import { COMPOSITE_RENDERER_VERSION, renderComposite, type CompositeInput, type SlotData } from '@/lib/render/composite';
 
 const WIDTH_PX = 1440;
 const KEEP_ARTIFACTS = 3;
@@ -147,7 +147,7 @@ export async function buildComposite(ctx: ServiceContext, sessionId: string, ren
   const jsonBytes = new TextEncoder().encode(JSON.stringify(jsonSidecar));
   const jsonBuffer = jsonBytes.buffer.slice(jsonBytes.byteOffset, jsonBytes.byteOffset + jsonBytes.byteLength) as ArrayBuffer;
 
-  const meta: ArtifactMeta = { id, sha256, widthPx: WIDTH_PX, heightPx, createdAt: nowIso };
+  const meta: ArtifactMeta = { id, sha256, widthPx: WIDTH_PX, heightPx, createdAt: nowIso, rendererVersion: COMPOSITE_RENDERER_VERSION };
   const pngContentType = png.type === '' ? 'image/png' : png.type;
 
   const tx = ctx.db.transaction(['sessions', 'blobs'], 'readwrite');

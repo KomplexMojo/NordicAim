@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { isSummaryPending, startSummaryScheduler } from '@/lib/composite/scheduler-browser';
+import { COMPOSITE_RENDERER_VERSION } from '@/lib/render/composite';
 import { initialAnalysis, type Shot } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
 import { registerSummaryScheduler, summaryHooks } from '@/lib/pipeline/hooks';
@@ -90,15 +91,42 @@ describe('composite/scheduler-browser (analysis-pipeline.md §7)', () => {
     await vi.waitFor(() => expect(isSummaryPending(sessionId)).toBe(false), { timeout: 4000, interval: 50 });
   }, 10_000);
 
-  it('does not build while a photo in the session is processing', async () => {
+  it('does not build a session with nothing analyzed, even after waiting for the runner', async () => {
     const { ctx, sessionId } = await seed('processing');
     startSummaryScheduler(ctx, stubRenderTools());
 
     summaryHooks.schedule(sessionId);
-    await vi.waitFor(() => expect(isSummaryPending(sessionId)).toBe(false), { timeout: 4000, interval: 50 });
+    await vi.waitFor(() => expect(isSummaryPending(sessionId)).toBe(false), { timeout: 10_000, interval: 50 });
 
     const session = await getSessionRecord(ctx.db, sessionId);
     expect(session?.artifacts).toHaveLength(0);
+  }, 15_000);
+
+  it('builds anyway when a photo is stuck at processing but another is analyzed (owner report 2026-09-19)', async () => {
+    // A photo left at `processing` — a job the runner is not working on — used to block this session's
+    // summary for ever: "No matter what I do, I can't get the session summary … to show".
+    const { ctx, sessionId } = await seed('analyzed');
+    const stuck = makePhoto({ sessionId, status: 'processing', categorization: precisionFixture.categorization });
+    await putPhotoRecord(ctx.db, stuck);
+    await putAnalysisRecord(ctx.db, initialAnalysis(stuck.id, '2026-09-05T23:40:00.000Z'));
+    const session = await getSessionRecord(ctx.db, sessionId);
+    await putSessionRecord(ctx.db, { ...session!, photoIds: [...session!.photoIds, stuck.id] });
+
+    startSummaryScheduler(ctx, stubRenderTools());
+    summaryHooks.schedule(sessionId);
+    await vi.waitFor(() => expect(isSummaryPending(sessionId)).toBe(false), { timeout: 8000, interval: 50 });
+
+    expect((await getSessionRecord(ctx.db, sessionId))?.artifacts).toHaveLength(1);
+  }, 15_000);
+
+  it('stamps the renderer version, so a later app can tell the artifact is stale', async () => {
+    const { ctx, sessionId } = await seed('analyzed');
+    startSummaryScheduler(ctx, stubRenderTools());
+    summaryHooks.schedule(sessionId);
+    await vi.waitFor(() => expect(isSummaryPending(sessionId)).toBe(false), { timeout: 4000, interval: 50 });
+
+    const session = await getSessionRecord(ctx.db, sessionId);
+    expect(session?.artifacts[0]?.rendererVersion).toBe(COMPOSITE_RENDERER_VERSION);
   }, 10_000);
 
   it('builds and stores an artifact once no photo is processing and one is analyzed', async () => {

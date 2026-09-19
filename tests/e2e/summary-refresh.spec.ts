@@ -169,3 +169,15 @@ test('adjust: saving shots without moving the rings confirms an overlay-guess al
     }, { timeout: 30_000 })
     .toBe('analyzed');
 });
+
+test('summary: Update summary rebuilds on demand (owner report 2026-09-19)', async ({ page }) => {
+  const sessionId = await createSessionViaHome(page);
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
+  await analyzeFromMetadata(page, sessionId);
+  await expect(page.getByTestId('summary-image')).toBeVisible({ timeout: 30_000 });
+  const first = await latestArtifactId(page, sessionId);
+
+  await page.getByTestId('summary-rebuild').click();
+  await expect.poll(() => latestArtifactId(page, sessionId), { timeout: 30_000 }).not.toBe(first);
+});

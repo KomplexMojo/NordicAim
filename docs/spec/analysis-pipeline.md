@@ -275,6 +275,8 @@ when available.
 
 ## 7. Summary image auto-build
 
+**Waiting, not skipping (owner report 2026-09-19).** A rebuild that finds a photo `processing` waits for the runner (at most 3 s) and then builds with whatever is `analyzed`. It used to skip outright, so a photo left at `processing` — a job the runner is not working on — blocked that session's summary for ever, silently.
+
 - After any Stage B job finishes, if **no photo in that session is `processing`** and **at least one is `analyzed`**, schedule
   `buildComposite(ctx, sessionId, browserRenderTools)` with a 1500 ms debounce per session (a new trigger resets the timer).
 - Slots come from `selectDefaultSlots` over `analyzed` photos (rendering-composite §5).

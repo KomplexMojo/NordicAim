@@ -9,6 +9,11 @@ export const ArtifactMeta = z.object({
   widthPx: z.number().int(),
   heightPx: z.number().int(),
   createdAt: UtcIso,
+  /**
+   * rendering-composite.md §6 (2026-09-19): which renderer drew it. Defaults to 0 so artifacts stored
+   * before this read back; anything below the current version is rebuilt when the results screen opens.
+   */
+  rendererVersion: z.number().int().min(0).default(0),
 });
 export type ArtifactMeta = z.infer<typeof ArtifactMeta>;
 

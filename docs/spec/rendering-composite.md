@@ -225,7 +225,8 @@ black border), described only that one target, and left a fixed 600 px band most
        and sighting's `Scored (…): …`.
     4. If there are more analyzed targets than slots: `+<n> more target(s) in the app`
     5. If `session.notes`: `Notes: <notes>` (≤ 2 lines).
-  - Footer 13 `textSecondary`, 28 px above the band's bottom: `Nordic Aim · generated <generatedAtLocal>` (REV-45).
+  - Footer 13 `textSecondary`, 28 px above the band's bottom: **`Developed using <APP_NAME> by <DEVELOPER_NAME> · generated
+    <generatedAtLocal>`** — `Nordic Aim` (REV-45) and `KomplexMojo`. Every shared image carries the credit (owner, 2026-09-19).
   - Band height = `100 + 34 × lines + 64`.
 - **Height** = 120 + 1440 + band height. `renderComposite(input)` returns `{ svg, width, height }` so `buildComposite`
   rasterises at exactly the drawn size.
@@ -251,6 +252,14 @@ export async function loadArtifact(ctx: ServiceContext, sessionId: string, artif
 export async function latestArtifact(ctx: ServiceContext, sessionId: string): Promise<{ artifact: CompositeArtifact; png: Blob } | null>;
 ```
 
+- `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **3**) records which renderer drew an artifact; it
+  defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
+  current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
+  a rebuild by hand. Bump the constant whenever this renderer's output changes.
+- `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **4**) records which renderer drew an artifact; it
+  defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
+  current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
+  a rebuild by hand. Bump the constant whenever this renderer's output changes.
 - `buildComposite`:
   1. Select slots (§5); if none, throw `EmptyCompositeError`.
   2. Run `analyzeTarget` per slot, render the SVG, rasterise it, and compute sha256 with `crypto.subtle.digest` (lowercase hex). All before the transaction.

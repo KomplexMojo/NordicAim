@@ -225,10 +225,10 @@ describe('render/composite the owner\'s screenshot, 2026-09-19 (REV-51)', () => 
     expect(ids).toEqual(['cellclip-sighting-1', 'cellclip-sighting-2', 'cellclip-precision-1']);
   });
 
-  it('captions say what they count (REV-49), and the footer says Nordic Aim', () => {
+  it('captions say what they count (REV-49), and the footer credits the app and its developer', () => {
     expect(svg).not.toMatch(/\d+\/\d+ hit @/);
     expect(svg).toContain('9 hits · 1 miss — 45 mm · ES');
-    expect(svg).toContain('Nordic Aim · generated');
+    expect(svg).toContain('Developed using Nordic Aim by KomplexMojo · generated'); // REV-54
   });
 });
 

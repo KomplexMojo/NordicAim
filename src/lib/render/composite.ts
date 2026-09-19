@@ -34,6 +34,17 @@ export interface CompositeInput {
   moreCount: number;
 }
 
+/**
+ * rendering-composite.md §6: bumped whenever this renderer's output changes (REV-51 layout, REV-52 shared
+ * scale, REV-53 position names, REV-54 the credit stamp). A stored artifact drawn by an older version is rebuilt when its session's
+ * results screen is opened, so an app update is never invisible in the summary image.
+ */
+export const COMPOSITE_RENDERER_VERSION = 4;
+
+/** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
+export const APP_NAME = 'Nordic Aim';
+export const DEVELOPER_NAME = 'KomplexMojo';
+
 const WIDTH = 1440;
 const HEADER_HEIGHT = 120;
 const MAX_LINE_CHARS = 110;
@@ -254,9 +265,13 @@ function renderAnalysisBand(lines: string[], generatedAtLocal: string, bandY: nu
     body += text(40, y, 18, line, { color: PALETTE.textPrimary });
     y += LINE_STEP;
   }
-  const footer = text(40, bandY + height - 28, 13, `Nordic Aim · generated ${generatedAtLocal}`, {
-    color: PALETTE.textSecondary,
-  });
+  const footer = text(
+    40,
+    bandY + height - 28,
+    13,
+    `Developed using ${APP_NAME} by ${DEVELOPER_NAME} · generated ${generatedAtLocal}`,
+    { color: PALETTE.textSecondary },
+  );
   return panel + rail + title + body + footer;
 }
 

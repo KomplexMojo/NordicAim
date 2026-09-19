@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { latestArtifact } from '@/lib/composite/build';
-import { isSummaryPending } from '@/lib/composite/scheduler-browser';
+import { isSummaryPending, scheduleSummaryRebuild } from '@/lib/composite/scheduler-browser';
+import { COMPOSITE_RENDERER_VERSION } from '@/lib/render/composite';
 import { recordShare } from '@/lib/services/shares';
 import { shareArtifact } from '@/lib/share/share-browser';
 
@@ -49,6 +50,16 @@ export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProp
       if (imageUrl !== null) URL.revokeObjectURL(imageUrl);
     };
   }, [imageUrl]);
+
+  /**
+   * An artifact drawn by an older renderer (REV-51 to REV-53 changed the layout, the scale and the names)
+   * is rebuilt as soon as its results screen is opened, so an app update is never invisible in the summary.
+   * The owner hit the opposite: "No matter what I do, I can't get the session summary … to show".
+   */
+  const staleVersion = value != null && value.artifact.rendererVersion < COMPOSITE_RENDERER_VERSION;
+  useEffect(() => {
+    if (staleVersion) scheduleSummaryRebuild(sessionId);
+  }, [staleVersion, sessionId]);
 
   async function handleShare(): Promise<void> {
     if (value === undefined || value === null) return;
@@ -109,6 +120,15 @@ export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProp
                 saved in Adjust, {leftOut === 1 ? 'it joins' : 'they join'} the summary.
               </p>
             )}
+            <Button
+              variant="outline"
+              className="h-11"
+              onClick={() => scheduleSummaryRebuild(sessionId)}
+              disabled={pending}
+              data-testid="summary-rebuild"
+            >
+              {pending ? 'Updating…' : 'Update summary'}
+            </Button>
             <Button className="h-11" onClick={() => void handleShare()} disabled={sharing} data-testid="summary-share">
               Share
             </Button>

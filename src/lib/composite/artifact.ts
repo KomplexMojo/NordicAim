@@ -14,6 +14,8 @@ export interface CompositeArtifact {
   heightPx: number;
   sha256: string;
   createdAt: string;
+  /** rendering-composite.md §6: which renderer drew it; 0 for artifacts stored before the stamp existed. */
+  rendererVersion: number;
 }
 
 /**
