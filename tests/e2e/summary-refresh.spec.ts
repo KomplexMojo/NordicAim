@@ -181,3 +181,16 @@ test('summary: Update summary rebuilds on demand (owner report 2026-09-19)', asy
   await page.getByTestId('summary-rebuild').click();
   await expect.poll(() => latestArtifactId(page, sessionId), { timeout: 30_000 }).not.toBe(first);
 });
+
+test('diagnostics: Your data reports what is stored and exports it (owner report 2026-09-19)', async ({ page }) => {
+  const sessionId = await createSessionViaHome(page);
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
+
+  await page.goto('/#/diagnostics');
+  await expect(page.getByTestId('data-counts')).toContainText('1 session', { timeout: 30_000 });
+  await expect(page.getByTestId('data-counts')).toContainText('1 photo');
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-data').click()]);
+  expect(download.suggestedFilename()).toMatch(/^nordic-aim-data-\d{4}-\d{2}-\d{2}\.json$/);
+});

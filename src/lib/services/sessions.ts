@@ -3,7 +3,14 @@ import { photoPrefix, diagramPrefix, artifactPrefix } from '@/lib/store/blob-key
 import { deleteByPrefix } from '@/lib/store/blobs-repo';
 import { deleteAnalysisRecord } from '@/lib/store/analyses-repo';
 import { deletePhotoRecord, listPhotosBySession } from '@/lib/store/photos-repo';
-import { deleteSessionRecord, getSessionRecord, listSessionRecords, putSessionRecord } from '@/lib/store/sessions-repo';
+import {
+  deleteSessionRecord,
+  getSessionRecord,
+  listSessionRecords,
+  listSessionRecordsWithProblems,
+  putSessionRecord,
+  type UnreadableRecord,
+} from '@/lib/store/sessions-repo';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 
 import type { ServiceContext } from './context';
@@ -54,6 +61,13 @@ export async function getSession(ctx: ServiceContext, sessionId: string): Promis
 /** Ordered by `updatedAt` descending (data-model §6, §7). */
 export async function listSessions(ctx: ServiceContext): Promise<BiathlonSession[]> {
   return listSessionRecords(ctx.db);
+}
+
+/** The sessions plus any record the schema rejected, so a screen can say so instead of showing nothing. */
+export async function listSessionsWithProblems(
+  ctx: ServiceContext,
+): Promise<{ sessions: BiathlonSession[]; unreadable: UnreadableRecord[] }> {
+  return listSessionRecordsWithProblems(ctx.db);
 }
 
 export interface UpdateSessionInput {

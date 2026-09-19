@@ -17,7 +17,7 @@ function photoIdOf(raw: unknown): string {
 
 function parse(id: string, raw: unknown): TargetAnalysis {
   const parsed = TargetAnalysis.safeParse(raw);
-  if (!parsed.success) throw new CorruptRecordError('analyses', id);
+  if (!parsed.success) throw new CorruptRecordError('analyses', id, parsed.error);
   return parsed.data;
 }
 

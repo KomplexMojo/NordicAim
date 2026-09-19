@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
 import { Badge } from '@/components/ui/badge';
+import { DataRecovery } from '@/components/diagnostics/DataRecovery';
 import { Button } from '@/components/ui/button';
 import { runDiagnostics } from '@/lib/diagnostics/checks-browser';
 import { summarizeDiagnostics, type DiagnosticResult } from '@/lib/diagnostics/summarize';
@@ -47,6 +48,9 @@ export function DiagnosticsPage() {
           Home
         </Link>
       </div>
+
+      {/* Always shown, including when the checks themselves fail: this is how a stuck database is seen and exported. */}
+      <DataRecovery />
 
       {!results && <p>Running checks…</p>}
 

@@ -17,7 +17,7 @@ export async function getSettings(dbOrTx: Executor): Promise<AppSettings> {
   const raw = isTx(dbOrTx) ? await dbOrTx.objectStore('settings').get('app') : await dbOrTx.get('settings', 'app');
   if (raw == null) return defaultAppSettings();
   const parsed = AppSettings.safeParse(upgradeSettings(raw));
-  if (!parsed.success) throw new CorruptRecordError('settings', 'app');
+  if (!parsed.success) throw new CorruptRecordError('settings', 'app', parsed.error);
   return parsed.data;
 }
 
