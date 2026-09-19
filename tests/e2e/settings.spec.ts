@@ -102,6 +102,34 @@ test('backing sheet: a card photo sets the colour for every session, and Clear r
   await expect(page.getByTestId('backing-source')).toHaveText('No colour measured yet');
 });
 
+/**
+ * The stored hole size, read straight from IndexedDB (`asa` / `settings` / key `app`). A value is committed
+ * on Enter or blur and written asynchronously, so a reload straight after Enter can race the write; wait for
+ * the store before reloading. (The race made this test flaky under full-suite load; the app was fine.)
+ */
+async function storedHoleDiameterMm(page: Page): Promise<number | null> {
+  return page.evaluate(
+    () =>
+      new Promise<number | null>((resolve) => {
+        const open = indexedDB.open('asa');
+        open.onerror = () => resolve(null);
+        open.onsuccess = () => {
+          const db = open.result;
+          const get = db.transaction('settings', 'readonly').objectStore('settings').get('app');
+          get.onsuccess = () => {
+            const row = get.result as { profileOverrides?: { holeDiameterMm?: number } } | undefined;
+            db.close();
+            resolve(row?.profileOverrides?.holeDiameterMm ?? null);
+          };
+          get.onerror = () => {
+            db.close();
+            resolve(null);
+          };
+        };
+      }),
+  );
+}
+
 test('hole size: a new value is kept, and Reset returns 5.6', async ({ page }) => {
   await page.goto('/#/settings');
   const input = page.getByTestId('hole-diameter-input');
@@ -109,6 +137,7 @@ test('hole size: a new value is kept, and Reset returns 5.6', async ({ page }) =
 
   await input.fill('7.6');
   await input.press('Enter');
+  await expect.poll(() => storedHoleDiameterMm(page)).toBe(7.6);
   await page.reload();
   await expect(page.getByTestId('hole-diameter-input')).toHaveValue('7.6');
 
@@ -117,8 +146,12 @@ test('hole size: a new value is kept, and Reset returns 5.6', async ({ page }) =
   await expect(page.getByTestId('hole-diameter-error')).toBeVisible();
   await page.getByTestId('hole-diameter-input').press('Enter');
 
+  // The refused value never reached the store.
+  expect(await storedHoleDiameterMm(page)).toBe(7.6);
+
   await page.getByTestId('hole-diameter-reset').click();
   await expect(page.getByTestId('hole-diameter-input')).toHaveValue('5.6');
+  await expect.poll(() => storedHoleDiameterMm(page)).toBe(5.6);
   await page.reload();
   await expect(page.getByTestId('hole-diameter-input')).toHaveValue('5.6');
 });
