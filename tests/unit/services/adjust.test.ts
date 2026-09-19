@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { Shot } from '@/lib/domain/analysis';
 import type { Calibration, Categorization } from '@/lib/domain/photo';
+import { mmToPx } from '@/lib/geometry/transform';
+import { reprojectShots } from '@/lib/geometry/reproject';
 import { onPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { runStageA, type CvApi } from '@/lib/pipeline/stage-a';
@@ -10,7 +12,9 @@ import {
   NoCalibrationError,
   adjustStartCalibration,
   buildGroundTruth,
+  SAME_HOLE_DIAMETERS,
   markManualShots,
+  reanalyze,
   redetectShots,
   saveAdjustments,
   unplacedRounds,
@@ -283,6 +287,104 @@ describe('redetectShots (M13 step 5)', () => {
     const { api } = stubDetect([]);
 
     await expect(redetectShots(ctx, photoId, api)).rejects.toBeInstanceOf(NoCalibrationError);
+    ctx.db.close();
+  });
+});
+
+describe('re-projection on save (REV-46)', () => {
+  it('keeps an auto shot auto when it only followed a re-alignment, and stores it on its hole', async () => {
+    const stored = autoShot('auto-1', 12, -6);
+    const { ctx, photoId } = await seed({ shots: [stored] });
+    // What the Adjust screen hands back after the user dragged the rings: the shot re-projected onto them.
+    const onScreen = reprojectShots([stored], AUTO_CAL, MOVED_CAL);
+
+    await saveAdjustments(ctx, photoId, { calibration: MOVED_CAL, shots: onScreen });
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    const saved = analysis!.shots[0]!;
+    expect(saved.source).toBe('auto');
+    expect(saved.confidence).toBe(0.9);
+    // Same image pixel as before the re-alignment: the hole did not move.
+    const was = mmToPx(stored, AUTO_CAL);
+    const now = mmToPx(saved, analysis!.calibration!);
+    expect(now.x).toBeCloseTo(was.x, 6);
+    expect(now.y).toBeCloseTo(was.y, 6);
+    ctx.db.close();
+  });
+
+  it('still marks a shot manual when the user also dragged it', async () => {
+    const stored = autoShot('auto-1', 12, -6);
+    const { ctx, photoId } = await seed({ shots: [stored] });
+    const [followed] = reprojectShots([stored], AUTO_CAL, MOVED_CAL);
+
+    await saveAdjustments(ctx, photoId, {
+      calibration: MOVED_CAL,
+      shots: [{ ...followed!, xMm: followed!.xMm + 1.5 }],
+    });
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis!.shots[0]!.source).toBe('manual');
+    ctx.db.close();
+  });
+
+  it('re-projects the stored shots even when Save is given no shots', async () => {
+    const stored = autoShot('auto-1', 12, -6);
+    const { ctx, photoId } = await seed({ shots: [stored] });
+
+    await saveAdjustments(ctx, photoId, { calibration: MOVED_CAL });
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    const was = mmToPx(stored, AUTO_CAL);
+    const now = mmToPx(analysis!.shots[0]!, analysis!.calibration!);
+    expect(now.x).toBeCloseTo(was.x, 6);
+    expect(now.y).toBeCloseTo(was.y, 6);
+    ctx.db.close();
+  });
+});
+
+describe('reanalyze (REV-46)', () => {
+  it('detects against the alignment on screen, not the one stored before', async () => {
+    const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)] });
+    const { api, calls } = stubDetect([autoShot('d-1', 20, 20)]);
+
+    await reanalyze(ctx, photoId, { calibration: MOVED_CAL, shots: reprojectShots([autoShot('auto-1', 1, 1)], AUTO_CAL, MOVED_CAL) }, api);
+
+    expect(calls[0]?.calibration).toMatchObject({ cx: MOVED_CAL.cx, cy: MOVED_CAL.cy, radiusPx: MOVED_CAL.radiusPx });
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.calibration?.source).toBe('manual');
+    // The follow-only auto shot was replaced by the fresh detection, not kept alongside it.
+    expect(analysis?.shots.map((s) => s.id)).toEqual(['d-1']);
+    expect(analysis?.pipeline.stageB).toBe('pending');
+    ctx.db.close();
+  });
+
+  it("keeps the user's shot and drops a detection of the same hole", async () => {
+    const mine = manualShot('m-1', 10, 10);
+    const { ctx, photoId } = await seed({ shots: [mine] });
+    const nearlySame = 0.5 * SAME_HOLE_DIAMETERS * 5.6;
+    const { api } = stubDetect([autoShot('d-1', 10 + nearlySame, 10), autoShot('d-2', -30, 5)]);
+
+    await reanalyze(ctx, photoId, { shots: [mine] }, api);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots.map((s) => [s.id, s.source])).toEqual([
+      ['m-1', 'manual'],
+      ['d-2', 'auto'],
+    ]);
+    ctx.db.close();
+  });
+
+  it('keeps a genuinely overlapping second hole next to a manual shot', async () => {
+    const mine = manualShot('m-1', 10, 10);
+    const { ctx, photoId } = await seed({ shots: [mine] });
+    // Just outside the same-hole tolerance: holes that overlap, but two shots.
+    const apart = SAME_HOLE_DIAMETERS * 5.6 + 0.2;
+    const { api } = stubDetect([autoShot('d-1', 10 + apart, 10)]);
+
+    await reanalyze(ctx, photoId, { shots: [mine] }, api);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots.map((s) => s.id)).toEqual(['m-1', 'd-1']);
     ctx.db.close();
   });
 });

@@ -339,3 +339,49 @@ test('adjust: a placed shot dragged onto the tray is removed (M17 step 1)', asyn
   // The tray count is derived, so removing a round puts a marker back: 10 declared - 8 units.
   await expect(page.getByTestId('unplaced-tray')).toHaveAttribute('data-count', String(10 - unitsLeft));
 });
+
+test('adjust: re-aligning keeps every shot on its hole, and Re-analyze uses the new alignment (REV-46)', async ({
+  page,
+}) => {
+  const sessionId = await loadDemoSession(page);
+  const photoId = await precisionPhotoId(page, sessionId);
+  const before = await getAnalysis(page, photoId);
+  const cal0 = before.calibration!;
+  // Without shots the "stays on its hole" check below would pass vacuously.
+  expect(before.shots.length).toBeGreaterThan(3);
+  // Where each hole is in the photo. Re-aligning moves the rings, never the holes.
+  const holesPx = before.shots.map((shot) => mmToPx(shot, cal0));
+
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+  await page.getByTestId('mode-alignment').click();
+  await page.getByTestId('cal-cx').fill(String(Math.round(cal0.cx + 24)));
+  await page.getByTestId('save-adjustments').click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  await waitForIdle(page);
+
+  const saved = await getAnalysis(page, photoId);
+  expect(saved.calibration?.cx).toBe(Math.round(cal0.cx + 24));
+  expect(saved.shots).toHaveLength(before.shots.length);
+  saved.shots.forEach((shot, i) => {
+    const now = mmToPx(shot, saved.calibration!);
+    expect(now.x).toBeCloseTo(holesPx[i]!.x, 2);
+    expect(now.y).toBeCloseTo(holesPx[i]!.y, 2);
+    // Following a re-alignment is not an edit: each shot keeps the source it had.
+    expect(shot.source).toBe(before.shots[i]!.source);
+  });
+
+  // Re-analyze from a second re-alignment: the detection must run against the alignment on screen.
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await readyStage(page);
+  await page.getByTestId('mode-alignment').click();
+  const cx2 = Math.round(cal0.cx - 12);
+  await page.getByTestId('cal-cx').fill(String(cx2));
+  await page.getByTestId('reanalyze').click();
+  await expect(page.getByText('Re-analyzed with your alignment and shots.')).toBeVisible({ timeout: 120_000 });
+  await waitForIdle(page);
+
+  const after = await getAnalysis(page, photoId);
+  expect(after.calibration?.cx).toBe(cx2);
+  expect(after.calibration?.source).toBe('manual');
+});

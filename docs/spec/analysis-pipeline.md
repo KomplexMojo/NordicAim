@@ -251,7 +251,21 @@ when available.
 
 - If the user saves a calibration in Adjust, its `source` is `'manual'` and `pipeline.alignment.method = 'manual'`.
 - Stage A never runs A4 when `calibration?.source === 'manual'`, and never runs A5 when any shot has `source === 'manual'`.
-- Adjust offers **Re-detect shots** (explicit): it replaces `auto` shots with a new detection and keeps `manual` ones.
+- Adjust offers **Re-analyze** (explicit; REV-46, formerly *Re-detect shots*): it first **saves what is on screen** —
+  the alignment and every shot, exactly as Save does — then runs detection against **that** alignment, replaces `auto`
+  shots with what it finds, keeps `manual` ones, and re-scores. Nothing the user has on screen is discarded.
+  A detected shot within **0.8 hole diameters** (`SAME_HOLE_DIAMETERS`, the tolerance M16 R4 uses to match detections
+  to the owner's taps) of a kept `manual` shot is the same hole and is dropped: the user's shot wins, so re-analyzing
+  never counts a hole twice. Deliberately under one diameter — two genuinely overlapping holes sit 0.5–1 diameter
+  apart, and the second is a real shot.
+- **A shot is where its hole is in the photo** (REV-46). Its millimetre position is derived through the alignment,
+  so when the alignment changes in Adjust every shot is **re-projected**:
+  `newMm = pxToMm(mmToPx(oldMm, oldCalibration), newCalibration)`. The holes stay put in the photo and the rings
+  move; the score then follows the corrected rings. This applies to `auto` and `manual` shots alike.
+- **Re-projection is not an edit.** On Save, a shot counts as changed only if it differs from the stored shot
+  *re-projected into the saved alignment*, compared within `REPROJECT_TOLERANCE_MM` (1e-6 mm — far below any drag, far
+  above floating-point drift). An `auto` shot that merely followed a re-alignment stays `auto`, so Re-analyze can still
+  replace it.
 - Saving in Adjust sets `stageB = 'pending'` and calls `notify()`.
 
 ## 9. Performance budget (iPhone 16 Pro Max, measured in M15)

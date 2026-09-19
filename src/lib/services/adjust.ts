@@ -3,8 +3,12 @@
 // `saveAdjustments` writes what the user corrected — a calibration becomes `manual` (and the
 // alignment method with it), every shot the user added or changed becomes `manual`, and untouched
 // auto shots keep their `auto` source so Stage A's rules in §8 stay meaningful. `redetectShots` is
-// the explicit re-run: it replaces the `auto` shots and keeps the `manual` ones. Both set
-// `stageB: 'pending'` and notify, so the results screen refreshes itself.
+// the explicit re-run: it replaces the `auto` shots and keeps the `manual` ones. `reanalyze` (REV-46)
+// saves what is on screen and then re-runs detection against it. All set `stageB: 'pending'` and
+// notify, so the results screen refreshes itself.
+//
+// REV-46: a shot is where its hole is in the photo. When the alignment changes, shots are re-projected
+// so they stay on their holes, and re-projection alone never counts as an edit.
 
 import * as Comlink from 'comlink';
 
@@ -13,6 +17,7 @@ import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import { photoStatus } from '@/lib/domain/status';
 import type { Calibration, Categorization, TargetPhoto } from '@/lib/domain/photo';
+import { reprojectShots, samePositionMm } from '@/lib/geometry/reproject';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { WorkingImageMissingError, priorInWorkingPx, shotTemplate } from '@/lib/pipeline/stage-a';
@@ -50,8 +55,7 @@ function sameOverrides(a: Shot['positionOverrides'], b: Shot['positionOverrides'
 /** Two shots are the same edit-wise when nothing the user can change differs. */
 function unchanged(previous: Shot, next: Shot): boolean {
   return (
-    previous.xMm === next.xMm &&
-    previous.yMm === next.yMm &&
+    samePositionMm(previous, next) &&
     previous.multiplicity === next.multiplicity &&
     previous.cluster === next.cluster &&
     sameOverrides(previous.positionOverrides, next.positionOverrides)
@@ -70,6 +74,18 @@ export function markManualShots(previous: Shot[], next: Shot[]): Shot[] {
     if (stored !== undefined && unchanged(stored, shot)) return stored;
     return { ...shot, source: 'manual' as const, confidence: null };
   });
+}
+
+/**
+ * REV-46: how close, in hole diameters, a detection must be to a manual shot to be the same hole. The same
+ * tolerance M16 R4 uses to match detections to the owner's taps (MATCH_HOLE_DIAMETERS), because a tap is by
+ * eye. Deliberately under one diameter: two genuinely overlapping holes sit 0.5-1 diameter apart, and
+ * swallowing the second would drop a real shot.
+ */
+export const SAME_HOLE_DIAMETERS = 0.8;
+
+function sameHole(a: Shot, b: Shot, holeDiameterMm: number): boolean {
+  return Math.hypot(a.xMm - b.xMm, a.yMm - b.yMm) < SAME_HOLE_DIAMETERS * holeDiameterMm;
 }
 
 /** A detected shot whose id collides with a kept manual one is renamed, so ids stay unique. */
@@ -141,13 +157,20 @@ export async function saveAdjustments(
   photoId: string,
   patch: AdjustmentsPatch,
 ): Promise<TargetAnalysis> {
-  return commitAdjustment(ctx, photoId, (analysis) => ({
+  return commitAdjustment(ctx, photoId, (analysis) => {
+    // REV-46: a new alignment moves the rings, not the holes. Re-project the stored shots into it first,
+    // so a shot that merely followed the re-alignment compares equal and keeps its `auto` source.
+    const baseline =
+      patch.calibration !== undefined && analysis.calibration !== null
+        ? reprojectShots(analysis.shots, analysis.calibration, patch.calibration)
+        : analysis.shots;
+    return {
     ...analysis,
     calibration:
       patch.calibration === undefined
         ? analysis.calibration
         : { ...patch.calibration, source: 'manual' as const, confidence: null },
-    shots: patch.shots === undefined ? analysis.shots : markManualShots(analysis.shots, patch.shots),
+    shots: patch.shots === undefined ? baseline : markManualShots(baseline, patch.shots),
     pipeline: {
       ...analysis.pipeline,
       alignment:
@@ -155,7 +178,8 @@ export async function saveAdjustments(
           ? analysis.pipeline.alignment
           : { method: 'manual' as const, confidence: null },
     },
-  }));
+    };
+  });
 }
 
 /**
@@ -191,14 +215,35 @@ export async function redetectShots(
     { mode: session?.backingMode ?? 'auto', colour: session?.backing?.colour ?? null },
   );
 
+  const holeDiameterMm = settings.profileOverrides.holeDiameterMm;
   return commitAdjustment(ctx, photoId, (current) => {
     const kept = current.shots.filter((shot) => shot.source === 'manual');
+    // REV-46: a detection within SAME_HOLE_DIAMETERS of a manual shot is the same hole; the user's shot wins.
+    const fresh = detected.shots.filter((found) => !kept.some((mine) => sameHole(mine, found, holeDiameterMm)));
     return {
       ...current,
-      shots: [...kept, ...withUniqueIds(detected.shots, kept)],
+      shots: [...kept, ...withUniqueIds(fresh, kept)],
       pipeline: { ...current.pipeline, detection: detected.detection },
     };
   });
+}
+
+/**
+ * REV-46 / analysis-pipeline §8: **Re-analyze**. Saves what is on screen exactly as Save does — so a moved
+ * alignment becomes `manual` and the shots are re-projected onto it — then re-runs detection against that
+ * saved alignment, keeping the user's manual shots and re-scoring. Nothing on screen is discarded.
+ *
+ * Two steps rather than one transaction on purpose: detection needs the worker, which may not run inside
+ * an IndexedDB transaction (data-model §6), and the save must land first so detection reads it.
+ */
+export async function reanalyze(
+  ctx: ServiceContext,
+  photoId: string,
+  patch: AdjustmentsPatch,
+  cvApi: DetectShotsApi,
+): Promise<TargetAnalysis> {
+  await saveAdjustments(ctx, photoId, patch);
+  return redetectShots(ctx, photoId, cvApi);
 }
 
 export interface GroundTruthExport {

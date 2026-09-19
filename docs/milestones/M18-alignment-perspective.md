@@ -76,6 +76,11 @@ geometry-scoring §2/§2.1 (every existing vector is unchanged, because `p = q =
 invariance test, Stage A's 120–250 ms per photo against §9's budget (measure on the phone before switching it on, and fall
 back to `perspective: null` if the ring measurement fails), Adjust's handles, and the M13 step 7 ground-truth export.
 
+**Also, since REV-46 (2026-09-18):** `sameCalibration` in `src/routes/adjust/AdjustPage.tsx` decides whether the user moved
+the alignment, and must compare `perspective` too, or a tilt-only change would not be saved. `reprojectShots`
+(`src/lib/geometry/reproject.ts`) goes through `transform.ts`, so it follows the projective model automatically once
+`mmToPx`/`pxToMm` apply it — keep its tests passing with a non-null `perspective` added to them.
+
 **The original gate, kept for the evidence:**
 
 Step 1 confirmed perspective, and the projective model fixes the centre (numbers below). Step 2 says to stop here,

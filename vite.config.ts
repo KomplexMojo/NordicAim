@@ -56,8 +56,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Biathlete Harness',
-        short_name: 'Harness',
+        name: 'Nordic Aim',
+        short_name: 'Nordic Aim',
         display: 'standalone',
         start_url: './',
         scope: './',

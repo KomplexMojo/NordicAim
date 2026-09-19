@@ -1,6 +1,6 @@
 # advanced-shooting-analysis
 
-**Biathlete Training Harness.** An app for biathlon shooting at 50 m that runs **entirely on your iPhone**.
+**Nordic Aim.** An app for biathlon shooting at 50 m that runs **entirely on your iPhone**.
 
 **MVP in three steps:**
 1. **Take picture(s)** of your sighting and precision targets, lining them up with a live template overlay.

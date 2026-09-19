@@ -20,7 +20,7 @@ const CHECK_IDS = [
 
 test('home page shows the heading and a diagnostics link', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Biathlete Harness' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nordic Aim' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Diagnostics' })).toBeVisible();
 });
 

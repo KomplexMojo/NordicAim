@@ -26,10 +26,11 @@ import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
 import { analyzeTarget } from '@/lib/scoring/analyze';
+import { reprojectShots } from '@/lib/geometry/reproject';
 import {
   adjustStartCalibration,
   buildGroundTruth,
-  redetectShots,
+  reanalyze,
   saveAdjustments,
   unplacedRounds,
 } from '@/lib/services/adjust';
@@ -88,6 +89,26 @@ export function AdjustPage() {
   const [busy, setBusy] = useState(false);
   // M17 step 1: the stage's live transform, so a dragged tray marker lands under the finger.
   const stageApi = useRef<StageApi | null>(null);
+  // REV-46: the alignment the on-screen shots are currently expressed in. A ref, not state, because a drag
+  // delivers several changes between renders and each must re-project from the one before it.
+  const shotsCalibration = useRef<Calibration | null>(null);
+
+  /** Loads a fresh record's alignment and shots as they are — nothing to re-project. */
+  function resetDraft(next: AdjustData) {
+    const start = adjustStartCalibration(next.photo, next.analysis);
+    shotsCalibration.current = start;
+    setCalibration(start);
+    setShots(next.analysis.shots);
+    setSelectedId(null);
+  }
+
+  /** REV-46: the user moved the alignment. The rings move; the holes do not, so every shot follows its hole. */
+  function changeCalibration(next: Calibration) {
+    const previous = shotsCalibration.current;
+    shotsCalibration.current = next;
+    if (previous !== null) setShots((current) => reprojectShots(current, previous, next));
+    setCalibration(next);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -96,9 +117,7 @@ export function AdjustPage() {
         if (cancelled) return;
         setData(next);
         if (next === null) return;
-        setCalibration(adjustStartCalibration(next.photo, next.analysis));
-        setShots(next.analysis.shots);
-        setSelectedId(null);
+        resetDraft(next);
       },
       (err: unknown) => {
         if (cancelled) return;
@@ -233,20 +252,24 @@ export function AdjustPage() {
     }
   }
 
-  async function onRedetect() {
+  /**
+   * REV-46: save what is on screen, then re-run detection against the alignment the user just set, keeping
+   * their manual shots. Nothing on screen is discarded — the old Re-detect ran against the saved alignment
+   * and threw unsaved edits away.
+   */
+  async function onReanalyze() {
+    if (calibration === null) return;
     setBusy(true);
     try {
-      await redetectShots(ctx, pid, getCvClient());
+      const stored = analysis.calibration;
+      const moved = stored === null || !sameCalibration(stored, calibration);
+      await reanalyze(ctx, pid, { ...(moved ? { calibration } : {}), shots }, getCvClient());
       const next = await loadAdjust(ctx, pid);
       setData(next);
-      if (next !== null) {
-        setCalibration(adjustStartCalibration(next.photo, next.analysis));
-        setShots(next.analysis.shots);
-        setSelectedId(null);
-      }
-      toast.success('Shots re-detected.');
+      if (next !== null) resetDraft(next);
+      toast.success('Re-analyzed with your alignment and shots.');
     } catch (err) {
-      toast.error(`Could not re-detect shots: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`Could not re-analyze: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
@@ -321,7 +344,7 @@ export function AdjustPage() {
             onSelectShot={setSelectedId}
             onAddShot={addShot}
             onMoveShot={moveShot}
-            onCalibrationChange={setCalibration}
+            onCalibrationChange={changeCalibration}
             apiRef={stageApi}
             onShotDragEnd={onShotDragEnd}
           />
@@ -346,7 +369,7 @@ export function AdjustPage() {
           </p>
         )
       ) : (
-        <AlignmentControls calibration={calibration} onChange={setCalibration} />
+        <AlignmentControls calibration={calibration} onChange={changeCalibration} />
       )}
 
       {preview !== null && (
@@ -366,11 +389,11 @@ export function AdjustPage() {
         <Button
           variant="outline"
           className="h-11 flex-1"
-          data-testid="redetect-shots"
+          data-testid="reanalyze"
           disabled={busy}
-          onClick={() => void onRedetect()}
+          onClick={() => void onReanalyze()}
         >
-          Re-detect shots
+          Re-analyze
         </Button>
       </div>
 
