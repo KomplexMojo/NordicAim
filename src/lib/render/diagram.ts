@@ -20,6 +20,12 @@ export interface DiagramInput {
    * card's thumbnail) leaves it undefined and fits itself.
    */
   cellScaleOverride?: number;
+  /**
+   * rendering-composite.md §4 (REV-53): the `cell` chip's label, when the caller sets it — the summary
+   * image names a sighting session's two targets `SIGHT IN` and `CONFIRM`. Undefined keeps the template
+   * name (`SIGHTING`), which is what a standalone thumbnail shows.
+   */
+  cellLabelOverride?: string;
 }
 
 export type DiagramVariant = 'full' | 'cell';
@@ -31,6 +37,6 @@ export function renderDiagramSvg(input: DiagramInput, variant: DiagramVariant, s
 }
 
 /** rendering-composite.md §5 (REV-51): an empty slot's cell — the template alone, faded, captioned "No target". */
-export function renderBlankCellSvg(template: 'sighting' | 'precision', slotLabel: string, scale?: number): string {
-  return template === 'precision' ? renderBlankPrecisionCell(slotLabel, scale) : renderBlankSightingCell(slotLabel, scale);
+export function renderBlankCellSvg(template: 'sighting' | 'precision', label: string, scale?: number): string {
+  return template === 'precision' ? renderBlankPrecisionCell(label, scale) : renderBlankSightingCell(label, scale);
 }

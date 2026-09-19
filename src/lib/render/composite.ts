@@ -61,6 +61,17 @@ export const COMPOSITE_CELLS: readonly CellPlacement[] = [
 ];
 export const COMPOSITE_GRID_HEIGHT = 1440;
 
+/**
+ * §5 (REV-53). How a session actually runs, in the owner's words: "you sight in on one target and then you
+ * confirm on a second target". So the two sighting positions are **Sight in** and **Confirm** rather than
+ * "Sighting 1" and "Sighting 2"; the precision positions stay numbered. Slot 1 is the earlier target
+ * (selection orders them chronologically), which is the one sighted in on.
+ */
+export function positionName(template: 'sighting' | 'precision', index: 0 | 1): string {
+  if (template === 'sighting') return index === 0 ? 'Sight in' : 'Confirm';
+  return `Precision ${index + 1}`;
+}
+
 /** §4/§5 (REV-52): each template's halo radius in mm — what a cell's 300 px drawing radius must cover. */
 const HALO_RADIUS_MM = {
   sighting: SIGHTING_TEMPLATE.haloDiameterMm / 2, // 62.5
@@ -120,9 +131,15 @@ function shortPositionLabel(position: Position): string {
   return position;
 }
 
-function slotDiagramInput(slot: SlotData, holeDiameterMm: number, cellScaleOverride: number): DiagramInput {
+function slotDiagramInput(
+  slot: SlotData,
+  holeDiameterMm: number,
+  cellScaleOverride: number,
+  cellLabelOverride: string,
+): DiagramInput {
   return {
     cellScaleOverride,
+    cellLabelOverride,
     template: slot.result.template,
     result: slot.result,
     shots: slot.analysis.shots,
@@ -164,7 +181,7 @@ function mpiCompactLine(offset: MpiOffset | null): string | null {
 
 /** §5 line 2: one summary line per filled slot, built from the same `targetHeadline` the results card
  * and target detail screen use (M24: all three stay in step), e.g.
- * "Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm"
+ * "Sight in (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm"
  * "Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)". */
 function slotSummaryLine(label: string, slot: SlotData): string {
   const subset = slot.result.all;
@@ -191,10 +208,10 @@ interface Placed {
 function placedSlots(input: CompositeInput): Placed[] {
   const placed: Placed[] = [];
   input.slots.sighting.forEach((slot, i) => {
-    if (slot !== null) placed.push({ label: `Sighting ${i + 1}`, slotLabel: String(i + 1), slot });
+    if (slot !== null) placed.push({ label: positionName('sighting', i as 0 | 1), slotLabel: String(i + 1), slot });
   });
   input.slots.precision.forEach((slot, i) => {
-    if (slot !== null) placed.push({ label: `Precision ${i + 1}`, slotLabel: String(i + 1), slot });
+    if (slot !== null) placed.push({ label: positionName('precision', i as 0 | 1), slotLabel: String(i + 1), slot });
   });
   return placed;
 }
@@ -269,11 +286,15 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
   body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)));
   for (const cell of COMPOSITE_CELLS) {
     const slot = input.slots[cell.template][cell.index];
-    const slotLabel = String(cell.index + 1);
+    const label = positionName(cell.template, cell.index).toUpperCase();
     const svg =
       slot === null
-        ? renderBlankCellSvg(cell.template, slotLabel, scale)
-        : renderDiagramSvg(slotDiagramInput(slot, input.holeDiameterMm, scale), 'cell', slotLabel);
+        ? renderBlankCellSvg(cell.template, label, scale)
+        : renderDiagramSvg(
+            slotDiagramInput(slot, input.holeDiameterMm, scale, label),
+            'cell',
+            String(cell.index + 1), // only the clip id still needs the slot number
+          );
     body += nestCellSvg(svg, cell.x, HEADER_HEIGHT + cell.y, cell.size);
   }
   body += renderAnalysisBand(lines, input.generatedAtLocal, bandY);

@@ -164,7 +164,9 @@ and it is what pushed the summary image's per-slot line, below, past its 110-cha
 - **Nothing crosses the caption.** The target, ellipse, shots, MPI and marker labels are clipped to (0, 0, 720, 668) with a
   `clipPath` whose id is unique in the composite (`cellclip-<template>-<slot>`); the group ellipse of a scattered group is cut at
   the edge rather than drawn over the caption band.
-- Chip (20, 20, 16 + 9·chars, 36) rx 18 `panel`; 15 bold uppercase `<TEMPLATE> <slot> · <POSITION>`.
+- Chip (20, 20, 16 + 9·chars, 36) rx 18 `panel`; 15 bold uppercase `<TEMPLATE> <slot> · <POSITION>`, or
+  `DiagramInput.cellLabelOverride · <POSITION>` when the caller names the cell (REV-53: the summary image's
+  `SIGHT IN` / `CONFIRM`). A standalone thumbnail leaves it undefined and shows the template name.
 - Caption band (0, 668, 720, 52) `panel`; centred 17 px at y 700 (REV-49 wording, so the cell never reads as "N of M found"):
   - sighting `<h> hit(s) · <m> miss(es) — <45|115> mm · ES <es> mm · <moa> MOA`
     (both: `Prone <h> hit(s) · Standing <h> hit(s) · ES <es> mm · <moa> MOA`)
@@ -196,7 +198,11 @@ one-row-per-template grid, which dropped an empty row entirely and put a filler 
 black border), described only that one target, and left a fixed 600 px band mostly empty.
 
 - **Positions** (x, y within the grid, all 720 × 720): sighting 1 (0, 0), sighting 2 (720, 0), precision 1 (0, 720),
-  precision 2 (720, 720). Grid height **1440**. At least one filled slot is required; 0 throws `EmptyCompositeError`.
+  precision 2 (720, 720). Grid height **1440**.
+- **Position names (REV-53)** — `positionName(template, index)`. The owner: "typically how a session works is you sight in on one
+  target and then you confirm on a second target", so the sighting positions are **Sight in** and **Confirm**, not "Sighting 1"
+  and "Sighting 2"; precision stays `Precision 1` / `Precision 2`. Slot 1 is the earlier target (selection is chronological), the
+  one sighted in on. The name is used for the chip (uppercased) and for the analysis band's per-slot line. At least one filled slot is required; 0 throws `EmptyCompositeError`.
 - **Canvas.** Width **1440**. A full-canvas `panel` rect is drawn first, so no area is ever unfilled (transparent renders black).
 - **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); subtitle 18 `#CFE6F3` at
   (40, 94): `<sessionDate> · <lightingSummary>` (shared label if all filled slots agree, else `mixed lighting`).

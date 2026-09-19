@@ -132,7 +132,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     const body =
       renderBackground(CELL.width, CELL.height) +
       clipCell(`cellclip-precision-${slotLabel ?? '0'}`, target) +
-      renderCellChip('PRECISION', positionLabel, slotLabel) +
+      renderCellChip(input.cellLabelOverride ?? 'PRECISION', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
   }
@@ -156,6 +156,6 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
 }
 
 /** rendering-composite.md §5 (REV-51): an empty precision slot in the summary image. */
-export function renderBlankPrecisionCell(slotLabel: string, scale = CELL.s): string {
-  return renderBlankCell('PRECISION', slotLabel, renderTarget(CELL.cx, CELL.cy, scale, scale >= 4));
+export function renderBlankPrecisionCell(label: string, scale = CELL.s): string {
+  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, scale, scale >= 4));
 }

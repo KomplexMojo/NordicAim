@@ -221,7 +221,7 @@ export function renderFooterPanel(lines: string[]): string {
 /** §4: chip `<TEMPLATE> <slot> · <POSITION>` (slot omitted when not given), sized to its own text. */
 export function renderCellChip(templateId: string, positionLabel: string, slotLabel?: string): string {
   const head = slotLabel ? `${templateId} ${slotLabel}` : templateId;
-  // An empty slot (REV-51) has no position, so its chip reads just "SIGHTING 2".
+  // An empty slot (REV-51) has no position, so its chip reads just its label ("CONFIRM", "PRECISION 2").
   const label = positionLabel === '' ? head : `${head} · ${positionLabel}`;
   const upper = label.toUpperCase();
   const width = 16 + 9 * upper.length;
@@ -265,11 +265,11 @@ export function clipCell(id: string, content: string): string {
 export const BLANK_CELL_OPACITY = 0.35;
 
 /** §5 (REV-51): an empty slot — the template alone, faded, with its chip and a "No target" caption. */
-export function renderBlankCell(templateId: string, slotLabel: string, target: string): string {
+export function renderBlankCell(label: string, target: string): string {
   const body =
     renderBackground(720, 720) +
     el('g', { opacity: BLANK_CELL_OPACITY }, target) +
-    renderCellChip(templateId, '', slotLabel) +
+    renderCellChip(label, '') +
     renderCellCaptionBand('No target');
   return svgRoot(720, 720, body);
 }

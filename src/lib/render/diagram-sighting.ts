@@ -105,7 +105,7 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
     const body =
       renderBackground(CELL.width, CELL.height) +
       clipCell(`cellclip-sighting-${slotLabel ?? '0'}`, target) +
-      renderCellChip('SIGHTING', positionLabel, slotLabel) +
+      renderCellChip(input.cellLabelOverride ?? 'SIGHTING', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
   }
@@ -129,6 +129,6 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
 }
 
 /** rendering-composite.md §5 (REV-51): an empty sighting slot in the summary image. */
-export function renderBlankSightingCell(slotLabel: string, scale = CELL.s): string {
-  return renderBlankCell('SIGHTING', slotLabel, renderTarget(CELL.cx, CELL.cy, scale));
+export function renderBlankSightingCell(label: string, scale = CELL.s): string {
+  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, scale));
 }

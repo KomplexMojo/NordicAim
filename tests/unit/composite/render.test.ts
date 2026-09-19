@@ -7,7 +7,7 @@ import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot } from '@/lib/domain/analysis';
 import { initialAnalysis } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
-import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, renderComposite, sharedCellScale, renderCompositeSvg } from '@/lib/render/composite';
+import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, positionName, renderComposite, sharedCellScale, renderCompositeSvg } from '@/lib/render/composite';
 import { PRECISION_TEMPLATE } from '@/lib/defaults/templates';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 
@@ -84,7 +84,7 @@ describe('render/composite four fixed positions (rendering-composite.md §5, REV
 
   it('a blank slot is its faded template, chipped without a position', () => {
     const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), null], precision: [p1(), null] } }));
-    expect(svg).toContain('>SIGHTING 2<');
+    expect(svg).toContain('>CONFIRM<');
     expect(svg).toContain('>PRECISION 2<');
     expect(svg).toContain('opacity="0.35"');
   });
@@ -113,6 +113,36 @@ describe('render/composite height vectors (§5)', () => {
   });
 });
 
+describe('render/composite sight in, then confirm (REV-53)', () => {
+  it('names the sighting positions for what they are; precision stays numbered', () => {
+    expect([positionName('sighting', 0), positionName('sighting', 1)]).toEqual(['Sight in', 'Confirm']);
+    expect([positionName('precision', 0), positionName('precision', 1)]).toEqual(['Precision 1', 'Precision 2']);
+  });
+
+  it('chips and band lines use them, filled or blank', () => {
+    const { svg } = renderComposite(
+      baseInput({
+        slots: {
+          sighting: [slot(sightingFixture, sightingResult), null],
+          precision: [slot(precisionFixture, precisionResult), null],
+        },
+      }),
+    );
+    expect(svg).toContain('>SIGHT IN · PRONE<'); // filled
+    expect(svg).toContain('>CONFIRM<'); // blank, so no position
+    expect(svg).toContain('>PRECISION 1 · PRONE<');
+    expect(svg).toContain('Sight in (prone): 9 hits');
+    expect(svg).not.toContain('Sighting 1');
+    expect(svg).not.toContain('SIGHTING 2');
+  });
+
+  it('the earlier sighting target is the one sighted in on (selection is chronological)', () => {
+    // selectDefaultSlots puts the older target in slot 1; slot 1 is "Sight in".
+    expect(COMPOSITE_CELLS[0]).toMatchObject({ template: 'sighting', index: 0 });
+    expect(positionName('sighting', 0)).toBe('Sight in');
+  });
+});
+
 describe('render/composite one scale for every target (REV-52)', () => {
   const s1 = () => slot(sightingFixture, sightingResult);
   const p1 = () => slot(precisionFixture, precisionResult);
@@ -122,8 +152,8 @@ describe('render/composite one scale for every target (REV-52)', () => {
     const cells = svg.split('<svg ').slice(2); // [0] is the composite root, [1..] the nested cells
     const byLabel = new Map<string, number>();
     for (const cell of cells) {
-      // The chip reads "SIGHTING 1 · PRONE" when filled and "SIGHTING 2" when blank; key on the position.
-      const label = /<text[^>]*>([A-Z]+ \d)/.exec(cell)?.[1] ?? '?';
+      // The chip reads "SIGHT IN · PRONE" when filled and "CONFIRM" when blank; key on the position name.
+      const label = /<text[^>]*>(SIGHT IN|CONFIRM|PRECISION \d)/.exec(cell)?.[1] ?? '?';
       // The largest circle is the target's halo; a filled cell also draws shot dots, a blank one does not.
       const radii = [...cell.matchAll(/ r="([\d.]+)"/g)].map((m) => Number(m[1]));
       byLabel.set(label, Math.max(...radii));
@@ -137,15 +167,15 @@ describe('render/composite one scale for every target (REV-52)', () => {
     const withFar = slot({ ...sightingFixture, shots: [...sightingFixture.shots, far] } as never, sightingResult);
     const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), withFar], precision: [p1(), null] } }));
     const radii = cellRadii(svg);
-    expect(radii.get('SIGHTING 1')).toBeDefined();
-    expect(radii.get('SIGHTING 1')).toEqual(radii.get('SIGHTING 2'));
+    expect(radii.get('SIGHT IN')).toBeDefined();
+    expect(radii.get('SIGHT IN')).toEqual(radii.get('CONFIRM'));
   });
 
   it('a blank slot matches the filled one of its template', () => {
     const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), null], precision: [p1(), null] } }));
     const radii = cellRadii(svg);
-    expect(radii.get('SIGHTING 1')).toBeDefined();
-    expect(radii.get('SIGHTING 1')).toEqual(radii.get('SIGHTING 2'));
+    expect(radii.get('SIGHT IN')).toBeDefined();
+    expect(radii.get('SIGHT IN')).toEqual(radii.get('CONFIRM'));
     expect(radii.get('PRECISION 1')).toEqual(radii.get('PRECISION 2'));
   });
 
@@ -230,7 +260,7 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
     expect(svg).toContain('Session analysis');
     // REV-49 (M24): the analysis band's per-slot line now reuses `targetHeadline` (issue #6).
     expect(svg).toContain('Precision 1 (prone): 72 / 100');
-    expect(svg).toContain('Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone');
+    expect(svg).toContain('Sight in (prone): 9 hits · 1 miss — 45 mm prone');
   });
 
   it('has no stat cards (REV-51 removed them)', () => {
@@ -294,9 +324,9 @@ describe('render/composite renderCompositeSvg "both" slot line (fix round 1: §5
 
     // The headline drops the zone size for "both" (fix round 1), so the line reads "hits · miss(es)"
     // for each half without "— <zone> mm" repeated twice.
-    expect(svg).toContain('Sighting 1 (prone + standing): Prone 5 hits · 0 misses · Standing 5 hits · 0 misses');
+    expect(svg).toContain('Sight in (prone + standing): Prone 5 hits · 0 misses · Standing 5 hits · 0 misses');
 
-    const match = /<text[^>]*>(Sighting 1 \(prone \+ standing\): [^<]*)<\/text>/.exec(svg);
+    const match = /<text[^>]*>(Sight in \(prone \+ standing\): [^<]*)<\/text>/.exec(svg);
     expect(match).not.toBeNull();
     const lineText = match![1]!;
     expect(lineText.length).toBeLessThanOrEqual(110);

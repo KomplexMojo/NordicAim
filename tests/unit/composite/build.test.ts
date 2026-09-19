@@ -172,7 +172,7 @@ describe('composite/build.ts §6 step 2: fresh analyzeTarget per slot, not the s
     // ...and the current-settings detail line and the freshly-recomputed headline must agree. (REV-51 drops the
     // footer's "Scored (…)" line from the band, since the slot line above it already states the hits.)
     expect(svg).toContain('vs 45 mm prone: 10 hit / 0 miss');
-    expect(svg).toContain('Sighting 1 (prone): 10 hits · 0 misses — 45 mm prone');
+    expect(svg).toContain('Sight in (prone): 10 hits · 0 misses — 45 mm prone');
   });
 });
 
