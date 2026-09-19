@@ -305,6 +305,10 @@ when available.
   purpose (§4 rule 8) is to ask the owner which capped marks were kept. Stage B's reconciliation raises it again only if it
   drops shots on its next pass, so a real over-count is never hidden. A save of the alignment alone keeps it. Before this,
   the warning survived every save, pinning the photo at `needs-attention` and so keeping it out of the summary image forever.
+- **Saving confirms an overlay-guess alignment** (owner report 2026-09-19): when the stored alignment is `method: 'overlay'`
+  (§4 rule 9 — no disc was found, the rings sit where the owner aimed), a Save sends the alignment on screen even if the
+  rings were not moved (`adjustSavePatch`), so it becomes `manual` and rule 9 releases the photo. The owner has seen those
+  rings over the photo and saved. Before, a shots-only save left the guess stored and the photo at `needs-attention`.
 - Saving in Adjust sets `stageB = 'pending'` and calls `notify()`.
 
 ## 9. Performance budget (iPhone 16 Pro Max, measured in M15)

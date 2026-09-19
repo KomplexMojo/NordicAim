@@ -9,7 +9,8 @@ import { TargetAnalysis, type Shot } from '@/lib/domain/analysis';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { saveAdjustments, type DetectShotsApi } from '@/lib/services/adjust';
 import { loadDetectionAids } from '@/lib/services/detection-aids';
-import { hasAdjustEdits, loadReviewPhotos, reviewOrder } from '@/lib/services/review';
+import { adjustSavePatch, hasAdjustEdits, loadReviewPhotos, reviewOrder } from '@/lib/services/review';
+import { initialAnalysis } from '@/lib/domain/analysis';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { putBlob } from '@/lib/store/blobs-repo';
@@ -215,5 +216,57 @@ describe('suggestions stay derived (M21 steps 1-2, Pitfalls)', () => {
     expect(TargetAnalysis.parse(JSON.parse(JSON.stringify(stored)))).toEqual(stored);
     expect(Object.keys(stored)).not.toContain('suggestions');
     expect(Object.keys(stored.pipeline)).not.toContain('suggestions');
+  });
+});
+
+describe('adjustSavePatch: Save confirms what is on screen (owner report 2026-09-19)', () => {
+  const guess: Calibration = {
+    cx: 600, cy: 800, radiusPx: 250, axisRatio: 1, angleDeg: 0, anchorDiameterMm: 112.4,
+    source: 'overlay', confidence: null, perspective: null,
+  };
+  const shots: Shot[] = [];
+
+  function analysisWith(method: 'overlay' | 'cv' | 'manual') {
+    const base = initialAnalysis('p1', '2026-09-19T00:00:00.000Z');
+    return { calibration: guess, pipeline: { ...base.pipeline, alignment: { method, confidence: null } } };
+  }
+
+  it('sends the unmoved alignment when the stored one was only an overlay guess (rule 9)', () => {
+    expect(adjustSavePatch(analysisWith('overlay'), { ...guess }, shots).calibration).toBeDefined();
+  });
+
+  it('does not send an unmoved alignment that was measured', () => {
+    expect(adjustSavePatch(analysisWith('cv'), { ...guess }, shots).calibration).toBeUndefined();
+  });
+
+  it('sends a moved alignment, and one where none was stored', () => {
+    expect(adjustSavePatch(analysisWith('cv'), { ...guess, cx: 610 }, shots).calibration).toBeDefined();
+    expect(adjustSavePatch({ ...analysisWith('cv'), calibration: null }, guess, shots).calibration).toBeDefined();
+  });
+
+  it('once saved, the alignment is manual, so rule 9 no longer holds the photo at needs-attention', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    const session = makeSession();
+    const photo = makePhoto({ sessionId: session.id, status: 'needs-attention' });
+    await putSessionRecord(db, { ...session, photoIds: [photo.id] });
+    await putPhotoRecord(db, photo);
+    await putAnalysisRecord(
+      db,
+      makeAnalysis(photo.id, { stageA: 'done', stageB: 'done', alignment: { method: 'overlay', confidence: null } }, {
+        calibration: guess,
+        shots: [shot('auto-1', 1, 2)],
+      }),
+    );
+    const before = (await getAnalysisRecord(db, photo.id))!;
+
+    // The owner fixes a shot but never touches the rings, then saves.
+    const edited = [{ ...before.shots[0]!, xMm: 1.5 }];
+    await saveAdjustments(ctx, photo.id, adjustSavePatch(before, before.calibration!, edited));
+
+    const saved = (await getAnalysisRecord(db, photo.id))!;
+    expect(saved.pipeline.alignment.method).toBe('manual');
+    expect(saved.calibration?.source).toBe('manual');
+    db.close();
   });
 });

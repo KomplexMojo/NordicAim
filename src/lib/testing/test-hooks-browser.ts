@@ -33,6 +33,11 @@ export interface AsaTestHooks {
    * then lets Stage B re-run. For flows that real CV produces but the fake camera cannot.
    */
   addWarning(photoId: string, warning: string): Promise<void>;
+  /**
+   * Makes the stored alignment an overlay guess, as Stage A records it when no disc was found
+   * (analysis-pipeline §4 rule 9): `method: 'overlay'`, `source: 'overlay'`, `alignment-uncertain`.
+   */
+  markOverlayGuess(photoId: string): Promise<void>;
   loadDemo(): Promise<string>;
   /** M14: reads `artifacts` / `shares` so e2e specs can assert on the summary image without a UI hook for them. */
   getSession(sessionId: string): Promise<BiathlonSession | null>;
@@ -207,6 +212,35 @@ export function installTestHooks(): void {
           ...analysis.pipeline,
           stageB: 'pending',
           warnings: analysis.pipeline.warnings.includes(parsed) ? analysis.pipeline.warnings : [...analysis.pipeline.warnings, parsed],
+        },
+        updatedAt: ctx.now().toISOString(),
+      };
+      const { status, reasons } = photoStatus({ categorization: photo.categorization, analysis: next, result: next.computed?.result ?? null });
+      await putAnalysisRecord(tx, next);
+      await putPhotoRecord(tx, { ...photo, status, reasons });
+      await tx.done;
+      emitPipelineChanged({ sessionId: photo.sessionId, photoId });
+      pipelineHooks.notify();
+    },
+    async markOverlayGuess(photoId) {
+      const { ctx } = await loadAppServices();
+      const tx = ctx.db.transaction(['photos', 'analyses'], 'readwrite');
+      const photo = await getPhotoRecord(tx, photoId);
+      const analysis = await getAnalysisRecord(tx, photoId);
+      if (photo === null || analysis === null || analysis.calibration === null) {
+        await tx.done;
+        throw new Error(`No photo, analysis or calibration for ${photoId}`);
+      }
+      const next: TargetAnalysis = {
+        ...analysis,
+        calibration: { ...analysis.calibration, source: 'overlay', confidence: null },
+        pipeline: {
+          ...analysis.pipeline,
+          stageB: 'pending',
+          alignment: { method: 'overlay', confidence: null },
+          warnings: analysis.pipeline.warnings.includes('alignment-uncertain')
+            ? analysis.pipeline.warnings
+            : [...analysis.pipeline.warnings, 'alignment-uncertain'],
         },
         updatedAt: ctx.now().toISOString(),
       };

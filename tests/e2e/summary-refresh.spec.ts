@@ -31,6 +31,7 @@ type HookWindow = Window & {
     setShots(photoId: string, shots: unknown): Promise<void>;
     getSession(sessionId: string): Promise<HookSession | null>;
     addWarning(photoId: string, warning: string): Promise<void>;
+    markOverlayGuess(photoId: string): Promise<void>;
   };
 };
 
@@ -136,4 +137,35 @@ test('summary: a target added later joins the summary, including after it is fix
   await expect.poll(() => latestArtifactId(page, sessionId), { timeout: 30_000 }).not.toBe(second);
   await expect(page.getByTestId('summary-image')).toBeVisible();
   await expect(page.getByTestId('summary-left-out')).toHaveCount(0);
+});
+
+test('adjust: saving shots without moving the rings confirms an overlay-guess alignment (rule 9)', async ({ page }) => {
+  const sessionId = await createSessionViaHome(page);
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
+  await analyzeFromMetadata(page, sessionId);
+
+  // No disc found: the rings sit where the owner aimed, so the target needs attention (rule 9).
+  const [photo] = await page.evaluate((sid) => (window as HookWindow).__asaTest!.listPhotos(sid), sessionId);
+  await page.evaluate(({ pid }) => (window as HookWindow).__asaTest!.markOverlayGuess(pid), { pid: photo!.id });
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await expect
+    .poll(async () => {
+      const now = await page.evaluate((sid) => (window as HookWindow).__asaTest!.listPhotos(sid), sessionId);
+      return now[0]?.status ?? null;
+    }, { timeout: 30_000 })
+    .toBe('needs-attention');
+
+  // The owner opens Adjust, looks at the rings over the photo, leaves them, and saves.
+  await page.goto(`/#/sessions/${sessionId}/photos/${photo!.id}/adjust`);
+  await expect(page.getByTestId('image-stage')).toHaveAttribute('data-ready', 'true');
+  await page.getByTestId('save-adjustments').click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await expect
+    .poll(async () => {
+      const now = await page.evaluate((sid) => (window as HookWindow).__asaTest!.listPhotos(sid), sessionId);
+      return now[0]?.status ?? null;
+    }, { timeout: 30_000 })
+    .toBe('analyzed');
 });

@@ -6,6 +6,7 @@ import { shotFromSuggestion, visibleSuggestions } from '@/lib/cv/suggestions';
 import { useServices } from '@/lib/app/services';
 import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot, TargetAnalysis } from '@/lib/domain/analysis';
+import type { Warning } from '@/lib/domain/enums';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import type { PhotoStatus, Reason } from '@/lib/domain/enums';
@@ -15,7 +16,7 @@ import { analyzeTarget } from '@/lib/scoring/analyze';
 import { mergeReconcileWarnings, reconcileReasonContext, reconcileShots } from '@/lib/scoring/reconcile-shots';
 import { adjustStartCalibration, SAME_HOLE_DIAMETERS, type AdjustmentsPatch } from '@/lib/services/adjust';
 import { loadDetectionAids, type DetectionAids } from '@/lib/services/detection-aids';
-import { hasAdjustEdits, sameCalibration } from '@/lib/services/review';
+import { adjustSavePatch, hasAdjustEdits, sameCalibration } from '@/lib/services/review';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
@@ -158,7 +159,11 @@ export function useAdjustDraft(pid: string) {
     const { photo, analysis, holeDiameterMm } = data;
     const categorization = photo.categorization;
     let result: AnalysisResult | null = null;
-    let warnings = analysis.pipeline.warnings;
+    // The preview shows what Save will produce, not what is stored: Save confirms the capped set (drops
+    // `extra-candidates-dropped`) and, via `adjustSavePatch`, an overlay-guess alignment. Without this the
+    // preview kept saying "needs attention" for exactly the two things a Save resolves.
+    const willSave = adjustSavePatch(analysis, calibration, shots);
+    let warnings: Warning[] = analysis.pipeline.warnings.filter((w) => w !== 'extra-candidates-dropped');
     const method = analysis.pipeline.detection.method;
     if (categorization.template !== null && isCategorizationComplete(categorization)) {
       const profile = { ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M;
@@ -178,7 +183,15 @@ export function useAdjustDraft(pid: string) {
       ...analysis,
       calibration,
       shots,
-      pipeline: { ...analysis.pipeline, stageA: 'done', stageB: 'done', error: null, warnings },
+      pipeline: {
+        ...analysis.pipeline,
+        stageA: 'done',
+        stageB: 'done',
+        error: null,
+        warnings,
+        alignment:
+          willSave.calibration !== undefined ? { method: 'manual', confidence: null } : analysis.pipeline.alignment,
+      },
     };
     const { status, reasons } = photoStatus({ categorization, analysis: draft, result });
     const reconcile = reconcileReasonContext(shots, categorization, method);
@@ -236,12 +249,13 @@ export function useAdjustDraft(pid: string) {
     return doublePunchProposal(shot, measuredWidthMm(shot, onScreen.widths, sameHoleMm), holeDiameterMm, userSet.has(shot.id));
   }
 
-  /** What Save sends: a calibration only when the user moved it (§8), and the shots on screen. */
+  /**
+   * What Save sends (`adjustSavePatch`): the shots on screen, and the alignment when the user moved it, when
+   * none was stored, or when the stored one was only an overlay guess — saving confirms what is on screen.
+   */
   function patch(): AdjustmentsPatch | null {
     if (!data || calibration === null) return null;
-    const stored = data.analysis.calibration;
-    const moved = stored === null || !sameCalibration(stored, calibration);
-    return { ...(moved ? { calibration } : {}), shots };
+    return adjustSavePatch(data.analysis, calibration, shots);
   }
 
   function dirty(): boolean {

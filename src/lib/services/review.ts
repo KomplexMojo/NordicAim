@@ -2,7 +2,7 @@
 // anything" test, and the one service call that loads a session's photos in review order. The review
 // adds no editing of its own — it embeds Adjust and saves through `saveAdjustments`.
 
-import type { Shot } from '@/lib/domain/analysis';
+import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
 import { isTargetPhoto } from '@/lib/domain/backing';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { samePositionMm } from '@/lib/geometry/reproject';
@@ -76,6 +76,25 @@ function sameShot(a: Shot, b: Shot): boolean {
  * never found, the fallback alignment `adjustStartCalibration` drew. Comparing with the start rather
  * than the stored record means an untouched fallback is never saved as a manual alignment.
  */
+/**
+ * What a Save from Adjust (or a Review confirm with edits) sends: the shots on screen, and the alignment
+ * on screen when there was none stored, when the user moved it, **or when the stored one was only a
+ * guess** — analysis-pipeline §4 rule 9: `method: 'overlay'` means no disc was found and the rings sit
+ * where the owner aimed. The owner has now seen those rings over the photo and saved, which confirms them
+ * (owner report 2026-09-19: "after I … make the shot adjustments … and save them, it doesn't show them as
+ * fixed"). Before, a shots-only save left the guess in place and the photo at needs-attention for good.
+ */
+export function adjustSavePatch(
+  analysis: Pick<TargetAnalysis, 'calibration' | 'pipeline'>,
+  calibration: Calibration,
+  shots: Shot[],
+): { calibration?: Calibration; shots: Shot[] } {
+  const stored = analysis.calibration;
+  const send =
+    stored === null || !sameCalibration(stored, calibration) || analysis.pipeline.alignment.method === 'overlay';
+  return { ...(send ? { calibration } : {}), shots };
+}
+
 export function hasAdjustEdits(
   start: { calibration: Calibration; shots: Shot[] },
   draft: { calibration: Calibration; shots: Shot[] },
