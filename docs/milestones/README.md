@@ -32,7 +32,11 @@ as shown (`<model> · <effort>`).
 | [M19](M19-backing-sheet.md) | Coloured backing sheet option | add metadata (option) · generate analysis | M16 | opus · high | opus · high | no | done |
 | [M20](M20-declared-rounds.md) | Declared rounds are fact (reject, double punches, misses) | generate analysis | M16, M19 | opus · high | opus · high | no | done |
 | [M21](M21-session-review.md) | Session review, suggested holes and double punches | optional correction · receive analysis | M16, M17 | opus · high | opus · high | yes | done |
-| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21 | sonnet · medium | sonnet · high | yes | pending |
+| [M22](M22-settings-and-navigation.md) | Three main screens and a Settings screen (issue #2) | navigation · settings | M19, M21 | opus · high | opus · high | no | pending |
+| [M23](M23-template-guess.md) | Template guess: stop calling sighting sheets precision (issue #5) | review image · generate analysis | M16 | opus · high | opus · high | no | pending |
+| [M24](M24-results-clarity.md) | Results that say what they count (issues #6, #4, #8) | receive analysis | M14, M20 | sonnet · high | opus · high | no | pending |
+| [M25](M25-import-review.md) | An imported photo is shown on the overlay screen (issue #1) | take picture(s) | M07 | sonnet · medium | sonnet · high | no | pending |
+| [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | pending |
 
 ```mermaid
 flowchart TD
@@ -72,6 +76,16 @@ flowchart TD
   M19 --> M20
   M20 --> M14
   M20 --> M15
+  M19 --> M22
+  M21 --> M22
+  M16 --> M23
+  M14 --> M24
+  M20 --> M24
+  M07 --> M25
+  M22 --> M15
+  M23 --> M15
+  M24 --> M15
+  M25 --> M15
 ```
 
 **M16 and M17 are numbered after M15 but run before it** (M15 depends on them). They come from the owner's review of real
@@ -90,6 +104,12 @@ mean quality 2.94**, which supersedes both the first review's 53% / 61% and the 
 incomplete labels). Relaxing REV-27 to recover the filtered-out holes was measured and rejected — it costs 493 false detections
 for 24 real ones. **M21** instead offers the ambiguous candidates to the user as suggestions, which reaches the same recall with
 precision untouched; it is an owner gate because it adds a route and may need a data-model field (its open question 1).
+
+**2026-09-19 issue sweep (REV-47 to REV-50).** The owner asked for new adjustments to be filed as GitHub issues (label
+`owner-request`) and swept before the release, instead of interrupting each run. The sweep turned issues #1, #2, #4 (diagram
+half), #5, #6, #7 (spec edit) and #8 (one message) into **M22–M25**; M15 now depends on them. The rest of #3, #4, #7, #8 and #9
+are owner confirmations whose stated defaults stand unless overruled — and #4's scoring-rule question stays open for the owner.
+Run order from here: **M22 → M23 → M24 → M25 → M15**.
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.
