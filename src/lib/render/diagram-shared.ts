@@ -304,45 +304,19 @@ export function renderScoreStar(cx: number, cy: number, total: number, maxPossib
 }
 
 /**
- * REV-86: the precision diagram's top-left mark, in place of the text chip: a gender-neutral **solid black** pictogram of a shooter
- * aiming a rifle, standing or lying prone, on a small white panel. About 160 by 106 px at (12, 10).
+ * REV-86: the precision diagram's top-left mark, in place of the text chip, in the same style as the sighting symbols: a black disc with a
+ * white **horizontal** bar for prone (lying flat) or a white **vertical** bar for standing (upright).
  */
 export function renderPositionSilhouette(position: 'prone' | 'standing'): string {
-  const ink = '#000000';
-  const ox = 20;
-  const oy = 14;
-  const line = (x1: number, y1: number, x2: number, y2: number, w: number): string =>
-    el('line', { x1: ox + x1, y1: oy + y1, x2: ox + x2, y2: oy + y2, stroke: ink, 'stroke-width': w, 'stroke-linecap': 'round' });
-  const head = (x: number, y: number, r: number): string => el('circle', { cx: ox + x, cy: oy + y, r, fill: ink });
-  let figure: string;
-  if (position === 'standing') {
-    figure =
-      // head, a broad torso, two legs apart, both arms raised to the rifle, and the long rifle at shoulder height
-      head(30, 11, 10) +
-      line(29, 27, 29, 46, 17) +
-      line(25, 46, 20, 68, 9) +
-      line(33, 46, 40, 68, 9) +
-      line(33, 30, 46, 41, 8) +
-      line(46, 41, 60, 29, 8) +
-      line(31, 29, 56, 33, 7) +
-      line(38, 27, 108, 21, 3.8) +
-      line(34, 23, 44, 30, 6);
-  } else {
-    figure =
-      // a long low body along the ground, trailing legs, head up and forward, arms folded under the chin, rifle out front
-      line(8, 58, 60, 53, 15) +
-      line(58, 54, 74, 46, 12) +
-      head(80, 33, 11) +
-      line(72, 48, 86, 51, 8) +
-      line(86, 51, 95, 43, 8) +
-      line(68, 44, 110, 39, 3.8) +
-      line(64, 46, 74, 41, 7);
-  }
-  const panel = el('rect', { x: 10, y: 8, width: 168, height: 106, rx: 14, fill: '#FFFFFF', stroke: '#D5E2EC', 'stroke-width': 1.5 });
+  const cx = 48;
+  const cy = 46;
+  const disc = el('circle', { cx, cy, r: 24, fill: '#111111' });
+  const bar =
+    position === 'prone'
+      ? el('rect', { x: cx - 15, y: cy - 3.5, width: 30, height: 7, rx: 3.5, fill: '#FFFFFF' })
+      : el('rect', { x: cx - 3.5, y: cy - 15, width: 7, height: 30, rx: 3.5, fill: '#FFFFFF' });
   const title = `<title>${position === 'standing' ? 'Standing' : 'Prone'}</title>`;
-  // Drawn on a 110 × 70 grid, then enlarged about its top-left corner so it reads at the size of the other marks.
-  const scaled = el('g', { transform: `translate(${ox} ${oy}) scale(1.35) translate(${-ox} ${-oy})` }, figure);
-  return el('g', { class: 'position-silhouette', 'data-position': position }, title + panel + scaled);
+  return el('g', { class: 'position-silhouette', 'data-position': position }, title + disc + bar);
 }
 
 /** §4: the caption band rect plus centred caption text. */

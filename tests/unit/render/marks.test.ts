@@ -86,22 +86,23 @@ describe('shot colour from the backing (REV-82)', () => {
   });
 });
 
-describe('position silhouettes (REV-86)', () => {
-  it('standing and prone are distinct, named, and solid-black and gender-neutral (just limbs, a head and the rifle)', async () => {
+describe('position marks (REV-86)', () => {
+  it('prone is a black disc with a white horizontal bar, standing one with a white vertical bar', async () => {
     const { renderPositionSilhouette } = await import('@/lib/render/diagram-shared');
-    const standing = renderPositionSilhouette('standing');
     const prone = renderPositionSilhouette('prone');
-    expect(standing).toContain('data-position="standing"');
+    const standing = renderPositionSilhouette('standing');
     expect(prone).toContain('data-position="prone"');
-    expect(standing).not.toBe(prone);
-    expect(standing).toContain('<title>Standing</title>');
+    expect(standing).toContain('data-position="standing"');
     expect(prone).toContain('<title>Prone</title>');
-    // solid black on a white panel: one head each, a rifle line, no white inner strokes (that was the outline style)
-    expect((standing.match(/<circle/g) ?? []).length).toBe(1);
-    expect((prone.match(/<circle/g) ?? []).length).toBe(1);
-    expect(standing).toContain('fill="#FFFFFF"'); // the panel
-    expect(standing).toContain('fill="#000000"'); // the head
-    expect(standing).not.toContain('stroke="#FFFFFF"');
-    expect(standing).toContain('stroke-width="3.8"'); // the rifle
+    expect(standing).toContain('<title>Standing</title>');
+    expect(prone).not.toBe(standing);
+    const bar = (svg: string) => {
+      const m = /<rect[^>]*width="(\d+(?:\.\d+)?)"[^>]*height="(\d+(?:\.\d+)?)"/.exec(svg);
+      return { w: Number(m?.[1]), h: Number(m?.[2]) };
+    };
+    expect(bar(prone).w).toBeGreaterThan(bar(prone).h); // horizontal
+    expect(bar(standing).h).toBeGreaterThan(bar(standing).w); // vertical
+    expect((prone.match(/<circle/g) ?? []).length).toBe(1); // just the disc
+    expect(prone).toContain('fill="#FFFFFF"');
   });
 });
