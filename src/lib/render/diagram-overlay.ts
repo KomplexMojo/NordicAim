@@ -227,30 +227,28 @@ export function renderDiagramOverlaySvg(
   );
 }
 
-// --- The compare slider's own arithmetic (M17 step 3) -----------------------------------------
+// --- The compare sliders' own arithmetic (M17 step 3, REV-30, REV-85) -----------------------------
 
-/** REV-30: *wipe* clips the overlay, *fade* dissolves it. Same control, one line of difference. */
-export type CompareMode = 'wipe' | 'fade';
-
-export interface CompareLayerStyle {
-  /** CSS `clip-path` for the overlay layer. */
+export interface BlendLayerStyle {
+  /** CSS `clip-path` for the diagram layer. */
   clipPath: string;
-  /** CSS `opacity` for the overlay layer. */
+  /** CSS `opacity` for the diagram layer. */
   opacity: number;
-  /** Where the wipe boundary sits, as a fraction of the box from its left edge. */
+  /** Where the swipe boundary sits, as a fraction of the box from its left edge. */
   boundaryFraction: number;
 }
 
+function unit(value: number): number {
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+}
+
 /**
- * M17 step 3. `value` runs 0 (the whole diagram) to 1 (the whole photo).
- *
- * In *wipe* mode the overlay keeps the left `1 - value` of the box: value 0 -> `inset(0 0% 0 0)`
- * (fully visible), 1 -> `inset(0 100% 0 0)` (fully clipped), 0.5 -> half. In *fade* mode the value
- * drives the opacity instead and the clip is left alone.
+ * REV-85: two independent sliders over the diagram layer. **Swipe** runs 0 (the whole diagram) to 1 (the whole photo): the layer keeps
+ * the left `1 - swipe` of the box. **Fade** runs 0 (the diagram solid) to 1 (the diagram gone): the layer's opacity is `1 - fade`. Both
+ * apply at once, so a half-swiped diagram can also be half-transparent.
  */
-export function compareLayerStyle(mode: CompareMode, value: number): CompareLayerStyle {
-  const v = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
-  const boundaryFraction = 1 - v;
-  if (mode === 'fade') return { clipPath: 'none', opacity: boundaryFraction, boundaryFraction };
-  return { clipPath: `inset(0 ${num(v * 100)}% 0 0)`, opacity: 1, boundaryFraction };
+export function blendLayerStyle(fade: number, swipe: number): BlendLayerStyle {
+  const f = unit(fade);
+  const w = unit(swipe);
+  return { clipPath: `inset(0 ${num(w * 100)}% 0 0)`, opacity: 1 - f, boundaryFraction: 1 - w };
 }

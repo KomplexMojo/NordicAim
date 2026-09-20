@@ -461,7 +461,8 @@ test('adjust: a manual edit keeps the sheet\'s tilt and Reset alignment clears i
  * ring-sized marks inside 60 mm that the rule offers. What they are does not matter here — the test is
  * that a suggestion is drawn, a tap turns it into exactly one manual shot, and nothing else is stored.
  */
-test('adjust: a suggested hole becomes a manual shot with one tap and nothing else is stored (M21)', async ({ page }) => {
+// Suggested holes are switched off for now (AdjustSurface `SHOW_SUGGESTED_HOLES`, owner 2026-09-20); re-enable this with the flag.
+test.skip('adjust: a suggested hole becomes a manual shot with one tap and nothing else is stored (M21)', async ({ page }) => {
   const sessionId = await loadDemoSession(page);
   const photoId = await precisionPhotoId(page, sessionId);
   const before = await getAnalysis(page, photoId);

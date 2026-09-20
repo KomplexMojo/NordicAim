@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 
 import { Input } from '@/components/ui/input';
+import { renderScoringIcon } from '@/lib/render/scoring-icons';
 import { Label } from '@/components/ui/label';
 import {
   DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
@@ -84,6 +85,14 @@ export function ScoringSettings({ scoringRule, visibleHoleDiameterMm, onRuleChan
                 onChange={() => onRuleChange(rule.value)}
                 data-testid={id}
                 className="mt-1 size-4"
+              />
+              {/* REV-81: the same mark that sits under the score star on a precision target. */}
+              <svg
+                viewBox="0 0 48 48"
+                className="size-9 shrink-0"
+                aria-hidden="true"
+                data-testid={`scoring-icon-${rule.value}`}
+                dangerouslySetInnerHTML={{ __html: renderScoringIcon(rule.value, 24, 24, 1) }}
               />
               <span className="flex flex-col">
                 <span className="text-sm font-medium">{rule.label}</span>

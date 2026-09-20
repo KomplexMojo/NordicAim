@@ -15,6 +15,7 @@ import * as Comlink from 'comlink';
 import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
 import type { Shot, TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
+import { withBackingColour } from '@/lib/domain/backing';
 import { backingInputFromSettings } from '@/lib/domain/settings';
 import { photoStatus } from '@/lib/domain/status';
 import type { Calibration, Categorization, TargetPhoto } from '@/lib/domain/photo';
@@ -230,7 +231,7 @@ export async function redetectShots(
     return {
       ...current,
       shots: [...kept, ...withUniqueIds(fresh, kept)],
-      pipeline: { ...current.pipeline, detection: detected.detection },
+      pipeline: { ...current.pipeline, detection: withBackingColour(detected.detection, settings.backing) },
     };
   });
 }

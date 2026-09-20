@@ -4,6 +4,7 @@
 import { PRECISION_TEMPLATE, ringRadiusMm } from '../defaults/templates';
 import type { SubsetResult } from '../domain/analysis';
 import { PALETTE } from './palette';
+import { renderScoringIcon } from './scoring-icons';
 import { el, text } from './svg';
 import {
   projectMm,
@@ -130,7 +131,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     const target =
       renderTarget(CELL.cx, CELL.cy, s, s >= 4) +
       renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, s) +
-      renderShots(shots, subset.units, CELL.cx, CELL.cy, s, 5, holeDiameterMm) +
+      renderShots(shots, subset.units, CELL.cx, CELL.cy, s, 5, holeDiameterMm, input.shotColour) +
       renderMpiMarker(subset.mpi, CELL.cx, CELL.cy, s) +
       renderMarkerLabels(shots, subset.mpi, CELL.cx, CELL.cy, s, 5, 'cell');
 
@@ -140,6 +141,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
       renderOffViewNote(offViewCount(shots, CELL.cx, CELL.cy, s)) +
       renderCellChip(input.cellLabelOverride ?? 'PRECISION', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
       (subset.precision === null ? '' : renderScoreStar(664, 56, subset.precision.identifiedTotal, subset.precision.maxPossible)) +
+      (input.scoringRule === undefined ? '' : renderScoringIcon(input.scoringRule, 664, 128)) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
   }
@@ -149,7 +151,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
   const target =
     renderTarget(FULL.cx, FULL.cy, s, s >= 4) +
     renderGroupEllipse(subset.groupEllipse, FULL.cx, FULL.cy, s) +
-    renderShots(shots, subset.units, FULL.cx, FULL.cy, s, 8, holeDiameterMm) +
+    renderShots(shots, subset.units, FULL.cx, FULL.cy, s, 8, holeDiameterMm, input.shotColour) +
     renderMpiMarker(subset.mpi, FULL.cx, FULL.cy, s) +
     renderMarkerLabels(shots, subset.mpi, FULL.cx, FULL.cy, s, 8, 'full');
 
@@ -161,7 +163,8 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     target +
     renderResultsPanel(subset) +
     renderFooterPanel(precisionFooterLines(result, shots)) +
-    (subset.precision === null ? '' : renderScoreStar(1400, 70, subset.precision.identifiedTotal, subset.precision.maxPossible, 1.3));
+    (subset.precision === null ? '' : renderScoreStar(1400, 250, subset.precision.identifiedTotal, subset.precision.maxPossible, 1.3)) +
+    (input.scoringRule === undefined ? '' : renderScoringIcon(input.scoringRule, 1400, 345, 1.3));
   return svgRoot(FULL.width, FULL.height, body);
 }
 

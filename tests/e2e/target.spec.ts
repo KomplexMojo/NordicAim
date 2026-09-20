@@ -60,12 +60,11 @@ async function openPrecisionTarget(page: Page, sessionId: string): Promise<void>
   await expect(page.getByTestId('target-detail-title')).toBeVisible({ timeout: 30_000 });
 }
 
-test('target: the compare slider wipes the diagram across the photo (M17 step 3)', async ({ page }) => {
+test('target: the swipe slider wipes the diagram across the photo (M17 step 3, REV-85)', async ({ page }) => {
   const sessionId = await loadDemoSession(page);
   await openPrecisionTarget(page, sessionId);
 
-  const slider = page.getByTestId('compare-slider');
-  await expect(slider).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('compare-slider')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('compare-photo')).toBeVisible();
 
   // The diagram overlay is drawn in the photo's own pixel space, on top of the photo.
@@ -73,45 +72,47 @@ test('target: the compare slider wipes the diagram across the photo (M17 step 3)
   await expect(overlay.locator('svg.diagram-overlay')).toHaveCount(1);
   await expect(overlay.locator('.overlay-ring')).toHaveCount(5); // capture-overlay §3.1 precision set
 
-  // Editing shows the photo first (REV-78): the diagram layer starts fully clipped away.
-  const range = page.getByTestId('compare-range');
-  await expect(range).toHaveValue('1');
+  // Editing shows the photo first: swipe starts on the photo, so the diagram layer is clipped away; fade starts solid.
+  const swipe = page.getByTestId('swipe-range');
+  await expect(swipe).toHaveValue('1');
+  await expect(page.getByTestId('fade-range')).toHaveValue('0');
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
-  await range.focus();
-  await range.press('Home');
-  await expect(range).toHaveValue('0');
+  await swipe.focus();
+  await swipe.press('Home');
+  await expect(swipe).toHaveValue('0');
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
 
   // It is a real <input type="range">, so the keyboard drives it (M17 step 3).
-  await range.focus();
-  await range.press('End');
-  await expect(range).toHaveValue('1');
+  await swipe.press('End');
+  await expect(swipe).toHaveValue('1');
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
   // …and the clip really is applied, not just recorded.
   expect(await overlay.evaluate((el) => getComputedStyle(el).clipPath)).toContain('100%');
-
-  await range.press('Home');
-  await expect(range).toHaveValue('0');
-  await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
 });
 
-test('target: the fade mode drives the opacity instead of the clip (REV-30)', async ({ page }) => {
+test('target: the fade slider drives the opacity, beside the swipe slider (REV-30, REV-85)', async ({ page }) => {
   const sessionId = await loadDemoSession(page);
   await openPrecisionTarget(page, sessionId);
 
   const overlay = page.getByTestId('compare-overlay');
   await expect(overlay).toBeVisible({ timeout: 30_000 });
-  await page.getByTestId('compare-mode').click();
-  await expect(page.getByTestId('compare-slider')).toHaveAttribute('data-compare-mode', 'fade');
+  // No Fade/Wipe button any more: the two are sliders, half a row each.
+  await expect(page.getByTestId('compare-mode')).toHaveCount(0);
+  const fade = page.getByTestId('fade-range');
+  const swipe = page.getByTestId('swipe-range');
+  const [fb, sb] = [await fade.boundingBox(), await swipe.boundingBox()];
+  expect(Math.abs(fb!.y - sb!.y)).toBeLessThan(4);
+  expect(fb!.x + fb!.width).toBeLessThanOrEqual(sb!.x + 1);
 
-  const range = page.getByTestId('compare-range');
-  await range.focus();
-  await range.press('Home');
+  await swipe.focus();
+  await swipe.press('Home');
+  await fade.focus();
   await expect(overlay).toHaveAttribute('data-opacity', '1');
-  await range.press('End');
-  await expect(range).toHaveValue('1');
+  await fade.press('End');
+  await expect(fade).toHaveValue('1');
   await expect(overlay).toHaveAttribute('data-opacity', '0');
-  await expect(overlay).toHaveAttribute('data-clip-path', 'none');
+  // Fade leaves the swipe clip alone.
+  await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
   expect(await overlay.evaluate((el) => getComputedStyle(el).opacity)).toBe('0');
 });
 

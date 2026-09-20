@@ -436,7 +436,13 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
 
     expect(detectCalls[0]?.backing).toEqual({ mode: 'coloured', colour: ORANGE });
     const analysis = await getAnalysisRecord(ctx.db, photoId);
-    expect(analysis?.pipeline.detection).toEqual({ method: 'colour', backing: 'forced', fallbackReason: null });
+    expect(analysis?.pipeline.detection).toEqual({
+      method: 'colour',
+      backing: 'forced',
+      fallbackReason: null,
+      // REV-82: the colour in force when the shots were found, for drawing them.
+      backingColour: expect.stringMatching(/^#[0-9A-F]{6}$/),
+    });
     expect(analysis?.pipeline.warnings).not.toContain('backing-colour-not-found');
   });
 

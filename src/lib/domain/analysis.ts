@@ -47,6 +47,13 @@ export const DetectionRecord = z.object({
   method: z.enum(['colour', 'standard']),
   backing: z.enum(['detected', 'not-detected', 'forced', 'off']),
   fallbackReason: z.string().max(200).nullable(),
+  // REV-82: the backing colour in force when the shots were found, as `#RRGGBB` for drawing them. Absent on older analyses and
+  // whenever no measured colour was in use; the shots are then drawn in the default red.
+  backingColour: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .nullable()
+    .optional(),
 });
 export type DetectionRecord = z.infer<typeof DetectionRecord>;
 

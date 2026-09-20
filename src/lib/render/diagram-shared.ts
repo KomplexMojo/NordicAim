@@ -81,7 +81,8 @@ export function renderLegendBothDots(): string {
   return el('g', { class: 'legend-both' }, proneDot + proneLabel + standingDot + standingLabel);
 }
 
-function shotFillColor(shot: Shot, units: UnitResult[]): string {
+function shotFillColor(shot: Shot, units: UnitResult[], override?: string): string {
+  if (override !== undefined) return override;
   const unit0 = units.find((u) => u.shotId === shot.id && u.unitIndex === 0);
   return unit0?.position === 'standing' ? PALETTE.shotStanding : PALETTE.shotProne;
 }
@@ -99,6 +100,8 @@ export function renderShots(
   s: number,
   radiusPx: number,
   holeDiameterMm: number,
+  /** REV-82: the backing colour recorded for this photo, or undefined for the default position colours. */
+  colour?: string,
 ): string {
   let out = '';
   const trueRadiusPx = (holeDiameterMm / 2) * s;
@@ -118,7 +121,11 @@ export function renderShots(
         class: 'touch-credit',
       });
     }
-    out += el('circle', { cx: x, cy: y, r, fill: shotFillColor(shot, units), stroke: '#FFFFFF', 'stroke-width': 2, class: 'shot' });
+    if (colour !== undefined) {
+      // A backing colour can be close to the black disc or the white paper: a dark halo under the white edge keeps the dot readable on both.
+      out += el('circle', { cx: x, cy: y, r: r + 3.5, fill: 'none', stroke: '#1B1F24', 'stroke-opacity': 0.6, 'stroke-width': 1.5 });
+    }
+    out += el('circle', { cx: x, cy: y, r, fill: shotFillColor(shot, units, colour), stroke: '#FFFFFF', 'stroke-width': 2, class: 'shot' });
   }
   return out;
 }
@@ -263,6 +270,8 @@ const MEDAL_COLOURS = {
   gold: { fill: '#F2B705', stroke: '#B58500' },
   silver: { fill: '#C5CBD3', stroke: '#8A929C' },
   bronze: { fill: '#CD7F32', stroke: '#8B5A22' },
+  // Below 70: just a star, black outline and black score, no medal colour (REV-81).
+  plain: { fill: 'none', stroke: '#000000' },
 } as const;
 
 /** The points of a five-pointed star centred on (cx, cy): outer radius `outer`, inner radius `inner`, one point straight up. */
@@ -290,7 +299,7 @@ export function renderScoreStar(cx: number, cy: number, total: number, maxPossib
     'stroke-width': 2.5 * scale,
     'stroke-linejoin': 'round',
   });
-  const label = text(cx, cy + 6 * scale, 17 * scale, String(total), { bold: true, anchor: 'middle', color: '#1B1F24' });
+  const label = text(cx, cy + 6 * scale, 17 * scale, String(total), { bold: true, anchor: 'middle', color: medal === 'plain' ? '#000000' : '#1B1F24' });
   return el('g', { class: 'score-star', 'data-medal': medal, 'data-score': String(total) }, star + label);
 }
 

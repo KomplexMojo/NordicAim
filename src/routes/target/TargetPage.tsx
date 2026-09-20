@@ -4,6 +4,7 @@ import { suggestSeason } from '@/lib/domain/season';
 import { Link, useParams } from 'react-router';
 
 import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
+import { tallyRows } from '@/lib/scoring/tally';
 import { PhotoSection } from '@/components/target/PhotoSection';
 import { DiagramSvg } from '@/components/results/DiagramSvg';
 import { ReasonList } from '@/components/results/ReasonList';
@@ -53,32 +54,34 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** rendering-composite §3 item 9: the RESULTS tally, rows n = 10…0, `x<count>` or `-`. */
+/**
+ * REV-84: the RESULTS tally as a compact grid, one small cell per ring: the ring, how many shots are on it, and the points they add
+ * (ring × shots). Rings with no shots are dimmed. The total under it is the sum of the cells.
+ */
 function PrecisionTally({ subset }: { subset: SubsetResult }) {
   const precision = subset.precision;
   if (precision === null) return null;
-  const rings = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+  const { rows, total } = tallyRows(precision.tally);
   return (
-    <table className="w-full text-sm" data-testid="tally-table">
-      <caption className="sr-only">Shots per ring</caption>
-      <thead>
-        <tr>
-          <th className="text-left font-medium text-muted-foreground">Ring</th>
-          <th className="text-right font-medium text-muted-foreground">Shots</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rings.map((ring) => {
-          const count = precision.tally[ring] ?? 0;
-          return (
-            <tr key={ring} data-testid={`tally-row-${ring}`}>
-              <td className="py-0.5">{ring}</td>
-              <td className="py-0.5 text-right">{count > 0 ? `x${count}` : '-'}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div data-testid="tally-table" role="group" aria-label="Shots per ring and the points they add">
+      <ul className="grid grid-cols-3 gap-1 text-xs sm:grid-cols-4 lg:grid-cols-6">
+        {rows.map(({ ring, shots, points }) => (
+          <li
+            key={ring}
+            data-testid={`tally-row-${ring}`}
+            className={`flex items-baseline justify-between gap-1 rounded border px-2 py-1 tabular-nums ${shots === 0 ? 'text-muted-foreground opacity-60' : ''}`}
+          >
+            <span className="font-semibold">{ring}</span>
+            <span>{shots === 0 ? '–' : `x${shots}`}</span>
+            <span className="min-w-6 text-right">{shots === 0 ? '' : `= ${points}`}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1 text-xs text-muted-foreground" data-testid="tally-total">
+        Sum of the rings: {total}
+        {total !== precision.identifiedTotal ? ` (scored ${precision.identifiedTotal})` : ''}
+      </p>
+    </div>
   );
 }
 

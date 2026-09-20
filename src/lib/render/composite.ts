@@ -49,7 +49,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 9;
+export const COMPOSITE_RENDERER_VERSION = 10;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -122,10 +122,18 @@ function shortPositionLabel(position: Position): string {
   return position;
 }
 
-function slotDiagramInput(slot: SlotData, holeDiameterMm: number, cellLabelOverride: string, sightingRole?: 'sight-in' | 'confirm'): DiagramInput {
+function slotDiagramInput(
+  slot: SlotData,
+  holeDiameterMm: number,
+  cellLabelOverride: string,
+  scoringRule: ScoringRule,
+  sightingRole?: 'sight-in' | 'confirm',
+): DiagramInput {
   return {
     cellLabelOverride,
     sightingRole,
+    scoringRule,
+    shotColour: slot.analysis.pipeline.detection.backingColour ?? undefined,
     template: slot.result.template,
     result: slot.result,
     shots: slot.analysis.shots,
@@ -318,7 +326,7 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
       slot === null
         ? renderBlankCellSvg(cell.template, label, role)
         : renderDiagramSvg(
-            slotDiagramInput(slot, input.holeDiameterMm, label, role),
+            slotDiagramInput(slot, input.holeDiameterMm, label, input.scoring.rule, role),
             'cell',
             String(cell.index + 1), // only the clip id still needs the slot number
           );

@@ -11,6 +11,7 @@ import { isTargetPhoto } from '@/lib/domain/backing';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, Categorization, TargetPhoto } from '@/lib/domain/photo';
+import { withBackingColour } from '@/lib/domain/backing';
 import { backingInputFromSettings } from '@/lib/domain/settings';
 import { photoStatus } from '@/lib/domain/status';
 import { withoutArea } from '@/lib/scoring/cap-shots';
@@ -186,7 +187,9 @@ export async function runStageA(
           );
 
     // backing-sheet.md §3, §5.6: record which path ran, and warn when the colour path found nothing.
-    const detection: DetectionRecord = detected?.detection ?? analysis.pipeline.detection ?? INITIAL_DETECTION;
+    const detection: DetectionRecord = detected
+      ? withBackingColour(detected.detection, settings.backing)
+      : (analysis.pipeline.detection ?? INITIAL_DETECTION);
     if (detected !== null && usedBackingFallback(detection)) warnings.push('backing-colour-not-found');
 
     // A5 / REV-39 (M20): the declared rounds are fact. Stage A runs before metadata, so it can only

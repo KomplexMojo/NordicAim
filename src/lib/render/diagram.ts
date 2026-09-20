@@ -3,6 +3,7 @@
 
 import type { AnalysisResult, Shot } from '../domain/analysis';
 import type { Lighting } from '../domain/enums';
+import type { ScoringRule } from '../domain/settings';
 import { renderBlankPrecisionCell, renderPrecisionDiagram } from './diagram-precision';
 import { renderBlankSightingCell, renderSightingDiagram } from './diagram-sighting';
 
@@ -22,6 +23,10 @@ export interface DiagramInput {
   cellLabelOverride?: string;
   /** REV-79: on a sighting `cell`, the top-left mark is a symbol for this role instead of the text chip. */
   sightingRole?: 'sight-in' | 'confirm';
+  /** REV-81: the scoring rule that scored a precision target; its icon sits under the score star. */
+  scoringRule?: ScoringRule;
+  /** REV-82: the backing colour recorded for this photo (`#RRGGBB`); every shot dot takes it. Undefined draws the default red. */
+  shotColour?: string;
 }
 
 export type DiagramVariant = 'full' | 'cell';

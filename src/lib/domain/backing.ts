@@ -86,3 +86,31 @@ export function swatchCss(colour: ColourSignature): string {
 /** backing-sheet.md §4: shown when a card photo yields no clear colour. */
 export const CARD_NO_COLOUR_MESSAGE =
   "Couldn't find a clear colour on this card. Retake it in even light, filling the frame.";
+
+/**
+ * REV-82: a colour to draw shot dots in for a measured backing: its hue, kept vivid. The signature stores 10th-percentile
+ * saturation and value (a floor, not a typical pixel), so both are lifted to a minimum that stays visible on the target.
+ */
+export function backingDisplayColour(sig: Pick<ColourSignature, 'hueDeg' | 'satP10' | 'valP10'>): string {
+  const h = ((sig.hueDeg % 360) + 360) % 360;
+  const s = Math.min(1, Math.max(sig.satP10, 0.55));
+  const v = Math.min(1, Math.max(sig.valP10, 0.6));
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  const hex = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, '0').toUpperCase();
+  return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+/**
+ * REV-82: the detection record with the backing colour that was in force. Only when the colour path ran and a measured colour is in
+ * the Settings backing; otherwise the colour is cleared, so plain-paper targets keep the default red.
+ */
+export function withBackingColour<T extends { method: 'colour' | 'standard' }>(
+  detection: T,
+  backing: { colour: ColourSignature | null } | null,
+): T & { backingColour: string | null } {
+  const colour = detection.method === 'colour' && backing?.colour != null ? backingDisplayColour(backing.colour) : null;
+  return { ...detection, backingColour: colour };
+}

@@ -19,7 +19,8 @@ import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo'
 import { diagramCellSvgKey, diagramFullPngKey, diagramFullSvgKey, diagramPrefix } from '@/lib/store/blob-keys';
 import { deleteByPrefix, putBlob } from '@/lib/store/blobs-repo';
 import type { StoredBlob } from '@/lib/store/db';
-import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
+import { getPhotoRecord, listPhotosBySession, putPhotoRecord } from '@/lib/store/photos-repo';
+import { sightingRoles } from '@/lib/domain/sighting-role';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
 import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { getSettings } from '@/lib/store/settings-repo';
@@ -155,6 +156,13 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
     // B4 (warnings half; the status itself is computed inside the transaction below).
     const warnings = mergeReconcileWarnings(stageBWarnings(analysis, categorization), reconciled ?? { warnings: [] });
 
+    // REV-79 / REV-83: a sighting target's symbol is its chosen role, or, for a target saved before roles were chosen, the role its
+    // order in the session gives (`sightingRoles`), so old and new targets are drawn alike without rewriting stored data.
+    const sightingRole =
+      template !== 'sighting'
+        ? null
+        : (categorization.sightingRole ?? sightingRoles(await listPhotosBySession(ctx.db, photo.sessionId)).get(photo.id) ?? null);
+
     // B3: rasterise before the transaction (data-model §6).
     const diagrams =
       result === null
@@ -168,7 +176,9 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
               captureLocal: photo.captureTime.local,
               lighting: photo.lighting,
               holeDiameterMm,
-              ...(template === 'sighting' && photo.categorization.sightingRole ? { sightingRole: photo.categorization.sightingRole } : {}),
+              ...(sightingRole !== null ? { sightingRole } : {}),
+              ...(template === 'precision' ? { scoringRule: settings.scoringRule } : {}),
+              ...(analysis.pipeline.detection.backingColour ? { shotColour: analysis.pipeline.detection.backingColour } : {}),
             },
             renderTools,
           );

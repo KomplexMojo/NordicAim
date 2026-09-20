@@ -3,7 +3,7 @@ import { useId, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
-import { compareLayerStyle, renderDiagramOverlaySvg, type CompareMode } from '@/lib/render/diagram-overlay';
+import { blendLayerStyle, renderDiagramOverlaySvg } from '@/lib/render/diagram-overlay';
 import { unplacedRounds } from '@/lib/services/adjust';
 
 import { AlignmentControls } from './AlignmentControls';
@@ -19,14 +19,22 @@ import type { AdjustDraft } from './useAdjustDraft';
  * preview. The Adjust route and the session review (M21 step 4) both render this one component, each
  * with its own actions around it.
  */
+/**
+ * The suggested-holes feature (M21 step 2) is switched off for now (the owner, 2026-09-20: 'we may re-add it later'). Set this to `true` to
+ * bring back the dashed suggestion circles and the Hide/Show button; the detection, the draft state and the tests for it are all still here.
+ */
+const SHOW_SUGGESTED_HOLES = false;
+
 export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
   const [mode, setMode] = useState<'shots' | 'alignment'>('shots');
   // M17 step 1: the stage's live transform, so a dragged tray marker lands under the finger.
   const stageApi = useRef<StageApi | null>(null);
-  // REV-78: 0 is the whole diagram and 1 the whole photo (the M17 compare slider, now part of the editor); the photo shows first.
-  const [compareValue, setCompareValue] = useState(1);
-  const [compareMode, setCompareMode] = useState<CompareMode>('wipe');
-  const sliderId = useId();
+  // REV-85: two sliders over the diagram layer, side by side. Swipe: 0 the whole diagram to 1 the whole photo (it starts on the photo, so
+  // editing looks as before). Fade: 0 the diagram solid to 1 gone; it starts solid, so swiping alone reveals the diagram.
+  const [fade, setFade] = useState(0);
+  const [swipe, setSwipe] = useState(1);
+  const fadeId = useId();
+  const swipeId = useId();
   const { data, calibration, shots, selectedId, setSelectedId, preview } = draft;
   const diagram = useMemo(() => {
     if (!data || calibration === null) return null;
@@ -39,9 +47,9 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
       photo.working,
       holeDiameterMm,
     );
-    const style = compareLayerStyle(compareMode, draft.imageUrl === null ? 0 : compareValue);
-    return { svg, ...style, showHandle: compareMode === 'wipe' && compareValue > 0 && compareValue < 1 };
-  }, [data, calibration, shots, preview, compareMode, compareValue, draft.imageUrl]);
+    const style = blendLayerStyle(fade, draft.imageUrl === null ? 0 : swipe);
+    return { svg, ...style, showHandle: swipe > 0 && swipe < 1 };
+  }, [data, calibration, shots, preview, fade, swipe, draft.imageUrl]);
   if (!data || calibration === null) return null;
 
   const { photo, analysis, holeDiameterMm } = data;
@@ -110,7 +118,7 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
             onCalibrationChange={draft.changeCalibration}
             apiRef={stageApi}
             onShotDragEnd={onShotDragEnd}
-            suggestions={draft.suggestions}
+            suggestions={SHOW_SUGGESTED_HOLES ? draft.suggestions : []}
             onAcceptSuggestion={draft.acceptSuggestion}
             diagram={diagram}
           />
@@ -120,41 +128,50 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
         {mode === 'shots' && <UnplacedTray count={unplaced} onPlace={placeUnplaced} />}
       </div>
 
-      {/* REV-78 (was the separate Compare view): slide between the diagram and the photo, or fade instead of wipe. */}
+      {/* REV-78/REV-85: the diagram↔photo comparison is part of the editor, as two half-width sliders side by side. */}
       <section
-        className="flex flex-col gap-1"
+        className="grid grid-cols-2 gap-3"
         data-testid="compare-slider"
-        data-compare-mode={compareMode}
-        data-compare-value={compareValue}
+        data-fade={fade}
+        data-swipe={swipe}
+        aria-label="Compare the diagram with the photo"
       >
-        <label htmlFor={sliderId} className="text-sm text-muted-foreground">
-          Diagram ↔ Photo
-        </label>
-        <input
-          id={sliderId}
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={compareValue}
-          data-testid="compare-range"
-          aria-label="Diagram ↔ Photo"
-          className="h-11 w-full"
-          onChange={(e) => setCompareValue(Number(e.target.value))}
-        />
-        <Button
-          variant="outline"
-          className="h-11"
-          data-testid="compare-mode"
-          aria-pressed={compareMode === 'fade'}
-          onClick={() => setCompareMode(compareMode === 'wipe' ? 'fade' : 'wipe')}
-        >
-          {compareMode === 'wipe' ? 'Fade instead of wipe' : 'Wipe instead of fade'}
-        </Button>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={fadeId} className="text-sm text-muted-foreground">
+            Fade
+          </label>
+          <input
+            id={fadeId}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={fade}
+            data-testid="fade-range"
+            className="h-11 w-full"
+            onChange={(e) => setFade(Number(e.target.value))}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={swipeId} className="text-sm text-muted-foreground">
+            Swipe
+          </label>
+          <input
+            id={swipeId}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={swipe}
+            data-testid="swipe-range"
+            className="h-11 w-full"
+            onChange={(e) => setSwipe(Number(e.target.value))}
+          />
+        </div>
       </section>
 
       {/* M21 step 2: only when there is something to hide; with no suggestions nothing is shown or said. */}
-      {mode === 'shots' && draft.suggestionCount > 0 && (
+      {SHOW_SUGGESTED_HOLES && mode === 'shots' && draft.suggestionCount > 0 && (
         <Button
           variant="outline"
           className="h-11"
@@ -178,17 +195,7 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
             onClose={() => setSelectedId(null)}
             proposedMultiplicity={draft.proposalFor(selected)}
           />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Tap the photo to add a shot, tap a shot to select it, or drag one to move it.
-            {draft.suggestions.length > 0
-              ? ' Dashed circles are marks the app was unsure about; tap one to count it as a shot.'
-              : ''}
-            {unplaced > 0
-              ? ' Rounds in the tray are scored as misses (off target); drag one onto the hole it made to count it.'
-              : ''}
-          </p>
-        )
+        ) : null
       ) : (
         <AlignmentControls calibration={calibration} onChange={draft.changeCalibration} />
       )}

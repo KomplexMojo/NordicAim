@@ -37,7 +37,8 @@ test('the result card picture opens the target, where the photo is editable on t
   // The swipe (wipe) comparison is part of the editor, not a separate view.
   await expect(page.getByTestId('photo-view-compare')).toHaveCount(0);
   await expect(page.getByTestId('compare-slider')).toBeVisible();
-  await expect(page.getByTestId('compare-mode')).toBeVisible();
+  await expect(page.getByTestId('fade-range')).toBeVisible();
+  await expect(page.getByTestId('swipe-range')).toBeVisible();
 });
 
 test('the old adjust address goes to the target screen', async ({ page }) => {

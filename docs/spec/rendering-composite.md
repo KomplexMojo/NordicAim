@@ -310,4 +310,4 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
   white plus (four bars round a small gap, inside a fine ring) for `confirm`. A per-photo diagram uses `categorization.sightingRole` when set; a
   summary slot uses its position (slot 1 sight-in, slot 2 confirm), blank slots too. Precision keeps its text chip.
 - **Precision score star (top-right)**: `renderScoreStar` draws a five-pointed star with `identifiedTotal` inside: gold when the score is above 90% of `maxPossible`,
-  silver from 80% to 90%, bronze below (`scoring/medal.ts`). In the cell at (664, 56) and in the detail diagram at (1400, 70, ×1.3).
+  silver from 80% to 90%, bronze below (`scoring/medal.ts`). In the cell at (664, 56) and in the detail diagram at (1400, 250, ×1.3), clear of the legend band; the scoring-rule icon (REV-81) sits directly below it, at (664, 128) and (1400, 345, ×1.3).
