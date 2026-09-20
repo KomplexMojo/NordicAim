@@ -3,7 +3,7 @@
 export type MainTab = 'shooting' | 'settings' | 'diagnostics';
 
 export const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string; to: string }> = [
-  { id: 'shooting', label: 'Shooting', to: '/' },
+  { id: 'shooting', label: 'Sessions', to: '/' },
   { id: 'settings', label: 'Settings', to: '/settings' },
   { id: 'diagnostics', label: 'Diagnostics', to: '/diagnostics' },
 ];

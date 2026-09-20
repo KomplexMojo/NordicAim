@@ -58,7 +58,7 @@ test('the three tabs navigate and mark the active one', async ({ page }) => {
   await page.waitForURL(/#\/diagnostics$/);
   await expectActive(page, 'diagnostics');
 
-  await bar.getByRole('link', { name: 'Shooting' }).click();
+  await bar.getByRole('link', { name: 'Sessions' }).click();
   await page.waitForURL(/#\/$/);
   await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
   await expectActive(page, 'shooting');

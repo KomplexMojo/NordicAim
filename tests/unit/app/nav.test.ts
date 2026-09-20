@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { MAIN_TABS, activeTab, showsTabBar } from '@/lib/app/nav';
 
 describe('MAIN_TABS', () => {
-  it('is Shooting, Settings, Diagnostics in that order', () => {
+  it('is Sessions, Settings, Diagnostics in that order', () => {
     expect(MAIN_TABS.map((t) => [t.label, t.to])).toEqual([
-      ['Shooting', '/'],
+      ['Sessions', '/'],
       ['Settings', '/settings'],
       ['Diagnostics', '/diagnostics'],
     ]);
@@ -15,7 +15,7 @@ describe('MAIN_TABS', () => {
 });
 
 describe('activeTab', () => {
-  it('puts home, every session route and review under Shooting', () => {
+  it('puts home, every session route and review under Sessions', () => {
     for (const path of [
       '/',
       '/sessions',

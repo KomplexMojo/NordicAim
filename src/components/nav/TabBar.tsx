@@ -1,11 +1,25 @@
-import { Crosshair, Settings, Stethoscope, type LucideIcon } from 'lucide-react';
+import { Settings, Stethoscope } from 'lucide-react';
+import type { ComponentType, SVGProps } from 'react';
 import { Link } from 'react-router';
 
 import { MAIN_TABS, type MainTab } from '@/lib/app/nav';
 import { cn } from '@/lib/utils';
 
-const ICONS: Record<MainTab, LucideIcon> = {
-  shooting: Crosshair,
+/** REV-111: the Sessions tab's icon: a crosshair with a camera at its lower right (shoot it, photograph it). */
+function SessionsIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="9.5" cy="9.5" r="6" />
+      <path d="M9.5 1.5v3M9.5 14.5v3M1.5 9.5h3M14.5 9.5h3" />
+      <rect x="12" y="13" width="11" height="8.5" rx="1.6" className="fill-background" />
+      <path d="M15 13l1-1.8h4L21 13" className="fill-background" />
+      <circle cx="17.5" cy="17.3" r="2.3" />
+    </svg>
+  );
+}
+
+const ICONS: Record<MainTab, ComponentType<SVGProps<SVGSVGElement>>> = {
+  shooting: SessionsIcon,
   settings: Settings,
   diagnostics: Stethoscope,
 };
