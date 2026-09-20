@@ -34,9 +34,13 @@ export function HomePage() {
         ) : (
           <SessionList sessions={recent} emptyMessage="No sessions yet. Quick start to take your first photo." />
         )}
-        {(sessions?.length ?? 0) > RECENT_COUNT && (
-          <Link to="/sessions" className="text-sm text-primary underline underline-offset-4">
-            All sessions
+        {(sessions?.length ?? 0) > 0 && (
+          <Link
+            to="/sessions"
+            className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4"
+            data-testid="all-sessions"
+          >
+            All sessions (open, delete)
           </Link>
         )}
       </section>

@@ -71,3 +71,14 @@ test('a session is deleted only after three steps and its exact name; cancelling
   await page.goto(`/#/sessions/${keptId}/results`);
   await expect(page.getByTestId('target-card').first()).toBeVisible({ timeout: 30_000 });
 });
+
+test('Home always links to the Sessions screen, where Delete is, even with one session', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await page.goto('/#/');
+  await page.getByTestId('all-sessions').click();
+  await expect(page).toHaveURL(/#\/sessions$/);
+  await expect(page.getByTestId('session-delete').first()).toBeVisible();
+});
