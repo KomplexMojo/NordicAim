@@ -159,6 +159,8 @@ and it is what pushed the summary image's per-slot line, below, past its 110-cha
 
 ## 4. `cell` variant (720 × 720)
 
+> **Chip (REV-79/80/86):** the top-left text chip is now a symbol (sighting: sight-in / confirm disc; precision: prone / standing disc) and a precision cell also carries the score star and scoring-rule icon. See "REV-79 / REV-80 marks" at the end of this file.
+
 - Target centre (360, 350). **One fixed scale for every small target view, both templates: `CELL_SCALE` = 300 / 82.7 ≈ 3.6276
   px/mm (REV-58)** — the precision sheet's halo fills the drawing, so a sighting target is drawn smaller than its panel. It is the
   same scale on a result card and in the shareable image, so targets can be compared by eye and sight-in / confirm always match.

@@ -8,7 +8,7 @@ Implements REV-5, REV-8, REV-15 step 1. Pure math: `src/lib/capture/overlay.ts`.
 1. **Quick start** (home and `#/sessions`): if a session with `sessionDate` = today (local) exists, the button reads
    **Capture (today's session)** and opens its capture screen. Otherwise it reads **Start & capture**, creates
    `Session <YYYY-MM-DD>`, and opens its capture screen.
-2. Pick **Template** (`Sighting` | `Precision`) and **Position** (`Prone` | `Standing` | `Both`), remembered per session in
+2. Pick the **target type** (REV-79): `Sight in` | `Confirm` | `Precision prone` | `Precision standing`, which sets the template and position (`Both` is no longer offered), remembered per session in
    `localStorage` `asa.capture.<sessionId>` (try/catch).
 3. The camera shows the template's overlay, with a label chip:
    - sighting: **"Align the dark disc with the thick circle"**

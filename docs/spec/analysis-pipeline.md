@@ -14,7 +14,7 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 
 | Route (hash) | Screen | Milestone |
 |---|---|---|
-| `#/` | Home: quick-start button + up to 5 recent sessions | M09 |
+| `#/` | Home: quick-start button + **every** session (REV-72) | M09 |
 | `#/sessions` | Redirects to `#/` (REV-72). Home lists **every** session (name, date, target count) and is the one place a session is deleted | M09 |
 | `#/sessions/:sid` | Redirect: to `metadata` if any photo is `needs-metadata`, else to `results` | M09 |
 | `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |
@@ -22,7 +22,7 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/sessions/:sid/results` | **Step 3: receive analysis** (summary image + target cards) | M12, M14 |
 | `#/sessions/:sid/photos/:pid` | Target: full diagram, all metrics, and the photo section — the M13 editor in place (Save / Re-analyze) with the diagram↔photo slider and the wipe/fade switch built in (REV-73, REV-78) | M12, M13 |
 | `#/sessions/:sid/photos/:pid/adjust` | Redirects to the target screen (REV-73): viewing and adjusting are one screen | M13 |
-| `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with Adjust embedded | M21 |
+| `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with the photo editor embedded (REV-73/78) | M21 |
 | `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |
 | `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
 | `#/diagnostics` | Device capability checks | M01 |
@@ -40,9 +40,9 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 - Session name (default `Session <YYYY-MM-DD>`) and optional session notes.
 - One card per photo: thumbnail, a small Stage A progress indicator ("Checking photo…", "Aligning…", "Finding shots…",
   "Ready"), and these fields:
-  - **Template** (prefilled from capture) and **Position** (prefilled)
+  - **Target type** (prefilled from capture; REV-79): Sight in, Confirm, Precision prone or Precision standing, which sets the template and position
   - **Rounds** for prone and/or standing (defaults from `categorizationForKind`, REV-79)
-  - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`
+  - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`, with **Season** (Winter | Spring | Summer | Fall) beside it
   - **Notes** (optional)
   - **Remove photo**.
 - **Add more photos** → capture screen.

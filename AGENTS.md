@@ -9,8 +9,7 @@ pipeline reviews the image, overlays it on the target template, pulls photo meta
 and generates the analysis. **Scoring is the core of the analysis** (`docs/spec/geometry-scoring.md`) and is never optional.
 Code is hosted on GitHub Pages.
 
-**Do not build anything listed in [`docs/BACKLOG.md`](docs/BACKLOG.md)** unless the owner asks. That includes backups,
-the sequence player, harness trends, and a Capacitor shell. **Apple Health and Garmin integrations are out of scope entirely.**
+**Do not build anything listed in [`docs/BACKLOG.md`](docs/BACKLOG.md)** unless the owner asks. That includes the sequence player, harness trends, and a Capacitor shell. **Apple Health and Garmin integrations are out of scope entirely.**
 
 ## Golden rules
 
@@ -91,12 +90,13 @@ iPhone testing: push to `main`, then open `https://komplexmojo.github.io/advance
 index.html                     CSP meta, root element
 src/main.tsx                   bootstrap, service worker registration, pipeline resume
 src/app/router.tsx             createHashRouter route table (routes: spec/analysis-pipeline.md §1)
-src/routes/                    home, sessions, capture, metadata, results, target, adjust, diagnostics
+src/routes/                    home, patterns, capture, metadata, results, target, review, settings, diagnostics (sessions/ is only the redirect)
 src/components/                UI components (shadcn primitives in components/ui)
 src/lib/domain/                zod schemas, types, categorization helpers, status.ts (photoStatus)
 src/lib/defaults/              biathlon profile + template geometry
 src/lib/geometry/              mm<->px transforms, calibration scaling
-src/lib/scoring/               pure scoring, groups, splits, missing-round modes
+src/lib/scoring/               pure scoring, groups, splits, missing-round modes, characteristics (observed patterns)
+src/lib/backup/  src/lib/patterns/   backup create/restore/verify (REV-63); cross-session Patterns collect/summarize
 src/lib/capture/               overlay.ts (pure), camera.ts, fake-camera.ts, wake-lock-browser.ts
 src/lib/media/                 format, capture-time, image-stats, lighting (pure); exif.ts; image-browser.ts
 src/lib/store/                 db.ts + repositories (idb) + persistence-browser.ts
