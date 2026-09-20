@@ -95,7 +95,9 @@ export function PatternsPage() {
       ) : (
         <div className="flex flex-col gap-4 lg:flex-row">
           <div className="min-w-0 flex-1">
-            <div className={zoomed ? 'max-h-[80vh] overflow-auto' : ''}>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-start">
+            <IssueOverlayPanel selected={issues} onChange={setIssues} className="lg:order-2 lg:w-48 lg:shrink-0" />
+            <div className={`min-w-0 flex-1 lg:order-1 ${zoomed ? 'max-h-[80vh] overflow-auto' : ''}`}>
               <div
                 data-testid="patterns-drawing"
                 data-shots={shown.length}
@@ -106,8 +108,6 @@ export function PatternsPage() {
                 dangerouslySetInnerHTML={{ __html: svg }}
               />
             </div>
-            <div className="mt-2">
-              <IssueOverlayPanel selected={issues} onChange={setIssues} />
             </div>
             <Button variant="outline" className="mt-2 h-11" data-testid="patterns-zoom" onClick={() => setZoomed(!zoomed)}>
               {zoomed ? 'Fit to width' : 'Zoom in'}

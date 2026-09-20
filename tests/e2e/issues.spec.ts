@@ -27,7 +27,7 @@ test('toggling a shooting issue draws its region over the diagram, and toggling 
 
   await page.getByTestId('panel-toggle-issues').click();
   await page.getByTestId('issue-toggle-tight').click();
-  await expect(page.getByTestId('issue-toggle-tight')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('issue-toggle-tight')).toHaveAttribute('aria-checked', 'true');
   await expect(diagram.locator('[data-issue="tight"] .issue-region')).toHaveCount(1);
 
   // A second issue is drawn as well, in its own colour; the two group shapes differ in size.

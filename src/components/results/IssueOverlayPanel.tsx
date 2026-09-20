@@ -1,57 +1,80 @@
 import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
-import { Button } from '@/components/ui/button';
-import { ISSUE_OVERLAYS } from '@/lib/issues/catalog';
+import { ISSUE_OVERLAYS, issueById } from '@/lib/issues/catalog';
+import { cn } from '@/lib/utils';
 
 interface IssueOverlayPanelProps {
   /** The chosen issue ids, in the order they were chosen. */
   selected: readonly string[];
   onChange(next: string[]): void;
+  className?: string;
 }
 
 /**
- * REV-74: toggles for the shooting issues in the coaching chart. Each one that is on draws its region over the target diagram
- * beside it, so a group's shape can be compared with the pattern each fault produces. Collapsible, closed by default.
+ * REV-74/REV-76: toggles for the shooting issues in the coaching chart. Each one that is on draws its region over the target
+ * diagram. Kept small so the diagram stays in view: one or two words each with radio-style dots, the full text on hover (and
+ * in the caption for touch). On a phone the toggles are one scrolling row above the diagram; from `lg` up they are a column
+ * beside it. Several can be on at once.
  */
-export function IssueOverlayPanel({ selected, onChange }: IssueOverlayPanelProps) {
+export function IssueOverlayPanel({ selected, onChange, className }: IssueOverlayPanelProps) {
   function toggle(id: string) {
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   }
+  const active = selected.map((id) => issueById(id)).filter((issue) => issue !== undefined);
   return (
-    <div className="rounded-lg border px-3" data-testid="issue-panel">
+    <div className={cn('min-w-0 rounded-lg border px-3', className)} data-testid="issue-panel">
       <CollapsiblePanel
         panelId="issues"
         title="Shooting issues"
         summary={selected.length === 0 ? 'none shown' : `${selected.length} shown`}
         defaultOpen={false}
       >
-        <div className="flex flex-col gap-1 pb-3">
-          <p className="text-xs text-muted-foreground">
-            Turn one on to draw the area where that fault usually puts shots over the diagram.
-          </p>
-          <ul className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 pb-2">
+          <ul className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:flex-col lg:overflow-visible" aria-label="Shooting issues">
             {ISSUE_OVERLAYS.map((issue) => {
               const on = selected.includes(issue.id);
+              const full = `${issue.letter !== '' ? `${issue.letter}) ` : ''}${issue.label}`;
               return (
-                <li key={issue.id}>
-                  <Button
+                <li key={issue.id} className="shrink-0">
+                  <button
                     type="button"
-                    variant={on ? 'default' : 'outline'}
-                    className="h-auto min-h-11 w-full justify-start whitespace-normal py-2 text-left text-sm"
-                    aria-pressed={on}
+                    role="checkbox"
+                    aria-checked={on}
+                    aria-label={full}
+                    title={full}
                     data-testid={`issue-toggle-${issue.id}`}
                     onClick={() => toggle(issue.id)}
+                    className={cn(
+                      'flex min-h-11 w-full items-center gap-2 whitespace-nowrap rounded-md border px-2 text-left text-xs lg:min-h-8',
+                      on ? 'border-primary bg-primary/10 font-medium' : 'border-border',
+                    )}
                   >
-                    {issue.letter !== '' && <span className="mr-2 font-semibold">{issue.letter})</span>}
-                    {issue.label}
-                  </Button>
+                    <span
+                      aria-hidden="true"
+                      className={cn('flex size-3.5 shrink-0 items-center justify-center rounded-full border', on ? 'border-primary' : 'border-muted-foreground')}
+                    >
+                      {on && <span className="size-2 rounded-full bg-primary" />}
+                    </span>
+                    {issue.letter !== '' && <span className="text-muted-foreground">{issue.letter}</span>}
+                    {issue.short}
+                  </button>
                 </li>
               );
             })}
           </ul>
+          <div aria-live="polite" data-testid="issue-caption" className="text-xs text-muted-foreground">
+            {active.map((issue) => (
+              <p key={issue.id}>{`${issue.letter !== '' ? `${issue.letter}) ` : ''}${issue.label}`}</p>
+            ))}
+          </div>
           {selected.length > 0 && (
-            <Button type="button" variant="ghost" className="h-11" data-testid="issue-clear" onClick={() => onChange([])}>
+            <button
+              type="button"
+              className="min-h-11 self-start text-xs text-primary underline underline-offset-4 lg:min-h-8"
+              data-testid="issue-clear"
+              onClick={() => onChange([])}
+            >
               Clear all
-            </Button>
+            </button>
           )}
         </div>
       </CollapsiblePanel>

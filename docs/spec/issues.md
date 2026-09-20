@@ -13,6 +13,8 @@ diagnoses: nothing is inferred from the owner's shots.
   colour (four, cycling), translucent fill, dashed edge, its letter at its first region; `injectIntoSvg` puts it just before the
   closing tag. The frame is the diagram's own: `diagramFullFrame(template, shots)` for the detail diagram (`fitScale` included),
   the Patterns drawing's centre and scale for Patterns. The stored diagram is never changed.
-- **Control** `IssueOverlayPanel`: a collapsible panel (`panelId: issues`, closed by default), one 44 px toggle per issue
-  (`aria-pressed`), **Clear all**. Selection is per screen visit, not stored.
+- **Control** `IssueOverlayPanel` (REV-76): a collapsible panel (`panelId: issues`, closed by default) of compact radio-style toggles
+  (`role=checkbox`, `aria-checked`), each `short` (one or two words) with the full text as `title`/`aria-label` and, for touch, in a
+  caption under them; **Clear all**. A phone shows one scrolling row above the diagram (44 px targets); `lg` and up a column beside
+  it. Several may be on. Selection is per screen visit, not stored.
 - **Where**: the target screen's full diagram and the Patterns drawing.

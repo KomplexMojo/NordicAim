@@ -237,7 +237,10 @@ export function TargetPage() {
         }
       />
 
-      <div className={zoomed ? 'max-h-[70vh] overflow-auto' : ''}>
+      {/* REV-76: the issue toggles sit above the diagram on a phone and beside it on a wide screen, so the diagram stays in view. */}
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start">
+      <IssueOverlayPanel selected={issues} onChange={setIssues} className="lg:order-2 lg:w-48 lg:shrink-0" />
+      <div className={`min-w-0 flex-1 lg:order-1 ${zoomed ? 'max-h-[70vh] overflow-auto' : ''}`}>
         <DiagramSvg
           photoId={photo.id}
           variant="full"
@@ -250,7 +253,7 @@ export function TargetPage() {
           }
         />
       </div>
-      <IssueOverlayPanel selected={issues} onChange={setIssues} />
+      </div>
 
       <Button variant="outline" className="h-11" data-testid="zoom-toggle" onClick={() => setZoomed(!zoomed)}>
         {zoomed ? 'Fit to width' : 'Zoom in'}
