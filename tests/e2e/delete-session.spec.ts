@@ -82,3 +82,9 @@ test('Home always links to the Sessions screen, where Delete is, even with one s
   await expect(page).toHaveURL(/#\/sessions$/);
   await expect(page.getByTestId('session-delete').first()).toBeVisible();
 });
+
+test('the Sessions screen links to Patterns, as Home does', async ({ page }) => {
+  await page.goto('/#/sessions');
+  await page.getByTestId('sessions-patterns').click();
+  await expect(page).toHaveURL(/#\/patterns$/);
+});

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 
 import { DeleteSessionDialog } from '@/components/sessions/DeleteSessionDialog';
 import { SessionList } from '@/components/sessions/SessionList';
@@ -19,6 +20,9 @@ export function SessionsPage() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-6 lg:max-w-3xl">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Sessions</h1>
+        <Link to="/patterns" className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4" data-testid="sessions-patterns">
+          Patterns
+        </Link>
       </header>
       {loading && sessions === undefined ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
