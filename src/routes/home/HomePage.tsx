@@ -65,12 +65,14 @@ export function HomePage() {
                 <span className="break-all text-xs text-muted-foreground">{bad.id}</span>
                 <Button
                   variant="ghost"
-                  className="h-auto min-h-11 text-muted-foreground"
+                  className="h-auto min-h-11 min-w-11 px-3 text-muted-foreground"
                   onClick={() => setDeleting(bad.id)}
                   data-testid="unreadable-delete"
                   aria-label={`Delete unreadable session ${bad.id}`}
                 >
-                  Delete…
+                  <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3" />
+                  </svg>
                 </Button>
               </li>
             ))}
