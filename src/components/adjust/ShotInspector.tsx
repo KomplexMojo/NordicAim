@@ -8,6 +8,10 @@ import type { Position, ShotPosition } from '@/lib/domain/enums';
 export const MIN_MULTIPLICITY = 1;
 export const MAX_MULTIPLICITY = 20;
 
+/** REV-98: one nudge, in target mm. */
+export const NUDGE_MM = 0.1;
+const round1 = (v: number): number => Math.round(v * 10000) / 10000;
+
 interface ShotInspectorProps {
   shot: Shot;
   /** The photo's position; per-unit overrides only exist for a `both` target (M13 step 2). */
@@ -113,6 +117,30 @@ export function ShotInspector({
         <Button variant="ghost" className="h-11" data-testid="close-inspector" onClick={onClose}>
           Done
         </Button>
+      </div>
+
+      {/* REV-98: fine placement for the last bit of precision; +y is up (target geometry), so Up increases y. */}
+      <div className="flex items-center gap-2" data-testid="nudge-pad" role="group" aria-label={`Nudge the shot by ${NUDGE_MM} mm`}>
+        <span className="text-sm text-muted-foreground">Nudge {NUDGE_MM} mm</span>
+        {(
+          [
+            ['left', '←', -NUDGE_MM, 0],
+            ['up', '↑', 0, NUDGE_MM],
+            ['down', '↓', 0, -NUDGE_MM],
+            ['right', '→', NUDGE_MM, 0],
+          ] as const
+        ).map(([name, glyph, dx, dy]) => (
+          <Button
+            key={name}
+            variant="outline"
+            className="size-11 text-lg"
+            data-testid={`nudge-${name}`}
+            aria-label={`Nudge ${name}`}
+            onClick={() => onChange({ ...shot, xMm: round1(shot.xMm + dx), yMm: round1(shot.yMm + dy) })}
+          >
+            {glyph}
+          </Button>
+        ))}
       </div>
 
       <div className="flex items-end gap-2">

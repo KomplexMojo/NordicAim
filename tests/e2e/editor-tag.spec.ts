@@ -99,3 +99,25 @@ test('one zoom control on the picture: + − Fit, and it never adds a shot', asy
   await page.keyboard.press('0');
   await expect(stage).toHaveAttribute('data-zoom', '1');
 });
+
+test('nudge buttons move the selected shot by 0.1 mm (+y is up)', async ({ page }) => {
+  await openTarget(page);
+  const box = (await page.getByTestId('image-stage').boundingBox())!;
+  await page.mouse.click(box.x + 60, box.y + 60);
+  const inspector = page.getByTestId('shot-inspector');
+  await expect(inspector).toBeVisible();
+  const read = async () => {
+    const t = (await inspector.locator('span.font-medium').first().textContent()) ?? '';
+    const m = /(-?[\d.]+) mm x · (-?[\d.]+) mm y/.exec(t)!;
+    return { x: Number(m[1]), y: Number(m[2]) };
+  };
+  const a = await read();
+  await page.getByTestId('nudge-right').click();
+  await page.getByTestId('nudge-up').click();
+  await page.getByTestId('nudge-up').click();
+  const b = await read();
+  // The label shows one decimal, so allow for its rounding.
+  expect(b.x - a.x).toBeGreaterThanOrEqual(0);
+  expect(b.y - a.y).toBeGreaterThan(0.1);
+  expect(await page.getByTestId('save-state').textContent()).toBe('Unsaved changes');
+});
