@@ -46,6 +46,11 @@ export const AppSettings = z.object({
   // REV-58 (rendering-composite.md §6): which diagram renderer last drew every stored diagram; behind the code's
   // DIAGRAM_RENDERER_VERSION at app start means every finished analysis is scored again once. 0 = never recorded.
   diagramRendererVersion: z.number().int().min(0).default(0),
+  // REV-63 (backup.md §5): when the owner last created a backup, how many sessions it held, and how many days
+  // before the app reminds them again.
+  lastBackupAt: z.string().nullable().default(null),
+  lastBackupSessions: z.number().int().min(0).default(0),
+  backupReminderDays: z.number().int().min(1).max(365).default(14),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 
@@ -70,6 +75,9 @@ export function defaultAppSettings(): AppSettings {
     scoringRule: DEFAULT_SCORING_RULE,
     visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
     diagramRendererVersion: 0,
+    lastBackupAt: null,
+    lastBackupSessions: 0,
+    backupReminderDays: 14,
   };
 }
 

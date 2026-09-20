@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { BackupReminder } from '@/components/settings/BackupReminder';
 import { SummaryCard } from '@/components/results/SummaryCard';
 import { leftOutOfSummary } from '@/lib/composite/select-defaults';
 import { TargetCard } from '@/components/results/TargetCard';
@@ -109,6 +110,8 @@ export function ResultsPage() {
       <h1 className="text-xl font-semibold">{data.name}</h1>
 
       {showDebug && <TimingDebugPanel />}
+
+      <BackupReminder />
 
       <SummaryCard sessionId={sid} sessionName={data.name} leftOut={leftOutOfSummary(data.photos)} />
 

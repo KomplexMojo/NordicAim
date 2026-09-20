@@ -1,5 +1,6 @@
 // rendering-composite.md §7. Browser-only: shares (or downloads) the session summary image PNG. The
-// share rule (AGENTS.md): this is the only image the app ever hands to the share sheet or a download.
+// share rule (AGENTS.md): this is the only image the app ever hands to the share sheet or a download, apart from
+// a backup the owner explicitly creates (`shareBackup`, backup.md).
 
 export type ShareOutcome = 'web-share' | 'download' | 'cancelled';
 
@@ -39,5 +40,25 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
   }
 
   downloadViaAnchor(png, fileName);
+  return 'download';
+}
+
+/**
+ * backup.md: hands an owner-created backup file to the share sheet (or downloads it). Only ever called from the
+ * Back up now button, never automatically. Web Share cannot always take a very large file, so a refusal falls back
+ * to a download rather than failing.
+ */
+export async function shareBackup(file: Blob, fileName: string): Promise<ShareOutcome> {
+  const asFile = new File([file], fileName, { type: 'application/json' });
+  const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean };
+  if (typeof nav.canShare === 'function' && nav.canShare({ files: [asFile] })) {
+    try {
+      await navigator.share({ files: [asFile], title: 'Nordic Aim backup' });
+      return 'web-share';
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
+    }
+  }
+  downloadViaAnchor(file, fileName);
   return 'download';
 }

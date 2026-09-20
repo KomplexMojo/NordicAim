@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 import { AboutSettings } from '@/components/settings/AboutSettings';
 import { BackingSettings } from '@/components/settings/BackingSettings';
+import { BackupSettings } from '@/components/settings/BackupSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
 import { useServices } from '@/lib/app/services';
@@ -135,6 +136,7 @@ export function SettingsPage() {
             onReset={() => void save(() => resetHoleDiameterMm(ctx))}
           />
           </ScoringSettings>
+          <BackupSettings settings={settings} />
         </>
       )}
       <AboutSettings />

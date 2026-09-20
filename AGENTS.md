@@ -53,7 +53,9 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
 - **No backend, no runtime network calls** except the app's own same-origin static assets. No APIs, analytics, CDNs,
   external fonts, or telemetry (the CSP enforces this).
 - **Share rule.** The only image handed to the share sheet or a download is a stored `CompositeArtifact` (the session
-  summary image, `docs/spec/rendering-composite.md` §6). Photos never leave the phone.
+  summary image, `docs/spec/rendering-composite.md` §6). Photos never leave the phone, with one exception (REV-63): a
+  **backup the owner explicitly creates** (`docs/spec/backup.md`) may contain photos. Nothing else may leave the phone, and
+  nothing is ever sent anywhere automatically.
 - **Repo privacy.** Never commit `fixtures/private/`, `.env*` (except `.env.example`), or user data. Committed images
   carry no GPS EXIF (`pnpm check:privacy`).
 - **Pure/adapter split.** Pixel algorithms take `RgbaImage { data: Uint8ClampedArray; width; height }` and don't touch

@@ -6,8 +6,8 @@ The MVP runs entirely on the phone (REV-10). There is no server and no login.
 
 1. **No runtime network requests** except the app's own same-origin assets (HTML, JS, CSS, wasm, icons, `demo/`,
    `dev-fixtures/`, `diagnostics/`). No APIs, analytics, CDNs, external fonts, or error reporting.
-2. **Photos never leave the phone.**
-3. **The only image shared** is a stored `CompositeArtifact` (rendering-composite §6–§7).
+2. **Photos never leave the phone** — except in a backup file the owner explicitly creates (`backup.md`, REV-63).
+3. **The only image shared** is a stored `CompositeArtifact` (rendering-composite §6–§7); the one other file that may be handed to the share sheet or a download is an owner-created backup.
 4. **Repo privacy**: the public repo never contains `fixtures/private/` or images with GPS; `pnpm check:privacy` (M01) enforces this in CI.
 5. Nothing logs EXIF GPS values.
 

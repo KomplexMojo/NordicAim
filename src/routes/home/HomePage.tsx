@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 
+import { BackupReminder } from '@/components/settings/BackupReminder';
 import { SessionList } from '@/components/sessions/SessionList';
 import { QuickStartButton } from '@/components/sessions/QuickStartButton';
 import { useLiveQuery } from '@/lib/app/use-live-query';
@@ -23,6 +24,8 @@ export function HomePage() {
       <div className="flex justify-center">
         <QuickStartButton sessions={sessions ?? []} />
       </div>
+
+      <BackupReminder />
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-muted-foreground">Recent sessions</h2>

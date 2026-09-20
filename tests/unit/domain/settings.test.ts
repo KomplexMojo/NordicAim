@@ -45,6 +45,9 @@ describe('defaultAppSettings', () => {
       visibleHoleDiameterMm: 4.5,
       // REV-58: 0 = no diagram renderer version recorded yet, so the first launch redraws stored diagrams once.
       diagramRendererVersion: 0,
+      lastBackupAt: null,
+      lastBackupSessions: 0,
+      backupReminderDays: 14,
     });
   });
 

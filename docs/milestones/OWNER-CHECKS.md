@@ -268,3 +268,9 @@ during M10/M11 work._
 - [ ] Record the stage timings from `#/sessions/:sid/results?debug=1` into `docs/RELEASE-v0.1.0.md` §5 against the §9 performance budget (OpenCV cold load ≤5s, Stage A ≤3s, Stage B ≤1s, summary build ≤2s) — all four rows currently read "(owner to fill in)".
 - [ ] Check the sign-off box in `docs/RELEASE-v0.1.0.md` §7.
 - [ ] Only after sign-off: tag and push the release with `git tag v0.1.0 && git push origin v0.1.0` (deliberately not done by the agent, per Pitfalls: don't tag before sign-off).
+
+## REV-63 backup and restore (issue #13)
+
+- [ ] On the phone: Settings → Back up now → confirm the GPS warning → save to Files or iCloud Drive. Note the size and seconds the app reports (for your ~43 MB of data) and compare with `analysis-pipeline.md` §9's budget.
+- [ ] Restore that file on the phone (or another device) and confirm sessions, photos, scores and summary images are back.
+- [ ] Confirm the Web Share sheet accepts a file that size; if it refuses, the app downloads it instead.

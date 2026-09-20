@@ -6,7 +6,7 @@ as starting points to re-validate, not as current spec.
 
 | # | Item | What it adds | Why deferred | Earlier draft (`git show 2868527:<path>`) |
 |---|---|---|---|---|
-| B1 | **Backups & restore** | Export/import all data to Files or iCloud Drive, reminders, delete-all-data | Not in the 3-step MVP. **Risk:** without it, deleting the Home Screen app loses history (shared summary images in Photos survive). | `docs/spec/privacy-storage-hosting.md` §3–§4, `docs/milestones/M15-backup-storage.md` |
+| B1 | **Backups & restore** (built, REV-63) | Export/import all data to Files or iCloud Drive, reminders, delete-all-data | Not in the 3-step MVP. **Risk:** without it, deleting the Home Screen app loses history (shared summary images in Photos survive). | `docs/spec/privacy-storage-hosting.md` §3–§4, `docs/milestones/M15-backup-storage.md` |
 | B2 | Sequence player | Step or auto-play through a session's diagrams | Not in the MVP UX | `docs/milestones/M16-sequence-player.md` |
 | B3 | Shooting harness / trends | Cross-session precision, hit rate, group size, MPI drift | Not in the MVP UX | `docs/milestones/M17-shooting-harness.md` |
 | B4 | Keep/discard source photos | Delete original images while keeping results | Storage management, not core | `docs/milestones/M14-share-sources.md` (Sources panel) |
