@@ -254,6 +254,13 @@ Vectors:
 - **Retry**: the failed-status UI button resets the failed stage to `pending` and calls `notify()`.
 - **Re-analysis**: once `analyzeRequestedAt` is set, any change to a photo's categorization, lighting, shots, or calibration sets
   its `stageB = 'pending'` (services do this), so results refresh automatically.
+- **A changed template re-runs Stage A (REV-57, issue #10).** Changing `categorization.template` on a photo whose Stage A has
+  finished also sets `stageA = 'pending'` (and `stageB = 'pending'`), so alignment and detection follow the template instead of the
+  guess or overlay Stage A first saw — the disc size (115 vs 112.4 mm) and the printed circles A5 erases both depend on it. It does
+  this **only when nothing is manual**: no `manual` calibration and no `manual` shot, which §8 protects. With anything manual the
+  change only re-scores, as before, and **Re-analyze** in Adjust is the way to catch up. (`shouldRerunStageA`,
+  `src/lib/pipeline/template-change.ts`.) A template changed **while Stage A is running** is caught when that run commits: the
+  stored template is compared with the one the run used and, if it differs, Stage A is queued again once.
 
 ## 6. Worker API (`src/workers/cv.worker.ts`)
 
@@ -276,8 +283,9 @@ prompt (colour path only; the standard path returns none — M21 Open questions)
 them, and they are never stored, scored or drawn on a diagram.
 
 The worker decodes JPEG bytes with `createImageBitmap` → `OffscreenCanvas` → `getImageData` → `RgbaImage`, then calls pure
-functions. `reviewAndAlign` searches for both anchor sizes when `templateHint` is null (imports); it uses `capture.overlayTemplate`
-when available.
+functions. `reviewAndAlign` searches for both anchor sizes when `templateHint` is null (imports). Stage A passes it the **owner's
+template** — `categorization.template`, else `capture.overlayTemplate` (REV-57; before, only the overlay) — so an import whose
+template is already set is aligned against the right disc size.
 
 ## 7. Summary image auto-build
 

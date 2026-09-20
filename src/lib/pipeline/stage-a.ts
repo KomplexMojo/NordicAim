@@ -10,7 +10,7 @@ import { INITIAL_DETECTION, type DetectionRecord, type Shot, type TargetAnalysis
 import { isTargetPhoto } from '@/lib/domain/backing';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
-import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
+import type { Calibration, Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { backingInputFromSettings } from '@/lib/domain/settings';
 import { photoStatus } from '@/lib/domain/status';
 import { withoutArea } from '@/lib/scoring/cap-shots';
@@ -28,6 +28,7 @@ import { getSettings } from '@/lib/store/settings-repo';
 import type { CvWorkerApi, ReviewAndAlignResult } from '@/workers/cv-client';
 
 import { chooseAlignment } from './alignment';
+import { shouldRerunStageA } from './template-change';
 
 /** Only the part of the worker Stage A needs, so tests can stub it. */
 export type CvApi = Pick<CvWorkerApi, 'reviewAndAlign' | 'detectShots'>;
@@ -148,9 +149,12 @@ export async function runStageA(
     const manual = analysis.calibration?.source === 'manual';
     const manualCalibration = manual ? analysis.calibration : null;
     const prior = manual ? null : priorInWorkingPx(photo);
-    const overlayTemplate = photo.capture?.overlayTemplate ?? null;
+    // REV-57: align against the OWNER's template when they have chosen one, else the capture overlay's; the
+    // disc size (115 vs 112.4 mm) and the printed circles depend on it. Before, only the overlay was passed, so
+    // an import with a template set was still aligned by guess.
+    const usedTemplate = photo.categorization.template ?? photo.capture?.overlayTemplate ?? null;
 
-    const review = await cvApi.reviewAndAlign(Comlink.transfer(bytes, [bytes]), prior, overlayTemplate);
+    const review = await cvApi.reviewAndAlign(Comlink.transfer(bytes, [bytes]), prior, usedTemplate);
 
     const choice =
       manualCalibration !== null
@@ -218,5 +222,19 @@ export async function runStageA(
     }));
   }
 
+  await requeueIfTemplateChanged(ctx, photoId, photo.categorization);
   emitPipelineChanged({ sessionId: photo.sessionId, photoId });
+}
+
+/**
+ * REV-57: the owner can change the template while this run is in flight, and the stored photo then has a
+ * template the run did not use. `updatePhotoMetadata` cannot queue Stage A for a running job, so the run
+ * checks on the way out and queues itself once. It cannot loop: the next run reads the stored template.
+ */
+async function requeueIfTemplateChanged(ctx: ServiceContext, photoId: string, used: Categorization): Promise<void> {
+  const now = await getPhotoRecord(ctx.db, photoId);
+  const analysis = await getAnalysisRecord(ctx.db, photoId);
+  if (now === null || analysis === null) return;
+  if (!shouldRerunStageA(used, now.categorization, analysis)) return;
+  await commitAnalysis(ctx, photoId, (a) => ({ ...a, pipeline: { ...a.pipeline, stageA: 'pending', stageB: 'pending' } }));
 }

@@ -1,6 +1,7 @@
 // data-model §7, analysis-pipeline §2 (B1) / §5. `updatePhotoMetadata`, `deletePhoto`, `requestAnalysis`.
 
 import { isTargetPhoto } from '@/lib/domain/backing';
+import { shouldRerunStageA } from '@/lib/pipeline/template-change';
 import { photoStatus } from '@/lib/domain/status';
 import type { Lighting } from '@/lib/domain/enums';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
@@ -75,6 +76,15 @@ export async function updatePhotoMetadata(
     nextAnalysis = {
       ...analysis,
       pipeline: { ...analysis.pipeline, stageB: 'pending' },
+      updatedAt: nowIso,
+    };
+  }
+  // REV-57 (issue #10): a changed template also re-runs alignment and detection — but only when nothing is
+  // manual. Independent of `analyzeRequestedAt`: an import's Stage A ran before the owner chose a template.
+  if (patch.categorization !== undefined && shouldRerunStageA(photo.categorization, patch.categorization, analysis)) {
+    nextAnalysis = {
+      ...nextAnalysis,
+      pipeline: { ...nextAnalysis.pipeline, stageA: 'pending', stageB: 'pending' },
       updatedAt: nowIso,
     };
   }

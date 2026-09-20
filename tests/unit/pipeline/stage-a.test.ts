@@ -224,7 +224,8 @@ describe('runStageA (analysis-pipeline §2 A3/A4, §5)', () => {
   });
 
   it('reports no alignment at all when there is neither a prior nor a detection', async () => {
-    const { ctx, photoId } = await seed({ withPrior: false });
+    // An import whose template the owner has not chosen yet (REV-57: once chosen, Stage A aligns against it).
+    const { ctx, photoId } = await seed({ withPrior: false, template: null });
     const { api, calls } = stubCv(review({ detection: null }));
 
     await runStageA(ctx, photoId, api, imageTools);
@@ -233,7 +234,7 @@ describe('runStageA (analysis-pipeline §2 A3/A4, §5)', () => {
     expect(analysis?.pipeline.alignment).toEqual({ method: 'none', confidence: null });
     expect(analysis?.calibration).toBeNull();
     expect(analysis?.pipeline.warnings).toEqual([]);
-    // An import has no overlay template, so the worker searches both anchor sizes.
+    // No overlay template and none chosen, so the worker searches both anchor sizes.
     expect(calls[0]?.templateHint).toBeNull();
     expect(calls[0]?.prior).toBeNull();
   });
