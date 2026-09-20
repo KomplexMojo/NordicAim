@@ -53,7 +53,7 @@ test('the target screen and Patterns show observed patterns, worked out over all
   await expect(page.getByTestId('patterns-drawing').locator('.issue-region')).toHaveCount(0);
 });
 
-test('Settings has a Shooter section for the trigger hand, and the choice is kept', async ({ page }) => {
+test('Settings → Athlete has the trigger hand, and the choice is kept', async ({ page }) => {
   await page.goto('/#/settings');
   await expect(page.getByTestId('handedness-right')).toBeChecked();
   await page.getByTestId('handedness-left').check();

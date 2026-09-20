@@ -7,7 +7,6 @@ import { BackingSettings } from '@/components/settings/BackingSettings';
 import { GlossarySettings } from '@/components/settings/GlossarySettings';
 import { BackupSettings } from '@/components/settings/BackupSettings';
 import { AthleteSettings } from '@/components/settings/AthleteSettings';
-import { ShooterSettings } from '@/components/settings/ShooterSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
 import { useServices } from '@/lib/app/services';
@@ -137,6 +136,8 @@ export function SettingsPage() {
           <AthleteSettings
             name={settings.athleteName}
             club={settings.athleteClub}
+            handedness={settings.handedness}
+            onHandednessChange={(h) => void saveScoring(() => setHandedness(ctx, h), { handedness: h })}
             fingerprint={settings.keyFingerprint}
             keyPresent={keyPresent}
             onSetPassphrase={async (p) => {
@@ -148,10 +149,6 @@ export function SettingsPage() {
               setKeyPresent(true);
             }}
             onSave={(a) => void save(() => setAthlete(ctx, a))}
-          />
-          <ShooterSettings
-            handedness={settings.handedness}
-            onChange={(h) => void saveScoring(() => setHandedness(ctx, h), { handedness: h })}
           />
           <ScoringSettings
             scoringRule={settings.scoringRule}

@@ -4,12 +4,15 @@ import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MAX_ATHLETE_CLUB, MAX_ATHLETE_NAME } from '@/lib/domain/settings';
+import { HANDEDNESS_LABEL, Handedness, MAX_ATHLETE_CLUB, MAX_ATHLETE_NAME } from '@/lib/domain/settings';
 import { MIN_PASSPHRASE_LENGTH } from '@/lib/provenance/key';
 
 interface AthleteSettingsProps {
   name: string;
   club: string;
+  /** The trigger hand (REV-113): a property of the athlete. Changing it re-checks every stored target. */
+  handedness: Handedness;
+  onHandednessChange(next: Handedness): void;
   /** The key's fingerprint (settings), or null when no key has been set. */
   fingerprint: string | null;
   /** True when this phone holds the key (false after a restore until the passphrase is entered again). */
@@ -24,7 +27,7 @@ interface AthleteSettingsProps {
  * REV-99/REV-100: Settings → Athlete: the name and ski club printed on every summary image, and the passphrase behind the provenance
  * stamp (docs/spec/provenance.md). The passphrase is used once to make the key and is never stored.
  */
-export function AthleteSettings({ name, club, fingerprint, keyPresent, onSave, onSetPassphrase, onUnlock }: AthleteSettingsProps) {
+export function AthleteSettings({ name, club, handedness, onHandednessChange, fingerprint, keyPresent, onSave, onSetPassphrase, onUnlock }: AthleteSettingsProps) {
   const [draft, setDraft] = useState({ name, club });
   const [passphrase, setPassphrase] = useState('');
   const [busy, setBusy] = useState(false);
@@ -79,6 +82,34 @@ export function AthleteSettings({ name, club, fingerprint, keyPresent, onSave, o
           onBlur={commit}
         />
       </div>
+
+      <fieldset className="flex flex-col gap-1">
+        <legend className="mb-1 text-sm font-medium">Handedness</legend>
+        <div className="grid grid-cols-2 gap-2">
+          {Handedness.options.map((value) => {
+            const id = `handedness-${value}`;
+            return (
+              <label
+                key={value}
+                htmlFor={id}
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border p-3 has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:ring-1 has-[:checked]:ring-primary"
+              >
+                <input
+                  id={id}
+                  type="radio"
+                  name="handedness"
+                  value={value}
+                  checked={handedness === value}
+                  onChange={() => onHandednessChange(value)}
+                  data-testid={id}
+                  className="size-4"
+                />
+                <span className="text-sm font-medium">{HANDEDNESS_LABEL[value]}</span>
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <p className="text-sm" data-testid="athlete-stamp">
         Key fingerprint:{' '}
