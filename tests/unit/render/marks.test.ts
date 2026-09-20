@@ -7,26 +7,36 @@ import { renderScoringIcon } from '@/lib/render/scoring-icons';
 import { medalFor } from '@/lib/scoring/medal';
 
 describe('star bands (REV-81)', () => {
-  it('gold above 90, silver 80 to 90, bronze 70 up to 80, plain below 70', () => {
+  it('gold above 90, silver 80 to 90, bronze 70 up to 80, none below 70', () => {
     expect(medalFor(91, 100)).toBe('gold');
     expect(medalFor(90, 100)).toBe('silver');
     expect(medalFor(80, 100)).toBe('silver');
     expect(medalFor(79, 100)).toBe('bronze');
     expect(medalFor(70, 100)).toBe('bronze');
-    expect(medalFor(69, 100)).toBe('plain');
-    expect(medalFor(63, 100)).toBe('plain');
+    expect(medalFor(69, 100)).toBe('none');
+    expect(medalFor(63, 100)).toBe('none');
+    expect(medalFor(59, 100)).toBe('none');
     expect(medalFor(46, 50)).toBe('gold');
-    expect(medalFor(34, 50)).toBe('plain');
-    expect(medalFor(5, 0)).toBe('plain');
+    expect(medalFor(34, 50)).toBe('none');
+    expect(medalFor(35, 50)).toBe('bronze');
+    expect(medalFor(5, 0)).toBe('none');
   });
 
-  it('the plain star has no fill, a black outline and black text', () => {
-    const svg = renderScoreStar(0, 0, 63, 100);
-    expect(svg).toContain('data-medal="plain"');
+  it('under 70 there is no star, only the score in a plain circle (REV-107)', () => {
+    const svg = renderScoreStar(0, 0, 45, 100);
+    expect(svg).toContain('data-medal="none"');
+    expect(svg).toContain('<circle');
+    expect(svg).not.toContain('<polygon');
+    expect(svg).toContain('>45<');
+  });
+
+  it('a 69 is a circle with black outline and black text; 70 is the first star (bronze)', () => {
+    const svg = renderScoreStar(0, 0, 69, 100);
+    expect(svg).toContain('data-medal="none"');
     expect(svg).toContain('fill="none"');
     expect(svg).toContain('stroke="#000000"');
-    expect(svg).toMatch(/fill="#000000"[^>]*>63</);
-    expect(renderScoreStar(0, 0, 72, 100)).toContain('data-medal="bronze"');
+    expect(svg).toMatch(/fill="#000000"[^>]*>69</);
+    expect(renderScoreStar(0, 0, 70, 100)).toContain('data-medal="bronze"');
   });
 });
 

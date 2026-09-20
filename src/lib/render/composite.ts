@@ -4,17 +4,19 @@
 
 import { EmptyCompositeError } from '@/lib/composite/artifact';
 import type { AnalysisResult, MpiOffset, TargetAnalysis } from '@/lib/domain/analysis';
-import type { Position } from '@/lib/domain/enums';
+import type { Lighting, Position, Season } from '@/lib/domain/enums';
+import { suggestSeason } from '@/lib/domain/season';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import type { BiathlonSession } from '@/lib/domain/session';
 import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
 import { brandMotif } from './brand-mark';
+import { renderLightingIcon, renderSeasonIcon } from './condition-icons';
 import { PALETTE } from './palette';
 import { renderScoringIcon } from './scoring-icons';
 import { el, num, text } from './svg';
-import { fmtAngular, fmtMm, precisionFooterLines, sightingFooterLines, targetHeadline } from './text-lines';
+import { fmtMm, precisionFooterLines, sightingFooterLines } from './text-lines';
 
 export interface SlotData {
   photo: TargetPhoto;
@@ -53,7 +55,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 15;
+export const COMPOSITE_RENDERER_VERSION = 17;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'NordicAim';
@@ -120,12 +122,6 @@ function fullPositionLabel(position: Position): string {
   return 'Prone + standing';
 }
 
-/** The analysis band's parenthetical, e.g. "(prone)" / "(prone + standing)". */
-function shortPositionLabel(position: Position): string {
-  if (position === 'both') return 'prone + standing';
-  return position;
-}
-
 function slotDiagramInput(
   slot: SlotData,
   holeDiameterMm: number,
@@ -158,15 +154,34 @@ function nestCellSvg(svg: string, x: number, y: number, size: number): string {
     .replace(' width="720" height="720"', ` width="${num(size)}" height="${num(size)}"`);
 }
 
-function renderHeader(session: BiathlonSession, lightingSummary: string): string {
+function renderHeader(session: BiathlonSession, lightingSummary: string, photos: TargetPhoto[]): string {
   const bg = el('rect', { x: 0, y: 0, width: WIDTH, height: HEADER_HEIGHT, fill: PALETTE.header });
-  // Kept clear of the wordmark on the right: about 52 characters fit at this size.
-  const title = text(40, 58, 36, truncate(`Shooting analysis — ${session.name}`, 52), { bold: true, color: '#FFFFFF' });
+  // Kept clear of the wordmark on the right: about 50 characters fit at this size.
+  const title = text(40, 58, 36, truncate(`Shooting analysis — ${session.name}`, 50), { bold: true, color: '#FFFFFF' });
   const subtitle = text(40, 94, 18, `${session.sessionDate} · ${lightingSummary}`, { color: '#CFE6F3' });
   // REV-104: the NordicAim wordmark and mark at the right of the header.
   const mark = brandMotif(WIDTH - 40 - 76, 22, 76);
   const name = text(WIDTH - 40 - 76 - 14, 71, 34, APP_NAME, { bold: true, anchor: 'end', color: '#FFFFFF' });
-  return bg + title + subtitle + name + mark;
+  // REV-108: season then lighting, left of the name.
+  const season = seasonOf(photos, session.sessionDate);
+  const lighting = lightingOf(photos);
+  const icons =
+    (season === null ? '' : renderSeasonIcon(season, 1010, 38)) + (lighting === 'unknown' ? '' : renderLightingIcon(lighting, 1064, 38));
+  return bg + title + subtitle + icons + name + mark;
+}
+
+/** REV-108: the one season the targets share (chosen, else the season of the session date), or null when they differ or none is known. */
+function seasonOf(photos: TargetPhoto[], sessionDate: string): Season | null {
+  const seasons = new Set(photos.map((p) => p.season ?? suggestSeason(p.captureTime.local ?? sessionDate)));
+  const [only] = seasons;
+  return seasons.size === 1 && only != null ? only : null;
+}
+
+/** REV-108: the lighting the targets share; `mixed` when they differ. */
+function lightingOf(photos: TargetPhoto[]): Lighting {
+  const unique = new Set(photos.map((p) => p.lighting));
+  const [only] = unique;
+  return unique.size === 0 ? 'unknown' : unique.size === 1 ? only! : 'mixed';
 }
 
 /** §5: "shared label if all slots agree, else `mixed lighting`". */
@@ -182,27 +197,6 @@ function mpiCompactLine(offset: MpiOffset | null): string | null {
   const xDir = offset.xMm >= 0 ? 'R' : 'L';
   const yDir = offset.yMm >= 0 ? 'U' : 'D';
   return `MPI ${fmtMm(Math.abs(offset.xMm))} ${xDir} / ${fmtMm(Math.abs(offset.yMm))} ${yDir} mm`;
-}
-
-/** §5 line 2: one summary line per filled slot, built from the same `targetHeadline` the results card
- * and target detail screen use (M24: all three stay in step), e.g.
- * "Sight in (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm"
- * "Precision prone: 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)". */
-function slotSummaryLine(label: string, slot: SlotData): string {
-  const subset = slot.result.all;
-  const position = shortPositionLabel(slot.result.position);
-  const esText = `ES ${fmtMm(subset.extremeSpreadMm)} mm (${fmtAngular(subset.extremeSpreadAngular?.moa ?? null)} MOA)`;
-  const headline = targetHeadline(slot.result);
-
-  if (slot.result.template === 'precision') {
-    // The label already names the position ("Precision prone"); a legacy prone + standing target keeps its note.
-    const named = slot.result.position === 'prone' || slot.result.position === 'standing';
-    return `${label}${named ? '' : ` (${position})`}: ${headline} · ${esText}`;
-  }
-
-  const mpi = mpiCompactLine(subset.mpiOffset);
-  const head = `${label} (${position}): ${headline} · ${esText}`;
-  return mpi === null ? head : `${head} · ${mpi}`;
 }
 
 const RULES: readonly ScoringRule[] = ['gauge', 'centre', 'visible'];
@@ -230,10 +224,10 @@ function scoringLine(input: CompositeInput, placed: Placed[]): string {
 }
 
 /** REV-59: the other rules' scores under a slot, only when they differ from one another. */
-function ruleComparisonLine(slot: SlotData): string | null {
+function ruleComparisonLine(label: string, slot: SlotData): string | null {
   if (slot.byRule === undefined || sameUnderEveryRule(slot) !== false) return null;
   const scores = RULES.map((rule) => `${rule} ${scoreOf(slot.byRule![rule])}`).join(' · ');
-  return slot.result.template === 'precision' ? `By rule: ${scores}` : `By rule (hits): ${scores}`;
+  return slot.result.template === 'precision' ? `${label} by rule: ${scores}` : `${label} by rule (hits): ${scores}`;
 }
 
 /** A filled slot with its chip label, in §5's reading order: sighting 1, sighting 2, precision 1, precision 2. */
@@ -262,15 +256,13 @@ const REPEATS_HEADLINE = [/^Scoring summary$/, /^Total: /, /^Scored \(/];
 
 /** §5's band lines, in order. N = 1 adds that target's `full` footer lines (what the old stat card held). */
 function bandLines(input: CompositeInput, placed: Placed[]): string[] {
-  const nS = placed.filter((p) => p.slot.result.template === 'sighting').length;
-  const nP = placed.length - nS;
-  // Zero counts are left out ("Targets: 1 precision", never "0 sighting · 1 precision").
-  const counts = [nS > 0 ? `${nS} sighting` : null, nP > 0 ? `${nP} precision` : null].filter((c) => c !== null);
-  const lines: string[] = [`Targets: ${[...counts, lightingSummary(placed.map((p) => p.slot.photo))].join(' · ')}`];
-  lines.push(scoringLine(input, placed));
+  // REV-106: what a target's own caption already says (hits, score, ES, MOA) is not repeated here, and neither is the lighting (in the
+  // header) or the count of targets (the grid). The band keeps only what is not shown elsewhere.
+  const lines: string[] = [scoringLine(input, placed)];
   for (const p of placed) {
-    lines.push(slotSummaryLine(p.label, p.slot));
-    const comparison = ruleComparisonLine(p.slot);
+    const mpi = p.slot.result.template === 'sighting' ? mpiCompactLine(p.slot.result.all.mpiOffset) : null;
+    if (mpi !== null) lines.push(`${p.label} ${mpi}`);
+    const comparison = ruleComparisonLine(p.label, p.slot);
     if (comparison !== null) lines.push(comparison);
   }
   if (placed.length === 1) {
@@ -297,7 +289,7 @@ export function provenanceLine(p: { name: string; club: string; stamp: string | 
 
 /** REV-91: the "By rule: gauge N · centre N · visible N" line with each rule's icon beside its number (words kept for the PNG). */
 function ruleComparisonMarks(line: string, y: number): string | null {
-  const m = /^(By rule[^:]*:) (.+)$/.exec(line);
+  const m = /^(.+ by rule[^:]*:) (.+)$/.exec(line);
   if (m === null) return null;
   const CHAR = 8.7;
   let x = 40;
@@ -356,7 +348,7 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
   const height = bandY + bandHeight(lines.length);
 
   let body = el('rect', { x: 0, y: 0, width: WIDTH, height, fill: PALETTE.panel });
-  body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)));
+  body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)), placed.map((p) => p.slot.photo));
   for (const cell of COMPOSITE_CELLS) {
     const slot = input.slots[cell.template][cell.index];
     const label = positionName(cell.template, cell.index).toUpperCase();

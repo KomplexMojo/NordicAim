@@ -213,7 +213,7 @@ black border), described only that one target, and left a fixed 600 px band most
   and "Sighting 2"; precision is **Precision prone** and **Precision standing** (REV-90, was `Precision 1` / `Precision 2`). Slot 1 is the earlier target (selection is chronological), the
   one sighted in on. The name is used for the chip (uppercased) and for the analysis band's per-slot line. At least one filled slot is required; 0 throws `EmptyCompositeError`.
 - **Canvas.** Width **1440**. A full-canvas `panel` rect is drawn first, so no area is ever unfilled (transparent renders black).
-- **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); cut to 52 characters with `…` (REV-104); the NordicAim wordmark (34 bold white, right-aligned to x 1310, baseline 71) and the target mark (`render/brand-mark.ts`, 76 px square at (1324, 22)) sit at the right; subtitle 18 `#CFE6F3` at
+- **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); cut to 52 characters with `…` (REV-104); the **season icon then the lighting icon** (REV-108, `render/condition-icons.ts`, 44 px round badges at x 1010 and 1064, y 38); the NordicAim wordmark (34 bold white, right-aligned to x 1310, baseline 71) and the target mark (`render/brand-mark.ts`, 76 px square at (1324, 22)) sit at the right; subtitle 18 `#CFE6F3` at
   (40, 94): `<sessionDate> · <lightingSummary>` (shared label if all filled slots agree, else `mixed lighting`).
 - **One fixed scale for the whole image (REV-52, REV-58).** Every cell — filled or blank — is drawn at `CELL_SCALE` (§4): the
   precision sheet's halo sets it, so sighting targets are drawn smaller than their cell. **It never zooms out for a stray shot**;
@@ -224,14 +224,12 @@ black border), described only that one target, and left a fixed 600 px band most
 - **Analysis band** at y = 120 + 1440, **sized to its content**: `panel`, 8 px `accent` rail.
   - `Session analysis` 24 bold at (40, y+56).
   - Lines 18 px from y+100, step 34, each ≤ 110 chars (`…`):
-    1. `Targets: <nS> sighting · <nP> precision · <lightingSummary>`, leaving out a zero count (`Targets: 1 precision · Daylight`)
+    1. ~~`Targets: …`~~ removed (REV-106): the grid shows the targets and the header the lighting.
     1a. **`Scoring: <method>`** (REV-59) — the rule in force, named as Settings names it: `Official gauge touch`, `Centre in ring`,
        or `Visible hole touch (<size> mm)`. When every filled slot scores the same under all three rules it ends
        ` · same under every rule`. Always present, so a shared image is never ambiguous about how it was scored.
-    2. One per filled slot, built from `targetHeadline` (M24: the same helper the card and target detail use), e.g.
-       `Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
-       `Precision prone: 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)` (the position is in the name; a legacy `both` slot keeps `(prone + standing)`); for a `both` slot the `targetHeadline` `both` form.
-    2a. **The other rules' scores, only where they differ (REV-59).** Under a filled slot's line, when its score is not the same under
+    2. ~~One line per filled slot~~ removed (REV-106): the caption under each target already states the hits, score, ES and MOA, so the band never repeats it. A sighting target keeps one line for what the caption lacks: `<label> MPI 9.7 R / 3.9 U mm`.
+    2a. **The other rules' scores, only where they differ (REV-59).** One line per slot, labelled with it (REV-106: `Precision prone by rule: …`), when its score is not the same under
        all three rules: `By rule: gauge 72 · centre 70 · visible 71` (precision: the total) or `By rule (hits): gauge 7 · centre 6 · (REV-91: drawn with each rule's icon beside its number, the words kept.)
        visible 7` (sighting: hits; a `both` slot sums its two positions). A slot that scores the same under every rule gets no line.
        Each is computed by `analyzeTarget` with that rule's effective hole size (`geometry-scoring.md` §3); the total on the slot's
@@ -312,6 +310,6 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
 - **Sighting cell (top-left)**: the text chip is replaced by a symbol: a 24 px-radius black disc with seven small white holes for `sight-in`, or with a
   white plus (four bars round a small gap, inside a fine ring) for `confirm`. A per-photo diagram uses `categorization.sightingRole` when set; a
   summary slot uses its position (slot 1 sight-in, slot 2 confirm), blank slots too. Precision keeps its text chip.
-- **Precision score star (top-right)**: `renderScoreStar` draws a five-pointed star with `identifiedTotal` inside: gold when the score is above 90% of `maxPossible`,
+- **Precision score star (top-right)**: `renderScoreStar` draws a five-pointed star with `identifiedTotal` inside: gold when the score is above 90% of `maxPossible`, **Below 70% (REV-107) there is no star**: the score sits in a plain black-outlined circle (`data-medal="none"`), a clear statement of the score with no endorsement.
   silver from 80% to 90%, bronze below (`scoring/medal.ts`). In the cell at (664, 56) and in the detail diagram at (1400, 250, ×1.3), clear of the legend band; the scoring-rule icon (REV-81) sits directly below it, at (664, 128) and (1400, 345, ×1.3).
 - **Precision cell (top-left, REV-86)**: the text chip is replaced by a 24 px-radius black disc with a white horizontal bar (`prone`) or a white vertical bar (`standing`), like the sighting symbols; a blank precision slot shows `prone` (first) then `standing` (second). A stored `both` target keeps its text chip.

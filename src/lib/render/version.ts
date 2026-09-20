@@ -11,4 +11,4 @@
 //   3 — REV-79: a sighting diagram's top-left mark is the sight-in or confirm symbol.
 //   2 — REV-60: the target screen also shows accuracy (stored results gain `accuracyRmseMm`).
 //   1 — REV-58: one fixed cell scale (no zoom-out), `+N off view`, and a detail diagram that shows every shot.
-export const DIAGRAM_RENDERER_VERSION = 6;
+export const DIAGRAM_RENDERER_VERSION = 7;

@@ -33,8 +33,6 @@ const MEDAL_COLOURS = {
   gold: { fill: '#F2B705', stroke: '#B58500' },
   silver: { fill: '#C5CBD3', stroke: '#8A929C' },
   bronze: { fill: '#CD7F32', stroke: '#8B5A22' },
-  // Below 70: just a star, black outline and black score, no medal colour (REV-81).
-  plain: { fill: 'none', stroke: '#000000' },
 } as const;
 
 /** The points of a five-pointed star centred on (cx, cy): outer radius `outer`, inner radius `inner`, one point straight up. */
@@ -54,6 +52,12 @@ function starPoints(cx: number, cy: number, outer: number, inner: number): strin
  */
 export function renderScoreStar(cx: number, cy: number, total: number, maxPossible: number, scale = 1): string {
   const medal = medalFor(total, maxPossible);
+  if (medal === 'none') {
+    // REV-107: under 70% no star, only the score in a plain circle.
+    const circle = el('circle', { cx, cy, r: 30 * scale, fill: 'none', stroke: '#000000', 'stroke-width': 2.5 * scale });
+    const value = text(cx, cy + 6 * scale, 17 * scale, String(total), { bold: true, anchor: 'middle', color: '#000000' });
+    return el('g', { class: 'score-star', 'data-medal': 'none', 'data-score': String(total) }, circle + value);
+  }
   const colours = MEDAL_COLOURS[medal];
   const star = el('polygon', {
     points: starPoints(cx, cy, 44 * scale, 21 * scale),
@@ -62,7 +66,7 @@ export function renderScoreStar(cx: number, cy: number, total: number, maxPossib
     'stroke-width': 2.5 * scale,
     'stroke-linejoin': 'round',
   });
-  const label = text(cx, cy + 6 * scale, 17 * scale, String(total), { bold: true, anchor: 'middle', color: medal === 'plain' ? '#000000' : '#1B1F24' });
+  const label = text(cx, cy + 6 * scale, 17 * scale, String(total), { bold: true, anchor: 'middle', color: '#1B1F24' });
   return el('g', { class: 'score-star', 'data-medal': medal, 'data-score': String(total) }, star + label);
 }
 

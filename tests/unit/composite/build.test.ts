@@ -81,10 +81,10 @@ describe('composite/build buildComposite (rendering-composite.md §6)', () => {
 
     expect(artifact.sessionId).toBe(sessionId);
     expect(artifact.widthPx).toBe(1440);
-    // REV-51: always the four fixed positions (1440) under the 120 header, then a band sized to its 6 lines
-    // (targets, scoring (REV-59), the slot line, and the 3 footer lines that don't repeat it): 100 + 34 * 6 + 64 = 368.
+    // REV-51: always the four fixed positions (1440) under the 120 header, then a band sized to its 4 lines (REV-106: scoring (REV-59)
+    // and the 3 footer lines that don't repeat the caption): 100 + 34 * 4 + 64 = 300.
     // The precision fixture scores the same under every rule, so there is no comparison line.
-    expect(artifact.heightPx).toBe(120 + 1440 + 368);
+    expect(artifact.heightPx).toBe(120 + 1440 + 300);
     expect(artifact.sha256).toMatch(/^[a-f0-9]{64}$/);
 
     const png = await getBlob(ctx.db, artifactPngKey(artifact.id));
@@ -173,7 +173,7 @@ describe('composite/build.ts §6 step 2: fresh analyzeTarget per slot, not the s
     // ...and the current-settings detail line and the freshly-recomputed headline must agree. (REV-51 drops the
     // footer's "Scored (…)" line from the band, since the slot line above it already states the hits.)
     expect(svg).toContain('vs 45 mm prone: 10 hit / 0 miss');
-    expect(svg).toContain('Sight in (prone): 10 hits · 0 misses — 45 mm prone');
+    expect(svg).toContain('10 hits · 0 misses — 45 mm');
   });
 });
 
@@ -247,9 +247,9 @@ describe('composite/build records and prints the scoring rule (REV-59)', () => {
   }
 
   it.each([
-    ['gauge', 'Scoring: Official gauge touch', 'Precision prone: 30 / 30'],
-    ['centre', 'Scoring: Centre in ring', 'Precision prone: 28 / 30'],
-    ['visible', 'Scoring: Visible hole touch (4.5 mm)', 'Precision prone: 29 / 30'],
+    ['gauge', 'Scoring: Official gauge touch', '30 / 30'],
+    ['centre', 'Scoring: Centre in ring', '28 / 30'],
+    ['visible', 'Scoring: Visible hole touch (4.5 mm)', '29 / 30'],
   ] as const)('%s: the image names the rule and its own line uses it', async (rule, scoring, slotLine) => {
     const { ctx, sessionId } = await seedDisagreeing(rule);
     const render = stubRenderTools();
@@ -258,7 +258,7 @@ describe('composite/build records and prints the scoring rule (REV-59)', () => {
     expect(svg).toContain(scoring);
     expect(svg).toContain(slotLine);
     // Whatever rule is in force, the image shows what every rule would have scored.
-    for (const part of ['By rule:', 'gauge 30', 'centre 28', 'visible 29']) expect(svg).toContain(part);
+    for (const part of ['Precision prone by rule:', 'gauge 30', 'centre 28', 'visible 29']) expect(svg).toContain(part);
     expect(artifact.scoringRule).toBe(rule);
     // ... and the stored artifact carries it, so an image from before a rule change can be told from one after.
     expect((await getSessionRecord(ctx.db, sessionId))?.artifacts.at(-1)?.scoringRule).toBe(rule);
