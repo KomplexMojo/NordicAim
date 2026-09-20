@@ -17,7 +17,7 @@ const DISC = '#1F2630';
 
 /**
  * The Nordic Aim mark: a biathlon target seen from the firing line. Bold on purpose, so it still reads at 16 px: a dark tile,
- * a white paper disc, a black aiming disc with an accent ring, and a tight group of three holes just off centre.
+ * a white paper disc, a black aiming disc with an accent ring and a single white scoring ring inside it, and a tight group of three holes just off centre.
  * `inset` shrinks the motif (the maskable icon's safe zone, where Android may crop to a centred circle). Drawn on a 100-unit grid.
  */
 export function targetSvg(size: number, inset: number, rounded = false): string {
@@ -38,6 +38,7 @@ export function targetSvg(size: number, inset: number, rounded = false): string 
     <circle cx="${at(50)}" cy="${at(50)}" r="${len(48)}" fill="${PAGE}" />
     <circle cx="${at(50)}" cy="${at(50)}" r="${len(33)}" fill="#0B1220" />
     <circle cx="${at(50)}" cy="${at(50)}" r="${len(33)}" fill="none" stroke="${ACCENT}" stroke-width="${len(4.5)}" />
+    <circle cx="${at(50)}" cy="${at(50)}" r="${len(25)}" fill="none" stroke="${PAGE}" stroke-width="${len(2.6)}" />
     ${holes}
   </svg>`;
 }
