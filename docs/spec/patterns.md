@@ -7,13 +7,13 @@ analyses; reads no photo; nothing leaves the phone.
 
 | View id | Label | Which targets |
 |---|---|---|
-| `sight-in` | Sight in | the **first** sighting target of each session (by capture time, then import time, then id) |
-| `confirm` | Confirm | every **later** sighting target of the same session |
+| `sight-in` | Sight in | sighting targets whose effective role is `sight-in` |
+| `confirm` | Confirm | sighting targets whose effective role is `confirm` |
 | `precision-prone` | Precision prone | every precision **unit** whose `position` is `prone` |
 | `precision-standing` | Precision standing | every precision **unit** whose `position` is `standing` |
 
-A `both` precision target contributes its prone units to one view and its standing units to the other. No role is stored on
-a photo; the role is inferred from order as the summary image does (REV-53), extended to all later targets.
+A `both` precision target contributes its prone units to one view and its standing units to the other. The role is the owner's choice (`categorization.sightingRole`, REV-67) or, when not chosen, inferred by
+`sightingRoles`: the oldest unset target is Sight in (unless one is explicitly Sight in), every other unset one is Confirm.
 
 ## 2. Which targets count
 

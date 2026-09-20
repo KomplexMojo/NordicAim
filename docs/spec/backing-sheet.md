@@ -65,8 +65,8 @@ lives on the Settings screen (REV-47, REV-48), not in the capture → metadata �
 - The mode and colour apply to every session. **Changing them re-runs nothing** (issue #2 default): the setting applies to new
   photos and to any photo the user re-analyzes in Adjust, so a finished session's numbers never change behind the user's back.
   Each analysis records which backing it used (`pipeline.detection`, §3).
-- No other screen shows it. The results screen and target detail may show a one-line note, `Holes found by backing colour`, only when
-  the colour path was used (§5).
+- No other screen shows it. The results screen and target detail do **not** show which detection path found the holes (REV-68): it
+  is a core part of the program, not something to announce on every card. The choice is still recorded on the analysis (§3).
 
 ## 3. Data model
 

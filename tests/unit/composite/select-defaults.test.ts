@@ -166,4 +166,32 @@ describe('leftOutOfSummary (owner report 2026-09-19)', () => {
   it('ignores a backing-card photo, which is never a target', () => {
     expect(leftOutOfSummary([makePhoto({ status: 'needs-attention', origin: 'backing-card' })])).toBe(0);
   });
+
+  it('REV-67: with a chosen role, SIGHT IN is the latest sight-in and CONFIRM the latest confirm, whatever the order', () => {
+    const at = (h: number, role: 'sight-in' | 'confirm' | null) =>
+      makePhoto({
+        status: 'analyzed',
+        categorization: { template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null, sightingRole: role },
+        captureTime: { local: null, offset: null, utc: `2026-09-05T${h}:00:00.000Z`, source: 'exif' },
+      });
+    const early = at(10, 'confirm'); // the owner says the earlier target was the confirm
+    const late = at(11, 'sight-in');
+    const analyses = new Map([
+      [early.id, analyzed(early.id, sightingResult(10))],
+      [late.id, analyzed(late.id, sightingResult(20))],
+    ]);
+    expect(selectDefaultSlots([early, late], analyses).sighting).toEqual([late.id, early.id]);
+  });
+
+  it('REV-67: with no chosen role it is still the two most recent, oldest first', () => {
+    const at = (h: number) =>
+      makePhoto({
+        status: 'analyzed',
+        categorization: { template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null },
+        captureTime: { local: null, offset: null, utc: `2026-09-05T${h}:00:00.000Z`, source: 'exif' },
+      });
+    const [a, b, c] = [at(10), at(11), at(12)] as const;
+    const analyses = new Map([a, b, c].map((p) => [p.id, analyzed(p.id, sightingResult(10))] as const));
+    expect(selectDefaultSlots([a, b, c], analyses).sighting).toEqual([b.id, c.id]);
+  });
 });

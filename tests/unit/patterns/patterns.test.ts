@@ -16,6 +16,7 @@ function source(over: {
   status?: string;
   method?: 'cv' | 'overlay' | 'manual' | 'none';
   computed?: boolean;
+  role?: 'sight-in' | 'confirm' | null;
 }): PatternSource {
   return {
     sessionId: over.session ?? 's1',
@@ -26,7 +27,7 @@ function source(over: {
       status: (over.status ?? 'analyzed') as never,
       captureTime: { local: null, offset: null, utc: over.utc ?? null, source: 'exif' },
       importedAt: '2026-09-10T00:00:00.000Z',
-      categorization: { template: over.template },
+      categorization: { template: over.template, sightingRole: over.role ?? null },
     },
     analysis: {
       pipeline: { alignment: { method: over.method ?? 'cv', confidence: 1 } } as never,
@@ -61,6 +62,15 @@ describe('collectPatterns (patterns.md §1, §2)', () => {
     ]);
     expect(data.points['sight-in'].map((p) => p.photoId)).toEqual(['early']);
     expect(data.points.confirm.map((p) => p.photoId).sort()).toEqual(['late', 'later']);
+  });
+
+  it('a role the owner chose wins over capture order (REV-67)', () => {
+    const data = collectPatterns([
+      source({ id: 'first', template: 'sighting', utc: '2026-09-10T10:00:00Z', units: [u(1, 1)], role: 'confirm' }),
+      source({ id: 'second', template: 'sighting', utc: '2026-09-10T11:00:00Z', units: [u(2, 2)], role: 'sight-in' }),
+    ]);
+    expect(data.points['sight-in'].map((p) => p.photoId)).toEqual(['second']);
+    expect(data.points.confirm.map((p) => p.photoId)).toEqual(['first']);
   });
 
   it('a lone sighting target is Sight in; roles are per session', () => {

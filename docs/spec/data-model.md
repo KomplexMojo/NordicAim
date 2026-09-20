@@ -106,6 +106,8 @@ export const Categorization = z.object({
   position: Position.nullable(),
   roundsProne: z.number().int().min(1).max(50).nullable(),
   roundsStanding: z.number().int().min(1).max(50).nullable(),
+  // REV-67: for a sighting target, whether it is the initial sight-in or the confirm. absent or null = not chosen, inferred by order.
+  sightingRole: z.enum(['sight-in', 'confirm']).nullable().optional(),
 });
 
 export const TargetPhoto = z.object({

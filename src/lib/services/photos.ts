@@ -7,7 +7,7 @@ import type { Lighting } from '@/lib/domain/enums';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
 import type { BiathlonSession } from '@/lib/domain/session';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
-import { pipelineHooks } from '@/lib/pipeline/hooks';
+import { pipelineHooks, summaryHooks } from '@/lib/pipeline/hooks';
 import { deleteAnalysisRecord, getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { diagramPrefix, photoPrefix } from '@/lib/store/blob-keys';
 import { deleteByPrefix } from '@/lib/store/blobs-repo';
@@ -38,6 +38,18 @@ function categorizationEquals(a: Categorization, b: Categorization): boolean {
     a.roundsProne === b.roundsProne &&
     a.roundsStanding === b.roundsStanding
   );
+}
+
+/**
+ * REV-67: marks a sighting target Sight in or Confirm. It changes nothing in scoring, so no stage re-runs; the summary image
+ * (whose slots follow the role) is rebuilt.
+ */
+export async function setSightingRole(ctx: ServiceContext, photoId: string, role: 'sight-in' | 'confirm'): Promise<void> {
+  const photo = await getPhotoRecord(ctx.db, photoId);
+  if (photo === null) throw new PhotoNotFoundError(photoId);
+  if ((photo.categorization.sightingRole ?? null) === role) return;
+  await updatePhotoMetadata(ctx, photoId, { categorization: { ...photo.categorization, sightingRole: role } });
+  summaryHooks.schedule(photo.sessionId);
 }
 
 export interface UpdatePhotoMetadataInput {

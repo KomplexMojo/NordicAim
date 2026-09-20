@@ -1,6 +1,8 @@
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { sightingRoles } from '@/lib/domain/sighting-role';
+import { setSightingRole } from '@/lib/services/photos';
 import { BackupReminder } from '@/components/settings/BackupReminder';
 import { SummaryCard } from '@/components/results/SummaryCard';
 import { leftOutOfSummary } from '@/lib/composite/select-defaults';
@@ -9,6 +11,7 @@ import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import { isTargetPhoto } from '@/lib/domain/backing';
+import { groupedByTemplate } from '@/lib/domain/photo-order';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { getRecentTimings } from '@/lib/pipeline/timing';
 import { retryFailedStage } from '@/lib/pipeline/runner-browser';
@@ -54,9 +57,10 @@ async function loadResults(ctx: ReturnType<typeof useServices>['ctx'], sid: stri
   const byId = new Map(photos.map((p) => [p.id, p]));
   // analysis-pipeline §1 step 3: "one target card per photo in capture order".
   // backing-sheet.md §3: card photos never appear in results (they are not in `photoIds` either).
-  const ordered = session.photoIds
-    .map((id) => byId.get(id))
-    .filter((p): p is TargetPhoto => p !== undefined && isTargetPhoto(p));
+  // REV-68: sighting targets, then precision, each in capture order, however the photos were added.
+  const ordered = groupedByTemplate(
+    session.photoIds.map((id) => byId.get(id)).filter((p): p is TargetPhoto => p !== undefined && isTargetPhoto(p)),
+  );
   const entries = await Promise.all(ordered.map(async (p) => [p.id, await getAnalysisRecord(ctx.db, p.id)] as const));
   return { sid, name: session.name, photos: ordered, analyses: new Map(entries) };
 }
@@ -69,6 +73,14 @@ export function ResultsPage() {
   const [searchParams] = useSearchParams();
   const showDebug = searchParams.get('debug') === '1';
 
+  async function onRole(photoId: string, role: 'sight-in' | 'confirm') {
+    try {
+      await setSightingRole(ctx, photoId, role);
+    } catch (err) {
+      toast.error(`Could not change the role: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
   async function onRetry(photoId: string) {
     try {
       await retryFailedStage(ctx, photoId);
@@ -76,6 +88,8 @@ export function ResultsPage() {
       toast.error(`Could not retry: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+
+  const roles = data == null ? new Map<string, 'sight-in' | 'confirm'>() : sightingRoles(data.photos);
 
   if (data === undefined) {
     return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
@@ -124,6 +138,8 @@ export function ResultsPage() {
           {data.photos.map((photo) => (
             <TargetCard
               key={photo.id}
+              role={roles.get(photo.id) ?? null}
+              onRoleChange={(r) => void onRole(photo.id, r)}
               sessionId={sid}
               photo={photo}
               analysis={data.analyses.get(photo.id) ?? null}

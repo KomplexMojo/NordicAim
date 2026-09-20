@@ -5,6 +5,7 @@ import type { TargetAnalysis } from '@/lib/domain/analysis';
 import type { TemplateId } from '@/lib/domain/enums';
 import { isTargetPhoto } from '@/lib/domain/backing';
 import type { TargetPhoto } from '@/lib/domain/photo';
+import { hasExplicitRole, sightingRoles } from '@/lib/domain/sighting-role';
 
 export interface SlotIds {
   sighting: [string | null, string | null];
@@ -60,12 +61,28 @@ function selectForTemplate(photos: TargetPhoto[], analyses: Map<string, TargetAn
 }
 
 /**
+ * REV-67 (rendering-composite.md §5): once the owner has marked any sighting target Sight in or Confirm, slot 1 is the most
+ * recent Sight in and slot 2 the most recent Confirm; otherwise the two most recent, as before.
+ */
+function selectSighting(photos: TargetPhoto[], analyses: Map<string, TargetAnalysis>): [string | null, string | null] {
+  const targets = photos.filter((p) => isTargetPhoto(p));
+  if (!hasExplicitRole(targets)) return selectForTemplate(photos, analyses, 'sighting');
+  const roles = sightingRoles(targets);
+  const candidates = targets.filter(
+    (p) => p.status === 'analyzed' && p.categorization.template === 'sighting' && (analyses.get(p.id)?.computed ?? null) !== null,
+  );
+  const latest = (role: 'sight-in' | 'confirm'): string | null =>
+    [...candidates.filter((p) => roles.get(p.id) === role)].sort((a, b) => compareCandidates(a, b, analyses, 'sighting'))[0]?.id ?? null;
+  return [latest('sight-in'), latest('confirm')];
+}
+
+/**
  * rendering-composite.md §5. A rejected target (M20: `needs-attention`, `too-many-holes`, `computed`
  * null) never reaches `status === 'analyzed'`, so it is never a candidate here.
  */
 export function selectDefaultSlots(photos: TargetPhoto[], analyses: Map<string, TargetAnalysis>): SlotIds {
   return {
-    sighting: selectForTemplate(photos, analyses, 'sighting'),
+    sighting: selectSighting(photos, analyses),
     precision: selectForTemplate(photos, analyses, 'precision'),
   };
 }

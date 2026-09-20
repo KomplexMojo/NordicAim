@@ -31,7 +31,9 @@ export function TemplatePositionFields({ categorization, onChange }: TemplatePos
 
   function onPositionChange(position: Position) {
     const { template } = categorization;
-    onChange(template !== null ? defaultCategorization(template, position) : { ...emptyCategorization(), position });
+    const sightingRole = categorization.sightingRole;
+    const next = template !== null ? defaultCategorization(template, position) : { ...emptyCategorization(), position };
+    onChange(sightingRole === undefined ? next : { ...next, sightingRole });
   }
 
   return (

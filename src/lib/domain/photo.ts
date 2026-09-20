@@ -80,6 +80,8 @@ export const Categorization = z.object({
   position: Position.nullable(),
   roundsProne: z.number().int().min(1).max(50).nullable(),
   roundsStanding: z.number().int().min(1).max(50).nullable(),
+  // REV-67: a sighting target's role. null = not chosen; `sightingRoles` infers it by order.
+  sightingRole: z.enum(['sight-in', 'confirm']).nullable().optional(),
 });
 export type Categorization = z.infer<typeof Categorization>;
 

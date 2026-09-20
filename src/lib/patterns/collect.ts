@@ -2,6 +2,7 @@
 
 import type { TargetAnalysis, UnitResult } from '../domain/analysis';
 import type { TargetPhoto } from '../domain/photo';
+import { sightingRoles } from '../domain/sighting-role';
 
 export const PATTERN_VIEWS = ['sight-in', 'confirm', 'precision-prone', 'precision-standing'] as const;
 export type PatternView = (typeof PATTERN_VIEWS)[number];
@@ -20,7 +21,7 @@ export interface PatternSource {
   /** `YYYY-MM-DD`. */
   sessionDate: string;
   photo: Pick<TargetPhoto, 'id' | 'sessionId' | 'status' | 'captureTime' | 'importedAt'> & {
-    categorization: Pick<TargetPhoto['categorization'], 'template'>;
+    categorization: Pick<TargetPhoto['categorization'], 'template' | 'sightingRole'>;
   };
   analysis: Pick<TargetAnalysis, 'computed' | 'pipeline'> | null;
 }
@@ -40,18 +41,6 @@ export interface PatternData {
   points: Record<PatternView, PatternPoint[]>;
   /** Targets left out because they are not analysed with a measured or confirmed alignment. */
   leftOut: number;
-}
-
-function captureOrder(a: PatternSource['photo'], b: PatternSource['photo']): number {
-  const au = a.captureTime.utc;
-  const bu = b.captureTime.utc;
-  if (au !== bu) {
-    if (au === null) return 1;
-    if (bu === null) return -1;
-    return au < bu ? -1 : 1;
-  }
-  if (a.importedAt !== b.importedAt) return a.importedAt < b.importedAt ? -1 : 1;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
 /** patterns.md §2. */
@@ -80,7 +69,13 @@ export function collectPatterns(sources: PatternSource[]): PatternData {
   let leftOut = 0;
 
   const sightingBySession = new Map<string, PatternSource[]>();
+  const sessionSighting = new Map<string, PatternSource['photo'][]>();
   for (const source of sources) {
+    if (source.photo.categorization.template === 'sighting') {
+      const all = sessionSighting.get(source.sessionId) ?? [];
+      all.push(source.photo);
+      sessionSighting.set(source.sessionId, all);
+    }
     if (!isIncluded(source)) {
       leftOut += 1;
       continue;
@@ -98,11 +93,12 @@ export function collectPatterns(sources: PatternSource[]): PatternData {
   }
 
   for (const list of sightingBySession.values()) {
-    list.sort((a, b) => captureOrder(a.photo, b.photo));
-    list.forEach((source, i) => {
-      const view: PatternView = i === 0 ? 'sight-in' : 'confirm';
+    // Roles are worked out over every sighting target in the session, so a target left out here still counts for inference.
+    const roles = sightingRoles(sessionSighting.get(list[0]!.sessionId) ?? list.map((s) => s.photo));
+    for (const source of list) {
+      const view: PatternView = roles.get(source.photo.id) === 'confirm' ? 'confirm' : 'sight-in';
       for (const unit of source.analysis!.computed!.result.all.units) points[view].push(toPoint(unit, source));
-    });
+    }
   }
   return { points, leftOut };
 }

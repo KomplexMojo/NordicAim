@@ -16,6 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useServices } from '@/lib/app/services';
 import type { Lighting } from '@/lib/domain/enums';
+import { SightingRoleField } from '@/components/metadata/SightingRoleField';
+import type { SightingRole } from '@/lib/domain/sighting-role';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
@@ -30,6 +32,8 @@ import { TemplatePositionFields } from './TemplatePositionFields';
 const NOTES_DEBOUNCE_MS = 600;
 
 interface PhotoMetadataCardProps {
+  /** REV-67: the sighting target's effective role, or null when this is not a sighting target. */
+  role?: SightingRole | null;
   photo: TargetPhoto;
   analysis: TargetAnalysis | null;
   onCategorizationChange(categorization: Categorization): void;
@@ -68,6 +72,7 @@ function useThumbnailUrl(photoId: string): string | null {
  * lighting, notes, and Remove photo (confirm). */
 export function PhotoMetadataCard({
   photo,
+  role = null,
   analysis,
   onCategorizationChange,
   onLightingChange,
@@ -111,6 +116,9 @@ export function PhotoMetadataCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <TemplatePositionFields categorization={photo.categorization} onChange={onCategorizationChange} />
+        {role !== null && (
+          <SightingRoleField role={role} onChange={(next) => onCategorizationChange({ ...photo.categorization, sightingRole: next })} />
+        )}
         <RoundsFields categorization={photo.categorization} idPrefix={photo.id} onChange={onCategorizationChange} />
         <LightingField
           idPrefix={photo.id}

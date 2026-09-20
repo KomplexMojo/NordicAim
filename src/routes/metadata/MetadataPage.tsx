@@ -10,12 +10,14 @@ import { PhotoMetadataCard } from '@/components/metadata/PhotoMetadataCard';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { isTargetPhoto } from '@/lib/domain/backing';
+import { groupedByTemplate } from '@/lib/domain/photo-order';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import type { Lighting } from '@/lib/domain/enums';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
+import { sightingRoles } from '@/lib/domain/sighting-role';
 import { deletePhoto, requestAnalysis, updatePhotoMetadata } from '@/lib/services/photos';
 import { getSession, updateSession } from '@/lib/services/sessions';
 
@@ -35,9 +37,10 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
   const photos = await listPhotosBySession(ctx.db, sid);
   const byId = new Map(photos.map((p) => [p.id, p]));
   // backing-sheet.md §3: card photos are not targets, so they never appear here or in the count.
-  const ordered = session.photoIds
-    .map((id) => byId.get(id))
-    .filter((p): p is TargetPhoto => p !== undefined && isTargetPhoto(p));
+  // REV-68: sighting targets, then precision, each in capture order, however the photos were added.
+  const ordered = groupedByTemplate(
+    session.photoIds.map((id) => byId.get(id)).filter((p): p is TargetPhoto => p !== undefined && isTargetPhoto(p)),
+  );
   const analysisEntries = await Promise.all(
     ordered.map(async (p) => [p.id, await getAnalysisRecord(ctx.db, p.id)] as const),
   );
@@ -85,6 +88,7 @@ export function MetadataPage() {
   }, [name, notes]);
 
   const photos = useMemo(() => (data?.sid === sid ? data.photos : []), [data, sid]);
+  const roles = useMemo(() => sightingRoles(photos), [photos]);
   const incompleteCount = useMemo(
     () => photos.filter((p) => !isCategorizationComplete(p.categorization)).length,
     [photos],
@@ -185,6 +189,7 @@ export function MetadataPage() {
           <PhotoMetadataCard
             key={photo.id}
             photo={photo}
+            role={roles.get(photo.id) ?? null}
             analysis={data.analyses.get(photo.id) ?? null}
             onCategorizationChange={(c) => void onCategorizationChange(photo.id, c)}
             onLightingChange={(l) => void onLightingChange(photo.id, l)}
