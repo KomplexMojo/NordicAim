@@ -12,6 +12,7 @@ import {
   isValidHoleDiameterMm,
   isValidVisibleHoleDiameterMm,
   type AppSettings,
+  type Handedness,
   type ScoringRule,
 } from '@/lib/domain/settings';
 import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
@@ -96,4 +97,14 @@ export function setScoringRule(ctx: ServiceContext, scoringRule: ScoringRule): P
 export function setVisibleHoleDiameterMm(ctx: ServiceContext, mm: number): Promise<ScoringChange> {
   if (!isValidVisibleHoleDiameterMm(mm)) return Promise.reject(new InvalidVisibleHoleDiameterError(mm));
   return applyScoringChange(ctx, (s) => ({ ...s, visibleHoleDiameterMm: mm }));
+}
+
+/**
+ * REV-88: the shooter's trigger hand. The observed shooting issues are stored with each analysis, so changing it re-scores every stored
+ * session (shots and alignment are never touched).
+ */
+export async function setHandedness(ctx: ServiceContext, handedness: Handedness): Promise<ScoringChange> {
+  const before = await getSettings(ctx.db);
+  const settings = await updateSettings(ctx, (s) => ({ ...s, handedness }));
+  return { settings, rescored: before.handedness !== handedness ? await rescoreAll(ctx) : null };
 }

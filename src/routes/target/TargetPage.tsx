@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router';
 
 import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { tallyRows } from '@/lib/scoring/tally';
+import { ObservedPatterns } from '@/components/results/ObservedPatterns';
 import { PhotoSection } from '@/components/target/PhotoSection';
 import { DiagramSvg } from '@/components/results/DiagramSvg';
 import { ReasonList } from '@/components/results/ReasonList';
@@ -245,6 +246,10 @@ export function TargetPage() {
       <Button variant="outline" className="h-11" data-testid="zoom-toggle" onClick={() => setZoomed(!zoomed)}>
         {zoomed ? 'Fit to width' : 'Zoom in'}
       </Button>
+
+      {result !== null && (
+        <ObservedPatterns characteristics={result.all.characteristics} scope="Worked out from this target's shots when its analysis was saved." />
+      )}
 
       {result !== null && (
         <div className="flex flex-col gap-4">

@@ -6,7 +6,6 @@ import type { PatternSummary } from '../patterns/summarize';
 import { renderTarget as renderPrecisionTarget } from './diagram-precision';
 import { renderTarget as renderSightingTarget } from './diagram-sighting';
 import { fitScale, projectMm, renderGroupEllipse, renderMpiMarker, svgRoot } from './diagram-shared';
-import { renderIssueOverlays } from './issue-overlay';
 import { el } from './svg';
 
 export const PATTERNS_SIZE = 1200;
@@ -29,8 +28,6 @@ export interface PatternsInput {
   summary: PatternSummary;
   /** From `patternsSizeFactor`; 1 draws the halo at full size. */
   factor: number;
-  /** REV-74: shooting-issue regions to draw over the target. */
-  issues?: readonly string[];
 }
 
 /**
@@ -52,7 +49,7 @@ export function patternsScale(kind: 'precision' | 'sighting', factor: number): n
   return (kind === 'precision' ? PRECISION_BASE_SCALE : SIGHTING_BASE_SCALE) * factor;
 }
 
-export function renderPatternsSvg({ kind, points, summary, factor, issues = [] }: PatternsInput): string {
+export function renderPatternsSvg({ kind, points, summary, factor }: PatternsInput): string {
   const s = patternsScale(kind, factor);
   const target = kind === 'precision' ? renderPrecisionTarget(CENTRE, CENTRE, s, s >= 4) : renderSightingTarget(CENTRE, CENTRE, s);
 
@@ -72,7 +69,6 @@ export function renderPatternsSvg({ kind, points, summary, factor, issues = [] }
     target +
     renderGroupEllipse(summary.ellipse, CENTRE, CENTRE, s) +
     el('g', { class: 'pattern-dots' }, dots) +
-    renderMpiMarker(summary.mpi, CENTRE, CENTRE, s) +
-    renderIssueOverlays(issues, { cx: CENTRE, cy: CENTRE, s }, kind);
+    renderMpiMarker(summary.mpi, CENTRE, CENTRE, s);
   return svgRoot(PATTERNS_SIZE, PATTERNS_SIZE, layers);
 }

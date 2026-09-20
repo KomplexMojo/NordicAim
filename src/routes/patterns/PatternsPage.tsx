@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
-import { IssueOverlayPanel } from '@/components/results/IssueOverlayPanel';
+import { ObservedPatterns } from '@/components/results/ObservedPatterns';
 import { Button } from '@/components/ui/button';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
@@ -12,6 +12,8 @@ import {
   type PatternRange,
   type PatternView,
 } from '@/lib/patterns/collect';
+import { characterize } from '@/lib/scoring/characteristics';
+import { discRadiusMm } from '@/lib/scoring/characterize-result';
 import { summarizePatterns, THIN_SHOT_COUNT } from '@/lib/patterns/summarize';
 import { patternsSizeFactor, renderPatternsSvg } from '@/lib/render/patterns';
 import { loadPatterns } from '@/lib/services/patterns';
@@ -36,7 +38,6 @@ export function PatternsPage() {
   const [view, setView] = useState<PatternView>('sight-in');
   const [range, setRange] = useState<PatternRange>('all');
   const [zoomed, setZoomed] = useState(false);
-  const [issues, setIssues] = useState<string[]>([]);
 
   const kind = view.startsWith('precision') ? 'precision' : 'sighting';
   const shown = useMemo(
@@ -44,6 +45,18 @@ export function PatternsPage() {
     [value, view, range],
   );
   const summary = useMemo(() => summarizePatterns(shown, kind), [shown, kind]);
+  // REV-88: the observed patterns are worked out over the whole set of shots on screen, as one group.
+  const observed = useMemo(
+    () =>
+      value === undefined
+        ? null
+        : characterize(shown, {
+            handedness: value.handedness,
+            position: view === 'precision-standing' ? 'standing' : 'prone',
+            discRadiusMm: discRadiusMm(kind === 'precision' ? 'precision' : 'sighting'),
+          }),
+    [shown, value, view, kind],
+  );
   // One size for all four views, worked out from every shot ever recorded (patterns.md §5).
   const factor = useMemo(
     () =>
@@ -52,7 +65,7 @@ export function PatternsPage() {
         : patternsSizeFactor(PATTERN_VIEWS.map((v) => ({ kind: v.startsWith('precision') ? ('precision' as const) : ('sighting' as const), points: value.data.points[v] }))),
     [value],
   );
-  const svg = useMemo(() => renderPatternsSvg({ kind, points: shown, summary, factor, issues }), [kind, shown, summary, factor, issues]);
+  const svg = useMemo(() => renderPatternsSvg({ kind, points: shown, summary, factor }), [kind, shown, summary, factor]);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 lg:max-w-6xl">
@@ -97,9 +110,8 @@ export function PatternsPage() {
       ) : (
         <div className="flex flex-col gap-4 lg:flex-row">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-start">
-            <IssueOverlayPanel selected={issues} onChange={setIssues} className="lg:order-2 lg:w-48 lg:shrink-0" />
-            <div className={`min-w-0 flex-1 lg:order-1 ${zoomed ? 'max-h-[80vh] overflow-auto' : ''}`}>
+            <div className="flex flex-col gap-2">
+            <div className={`min-w-0 flex-1 ${zoomed ? 'max-h-[80vh] overflow-auto' : ''}`}>
               <div
                 data-testid="patterns-drawing"
                 data-shots={shown.length}
@@ -116,7 +128,9 @@ export function PatternsPage() {
             </Button>
           </div>
 
-          <section className="flex flex-col gap-1 text-sm lg:w-72" aria-label="Summary" data-testid="patterns-summary">
+          <div className="flex flex-col gap-3 lg:w-80">
+          <ObservedPatterns characteristics={observed} scope={`Worked out over all ${shown.length} shots shown, as one group.`} />
+          <section className="flex flex-col gap-1 text-sm" aria-label="Summary" data-testid="patterns-summary">
             <p className="font-medium" data-testid="patterns-counts">
               {summary.shots} {summary.shots === 1 ? 'shot' : 'shots'} · {summary.targets}{' '}
               {summary.targets === 1 ? 'target' : 'targets'} · {summary.sessions}{' '}
@@ -159,6 +173,7 @@ export function PatternsPage() {
               </p>
             )}
           </section>
+          </div>
         </div>
       )}
     </main>

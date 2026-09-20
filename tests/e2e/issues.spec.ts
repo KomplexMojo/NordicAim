@@ -33,29 +33,46 @@ test('the metrics and photo cards on the target screen collapse, keeping the key
   await expect(page.getByTestId('photo-facts')).toContainText('Lighting');
 });
 
-test('the Patterns drawing takes the same overlays', async ({ page }) => {
-  await page.goto('/#/patterns');
-  await page.getByTestId('panel-toggle-issues').click();
-  await page.getByTestId('issue-toggle-scattered').click();
-  await expect(page.getByTestId('patterns-drawing').locator('.issue-region')).toHaveCount(1);
-});
-
-test('the shooting-issue overlays are only on Patterns, and the target screen has none', async ({ page }) => {
+test('the target screen and Patterns show observed patterns, worked out over all the shots (REV-88)', async ({ page }) => {
   await openPrecision(page);
+  // Worked out when the analysis was saved, on the target's own screen.
+  const onTarget = page.getByTestId('observed-patterns');
+  await expect(onTarget).toBeVisible();
+  await expect(onTarget.getByTestId('characteristics')).toContainText('Group size');
+  await expect(onTarget.getByTestId('characteristics')).toContainText('MOA');
+
+  // There is no overlay panel of fixed regions any more.
   await expect(page.getByTestId('issue-panel')).toHaveCount(0);
 
   await page.goto('/#/patterns');
-  await page.getByTestId('panel-toggle-issues').click();
-  await page.getByTestId('issue-toggle-tight').click();
-  await page.getByTestId('issue-toggle-scattered').click();
-  const drawing = page.getByTestId('patterns-drawing');
-  await expect(drawing.locator('.issue-overlay')).toHaveCount(2);
-  const radius = async (id: string) => Number(await drawing.locator(`[data-issue="${id}"] circle`).first().getAttribute('r'));
-  expect(await radius('tight')).toBeLessThan(await radius('scattered'));
-  await page.getByTestId('issue-toggle-tight').click();
-  await expect(drawing.locator('[data-issue="tight"]')).toHaveCount(0);
-  await page.getByTestId('issue-clear').click();
-  await expect(drawing.locator('.issue-region')).toHaveCount(0);
+  await page.getByTestId('pattern-view-precision-prone').click();
+  const pooled = page.getByTestId('observed-patterns');
+  await expect(pooled).toBeVisible();
+  await expect(pooled).toContainText('all');
+  await expect(pooled.getByTestId('characteristics')).toContainText('Mean radius');
+  await expect(page.getByTestId('patterns-drawing').locator('.issue-region')).toHaveCount(0);
+});
+
+test('Settings has a Shooter section for the trigger hand, and the choice is kept', async ({ page }) => {
+  await page.goto('/#/settings');
+  await expect(page.getByTestId('handedness-right')).toBeChecked();
+  await page.getByTestId('handedness-left').check();
+  await expect(page.getByTestId('handedness-left')).toBeChecked();
+  await page.waitForFunction(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('asa');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const value = await new Promise<{ handedness?: string } | undefined>((resolve) => {
+      const get = db.transaction('settings').objectStore('settings').get('app');
+      get.onsuccess = () => resolve(get.result as { handedness?: string } | undefined);
+    });
+    db.close();
+    return value?.handedness === 'left';
+  });
+  await page.reload();
+  await expect(page.getByTestId('handedness-left')).toBeChecked();
 });
 
 test('Patterns can show the latest session or this week only', async ({ page }) => {

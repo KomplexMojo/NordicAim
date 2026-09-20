@@ -12,6 +12,7 @@ import { summaryHooks } from '@/lib/pipeline/hooks';
 import { renderDiagramSvg, type DiagramInput } from '@/lib/render/diagram';
 import type { RenderTools } from '@/lib/render/rasterize-browser';
 import { ENGINE_VERSION, analyzeTarget } from '@/lib/scoring/analyze';
+import { withCharacteristics } from '@/lib/scoring/characterize-result';
 import { mergeReconcileWarnings, reconcileShots } from '@/lib/scoring/reconcile-shots';
 import type { ServiceContext } from '@/lib/services/context';
 import { AnalysisNotFoundError, PhotoNotFoundError } from '@/lib/services/photos';
@@ -199,7 +200,7 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
       // never rewrites shots it did not change (and never renumbers a manual one).
       shots: shotsChanged ? shots : currentAnalysis.shots,
       pipeline: { ...currentAnalysis.pipeline, stageB: 'done', error: null, warnings },
-      computed: result === null ? null : { engineVersion: ENGINE_VERSION, result },
+      computed: result === null ? null : { engineVersion: ENGINE_VERSION, result: withCharacteristics(result, categorization, settings.handedness) },
       updatedAt: nowIso,
     };
     const { status, reasons } = photoStatus({ categorization: currentPhoto.categorization, analysis: next, result });

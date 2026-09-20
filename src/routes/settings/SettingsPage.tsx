@@ -6,6 +6,7 @@ import { AboutSettings } from '@/components/settings/AboutSettings';
 import { BackingSettings } from '@/components/settings/BackingSettings';
 import { GlossarySettings } from '@/components/settings/GlossarySettings';
 import { BackupSettings } from '@/components/settings/BackupSettings';
+import { ShooterSettings } from '@/components/settings/ShooterSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
 import { useServices } from '@/lib/app/services';
@@ -18,6 +19,7 @@ import {
   resetHoleDiameterMm,
   setBackingMode,
   setHoleDiameterMm,
+  setHandedness,
   setScoringRule,
   setVisibleHoleDiameterMm,
   type ScoringChange,
@@ -124,6 +126,10 @@ export function SettingsPage() {
               setCardError(false);
               void save(() => clearBacking(ctx));
             }}
+          />
+          <ShooterSettings
+            handedness={settings.handedness}
+            onChange={(h) => void saveScoring(() => setHandedness(ctx, h), { handedness: h })}
           />
           <ScoringSettings
             scoringRule={settings.scoringRule}

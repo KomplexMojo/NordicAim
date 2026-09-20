@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { Characteristics } from '../scoring/characteristics';
+
 import { ShotPosition, StageState, TemplateId, Warning } from './enums';
 import { Id, ShotId, UtcIso } from './primitives';
 import { Calibration } from './photo';
@@ -143,6 +145,8 @@ export interface SubsetResult {
   missing: number;
   overcount: number;
   units: UnitResult[];
+  /** REV-88: the group's observable characteristics and the issues they match, worked out when the analysis is saved. */
+  characteristics?: Characteristics | null;
   mpi: { xMm: number; yMm: number } | null;
   extremeSpreadMm: number | null;
   extremeSpreadAngular: Angular | null;

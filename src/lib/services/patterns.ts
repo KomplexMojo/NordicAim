@@ -6,12 +6,17 @@ import { TargetPhoto } from '@/lib/domain/photo';
 import { BiathlonSession, upgradeSession } from '@/lib/domain/session';
 import { collectPatterns, type PatternData, type PatternSource } from '@/lib/patterns/collect';
 
+import type { Handedness } from '@/lib/domain/settings';
+import { getSettings } from '@/lib/store/settings-repo';
+
 import type { ServiceContext } from './context';
 
 export interface PatternsLoaded {
   data: PatternData;
   /** `YYYY-MM-DD`, for the date ranges. */
   today: string;
+  /** The shooter's trigger hand (Settings), which the observed shooting issues follow. */
+  handedness: Handedness;
 }
 
 export async function loadPatterns(ctx: ServiceContext): Promise<PatternsLoaded> {
@@ -41,5 +46,5 @@ export async function loadPatterns(ctx: ServiceContext): Promise<PatternsLoaded>
     if (session === undefined || photo.categorization.template === null) continue;
     sources.push({ sessionId: photo.sessionId, sessionDate: session.date, sessionStamp: session.stamp, photo, analysis: analyses.get(photo.id) ?? null });
   }
-  return { data: collectPatterns(sources), today: ctx.now().toISOString().slice(0, 10) };
+  return { data: collectPatterns(sources), today: ctx.now().toISOString().slice(0, 10), handedness: (await getSettings(ctx.db)).handedness };
 }

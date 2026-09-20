@@ -10,6 +10,15 @@ export const ScoringRule = z.enum(['gauge', 'centre', 'visible']);
 export type ScoringRule = z.infer<typeof ScoringRule>;
 export const DEFAULT_SCORING_RULE: ScoringRule = 'gauge';
 
+/**
+ * REV-88: the shooter's trigger hand. The sling arm is the other arm. Shooting-issue rules are written once for a right-handed shooter and
+ * mirrored for a left-handed one, so they can be named by role (sling arm, trigger arm) and never left or right.
+ */
+export const Handedness = z.enum(['right', 'left']);
+export type Handedness = z.infer<typeof Handedness>;
+export const DEFAULT_HANDEDNESS: Handedness = 'right';
+export const HANDEDNESS_LABEL: Record<Handedness, string> = { right: 'Right-handed', left: 'Left-handed' };
+
 /** REV-56/REV-59: the rule's name as Settings shows it and the summary image prints it, so the two never drift. */
 export const SCORING_RULE_LABEL: Record<ScoringRule, string> = {
   gauge: 'Official gauge touch',
@@ -38,6 +47,7 @@ export const AppSettings = z.object({
   backing: BackingSheet.nullable(),
   // REV-56 (geometry-scoring.md §3): how a hole is scored. Both default when absent so older rows read back.
   scoringRule: ScoringRule.default(DEFAULT_SCORING_RULE),
+  handedness: Handedness.default(DEFAULT_HANDEDNESS),
   visibleHoleDiameterMm: z
     .number()
     .min(MIN_VISIBLE_HOLE_DIAMETER_MM)
@@ -73,6 +83,7 @@ export function defaultAppSettings(): AppSettings {
     backingMode: DEFAULT_BACKING_MODE,
     backing: null,
     scoringRule: DEFAULT_SCORING_RULE,
+    handedness: DEFAULT_HANDEDNESS,
     visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
     diagramRendererVersion: 0,
     lastBackupAt: null,

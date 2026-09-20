@@ -1,6 +1,8 @@
-# Shooting-issue definitions (DRAFT for the owner's review, 2026-09-20)
+# Shooting-issue definitions (v1 built 2026-09-20, thresholds still provisional)
 
-> **Status: draft. Nothing here is implemented.** It replaces the hand-placed regions in `src/lib/issues/catalog.ts` (REV-74) with
+> **Status: v1 implemented (REV-88) with the provisional thresholds below; the owner and a coach still need to confirm them.** Changes from the first draft, on the owner's direction: (a) the Patterns screen shows **observed patterns and issues** and no longer draws fixed regions; (b) the analysis runs **over the whole set of shots on screen as one group**, not per target; (c) each target's own characteristics and potential issues are worked out **when its analysis is saved** (stored on the analysis, shown on the target screen); (d) handedness is a Settings choice (Settings → Shooter, default right-handed).
+>
+> **(Original draft note:) Nothing here is implemented.** It replaces the hand-placed regions in `src/lib/issues/catalog.ts` (REV-74) with
 > **rules measured from the shots**, and builds on `docs/spec/group-patterns.md` (features, flyers, two-cluster test, size scales). Numbers
 > marked *P* are provisional starting points for the owner and a coach to change. Nothing becomes a REV until you sign off the table.
 
