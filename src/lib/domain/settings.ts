@@ -10,6 +10,13 @@ export const ScoringRule = z.enum(['gauge', 'centre', 'visible']);
 export type ScoringRule = z.infer<typeof ScoringRule>;
 export const DEFAULT_SCORING_RULE: ScoringRule = 'gauge';
 
+/** REV-56/REV-59: the rule's name as Settings shows it and the summary image prints it, so the two never drift. */
+export const SCORING_RULE_LABEL: Record<ScoringRule, string> = {
+  gauge: 'Official gauge touch',
+  centre: 'Centre in ring',
+  visible: 'Visible hole touch',
+};
+
 /** Provisional: the lowest edge measured on the owner's holes (p10 4.5 mm of compact single holes). */
 export const DEFAULT_VISIBLE_HOLE_DIAMETER_MM = 4.5;
 export const MIN_VISIBLE_HOLE_DIAMETER_MM = 2;

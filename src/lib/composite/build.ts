@@ -16,7 +16,8 @@ import { artifactJsonKey, artifactPngKey, artifactPrefix } from '@/lib/store/blo
 import { deleteByPrefix, getBlob, putBlob } from '@/lib/store/blobs-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
-import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
+import type { ScoringRule } from '@/lib/domain/settings';
+import { scoringDiameterFromSettings, scoringHoleDiameterMm } from '@/lib/scoring/rule';
 import { getSettings } from '@/lib/store/settings-repo';
 
 import { ArtifactNotFoundError, EmptyCompositeError, type CompositeArtifact } from './artifact';
@@ -60,7 +61,8 @@ function toSlotData(
   id: string | null,
   photoById: Map<string, TargetPhoto>,
   analyses: Map<string, TargetAnalysis>,
-  profile: typeof BIATHLON_50M,
+  profiles: Record<ScoringRule, typeof BIATHLON_50M>,
+  rule: ScoringRule,
 ): SlotData | null {
   if (id === null) return null;
   const photo = photoById.get(id);
@@ -68,8 +70,11 @@ function toSlotData(
   if (photo === undefined || analysis === undefined || analysis.computed === null) return null;
   const categorization = photo.categorization;
   if (!isCategorizationComplete(categorization)) return null;
-  const result = analyzeTarget({ template: categorization.template!, categorization, shots: analysis.shots, profile });
-  return { photo, analysis, result };
+  const score = (r: ScoringRule) =>
+    analyzeTarget({ template: categorization.template!, categorization, shots: analysis.shots, profile: profiles[r] });
+  // REV-59: the same shots under every rule, for the band's comparison; `result` is the rule in force.
+  const byRule = { gauge: score('gauge'), centre: score('centre'), visible: score('visible') };
+  return { photo, analysis, result: byRule[rule], byRule };
 }
 
 /**
@@ -97,17 +102,24 @@ export async function buildComposite(ctx: ServiceContext, sessionId: string, ren
   const holeDiameterMm = scoringDiameterFromSettings(settings);
   // `BIATHLON_50M` is `as const`; overriding one field widens the type away from the literal profile
   // `analyzeTarget` accepts, so the assertion restores it (same pattern as `runStageB`).
-  const profile = { ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M;
+  const profileFor = (rule: ScoringRule) =>
+    ({
+      ...BIATHLON_50M,
+      holeDiameterMm: scoringHoleDiameterMm(rule, settings.profileOverrides.holeDiameterMm, settings.visibleHoleDiameterMm),
+    }) as typeof BIATHLON_50M;
+  // REV-59: every slot is scored under all three rules, so the band can show where they differ.
+  const profiles = { gauge: profileFor('gauge'), centre: profileFor('centre'), visible: profileFor('visible') };
+  const rule = settings.scoringRule;
 
   const photoById = new Map(photos.map((p) => [p.id, p]));
   const slots = {
     sighting: [
-      toSlotData(slotIds.sighting[0], photoById, analyses, profile),
-      toSlotData(slotIds.sighting[1], photoById, analyses, profile),
+      toSlotData(slotIds.sighting[0], photoById, analyses, profiles, rule),
+      toSlotData(slotIds.sighting[1], photoById, analyses, profiles, rule),
     ] as [SlotData | null, SlotData | null],
     precision: [
-      toSlotData(slotIds.precision[0], photoById, analyses, profile),
-      toSlotData(slotIds.precision[1], photoById, analyses, profile),
+      toSlotData(slotIds.precision[0], photoById, analyses, profiles, rule),
+      toSlotData(slotIds.precision[1], photoById, analyses, profiles, rule),
     ] as [SlotData | null, SlotData | null],
   };
 
@@ -124,6 +136,7 @@ export async function buildComposite(ctx: ServiceContext, sessionId: string, ren
     slots,
     generatedAtLocal: formatGeneratedAtLocal(now),
     holeDiameterMm,
+    scoring: { rule, visibleHoleDiameterMm: settings.visibleHoleDiameterMm },
     moreCount,
   };
 
@@ -149,7 +162,7 @@ export async function buildComposite(ctx: ServiceContext, sessionId: string, ren
   const jsonBytes = new TextEncoder().encode(JSON.stringify(jsonSidecar));
   const jsonBuffer = jsonBytes.buffer.slice(jsonBytes.byteOffset, jsonBytes.byteOffset + jsonBytes.byteLength) as ArrayBuffer;
 
-  const meta: ArtifactMeta = { id, sha256, widthPx: WIDTH_PX, heightPx, createdAt: nowIso, rendererVersion: COMPOSITE_RENDERER_VERSION };
+  const meta: ArtifactMeta = { id, sha256, widthPx: WIDTH_PX, heightPx, createdAt: nowIso, rendererVersion: COMPOSITE_RENDERER_VERSION, scoringRule: rule };
   const pngContentType = png.type === '' ? 'image/png' : png.type;
 
   const tx = ctx.db.transaction(['sessions', 'blobs'], 'readwrite');

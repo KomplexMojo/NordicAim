@@ -39,8 +39,9 @@ test('summary: the summary image appears and loads at its drawn size (rendering-
 
   const dims = await image.evaluate((el: HTMLImageElement) => ({ w: el.naturalWidth, h: el.naturalHeight }));
   // REV-51: always the four fixed positions (1440) under the 120 header; the demo's 1 sighting + 1 precision
-  // leave a 3-line band (targets + one line each): 100 + 34 * 3 + 64 = 266.
-  expect(dims).toEqual({ w: 1440, h: 120 + 1440 + 266 });
+  // leave a 4-line band (targets, scoring, and one line each): 100 + 34 * 4 + 64 = 300. Both demo targets score the same
+  // under every rule, so there are no comparison lines.
+  expect(dims).toEqual({ w: 1440, h: 120 + 1440 + 300 });
 });
 
 test('summary: Share downloads a file named *-shooting-analysis.png and records one ShareRecord', async ({ page }) => {

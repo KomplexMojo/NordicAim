@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { BackingMode, BackingSheet } from './backing';
 import { LocalDate, Id, UtcIso } from './primitives';
+import { DEFAULT_SCORING_RULE, ScoringRule } from './settings';
 
 export const ArtifactMeta = z.object({
   id: Id,
@@ -14,6 +15,8 @@ export const ArtifactMeta = z.object({
    * before this read back; anything below the current version is rebuilt when the results screen opens.
    */
   rendererVersion: z.number().int().min(0).default(0),
+  /** REV-59: the scoring rule the image was drawn under. Defaults to `gauge` for artifacts stored before it existed. */
+  scoringRule: ScoringRule.default(DEFAULT_SCORING_RULE),
 });
 export type ArtifactMeta = z.infer<typeof ArtifactMeta>;
 

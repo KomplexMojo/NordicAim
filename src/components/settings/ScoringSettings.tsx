@@ -6,6 +6,7 @@ import {
   DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
   MAX_VISIBLE_HOLE_DIAMETER_MM,
   MIN_VISIBLE_HOLE_DIAMETER_MM,
+  SCORING_RULE_LABEL,
   ScoringRule,
   isValidVisibleHoleDiameterMm,
 } from '@/lib/domain/settings';
@@ -21,17 +22,17 @@ interface ScoringSettingsProps {
 const RULES: ReadonlyArray<{ value: ScoringRule; label: string; blurb: string }> = [
   {
     value: 'gauge',
-    label: 'Official gauge touch',
+    label: SCORING_RULE_LABEL.gauge,
     blurb: 'A shot scores the higher ring if its whole hole touches the line, as the official gauge does.',
   },
   {
     value: 'centre',
-    label: 'Centre in ring',
+    label: SCORING_RULE_LABEL.centre,
     blurb: 'Only the centre of the hole counts. Stricter: touching a line is not enough.',
   },
   {
     value: 'visible',
-    label: 'Visible hole touch',
+    label: SCORING_RULE_LABEL.visible,
     blurb: 'Like gauge, but using the smaller hole you can actually see on the paper.',
   },
 ];

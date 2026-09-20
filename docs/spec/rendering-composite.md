@@ -223,9 +223,17 @@ black border), described only that one target, and left a fixed 600 px band most
   - `Session analysis` 24 bold at (40, y+56).
   - Lines 18 px from y+100, step 34, each ≤ 110 chars (`…`):
     1. `Targets: <nS> sighting · <nP> precision · <lightingSummary>`, leaving out a zero count (`Targets: 1 precision · Daylight`)
+    1a. **`Scoring: <method>`** (REV-59) — the rule in force, named as Settings names it: `Official gauge touch`, `Centre in ring`,
+       or `Visible hole touch (<size> mm)`. When every filled slot scores the same under all three rules it ends
+       ` · same under every rule`. Always present, so a shared image is never ambiguous about how it was scored.
     2. One per filled slot, built from `targetHeadline` (M24: the same helper the card and target detail use), e.g.
        `Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
        `Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)`; for a `both` slot the `targetHeadline` `both` form.
+    2a. **The other rules' scores, only where they differ (REV-59).** Under a filled slot's line, when its score is not the same under
+       all three rules: `By rule: gauge 72 · centre 70 · visible 71` (precision: the total) or `By rule (hits): gauge 7 · centre 6 ·
+       visible 7` (sighting: hits; a `both` slot sums its two positions). A slot that scores the same under every rule gets no line.
+       Each is computed by `analyzeTarget` with that rule's effective hole size (`geometry-scoring.md` §3); the total on the slot's
+       own line is always the rule in force.
     3. **N = 1 only:** that target's `full`-variant footer lines (§3), which the old stat card carried — the only place the
        summary has room for them — **minus** the lines that repeat line 2: the `Scoring summary` heading, precision's `Total: …`
        and sighting's `Scored (…): …`.
@@ -237,9 +245,10 @@ black border), described only that one target, and left a fixed 600 px band most
 - **Height** = 120 + 1440 + band height. `renderComposite(input)` returns `{ svg, width, height }` so `buildComposite`
   rasterises at exactly the drawn size.
 
-**Height vectors** (no notes, `moreCount` 0, single-position slots): 1 filled precision slot → 120 + 1440 + (100 + 34·5 + 64) =
-1894 (targets, its slot line, its 3 non-repeating footer lines); 2 filled → 120 + 1440 + 100 + 34·3 + 64 = 1826; 3 filled → 1860;
-4 filled → 1894; 0 filled → throws.
+**Height vectors** (no notes, `moreCount` 0, single-position slots that score the same under every rule, so no comparison
+lines): the band's lines are `Targets`, `Scoring`, one per filled slot, and for a single target the footer lines that do not repeat
+it. 1 filled precision slot → 120 + 1440 + (100 + 34·6 + 64) = **1928**; 2 filled → 120 + 1440 + 100 + 34·4 + 64 = **1860**;
+3 filled → **1894**; 4 filled → **1928**; 0 filled → throws. Each slot whose score differs between rules adds one line (34 px).
 
 **Slot selection (automatic, pure)**: candidates per template = photos with `status === 'analyzed'`, sorted by `captureTime.utc`
 descending (null last, then `importedAt` descending). Break ties with the better result (precision: higher `identifiedTotal`;
@@ -266,7 +275,10 @@ export async function latestArtifact(ctx: ServiceContext, sessionId: string): Pr
   defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
   current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
   a rebuild by hand. Bump the constant whenever this renderer's output changes.
-- `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **5**) records which renderer drew an artifact; it
+- `ArtifactMeta.scoringRule` (REV-59) records which scoring rule the image was drawn under (default `gauge` for artifacts stored
+  before it existed), so an image from before a rule change is distinguishable from one after. A rule change re-scores every session
+  (`data-model.md` §5), and each session's summary rebuilds from that.
+- `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **6**) records which renderer drew an artifact; it
   defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
   current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
   a rebuild by hand. Bump the constant whenever this renderer's output changes.

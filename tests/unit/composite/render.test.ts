@@ -53,6 +53,7 @@ function baseInput(over: Partial<CompositeInput> = {}): CompositeInput {
     slots: { sighting: [null, null], precision: [null, null] },
     generatedAtLocal: '2026-09-05 17:20',
     holeDiameterMm: BIATHLON_50M.holeDiameterMm,
+    scoring: { rule: 'gauge', visibleHoleDiameterMm: 4.5 },
     moreCount: 0,
     ...over,
   };
@@ -98,14 +99,15 @@ describe('render/composite four fixed positions (rendering-composite.md §5, REV
   });
 });
 
+// Lines: `Targets`, `Scoring` (REV-59), one per filled slot, and for a single target its footer lines that do not repeat it.
 describe('render/composite height vectors (§5)', () => {
   const s1 = () => slot(sightingFixture, sightingResult);
   const p1 = () => slot(precisionFixture, precisionResult);
   it.each([
-    ['1 target', { sighting: [null, null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 5 + 64],
-    ['2 targets', { sighting: [s1(), null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 3 + 64],
-    ['3 targets', { sighting: [s1(), s1()], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 4 + 64],
-    ['4 targets', { sighting: [s1(), s1()], precision: [p1(), p1()] }, 120 + 1440 + 100 + 34 * 5 + 64],
+    ['1 target', { sighting: [null, null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 6 + 64],
+    ['2 targets', { sighting: [s1(), null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 4 + 64],
+    ['3 targets', { sighting: [s1(), s1()], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 5 + 64],
+    ['4 targets', { sighting: [s1(), s1()], precision: [p1(), p1()] }, 120 + 1440 + 100 + 34 * 6 + 64],
   ] as const)('%s', (_name, slots, expected) => {
     const { svg, height } = renderComposite(baseInput({ slots: slots as never }));
     expect(height).toBe(expected);
@@ -255,7 +257,7 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
   const svg = renderCompositeSvg(input);
 
   it('two targets: root height 120 + 1440 + band (REV-51, four fixed positions)', () => {
-    const height = 120 + 1440 + 100 + 34 * 3 + 64;
+    const height = 120 + 1440 + 100 + 34 * 4 + 64; // targets, scoring, and one line per slot
     expect(svg).toContain(`viewBox="0 0 1440 ${height}"`);
   });
 
@@ -336,5 +338,92 @@ describe('render/composite renderCompositeSvg "both" slot line (fix round 1: §5
     // ES stays visible; the trailing "…" shows only the MPI part got cut (fix round 1).
     expect(lineText).toContain('ES 27.7 mm (1.90 MOA)');
     expect(lineText.endsWith('…')).toBe(true);
+  });
+});
+
+// ---- REV-59: the band names the scoring method and shows where the rules differ (issue #17) ---------------------------------
+
+import type { ScoringRule } from '@/lib/domain/settings';
+import { scoringHoleDiameterMm } from '@/lib/scoring/rule';
+
+const shotAt = (id: string, radialMm: number): Shot => ({
+  id, xMm: radialMm, yMm: 0, multiplicity: 1, positionOverrides: null, source: 'auto', confidence: null, cluster: false, possibleOverlap: false,
+});
+
+/** A slot scored under every rule, as `buildComposite` does; `rule` is the one in force. */
+function slotByRule(template: 'precision' | 'sighting', radii: number[], rule: ScoringRule = 'gauge'): SlotData {
+  const categorization: Categorization =
+    template === 'precision'
+      ? { template, position: 'prone', roundsProne: radii.length, roundsStanding: null }
+      : { template, position: 'prone', roundsProne: radii.length, roundsStanding: null };
+  const shots = radii.map((r, i) => shotAt(`s${i}`, r));
+  const score = (r: ScoringRule) =>
+    analyzeTarget({ template, categorization, shots, profile: { ...BIATHLON_50M, holeDiameterMm: scoringHoleDiameterMm(r, 5.6, 4.5) } as typeof BIATHLON_50M });
+  const byRule = { gauge: score('gauge'), centre: score('centre'), visible: score('visible') };
+  const photo = makePhoto({ categorization, lighting: 'daylight' });
+  const analysis = { ...initialAnalysis(photo.id, '2026-09-19T17:00:00.000Z'), shots, computed: { engineVersion: '1', result: byRule[rule] } };
+  return { photo, analysis, result: byRule[rule], byRule };
+}
+
+describe('render/composite names the scoring method (REV-59)', () => {
+  const inForce = (rule: ScoringRule, visible = 4.5) => ({ rule, visibleHoleDiameterMm: visible });
+
+  it('always says which rule scored the image, as Settings names it', () => {
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
+    expect(renderComposite(baseInput({ slots: slots as never, scoring: inForce('gauge') })).svg).toContain('Scoring: Official gauge touch');
+    expect(renderComposite(baseInput({ slots: slots as never, scoring: inForce('centre') })).svg).toContain('Scoring: Centre in ring');
+  });
+
+  it('gives the visible hole its size', () => {
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never, scoring: inForce('visible', 4) }));
+    expect(svg).toContain('Scoring: Visible hole touch (4.0 mm)');
+  });
+
+  it('the owner\'s target: each rule\'s total under the slot (gauge 30, centre 28, visible 29)', () => {
+    // 3.55, 7.05, 7.67 mm: gauge 10+10+10, centre 10+9+9, visible(4.5) 10+10+9 — worked by hand for issue #4
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    expect(svg).toContain('By rule: gauge 30 · centre 28 · visible 29');
+    expect(svg).not.toContain('same under every rule');
+  });
+
+  it('a target that scores the same under every rule adds no line, and the Scoring line says so', () => {
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [1, 2, 3]), null] } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    expect(svg).toContain('Scoring: Official gauge touch · same under every rule');
+    expect(svg).not.toContain('By rule');
+  });
+
+  it('does not claim "same under every rule" while any target differs', () => {
+    const slots = {
+      sighting: [null, null],
+      precision: [slotByRule('precision', [1, 2, 3]), slotByRule('precision', [3.55, 7.05, 7.67])],
+    } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    expect(svg).not.toContain('same under every rule');
+    expect((svg.match(/By rule/g) ?? []).length).toBe(1); // only the target that differs
+  });
+
+  it('sighting compares hits: a shot 24 mm out is a hit by gauge and visible touch, a miss by centre', () => {
+    // 45 mm prone zone (radius 22.5): gauge 24 - 2.8 = 21.2 hit; centre 24 > 22.5 miss; visible 24 - 2.25 = 21.75 hit
+    const slots = { sighting: [slotByRule('sighting', [10, 24]), null], precision: [null, null] } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    expect(svg).toContain('By rule (hits): gauge 2 · centre 1 · visible 2');
+  });
+
+  it('shows the method but no comparison when the slots carry no per-rule results', () => {
+    const { svg } = renderComposite(baseInput({ slots: { sighting: [null, null], precision: [slot(precisionFixture, precisionResult), null] } }));
+    expect(svg).toContain('Scoring: Official gauge touch');
+    expect(svg).not.toContain('By rule');
+    expect(svg).not.toContain('same under every rule');
+  });
+
+  it('keeps every band line within 110 characters and the band sized to its lines', () => {
+    const slots = { sighting: [slotByRule('sighting', [10, 24]), slotByRule('sighting', [10, 24])], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), slotByRule('precision', [3.55, 7.05, 7.67])] } as const;
+    const { svg, height } = renderComposite(baseInput({ slots: slots as never }));
+    for (const m of svg.matchAll(/<text[^>]*font-size="18"[^>]*>([^<]*)</g)) expect(m[1]!.length).toBeLessThanOrEqual(110);
+    // targets + scoring + 4 slot lines + 4 comparison lines = 10 lines
+    expect(height).toBe(120 + 1440 + 100 + 34 * 10 + 64);
   });
 });

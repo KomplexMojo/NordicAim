@@ -4,6 +4,8 @@
 // `artifactBrand` is a `declare const` (type-only): the brand is applied with `as CompositeArtifact`,
 // and that cast happens ONLY inside `src/lib/composite/build.ts`.
 
+import type { ScoringRule } from '@/lib/domain/settings';
+
 declare const artifactBrand: unique symbol;
 
 export interface CompositeArtifact {
@@ -16,6 +18,8 @@ export interface CompositeArtifact {
   createdAt: string;
   /** rendering-composite.md §6: which renderer drew it; 0 for artifacts stored before the stamp existed. */
   rendererVersion: number;
+  /** REV-59: the scoring rule the image was drawn under. */
+  scoringRule: ScoringRule;
 }
 
 /**

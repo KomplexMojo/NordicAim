@@ -10,7 +10,7 @@ import { makeTestContext } from '../../helpers/fixtures';
 import { makeSession } from '../../helpers/records';
 
 const ARTIFACT_ID = '11111111-1111-4111-8111-111111111111';
-const ARTIFACT_META = { id: ARTIFACT_ID, sha256: 'a'.repeat(64), widthPx: 1440, heightPx: 2160, createdAt: '2026-09-05T17:20:00.000Z', rendererVersion: 3 };
+const ARTIFACT_META = { id: ARTIFACT_ID, sha256: 'a'.repeat(64), widthPx: 1440, heightPx: 2160, createdAt: '2026-09-05T17:20:00.000Z', rendererVersion: 3, scoringRule: 'gauge' as const };
 
 describe('services/shares recordShare (data-model §7, rendering-composite.md §7)', () => {
   it('appends a ShareRecord with the artifact\'s sha256 and the given method', async () => {

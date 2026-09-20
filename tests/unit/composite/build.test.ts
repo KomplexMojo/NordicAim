@@ -81,9 +81,10 @@ describe('composite/build buildComposite (rendering-composite.md §6)', () => {
 
     expect(artifact.sessionId).toBe(sessionId);
     expect(artifact.widthPx).toBe(1440);
-    // REV-51: always the four fixed positions (1440) under the 120 header, then a band sized to its 5 lines
-    // (targets, the slot line, and the 3 footer lines that don't repeat it): 100 + 34 * 5 + 64 = 334.
-    expect(artifact.heightPx).toBe(120 + 1440 + 334);
+    // REV-51: always the four fixed positions (1440) under the 120 header, then a band sized to its 6 lines
+    // (targets, scoring (REV-59), the slot line, and the 3 footer lines that don't repeat it): 100 + 34 * 6 + 64 = 368.
+    // The precision fixture scores the same under every rule, so there is no comparison line.
+    expect(artifact.heightPx).toBe(120 + 1440 + 368);
     expect(artifact.sha256).toMatch(/^[a-f0-9]{64}$/);
 
     const png = await getBlob(ctx.db, artifactPngKey(artifact.id));
@@ -216,5 +217,60 @@ describe('composite/build loadArtifact / latestArtifact', () => {
 
     const latest = await latestArtifact(ctx, sessionId);
     expect(latest?.artifact.id).toBe(second.id);
+  });
+});
+
+// ---- REV-59 (issue #17): the stored image says how it was scored, and the rule is recorded ----------------------------------
+
+describe('composite/build records and prints the scoring rule (REV-59)', () => {
+  /** A precision target of three shots at radii where the rules disagree (issue #4: gauge 30, centre 28, visible 29). */
+  async function seedDisagreeing(scoringRule: 'gauge' | 'centre' | 'visible') {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-09-05T17:20:00.000Z' });
+    await putSettings(db, { ...defaultAppSettings(), scoringRule });
+    const session = makeSession();
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 3, roundsStanding: null };
+    const photo = makePhoto({
+      sessionId: session.id,
+      status: 'analyzed',
+      categorization,
+      captureTime: { local: '2026-09-05T16:56:03', offset: '+00:00', utc: '2026-09-05T16:56:03.000Z', source: 'exif' },
+    });
+    const shots: Shot[] = [3.55, 7.05, 7.67].map((r, i) => ({
+      id: `s${i}`, xMm: r, yMm: 0, multiplicity: 1, positionOverrides: null, source: 'auto', confidence: null, cluster: false, possibleOverlap: false,
+    }));
+    const result = analyzeTarget({ template: 'precision', categorization, shots });
+    await putSessionRecord(db, { ...session, photoIds: [photo.id] });
+    await putPhotoRecord(db, photo);
+    await putAnalysisRecord(db, { ...initialAnalysis(photo.id, '2026-09-05T17:20:00.000Z'), shots, computed: { engineVersion: '1', result } });
+    return { ctx, sessionId: session.id };
+  }
+
+  it.each([
+    ['gauge', 'Scoring: Official gauge touch', 'Precision 1 (prone): 30 / 30'],
+    ['centre', 'Scoring: Centre in ring', 'Precision 1 (prone): 28 / 30'],
+    ['visible', 'Scoring: Visible hole touch (4.5 mm)', 'Precision 1 (prone): 29 / 30'],
+  ] as const)('%s: the image names the rule and its own line uses it', async (rule, scoring, slotLine) => {
+    const { ctx, sessionId } = await seedDisagreeing(rule);
+    const render = stubRenderTools();
+    const artifact = await buildComposite(ctx, sessionId, render);
+    const svg = render.calls[0]!.svg;
+    expect(svg).toContain(scoring);
+    expect(svg).toContain(slotLine);
+    // Whatever rule is in force, the image shows what every rule would have scored.
+    expect(svg).toContain('By rule: gauge 30 · centre 28 · visible 29');
+    expect(artifact.scoringRule).toBe(rule);
+    // ... and the stored artifact carries it, so an image from before a rule change can be told from one after.
+    expect((await getSessionRecord(ctx.db, sessionId))?.artifacts.at(-1)?.scoringRule).toBe(rule);
+  });
+
+  it('a rebuild after the rule changes names the new rule', async () => {
+    const { ctx, sessionId } = await seedDisagreeing('gauge');
+    await buildComposite(ctx, sessionId, stubRenderTools());
+    await putSettings(ctx.db, { ...defaultAppSettings(), scoringRule: 'centre' });
+    const second = await buildComposite(ctx, sessionId, stubRenderTools());
+    expect(second.scoringRule).toBe('centre');
+    const artifacts = (await getSessionRecord(ctx.db, sessionId))?.artifacts ?? [];
+    expect(artifacts.map((a) => a.scoringRule)).toEqual(['gauge', 'centre']);
   });
 });

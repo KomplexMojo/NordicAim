@@ -7,6 +7,7 @@ import type { AnalysisResult, MpiOffset, TargetAnalysis } from '@/lib/domain/ana
 import type { Position } from '@/lib/domain/enums';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import type { BiathlonSession } from '@/lib/domain/session';
+import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
 import { PALETTE } from './palette';
@@ -16,7 +17,13 @@ import { fmtAngular, fmtMm, precisionFooterLines, sightingFooterLines, targetHea
 export interface SlotData {
   photo: TargetPhoto;
   analysis: TargetAnalysis;
+  /** The result under the scoring rule in force (`CompositeInput.scoring`). */
   result: AnalysisResult;
+  /**
+   * REV-59: the same shots scored under every rule, for the band's comparison. Optional: without it the band
+   * names the rule but shows no comparison.
+   */
+  byRule?: Record<ScoringRule, AnalysisResult>;
 }
 
 export interface CompositeInput {
@@ -24,6 +31,8 @@ export interface CompositeInput {
   slots: { sighting: [SlotData | null, SlotData | null]; precision: [SlotData | null, SlotData | null] };
   generatedAtLocal: string; // "2026-09-05 17:20"
   holeDiameterMm: number;
+  /** REV-59: the scoring rule the results were computed under, and the visible-hole size it may use. */
+  scoring: { rule: ScoringRule; visibleHoleDiameterMm: number };
   /**
    * §5's line 3 ("+<n> more target(s) in the app") needs the count of `analyzed` candidates beyond the
    * four slots — information `selectDefaultSlots` sees but a `CompositeInput` built from only the
@@ -35,10 +44,10 @@ export interface CompositeInput {
 
 /**
  * rendering-composite.md §6: bumped whenever this renderer's output changes (REV-51 layout, REV-52 shared
- * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale). A stored artifact drawn by an older version is rebuilt when its session's
+ * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 5;
+export const COMPOSITE_RENDERER_VERSION = 6;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -170,6 +179,37 @@ function slotSummaryLine(label: string, slot: SlotData): string {
   return mpi === null ? head : `${head} · ${mpi}`;
 }
 
+const RULES: readonly ScoringRule[] = ['gauge', 'centre', 'visible'];
+
+/** REV-59: what a slot's score is, for comparing rules: precision's total, sighting's hits (both positions summed). */
+function scoreOf(result: AnalysisResult): number {
+  if (result.template === 'precision') return result.all.precision?.identifiedTotal ?? 0;
+  return result.subsets.reduce((sum, subset) => sum + (subset.sighting?.hits ?? 0), 0);
+}
+
+/** REV-59: whether a slot scores the same under all three rules; unknown (no `byRule`) counts as not comparable. */
+function sameUnderEveryRule(slot: SlotData): boolean | null {
+  if (slot.byRule === undefined) return null;
+  const scores = RULES.map((rule) => scoreOf(slot.byRule![rule]));
+  return scores.every((score) => score === scores[0]);
+}
+
+/** REV-59: `Scoring: <method>`, with the visible size, and `same under every rule` when nothing differs. */
+function scoringLine(input: CompositeInput, placed: Placed[]): string {
+  const { rule, visibleHoleDiameterMm } = input.scoring;
+  const name = rule === 'visible' ? `${SCORING_RULE_LABEL.visible} (${fmtMm(visibleHoleDiameterMm)} mm)` : SCORING_RULE_LABEL[rule];
+  const verdicts = placed.map((p) => sameUnderEveryRule(p.slot));
+  const allSame = verdicts.length > 0 && verdicts.every((v) => v === true);
+  return `Scoring: ${name}${allSame ? ' · same under every rule' : ''}`;
+}
+
+/** REV-59: the other rules' scores under a slot, only when they differ from one another. */
+function ruleComparisonLine(slot: SlotData): string | null {
+  if (slot.byRule === undefined || sameUnderEveryRule(slot) !== false) return null;
+  const scores = RULES.map((rule) => `${rule} ${scoreOf(slot.byRule![rule])}`).join(' · ');
+  return slot.result.template === 'precision' ? `By rule: ${scores}` : `By rule (hits): ${scores}`;
+}
+
 /** A filled slot with its chip label, in §5's reading order: sighting 1, sighting 2, precision 1, precision 2. */
 interface Placed {
   label: string;
@@ -201,7 +241,12 @@ function bandLines(input: CompositeInput, placed: Placed[]): string[] {
   // Zero counts are left out ("Targets: 1 precision", never "0 sighting · 1 precision").
   const counts = [nS > 0 ? `${nS} sighting` : null, nP > 0 ? `${nP} precision` : null].filter((c) => c !== null);
   const lines: string[] = [`Targets: ${[...counts, lightingSummary(placed.map((p) => p.slot.photo))].join(' · ')}`];
-  for (const p of placed) lines.push(slotSummaryLine(p.label, p.slot));
+  lines.push(scoringLine(input, placed));
+  for (const p of placed) {
+    lines.push(slotSummaryLine(p.label, p.slot));
+    const comparison = ruleComparisonLine(p.slot);
+    if (comparison !== null) lines.push(comparison);
+  }
   if (placed.length === 1) {
     const only = placed[0]!.slot;
     const footer =
