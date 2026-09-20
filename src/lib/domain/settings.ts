@@ -44,6 +44,11 @@ export function cleanIdentityText(raw: string, max: number): string {
   return raw.replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
+/** REV-100: the identity an image is stamped with, compared with the stored image's to tell when it needs rebuilding. */
+export function athleteIdentity(s: { athleteName: string; athleteClub: string; keyFingerprint: string | null }, keyPresent: boolean): string {
+  return [s.athleteName, s.athleteClub, keyPresent ? (s.keyFingerprint ?? '') : ''].join('|');
+}
+
 export const AppSettings = z.object({
   schemaVersion: z.literal(1),
   key: z.literal('app'),
@@ -60,6 +65,9 @@ export const AppSettings = z.object({
   // REV-99: the athlete's name and ski club. Both default to empty so older rows read back.
   athleteName: z.string().max(MAX_ATHLETE_NAME).default(''),
   athleteClub: z.string().max(MAX_ATHLETE_CLUB).default(''),
+  // REV-100: the key's public side. The salt and fingerprint are backed up; the key itself is in the `secrets` store, never the passphrase.
+  athleteSalt: z.string().nullable().default(null),
+  keyFingerprint: z.string().nullable().default(null),
   visibleHoleDiameterMm: z
     .number()
     .min(MIN_VISIBLE_HOLE_DIAMETER_MM)
@@ -98,6 +106,8 @@ export function defaultAppSettings(): AppSettings {
     handedness: DEFAULT_HANDEDNESS,
     athleteName: '',
     athleteClub: '',
+    athleteSalt: null,
+    keyFingerprint: null,
     visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
     diagramRendererVersion: 0,
     lastBackupAt: null,

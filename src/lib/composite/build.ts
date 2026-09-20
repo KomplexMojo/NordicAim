@@ -16,13 +16,17 @@ import { artifactJsonKey, artifactPngKey, artifactPrefix } from '@/lib/store/blo
 import { deleteByPrefix, getBlob, putBlob } from '@/lib/store/blobs-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
-import type { ScoringRule } from '@/lib/domain/settings';
+import { athleteIdentity, type ScoringRule } from '@/lib/domain/settings';
 import { scoringDiameterFromSettings, scoringHoleDiameterMm } from '@/lib/scoring/rule';
 import { getSettings } from '@/lib/store/settings-repo';
 
 import { ArtifactNotFoundError, EmptyCompositeError, type CompositeArtifact } from './artifact';
 import { selectDefaultSlots, type SlotIds } from './select-defaults';
-import { COMPOSITE_RENDERER_VERSION, renderComposite, type CompositeInput, type SlotData } from '@/lib/render/composite';
+import { COMPOSITE_RENDERER_VERSION, renderComposite, scoreOf, type CompositeInput, type SlotData } from '@/lib/render/composite';
+import { buildPayload, type ProvenanceTarget } from '@/lib/provenance/payload';
+import { makeStamp } from '@/lib/provenance/stamp';
+import { loadProvenanceKey } from '@/lib/services/provenance';
+import { photoOriginalKey } from '@/lib/store/blob-keys';
 
 const WIDTH_PX = 1440;
 const KEEP_ARTIFACTS = 3;
@@ -75,6 +79,54 @@ function toSlotData(
   // REV-59: the same shots under every rule, for the band's comparison; `result` is the rule in force.
   const byRule = { gauge: score('gauge'), centre: score('centre'), visible: score('visible') };
   return { photo, analysis, result: byRule[rule], byRule };
+}
+
+/** REV-100: the athlete's line for the image and, when a key is set, the stamp over the canonical payload. */
+async function buildProvenance(
+  ctx: ServiceContext,
+  sessionDate: string,
+  settings: Awaited<ReturnType<typeof getSettings>>,
+  slots: { sighting: Array<SlotData | null>; precision: Array<SlotData | null> },
+  rule: ScoringRule,
+  release: string,
+  createdAt: string,
+): Promise<{ line: { name: string; club: string; stamp: string | null }; stamped: { payload: string; stamp: string } | null } | null> {
+  const key = await loadProvenanceKey(ctx);
+  if (settings.athleteName === '' && settings.athleteClub === '' && key === null) return null;
+  if (key === null) return { line: { name: settings.athleteName, club: settings.athleteClub, stamp: null }, stamped: null };
+
+  const targets: ProvenanceTarget[] = [];
+  for (const [template, list] of [['sighting', slots.sighting], ['precision', slots.precision]] as const) {
+    for (const [index, slot] of list.entries()) {
+      if (slot === null || slot.byRule === undefined) continue;
+      const original = await getBlob(ctx.db, photoOriginalKey(slot.photo.id));
+      const calibration = slot.analysis.calibration;
+      targets.push({
+        slot: `${template}-${index + 1}`,
+        kind: `${slot.result.template}-${slot.result.position}`,
+        photoId: slot.photo.id,
+        photoSha256: original === null ? null : await sha256Hex(await original.arrayBuffer()),
+        captureUtc: slot.photo.captureTime.utc,
+        make: slot.photo.exif?.make ?? null,
+        model: slot.photo.exif?.model ?? null,
+        scores: { gauge: scoreOf(slot.byRule.gauge), centre: scoreOf(slot.byRule.centre), visible: scoreOf(slot.byRule.visible) },
+        alignment: calibration === null ? null : { cx: calibration.cx, cy: calibration.cy, radiusPx: calibration.radiusPx },
+        shots: slot.analysis.shots.map((s) => ({ xMm: s.xMm, yMm: s.yMm, multiplicity: s.multiplicity })),
+      });
+    }
+  }
+  const payload = buildPayload({
+    name: settings.athleteName,
+    club: settings.athleteClub,
+    sessionDate,
+    scoringRule: rule,
+    visibleHoleDiameterMm: settings.visibleHoleDiameterMm,
+    release,
+    createdAt,
+    targets,
+  });
+  const stamp = await makeStamp(key, payload);
+  return { line: { name: settings.athleteName, club: settings.athleteClub, stamp }, stamped: { payload, stamp } };
 }
 
 /**
@@ -137,6 +189,8 @@ export async function buildComposite(
 
   const now = ctx.now();
   const nowIso = now.toISOString();
+  const identity = athleteIdentity(settings, (await loadProvenanceKey(ctx)) !== null);
+  const provenance = await buildProvenance(ctx, session.sessionDate, settings, slots, rule, release, nowIso);
   const input: CompositeInput = {
     session,
     slots,
@@ -145,6 +199,7 @@ export async function buildComposite(
     holeDiameterMm,
     scoring: { rule, visibleHoleDiameterMm: settings.visibleHoleDiameterMm },
     moreCount,
+    ...(provenance === null ? {} : { provenance: provenance.line }),
   };
 
   // §5 (REV-51): the height depends on the count and on the band's content, so take it from the render.
@@ -164,12 +219,14 @@ export async function buildComposite(
     slots: slotIds,
     perSlot: filledSlots.map((s) => ({ photoId: s.photo.id, template: s.result.template, position: s.result.position, result: s.result })),
     lightingSummary: lightingLabels.size === 1 ? [...lightingLabels][0]! : 'mixed',
+    // REV-100: what the stamp covers, so Verify can recompute it from the stored image alone.
+    ...(provenance?.stamped === null || provenance === null ? {} : { provenance: provenance.stamped }),
   };
 
   const jsonBytes = new TextEncoder().encode(JSON.stringify(jsonSidecar));
   const jsonBuffer = jsonBytes.buffer.slice(jsonBytes.byteOffset, jsonBytes.byteOffset + jsonBytes.byteLength) as ArrayBuffer;
 
-  const meta: ArtifactMeta = { id, sha256, widthPx: WIDTH_PX, heightPx, createdAt: nowIso, rendererVersion: COMPOSITE_RENDERER_VERSION, scoringRule: rule };
+  const meta: ArtifactMeta = { id, sha256, widthPx: WIDTH_PX, heightPx, createdAt: nowIso, rendererVersion: COMPOSITE_RENDERER_VERSION, scoringRule: rule, identity: identity };
   const pngContentType = png.type === '' ? 'image/png' : png.type;
 
   const tx = ctx.db.transaction(['sessions', 'blobs'], 'readwrite');

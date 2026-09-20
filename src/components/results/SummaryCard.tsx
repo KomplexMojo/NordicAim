@@ -7,6 +7,9 @@ import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { latestArtifact } from '@/lib/composite/build';
 import { isSummaryPending, scheduleSummaryRebuild } from '@/lib/composite/scheduler-browser';
+import { athleteIdentity } from '@/lib/domain/settings';
+import { loadProvenanceKey } from '@/lib/services/provenance';
+import { getSettings } from '@/lib/store/settings-repo';
 import { COMPOSITE_RENDERER_VERSION } from '@/lib/render/composite';
 import { recordShare } from '@/lib/services/shares';
 import { shareArtifact } from '@/lib/share/share-browser';
@@ -54,7 +57,10 @@ export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProp
    * is rebuilt as soon as its results screen is opened, so an app update is never invisible in the summary.
    * The owner hit the opposite: "No matter what I do, I can't get the session summary … to show".
    */
-  const staleVersion = value != null && value.artifact.rendererVersion < COMPOSITE_RENDERER_VERSION;
+  const { value: identity } = useLiveQuery(async () => athleteIdentity(await getSettings(ctx.db), (await loadProvenanceKey(ctx)) !== null), [ctx]);
+  // REV-100: a change of name, club or key in Settings means the image's footer is out of date too.
+  const staleVersion =
+    value != null && (value.artifact.rendererVersion < COMPOSITE_RENDERER_VERSION || (identity !== undefined && value.artifact.identity !== identity));
   useEffect(() => {
     if (staleVersion) scheduleSummaryRebuild(sessionId);
   }, [staleVersion, sessionId]);

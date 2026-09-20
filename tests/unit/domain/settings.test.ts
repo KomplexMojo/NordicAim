@@ -45,6 +45,8 @@ describe('defaultAppSettings', () => {
       handedness: 'right',
       athleteName: '',
       athleteClub: '',
+      athleteSalt: null,
+      keyFingerprint: null,
       visibleHoleDiameterMm: 4.5,
       // REV-58: 0 = no diagram renderer version recorded yet, so the first launch redraws stored diagrams once.
       diagramRendererVersion: 0,
@@ -116,9 +118,8 @@ describe('athlete identity (REV-99)', () => {
   });
 
   it('an older row without them reads back empty', () => {
-    const { athleteName, athleteClub, ...older } = defaultAppSettings();
-    void athleteName;
-    void athleteClub;
+    const { athleteName, athleteClub, athleteSalt, keyFingerprint, ...older } = defaultAppSettings();
+    void [athleteName, athleteClub, athleteSalt, keyFingerprint];
     const parsed = AppSettings.parse(older);
     expect([parsed.athleteName, parsed.athleteClub]).toEqual(['', '']);
   });

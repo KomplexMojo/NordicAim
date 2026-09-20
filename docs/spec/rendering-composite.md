@@ -258,6 +258,8 @@ descending (null last, then `importedAt` descending). Break ties with the better
 sighting: smaller `extremeSpreadMm`, null worst). Take the first two, then order chronologically (older = slot 1). Returns photo ids. **Sighting roles (REV-67):** when any analysed sighting target in the session has an explicit `categorization.sightingRole`, slot 1 (SIGHT IN) is the most recent sighting target whose effective role is `sight-in` and slot 2 (CONFIRM) the most recent whose effective role is `confirm` (either may be empty); with no explicit role the rule above applies unchanged. A target with no role is inferred by `sightingRoles` (`domain/sighting-role.ts`): if none is explicitly `sight-in`, the oldest unset one is `sight-in`; every other unset one is `confirm`. **Precision (REV-90):** slot 3 is the most recent analysed Precision prone and slot 4 the most recent Precision standing (either may be empty); precision targets with no single position (`both`, or uncategorised) fall back to the two-most-recent rule. One order everywhere: Sight in, Confirm, Precision prone, Precision standing (`domain/photo-order.ts` `orderedByKind`, used by Results, Metadata and Review). A rejected target (`too-many-holes`,
 REV-39) is `needs-attention`, never `analyzed`, so it is never a candidate: it is **excluded** from the summary image.
 
+**Athlete line (REV-100).** After the band's lines (never truncated): `Athlete: <name> · <club> · Stamp: <fingerprint>-<12 hex>`, leaving out what is empty, and with no stamp when no key is set. See `provenance.md`. `ArtifactMeta.identity` (`name|club|fingerprint`) marks an image stale when Settings changes it.
+
 ## 6. `CompositeArtifact` and the share rule
 
 ```ts

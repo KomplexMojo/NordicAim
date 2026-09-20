@@ -13,6 +13,7 @@ import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
 import { useServices } from '@/lib/app/services';
 import type { BackingMode } from '@/lib/domain/backing';
 import type { AppSettings } from '@/lib/domain/settings';
+import { loadProvenanceKey, setPassphrase, unlockPassphrase } from '@/lib/services/provenance';
 import { measureBackingCard } from '@/lib/services/backing-card';
 import {
   clearBacking,
@@ -43,9 +44,13 @@ export function SettingsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cardBusy, setCardBusy] = useState(false);
   const [cardError, setCardError] = useState(false);
+  const [keyPresent, setKeyPresent] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    void loadProvenanceKey(ctx).then((k) => {
+      if (!cancelled) setKeyPresent(k !== null);
+    });
     getAppSettings(ctx).then(
       (s) => {
         if (!cancelled) setSettings(s);
@@ -132,6 +137,16 @@ export function SettingsPage() {
           <AthleteSettings
             name={settings.athleteName}
             club={settings.athleteClub}
+            fingerprint={settings.keyFingerprint}
+            keyPresent={keyPresent}
+            onSetPassphrase={async (p) => {
+              setSettings(await setPassphrase(ctx, p));
+              setKeyPresent(true);
+            }}
+            onUnlock={async (p) => {
+              setSettings(await unlockPassphrase(ctx, p));
+              setKeyPresent(true);
+            }}
             onSave={(a) => void save(() => setAthlete(ctx, a))}
           />
           <ShooterSettings

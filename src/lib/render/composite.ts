@@ -43,6 +43,8 @@ export interface CompositeInput {
    * Open questions for this addition to the documented `CompositeInput` shape.
    */
   moreCount: number;
+  /** REV-100: the athlete's identity line and, when a key is set, the stamp. Omitted when there is nothing to print. */
+  provenance?: { name: string; club: string; stamp: string | null };
 }
 
 /**
@@ -50,7 +52,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 13;
+export const COMPOSITE_RENDERER_VERSION = 14;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -201,7 +203,7 @@ function slotSummaryLine(label: string, slot: SlotData): string {
 const RULES: readonly ScoringRule[] = ['gauge', 'centre', 'visible'];
 
 /** REV-59: what a slot's score is, for comparing rules: precision's total, sighting's hits (both positions summed). */
-function scoreOf(result: AnalysisResult): number {
+export function scoreOf(result: AnalysisResult): number {
   if (result.template === 'precision') return result.all.precision?.identifiedTotal ?? 0;
   return result.subsets.reduce((sum, subset) => sum + (subset.sighting?.hits ?? 0), 0);
 }
@@ -276,7 +278,16 @@ function bandLines(input: CompositeInput, placed: Placed[]): string[] {
   }
   if (input.moreCount > 0) lines.push(`+${input.moreCount} more target(s) in the app`);
   if (input.session.notes.trim().length > 0) lines.push(...noteLines(input.session.notes));
-  return lines.map((line) => truncate(line));
+  const out = lines.map((line) => truncate(line));
+  // Never truncated: cutting the stamp would make it unverifiable.
+  if (input.provenance !== undefined) out.push(provenanceLine(input.provenance));
+  return out;
+}
+
+/** REV-100: `Athlete: <name> · <club> · Stamp: <stamp>`, leaving out what is empty. */
+export function provenanceLine(p: { name: string; club: string; stamp: string | null }): string {
+  const parts = [p.name === '' ? null : `Athlete: ${p.name}`, p.club === '' ? null : p.name === '' ? `Club: ${p.club}` : p.club, p.stamp === null ? null : `Stamp: ${p.stamp}`];
+  return parts.filter((x): x is string => x !== null).join(' · ');
 }
 
 /** REV-91: the "By rule: gauge N · centre N · visible N" line with each rule's icon beside its number (words kept for the PNG). */

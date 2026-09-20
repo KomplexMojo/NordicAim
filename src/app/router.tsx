@@ -14,6 +14,7 @@ import { ReviewPage } from '@/routes/review/ReviewPage';
 import { PatternsPage } from '@/routes/patterns/PatternsPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
+import { VerifyPage } from '@/routes/verify/VerifyPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
 import { TargetPage } from '@/routes/target/TargetPage';
 
@@ -72,6 +73,7 @@ const router = createHashRouter([
           { path: '/review/:sessionId', element: <ReviewPage /> },
           // M22 (REV-47, REV-48): Settings, and its full-screen backing-card capture.
           { path: '/settings', element: <SettingsPage /> },
+          { path: '/verify', element: <VerifyPage /> },
           { path: '/settings/backing-card', element: <BackingCardPage /> },
         ],
       },

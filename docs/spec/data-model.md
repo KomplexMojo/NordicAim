@@ -249,6 +249,7 @@ Database `asa`, version **1**, opened with `idb`'s `openDB`.
 | `photos` | keyPath `id` | `by-sessionId` | `TargetPhoto` |
 | `analyses` | keyPath `photoId` | — | `TargetAnalysis` |
 | `blobs` | out-of-line string key | — | `StoredBlob { bytes: ArrayBuffer; contentType: string; sizeBytes: number; createdAt: UtcIso }` |
+| `secrets` | `key` (`'provenance'`) | — | `{ key, keyB64 }` — the derived provenance key (REV-100, `provenance.md`). Database version 2. **Never in a backup**; the passphrase is never stored. |
 | `settings` | keyPath `key` | — | `AppSettings` |
 
 Blob keys (`src/lib/store/blob-keys.ts`):

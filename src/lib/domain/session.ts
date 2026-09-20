@@ -17,6 +17,8 @@ export const ArtifactMeta = z.object({
   rendererVersion: z.number().int().min(0).default(0),
   /** REV-59: the scoring rule the image was drawn under. Defaults to `gauge` for artifacts stored before it existed. */
   scoringRule: ScoringRule.default(DEFAULT_SCORING_RULE),
+  /** REV-100: whose name, club and key the image carries (`athleteIdentity`), so a change in Settings marks it stale. */
+  identity: z.string().default(''),
 });
 export type ArtifactMeta = z.infer<typeof ArtifactMeta>;
 

@@ -169,3 +169,25 @@ describe('backupDue', () => {
     expect(backupDue({ lastBackupAt: at(3), backupReminderDays: 1 }, now, 1)).toBe(true);
   });
 });
+
+describe('provenance key and backup (REV-100)', () => {
+  it('the salt and fingerprint travel in the backup; the key and the passphrase do not, and a restore plus the passphrase unlocks it', async () => {
+    const { db, ctx } = await seeded();
+    const { setPassphrase, loadProvenanceKey, unlockPassphrase } = await import('@/lib/services/provenance');
+    const settings = await setPassphrase(ctx, 'correct horse battery', 1000);
+    const key = await loadProvenanceKey(ctx);
+    const text = await (await createBackup(db, { appBuild: 'test', nowIso: '2026-09-05T12:00:00.000Z' })).blob.text();
+    expect(text).toContain(settings.athleteSalt!);
+    expect(text).toContain(settings.keyFingerprint!);
+    expect(text).not.toContain('correct horse');
+    expect(text).not.toContain('keyB64');
+
+    // A fresh phone: restore the settings, no key yet.
+    const fresh = makeTestContext(await openTestDb());
+    await fresh.db.put('settings', settings);
+    expect(await loadProvenanceKey(fresh)).toBeNull();
+    await unlockPassphrase(fresh, 'correct horse battery', 1000);
+    expect(Array.from((await loadProvenanceKey(fresh))!)).toEqual(Array.from(key!));
+  });
+});
+

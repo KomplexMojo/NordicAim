@@ -20,6 +20,8 @@ export interface CompositeArtifact {
   rendererVersion: number;
   /** REV-59: the scoring rule the image was drawn under. */
   scoringRule: ScoringRule;
+  /** REV-100: whose name, club and key the image carries. */
+  identity: string;
 }
 
 /**

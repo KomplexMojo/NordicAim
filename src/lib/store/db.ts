@@ -35,6 +35,11 @@ export interface AsaDbSchema extends DBSchema {
     key: string;
     value: AppSettings;
   };
+  /** REV-100: the derived provenance key (never the passphrase). Not included in a backup. */
+  secrets: {
+    key: string;
+    value: { key: string; keyB64: string };
+  };
 }
 
 export type AppDb = IDBPDatabase<AsaDbSchema>;
@@ -43,10 +48,14 @@ export type AppDb = IDBPDatabase<AsaDbSchema>;
 // covariant across different TxStores tuples, so a precise union would reject valid transactions.
 export type AppTx = IDBPTransaction<AsaDbSchema, any, 'readwrite' | 'versionchange'>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-/** data-model §6: database `asa`, version 1. */
+/** data-model §6: database `asa`, version 2 (REV-100 added `secrets`). */
 export async function openAppDb(name = 'asa'): Promise<AppDb> {
-  return openDB<AsaDbSchema>(name, 1, {
-    upgrade(db) {
+  return openDB<AsaDbSchema>(name, 2, {
+    upgrade(db, oldVersion) {
+      if (oldVersion >= 1) {
+        db.createObjectStore('secrets', { keyPath: 'key' });
+        return;
+      }
       const sessions = db.createObjectStore('sessions', { keyPath: 'id' });
       sessions.createIndex('by-updatedAt', 'updatedAt');
       sessions.createIndex('by-sessionDate', 'sessionDate');
@@ -57,6 +66,7 @@ export async function openAppDb(name = 'asa'): Promise<AppDb> {
       db.createObjectStore('analyses', { keyPath: 'photoId' });
       db.createObjectStore('blobs');
       db.createObjectStore('settings', { keyPath: 'key' });
+      db.createObjectStore('secrets', { keyPath: 'key' });
     },
   });
 }

@@ -157,4 +157,17 @@ export const GLOSSARY: ReadonlyArray<GlossaryEntry> = [
     means: 'Like the official gauge, but with the smaller hole you can actually see on the paper (set in Settings → Scoring). The mark is a smaller hole touching the line.',
     formula: 'the ring is credited when distance from the target centre − visible hole radius ≤ the ring radius.',
   },
+  {
+    term: 'Stamp',
+    stands: null,
+    means:
+      'A code printed at the foot of a summary image that shows it was made with your key from that exact data. Change a score, a shot or the name and it no longer matches. Only someone with your passphrase can check or make one.',
+    formula: 'stamp = key fingerprint + first 12 hex characters of HMAC-SHA-256(key, canonical data). The key comes from PBKDF2-SHA-256 over your passphrase.',
+  },
+  {
+    term: 'Key fingerprint',
+    stands: null,
+    means: 'Eight characters that name your key without revealing it. The same on every image you stamp, so your images are recognisable as yours.',
+    formula: 'first 8 hex characters of HMAC-SHA-256(key, "asa-key-fingerprint").',
+  },
 ];
