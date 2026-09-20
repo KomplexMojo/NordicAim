@@ -49,7 +49,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 10;
+export const COMPOSITE_RENDERER_VERSION = 11;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -129,9 +129,12 @@ function slotDiagramInput(
   scoringRule: ScoringRule,
   sightingRole?: 'sight-in' | 'confirm',
 ): DiagramInput {
+  const position = slot.result.position === 'prone' || slot.result.position === 'standing' ? slot.result.position : undefined;
   return {
     cellLabelOverride,
     sightingRole,
+    // REV-86: a precision slot's mark is the silhouette of the position it was shot in (a stored `both` target keeps its text chip).
+    ...(slot.result.template === 'precision' && position !== undefined ? { position } : {}),
     scoringRule,
     shotColour: slot.analysis.pipeline.detection.backingColour ?? undefined,
     template: slot.result.template,
@@ -322,9 +325,11 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
     const label = positionName(cell.template, cell.index).toUpperCase();
     // REV-79: a sighting slot is drawn with its role's symbol, not the text chip.
     const role = cell.template === 'sighting' ? (cell.index === 0 ? ('sight-in' as const) : ('confirm' as const)) : undefined;
+    // A blank precision slot shows the silhouette of the position its place stands for: first prone, then standing (REV-86).
+    const blankMark = role ?? (cell.index === 0 ? ('prone' as const) : ('standing' as const));
     const svg =
       slot === null
-        ? renderBlankCellSvg(cell.template, label, role)
+        ? renderBlankCellSvg(cell.template, label, blankMark)
         : renderDiagramSvg(
             slotDiagramInput(slot, input.holeDiameterMm, label, input.scoring.rule, role),
             'cell',

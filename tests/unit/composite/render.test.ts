@@ -88,7 +88,7 @@ describe('render/composite four fixed positions (rendering-composite.md §5, REV
     const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), null], precision: [p1(), null] } }));
     // REV-79: a sighting slot's mark is its role's symbol, not text.
     expect(svg).toContain('data-role="confirm"');
-    expect(svg).toContain('>PRECISION 2<');
+    expect(svg).toContain('data-position="standing"'); // REV-86: a blank precision slot shows a position silhouette, not text
     expect(svg).toContain('opacity="0.35"');
   });
 
@@ -134,7 +134,7 @@ describe('render/composite sight in, then confirm (REV-53)', () => {
     );
     expect(svg).toContain('data-role="sight-in"'); // filled: the sight-in symbol (REV-79)
     expect(svg).toContain('data-role="confirm"'); // blank: the confirm symbol
-    expect(svg).toContain('>PRECISION 1 · PRONE<');
+    expect(svg).toContain('data-position="prone"'); // REV-86: the precision chip is a silhouette
     expect(svg).toContain('Sight in (prone): 9 hits');
     expect(svg).not.toContain('Sighting 1');
     expect(svg).not.toContain('SIGHTING 2');
@@ -158,7 +158,7 @@ describe('render/composite one fixed scale for every target (REV-52, REV-58)', (
     for (const cell of cells) {
       // The chip reads "SIGHT IN · PRONE" when filled and "CONFIRM" when blank; key on the position name.
       const role = /data-role="(sight-in|confirm)"/.exec(cell)?.[1];
-      const label = role === 'sight-in' ? 'SIGHT IN' : role === 'confirm' ? 'CONFIRM' : (/<text[^>]*>(PRECISION \d)/.exec(cell)?.[1] ?? '?');
+      const label = role === 'sight-in' ? 'SIGHT IN' : role === 'confirm' ? 'CONFIRM' : (/data-position="(prone|standing)"/.exec(cell)?.[1] === 'prone' ? 'PRECISION 1' : /data-position="standing"/.test(cell) ? 'PRECISION 2' : '?');
       // The largest circle is the target's halo; a filled cell also draws shot dots, a blank one does not.
       const radii = [...cell.matchAll(/ r="([\d.]+)"/g)].map((m) => Number(m[1]));
       byLabel.set(label, Math.max(...radii));
@@ -220,7 +220,7 @@ describe('render/composite the owner\'s screenshot, 2026-09-19 (REV-51)', () => 
 
   it('has no stat card; the empty fourth position is a blank precision template', () => {
     expect(svg).not.toContain('x="744"');
-    expect(svg).toContain('>PRECISION 2<');
+    expect(svg).toContain('data-position="standing"'); // REV-86: a blank precision slot shows a position silhouette, not text
     expect((svg.match(/>No target</g) ?? []).length).toBe(1);
   });
 

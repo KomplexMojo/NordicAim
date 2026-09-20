@@ -23,6 +23,8 @@ export interface DiagramInput {
   cellLabelOverride?: string;
   /** REV-79: on a sighting `cell`, the top-left mark is a symbol for this role instead of the text chip. */
   sightingRole?: 'sight-in' | 'confirm';
+  /** REV-86: on a precision `cell`, the top-left mark is a silhouette for this position instead of the text chip. */
+  position?: 'prone' | 'standing';
   /** REV-81: the scoring rule that scored a precision target; its icon sits under the score star. */
   scoringRule?: ScoringRule;
   /** REV-82: the backing colour recorded for this photo (`#RRGGBB`); every shot dot takes it. Undefined draws the default red. */
@@ -38,6 +40,12 @@ export function renderDiagramSvg(input: DiagramInput, variant: DiagramVariant, s
 }
 
 /** rendering-composite.md §5 (REV-51): an empty slot's cell — the template alone, faded, captioned "No target". */
-export function renderBlankCellSvg(template: 'sighting' | 'precision', label: string, sightingRole?: 'sight-in' | 'confirm'): string {
-  return template === 'precision' ? renderBlankPrecisionCell(label) : renderBlankSightingCell(label, sightingRole);
+export function renderBlankCellSvg(
+  template: 'sighting' | 'precision',
+  label: string,
+  mark?: 'sight-in' | 'confirm' | 'prone' | 'standing',
+): string {
+  return template === 'precision'
+    ? renderBlankPrecisionCell(label, mark === 'prone' || mark === 'standing' ? mark : undefined)
+    : renderBlankSightingCell(label, mark === 'sight-in' || mark === 'confirm' ? mark : undefined);
 }

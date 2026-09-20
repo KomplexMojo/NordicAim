@@ -11,6 +11,7 @@ import {
   renderBackground,
   renderCellCaptionBand,
   renderCellChip,
+  renderPositionSilhouette,
   renderScoreStar,
   renderFooterPanel,
   renderGroupEllipse,
@@ -139,7 +140,9 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
       renderBackground(CELL.width, CELL.height) +
       clipCell(`cellclip-precision-${slotLabel ?? '0'}`, target) +
       renderOffViewNote(offViewCount(shots, CELL.cx, CELL.cy, s)) +
-      renderCellChip(input.cellLabelOverride ?? 'PRECISION', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
+      (input.position !== undefined
+        ? renderPositionSilhouette(input.position)
+        : renderCellChip(input.cellLabelOverride ?? 'PRECISION', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined)) +
       (subset.precision === null ? '' : renderScoreStar(664, 56, subset.precision.identifiedTotal, subset.precision.maxPossible)) +
       (input.scoringRule === undefined ? '' : renderScoringIcon(input.scoringRule, 664, 128)) +
       renderCellCaptionBand(cellCaption(result));
@@ -169,6 +172,6 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
 }
 
 /** rendering-composite.md §5 (REV-51): an empty precision slot in the summary image. */
-export function renderBlankPrecisionCell(label: string): string {
-  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, CELL.s, CELL.s >= 4));
+export function renderBlankPrecisionCell(label: string, position?: 'prone' | 'standing'): string {
+  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, CELL.s, CELL.s >= 4), position);
 }

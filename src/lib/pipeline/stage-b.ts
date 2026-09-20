@@ -178,6 +178,7 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
               holeDiameterMm,
               ...(sightingRole !== null ? { sightingRole } : {}),
               ...(template === 'precision' ? { scoringRule: settings.scoringRule } : {}),
+              ...(template === 'precision' && (position === 'prone' || position === 'standing') ? { position } : {}),
               ...(analysis.pipeline.detection.backingColour ? { shotColour: analysis.pipeline.detection.backingColour } : {}),
             },
             renderTools,

@@ -303,6 +303,48 @@ export function renderScoreStar(cx: number, cy: number, total: number, maxPossib
   return el('g', { class: 'score-star', 'data-medal': medal, 'data-score': String(total) }, star + label);
 }
 
+/**
+ * REV-86: the precision diagram's top-left mark, in place of the text chip: a gender-neutral **solid black** pictogram of a shooter
+ * aiming a rifle, standing or lying prone, on a small white panel. About 160 by 106 px at (12, 10).
+ */
+export function renderPositionSilhouette(position: 'prone' | 'standing'): string {
+  const ink = '#000000';
+  const ox = 20;
+  const oy = 14;
+  const line = (x1: number, y1: number, x2: number, y2: number, w: number): string =>
+    el('line', { x1: ox + x1, y1: oy + y1, x2: ox + x2, y2: oy + y2, stroke: ink, 'stroke-width': w, 'stroke-linecap': 'round' });
+  const head = (x: number, y: number, r: number): string => el('circle', { cx: ox + x, cy: oy + y, r, fill: ink });
+  let figure: string;
+  if (position === 'standing') {
+    figure =
+      // head, a broad torso, two legs apart, both arms raised to the rifle, and the long rifle at shoulder height
+      head(30, 11, 10) +
+      line(29, 27, 29, 46, 17) +
+      line(25, 46, 20, 68, 9) +
+      line(33, 46, 40, 68, 9) +
+      line(33, 30, 46, 41, 8) +
+      line(46, 41, 60, 29, 8) +
+      line(31, 29, 56, 33, 7) +
+      line(38, 27, 108, 21, 3.8) +
+      line(34, 23, 44, 30, 6);
+  } else {
+    figure =
+      // a long low body along the ground, trailing legs, head up and forward, arms folded under the chin, rifle out front
+      line(8, 58, 60, 53, 15) +
+      line(58, 54, 74, 46, 12) +
+      head(80, 33, 11) +
+      line(72, 48, 86, 51, 8) +
+      line(86, 51, 95, 43, 8) +
+      line(68, 44, 110, 39, 3.8) +
+      line(64, 46, 74, 41, 7);
+  }
+  const panel = el('rect', { x: 10, y: 8, width: 168, height: 106, rx: 14, fill: '#FFFFFF', stroke: '#D5E2EC', 'stroke-width': 1.5 });
+  const title = `<title>${position === 'standing' ? 'Standing' : 'Prone'}</title>`;
+  // Drawn on a 110 × 70 grid, then enlarged about its top-left corner so it reads at the size of the other marks.
+  const scaled = el('g', { transform: `translate(${ox} ${oy}) scale(1.35) translate(${-ox} ${-oy})` }, figure);
+  return el('g', { class: 'position-silhouette', 'data-position': position }, title + panel + scaled);
+}
+
 /** §4: the caption band rect plus centred caption text. */
 export function renderCellCaptionBand(captionText: string): string {
   const band = el('rect', { x: 0, y: 668, width: 720, height: 52, fill: PALETTE.panel });
@@ -358,11 +400,15 @@ export function clipCell(id: string, content: string): string {
 export const BLANK_CELL_OPACITY = 0.35;
 
 /** §5 (REV-51): an empty slot — the template alone, faded, with its chip and a "No target" caption. */
-export function renderBlankCell(label: string, target: string, role?: 'sight-in' | 'confirm'): string {
+export function renderBlankCell(label: string, target: string, mark?: 'sight-in' | 'confirm' | 'prone' | 'standing'): string {
   const body =
     renderBackground(720, 720) +
     el('g', { opacity: BLANK_CELL_OPACITY }, target) +
-    (role === undefined ? renderCellChip(label, '') : renderSightingRoleSymbol(role)) +
+    (mark === undefined
+      ? renderCellChip(label, '')
+      : mark === 'prone' || mark === 'standing'
+        ? renderPositionSilhouette(mark)
+        : renderSightingRoleSymbol(mark)) +
     renderCellCaptionBand('No target');
   return svgRoot(720, 720, body);
 }
