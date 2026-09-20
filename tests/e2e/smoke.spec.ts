@@ -20,7 +20,7 @@ const CHECK_IDS = [
 
 test('home page shows the heading and the Diagnostics tab (REV-47)', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Nordic Aim' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
   await expect(page.getByTestId('tab-bar').getByRole('link', { name: 'Diagnostics' })).toBeVisible();
 });
 

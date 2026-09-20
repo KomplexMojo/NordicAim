@@ -19,9 +19,9 @@ export async function verifyBackup(text: string): Promise<VerifyResult> {
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, problem: 'This is not a complete Nordic Aim backup: the file is cut short or damaged.' };
+    return { ok: false, problem: 'This is not a complete NordicAim backup: the file is cut short or damaged.' };
   }
-  if (!isRecord(raw) || raw.format !== BACKUP_FORMAT) return { ok: false, problem: 'This is not a Nordic Aim backup file.' };
+  if (!isRecord(raw) || raw.format !== BACKUP_FORMAT) return { ok: false, problem: 'This is not a NordicAim backup file.' };
   if (raw.formatVersion !== BACKUP_FORMAT_VERSION) {
     return { ok: false, problem: `This backup is format version ${String(raw.formatVersion)}; this app reads version ${BACKUP_FORMAT_VERSION}.` };
   }

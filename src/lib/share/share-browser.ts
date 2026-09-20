@@ -53,7 +53,7 @@ export async function shareBackup(file: Blob, fileName: string): Promise<ShareOu
   const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean };
   if (typeof nav.canShare === 'function' && nav.canShare({ files: [asFile] })) {
     try {
-      await navigator.share({ files: [asFile], title: 'Nordic Aim backup' });
+      await navigator.share({ files: [asFile], title: 'NordicAim backup' });
       return 'web-share';
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';

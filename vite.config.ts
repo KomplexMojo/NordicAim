@@ -84,8 +84,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Nordic Aim',
-        short_name: 'Nordic Aim',
+        name: 'NordicAim',
+        short_name: 'NordicAim',
         description: 'Take a picture of your target, add metadata, and get biathlon-style shot analysis — entirely on your phone.',
         display: 'standalone',
         start_url: './',

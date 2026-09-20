@@ -13,7 +13,7 @@ export function AppHeader() {
       className="sticky top-0 z-30 flex min-h-11 items-center justify-between gap-2 bg-[var(--header)] px-4 pt-[env(safe-area-inset-top)] text-white"
       data-testid="app-header"
     >
-      <span className="py-2 text-sm font-semibold">Nordic Aim</span>
+      <span className="py-2 text-sm font-semibold">NordicAim</span>
     </header>
   );
 }

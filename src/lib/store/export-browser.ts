@@ -76,7 +76,7 @@ export async function exportAllRecords(db: AppDb): Promise<string> {
 
   return JSON.stringify(
     {
-      about: 'Nordic Aim data export. Records exactly as stored; images are not included (blob keys only).',
+      about: 'NordicAim data export. Records exactly as stored; images are not included (blob keys only).',
       exportedAt: new Date().toISOString(),
       sessions,
       photos,

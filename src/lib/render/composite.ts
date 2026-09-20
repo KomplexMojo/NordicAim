@@ -55,7 +55,7 @@ export interface CompositeInput {
 export const COMPOSITE_RENDERER_VERSION = 14;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
-export const APP_NAME = 'Nordic Aim';
+export const APP_NAME = 'NordicAim';
 export const DEVELOPER_NAME = 'KomplexMojo';
 /** REV-69: the footer writes the app's name as one word. */
 export const FOOTER_APP_NAME = 'NordicAim';

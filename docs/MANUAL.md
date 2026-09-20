@@ -1,4 +1,4 @@
-# Nordic Aim: user manual (starter)
+# NordicAim: user manual (starter)
 
 This is where instructions live that are not on the app's screens. It is a starting point; add sections as the app grows.
 

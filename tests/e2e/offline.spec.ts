@@ -33,12 +33,12 @@ test('offline: the app installs a service worker and still runs fully offline', 
   // 'autoUpdate' skips waiting, but the current document was still fetched over the network); load once
   // more online so the reload under §2 is actually served from the SW rather than racing the network.
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Nordic Aim' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
 
   // 2. go offline → reload.
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Nordic Aim' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
 
   // 3. loadDemo → results with scores and the summary image render offline.
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);

@@ -36,7 +36,7 @@ async function loadDemoSession(page: Page): Promise<string> {
 
 test('a11y: home', async ({ page }) => {
   await page.goto('/#/');
-  await expect(page.getByRole('heading', { name: 'Nordic Aim' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
   await assertNoSevereViolations(page);
 });
 

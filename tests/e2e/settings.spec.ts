@@ -60,7 +60,7 @@ test('the three tabs navigate and mark the active one', async ({ page }) => {
 
   await bar.getByRole('link', { name: 'Shooting' }).click();
   await page.waitForURL(/#\/$/);
-  await expect(page.getByRole('heading', { name: 'Nordic Aim' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
   await expectActive(page, 'shooting');
 });
 
@@ -158,8 +158,8 @@ test('hole size: a new value is kept, and Reset returns 5.6', async ({ page }) =
 
 test('About shows the app name and the build', async ({ page }) => {
   await page.goto('/#/settings');
-  // M15's AppHeader also shows "Nordic Aim", so scope this to the page's own About section.
-  await expect(page.getByRole('main').getByText('Nordic Aim')).toBeVisible();
+  // M15's AppHeader also shows "NordicAim", so scope this to the page's own About section.
+  await expect(page.getByRole('main').getByText('NordicAim')).toBeVisible();
   await expect(page.getByTestId('build-version')).not.toHaveText('');
 });
 

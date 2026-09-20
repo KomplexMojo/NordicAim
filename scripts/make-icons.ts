@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-// M15 step 2. Node-only icon generator: draws the Nordic Aim target mark and rasterises it with `sharp` to the PWA manifest's icon set under `public/icons/`.
+// M15 step 2. Node-only icon generator: draws the NordicAim target mark and rasterises it with `sharp` to the PWA manifest's icon set under `public/icons/`.
 // Run with `pnpm make:icons`. Not part of the build; icons are committed like any other static asset.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -16,7 +16,7 @@ const ACCENT = '#4B94C3';
 const DISC = '#1F2630';
 
 /**
- * The Nordic Aim mark: a biathlon target seen from the firing line. Bold on purpose, so it still reads at 16 px: a dark tile,
+ * The NordicAim mark: a biathlon target seen from the firing line. Bold on purpose, so it still reads at 16 px: a dark tile,
  * a white paper disc, a black aiming disc with an accent ring and a single white scoring ring inside it, and a tight group of three holes just off centre.
  * `inset` shrinks the motif (the maskable icon's safe zone, where Android may crop to a centred circle). Drawn on a 100-unit grid.
  */
