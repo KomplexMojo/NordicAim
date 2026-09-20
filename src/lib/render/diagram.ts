@@ -3,8 +3,8 @@
 
 import type { AnalysisResult, Shot } from '../domain/analysis';
 import type { Lighting } from '../domain/enums';
-import { renderBlankPrecisionCell, renderPrecisionDiagram } from './diagram-precision';
-import { renderBlankSightingCell, renderSightingDiagram } from './diagram-sighting';
+import { precisionFullFrame, renderBlankPrecisionCell, renderPrecisionDiagram } from './diagram-precision';
+import { renderBlankSightingCell, renderSightingDiagram, sightingFullFrame } from './diagram-sighting';
 
 export interface DiagramInput {
   template: 'sighting' | 'precision';
@@ -28,6 +28,11 @@ export function renderDiagramSvg(input: DiagramInput, variant: DiagramVariant, s
   return input.template === 'precision'
     ? renderPrecisionDiagram(input, variant, slotLabel)
     : renderSightingDiagram(input, variant, slotLabel);
+}
+
+/** REV-74: the target's centre and scale in the `full` diagram of these shots. */
+export function diagramFullFrame(template: 'sighting' | 'precision', shots: Shot[]): { cx: number; cy: number; s: number } {
+  return template === 'precision' ? precisionFullFrame(shots) : sightingFullFrame(shots);
 }
 
 /** rendering-composite.md §5 (REV-51): an empty slot's cell — the template alone, faded, captioned "No target". */

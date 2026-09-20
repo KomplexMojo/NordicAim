@@ -117,6 +117,11 @@ function renderResultsPanel(subset: SubsetResult): string {
   return panel + heading + subheading + rows + divider + total;
 }
 
+/** REV-74: where the target sits in the detail (`full`) diagram, for anything drawn over it. */
+export function precisionFullFrame(shots: Array<{ xMm: number; yMm: number }>): { cx: number; cy: number; s: number } {
+  return { cx: FULL.cx, cy: FULL.cy, s: fitScale(FULL.s, HALO_RADIUS_MM, shots) };
+}
+
 export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVariant, slotLabel?: string): string {
   const { result, shots, positionLabel, captureLocal, lighting, holeDiameterMm } = input;
   const subset = result.all;
