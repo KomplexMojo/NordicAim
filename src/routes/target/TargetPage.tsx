@@ -186,12 +186,19 @@ export function TargetPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
-      <header className="flex items-center justify-between gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-2">
         <Link
           to={`/sessions/${sid}/results`}
           className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
         >
           Back to results
+        </Link>
+        <Link
+          to={`/sessions/${sid}/metadata`}
+          className="inline-flex h-11 items-center rounded-md border border-border px-3 text-sm font-medium"
+          data-testid="target-edit-metadata"
+        >
+          Edit type, rounds, lighting
         </Link>
       </header>
 

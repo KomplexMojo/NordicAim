@@ -156,3 +156,12 @@ test('target: a touch-credited unit draws the dashed ring and footer note (M24, 
   await expect(diagram.locator('circle.touch-credit')).toHaveCount(1);
   await expect(diagram).toContainText('scored by touching the line');
 });
+
+test('the target screen links to the metadata screen, where the target type can be changed', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await openPrecisionTarget(page, sessionId);
+  await page.getByTestId('target-edit-metadata').click();
+  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
+  await expect(page.getByRole('radio', { name: 'Precision standing', exact: true }).first()).toBeVisible();
+});
+
