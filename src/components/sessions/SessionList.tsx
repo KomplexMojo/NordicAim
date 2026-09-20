@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { BiathlonSession } from '@/lib/domain/session';
+import { sessionTimeLabel, SEARCH_FROM, matchesSession } from '@/lib/sessions/list-view';
 
 interface SessionListProps {
   sessions: BiathlonSession[];
@@ -14,41 +17,59 @@ interface SessionListProps {
   onDelete?: (session: BiathlonSession) => void;
 }
 
-/** Sessions §1: name, date, target count. Links to `#/sessions/:sid`, which redirects to metadata or results. */
+/** Sessions §1: name, date and time, target count. REV-93: a search box appears once there are many. */
 export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDelete }: SessionListProps) {
+  const [query, setQuery] = useState('');
   if (sessions.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
   }
+  const shown = sessions.filter((session) => matchesSession(session, query));
   return (
-    <ul className="flex flex-col gap-2" data-testid="session-list">
-      {sessions.map((session) => (
-        <li key={session.id} className="flex items-stretch gap-2">
-          <Link
-            to={`/sessions/${session.id}`}
-            className="flex min-h-11 flex-1 items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 hover:bg-muted"
-          >
-            <span className="flex flex-col text-left">
-              <span className="font-medium">{session.name}</span>
-              <span className="text-xs text-muted-foreground">{session.sessionDate}</span>
-            </span>
-            <Badge variant="secondary">
-              {session.photoIds.length} {session.photoIds.length === 1 ? 'target' : 'targets'}
-            </Badge>
-          </Link>
-          {onDelete !== undefined && (
-            <Button
-              variant="ghost"
-              className="h-auto min-h-11 text-muted-foreground"
-              onClick={() => onDelete(session)}
-              data-testid="session-delete"
-              data-session-id={session.id}
-              aria-label={`Delete ${session.name}`}
+    <>
+      {sessions.length >= SEARCH_FROM && (
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search sessions by name or date"
+          aria-label="Search sessions"
+          className="h-11"
+          data-testid="session-search"
+        />
+      )}
+      {shown.length === 0 && <p className="text-sm text-muted-foreground" data-testid="session-search-empty">No session matches “{query}”.</p>}
+      <ul className="flex flex-col gap-2" data-testid="session-list">
+        {shown.map((session) => (
+          <li key={session.id} className="flex items-stretch gap-2">
+            <Link
+              to={`/sessions/${session.id}`}
+              className="flex min-h-11 flex-1 items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 hover:bg-muted"
             >
-              Delete…
-            </Button>
-          )}
-        </li>
-      ))}
-    </ul>
+              <span className="flex flex-col text-left">
+                <span className="font-medium">{session.name}</span>
+                <span className="text-xs text-muted-foreground" data-testid="session-when">
+                  {session.sessionDate} · {sessionTimeLabel(session)}
+                </span>
+              </span>
+              <Badge variant="secondary">
+                {session.photoIds.length} {session.photoIds.length === 1 ? 'target' : 'targets'}
+              </Badge>
+            </Link>
+            {onDelete !== undefined && (
+              <Button
+                variant="ghost"
+                className="h-auto min-h-11 text-muted-foreground"
+                onClick={() => onDelete(session)}
+                data-testid="session-delete"
+                data-session-id={session.id}
+                aria-label={`Delete ${session.name}, ${session.sessionDate} ${sessionTimeLabel(session)}`}
+              >
+                Delete…
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
