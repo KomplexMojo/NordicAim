@@ -1,4 +1,3 @@
-import { useState } from 'react';
 
 import { suggestSeason } from '@/lib/domain/season';
 import { Link, useParams } from 'react-router';
@@ -10,7 +9,7 @@ import { PhotoSection } from '@/components/target/PhotoSection';
 import { DiagramSvg } from '@/components/results/DiagramSvg';
 import { ReasonList } from '@/components/results/ReasonList';
 import { StatusChip } from '@/components/results/StatusChip';
-import { Button } from '@/components/ui/button';
+import { ZoomFrame } from '@/components/ui/zoom-frame';
 import { Card, CardContent } from '@/components/ui/card';
 import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
@@ -163,7 +162,6 @@ export function TargetPage() {
   const { sid = '', pid = '' } = useParams();
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadTarget(ctx, pid), [ctx, pid]);
-  const [zoomed, setZoomed] = useState(false);
 
   if (data === undefined) {
     return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
@@ -230,22 +228,14 @@ export function TargetPage() {
         }
       />
 
-      <div className={zoomed ? 'max-h-[70vh] overflow-auto' : ''}>
+      <ZoomFrame>
         <DiagramSvg
           photoId={photo.id}
           variant="full"
           label="Full target diagram"
-          className={
-            zoomed
-              ? 'w-[1200px] max-w-none [&>svg]:block [&>svg]:h-auto [&>svg]:w-full'
-              : '[&>svg]:mx-auto [&>svg]:block [&>svg]:h-auto [&>svg]:w-full lg:[&>svg]:max-h-[calc(100dvh-8rem)] lg:[&>svg]:w-auto'
-          }
+          className="[&>svg]:mx-auto [&>svg]:block [&>svg]:h-auto [&>svg]:w-full lg:[&>svg]:max-h-[calc(100dvh-8rem)] lg:[&>svg]:w-auto"
         />
-      </div>
-
-      <Button variant="outline" className="h-11" data-testid="zoom-toggle" onClick={() => setZoomed(!zoomed)}>
-        {zoomed ? 'Fit to width' : 'Zoom in'}
-      </Button>
+      </ZoomFrame>
 
       {result !== null && (
         <ObservedPatterns characteristics={result.all.characteristics} scope="Worked out from this target's shots when its analysis was saved." />

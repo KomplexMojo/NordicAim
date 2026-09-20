@@ -129,7 +129,7 @@ test('target: the rest of the detail screen is unchanged (M12 step 4)', async ({
   await expect(page.getByTestId('diagram-full')).toBeVisible();
   await expect(page.getByTestId('tally-row-8')).toContainText('x2');
   await expect(page.getByTestId('photo-facts')).toBeVisible();
-  await expect(page.getByTestId('zoom-toggle')).toBeVisible();
+  await expect(page.getByTestId('zoom-frame')).toBeVisible();
 });
 
 /**

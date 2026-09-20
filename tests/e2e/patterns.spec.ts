@@ -50,6 +50,8 @@ test('two demo sessions overlay on the right views, the range filter and the dra
   await page.getByTestId('pattern-range-30').click();
   await expect(page.getByTestId('patterns-drawing')).toHaveAttribute('data-shots', String(sightShots));
 
-  await page.getByTestId('patterns-zoom').click();
-  await expect(page.getByTestId('patterns-zoom')).toHaveText('Fit to width');
+  await page.getByTestId('frame-zoom-in').click();
+  await expect(page.getByTestId('zoom-frame')).not.toHaveAttribute('data-zoom', '1');
+  await page.getByTestId('frame-zoom-fit').click();
+  await expect(page.getByTestId('zoom-frame')).toHaveAttribute('data-zoom', '1');
 });
