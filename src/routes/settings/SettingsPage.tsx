@@ -117,22 +117,6 @@ export function SettingsPage() {
         loadError === null && <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <>
-          <BackingSettings
-            backingMode={settings.backingMode}
-            backing={settings.backing}
-            busy={cardBusy}
-            cardError={cardError}
-            onModeChange={(m: BackingMode) => {
-              setCardError(false);
-              void save(() => setBackingMode(ctx, m));
-            }}
-            onPhotographCard={() => navigate('/settings/backing-card')}
-            onChooseCardPhoto={(file) => void onChooseCardPhoto(file)}
-            onClear={() => {
-              setCardError(false);
-              void save(() => clearBacking(ctx));
-            }}
-          />
           <AthleteSettings
             name={settings.athleteName}
             club={settings.athleteClub}
@@ -162,6 +146,22 @@ export function SettingsPage() {
             onReset={() => void save(() => resetHoleDiameterMm(ctx))}
           />
           </ScoringSettings>
+          <BackingSettings
+            backingMode={settings.backingMode}
+            backing={settings.backing}
+            busy={cardBusy}
+            cardError={cardError}
+            onModeChange={(m: BackingMode) => {
+              setCardError(false);
+              void save(() => setBackingMode(ctx, m));
+            }}
+            onPhotographCard={() => navigate('/settings/backing-card')}
+            onChooseCardPhoto={(file) => void onChooseCardPhoto(file)}
+            onClear={() => {
+              setCardError(false);
+              void save(() => clearBacking(ctx));
+            }}
+          />
           <BackupSettings settings={settings} />
         </>
       )}
