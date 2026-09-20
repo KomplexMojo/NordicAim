@@ -25,21 +25,12 @@ export function HomePage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 p-6 lg:max-w-3xl">
-      <h1 className="pt-4 text-center text-2xl font-semibold">NordicAim</h1>
+      {/* The name is in the header on every page (REV-109); the heading stays for screen readers. */}
+      <h1 className="sr-only">NordicAim</h1>
 
       <UpdateBanner />
 
-      <div className="flex justify-center">
-        <QuickStartButton sessions={sessions ?? []} />
-      </div>
-
-      <Link
-        to="/patterns"
-        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border text-sm hover:bg-muted"
-        data-testid="open-patterns"
-      >
-        Patterns: every shot, every session
-      </Link>
+      <QuickStartButton sessions={sessions ?? []} className="h-14 w-full text-lg" />
 
       <BackupReminder />
 

@@ -30,7 +30,11 @@ export function QuickStartButton({ sessions, className }: QuickStartButtonProps)
   }
 
   return (
-    <Button className={cn('h-11 px-6 text-base', className)} disabled={busy} onClick={() => void onClick()}>
+    <Button className={cn('h-11 gap-2 px-6 text-base', className)} disabled={busy} onClick={() => void onClick()}>
+      <svg viewBox="0 0 24 24" className="size-6 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+        <path d="M4 8h3l1.5-2h7L17 8h3v11H4z" />
+        <circle cx="12" cy="13" r="3.5" />
+      </svg>
       {label}
     </Button>
   );
