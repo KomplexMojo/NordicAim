@@ -126,3 +126,49 @@ test('there is no separate Sessions screen: the old address lands on Home, which
   await expect(page.getByTestId('session-delete')).toHaveCount(7);
   await expect(page.getByTestId('open-patterns')).toBeVisible();
 });
+
+test('the slide can be done from the keyboard: a tap of Enter does nothing, holding it deletes (#27)', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  const id = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await page.goto('/#/');
+  await page.locator(`[data-testid="session-delete"][data-session-id="${id}"]`).click();
+  await page.getByTestId('delete-continue-1').click();
+  await page.getByTestId('delete-continue-2').click();
+  const dialog = page.getByTestId('delete-session-dialog');
+  await expect(dialog).toHaveAttribute('data-step', '3');
+  const track = page.getByTestId('slide-to-delete');
+  const handle = page.getByTestId('slide-handle');
+
+  await handle.focus();
+  await page.keyboard.down('Enter');
+  await page.waitForTimeout(300);
+  await page.keyboard.up('Enter');
+  await expect(track).toHaveAttribute('data-state', 'idle');
+  await expect(dialog).toBeVisible();
+
+  await page.keyboard.down('Enter');
+  await expect(dialog).toHaveCount(0, { timeout: 30_000 });
+  await page.keyboard.up('Enter');
+  await expect(page.locator(`[data-testid="session-delete"][data-session-id="${id}"]`)).toHaveCount(0);
+});
+
+test('many sessions: rows show the time, and a search box filters them (REV-93)', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  for (let i = 0; i < 8; i++) {
+    await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  }
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await page.goto('/#/');
+  await expect(page.getByTestId('session-when').first()).toHaveText(/\d{4}-\d{2}-\d{2} · \d{2}:\d{2}/);
+  const search = page.getByTestId('session-search');
+  await expect(search).toBeVisible();
+  const total = await page.getByTestId('session-when').count();
+  await search.fill('zzzz-no-such-session');
+  await expect(page.getByTestId('session-search-empty')).toBeVisible();
+  await expect(page.getByTestId('session-when')).toHaveCount(0);
+  await search.fill('');
+  await expect(page.getByTestId('session-when')).toHaveCount(total);
+});
