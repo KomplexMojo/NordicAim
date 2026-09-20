@@ -110,7 +110,7 @@ export function ResultsPage() {
       <header className="flex items-center justify-between gap-2">
         {/* The Shooting tab already goes Home; this is the parent of a session (owner, 2026-09-19). */}
         <Link
-          to="/sessions"
+          to="/"
           className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
           data-testid="results-back"
         >

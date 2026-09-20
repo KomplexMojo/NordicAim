@@ -1,4 +1,4 @@
-import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
+import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router';
 
 import { AppHeader } from '@/components/layout/AppHeader';
 import { TabBar } from '@/components/nav/TabBar';
@@ -14,7 +14,6 @@ import { ResultsPage } from '@/routes/results/ResultsPage';
 import { ReviewPage } from '@/routes/review/ReviewPage';
 import { PatternsPage } from '@/routes/patterns/PatternsPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
-import { SessionsPage } from '@/routes/sessions/SessionsPage';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
 import { TargetPage } from '@/routes/target/TargetPage';
@@ -55,7 +54,8 @@ const router = createHashRouter([
         element: <ServicesLayout />,
         children: [
           { path: '/', element: <HomePage /> },
-          { path: '/sessions', element: <SessionsPage /> },
+          // REV-72: the session list is Home; an old link to the removed Sessions screen goes there.
+          { path: '/sessions', element: <Navigate to="/" replace /> },
           { path: '/patterns', element: <PatternsPage /> },
           { path: '/sessions/:sid', element: <SessionRedirect /> },
           { path: '/sessions/:sid/capture', element: <CapturePage /> },

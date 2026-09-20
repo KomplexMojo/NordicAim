@@ -17,10 +17,8 @@ test('a session is deleted only after three steps and its exact name; cancelling
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   expect(keptId).not.toBe(doomedId);
 
-  // Home's list has no delete control.
-  await expect(page.getByTestId('session-delete')).toHaveCount(0);
-
-  await page.goto('/#/sessions');
+  // Home is the one screen that lists every session, and Delete is on it (REV-72).
+  await page.goto('/#/');
   const doomedDelete = page.locator(`[data-testid="session-delete"][data-session-id="${doomedId}"]`);
   await expect(doomedDelete).toBeVisible();
   const rowsBefore = await page.getByTestId('session-delete').count();
@@ -72,19 +70,17 @@ test('a session is deleted only after three steps and its exact name; cancelling
   await expect(page.getByTestId('target-card').first()).toBeVisible({ timeout: 30_000 });
 });
 
-test('Home always links to the Sessions screen, where Delete is, even with one session', async ({ page }) => {
+test('there is no separate Sessions screen: the old address lands on Home, which lists every session', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
-  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  for (let i = 0; i < 7; i++) {
+    await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  }
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
-  await page.goto('/#/');
-  await page.getByTestId('all-sessions').click();
-  await expect(page).toHaveURL(/#\/sessions$/);
-  await expect(page.getByTestId('session-delete').first()).toBeVisible();
-});
 
-test('the Sessions screen links to Patterns, as Home does', async ({ page }) => {
   await page.goto('/#/sessions');
-  await page.getByTestId('sessions-patterns').click();
-  await expect(page).toHaveURL(/#\/patterns$/);
+  await expect(page).toHaveURL(/#\/$/);
+  // All seven, not just the most recent few, each with Delete.
+  await expect(page.getByTestId('session-delete')).toHaveCount(7);
+  await expect(page.getByTestId('open-patterns')).toBeVisible();
 });

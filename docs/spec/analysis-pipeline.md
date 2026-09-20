@@ -16,7 +16,7 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | Route (hash) | Screen | Milestone |
 |---|---|---|
 | `#/` | Home: quick-start button + up to 5 recent sessions | M09 |
-| `#/sessions` | All sessions (name, date, target count, headline) | M09 |
+| `#/sessions` | Redirects to `#/` (REV-72). Home lists **every** session (name, date, target count) and is the one place a session is deleted | M09 |
 | `#/sessions/:sid` | Redirect: to `metadata` if any photo is `needs-metadata`, else to `results` | M09 |
 | `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |
 | `#/sessions/:sid/metadata` | **Step 2: add metadata** | M09 |
