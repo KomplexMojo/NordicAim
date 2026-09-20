@@ -10,7 +10,7 @@ import { PhotoMetadataCard } from '@/components/metadata/PhotoMetadataCard';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { isTargetPhoto } from '@/lib/domain/backing';
-import { groupedByTemplate } from '@/lib/domain/photo-order';
+import { orderedByKind } from '@/lib/domain/photo-order';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import type { Lighting, Season } from '@/lib/domain/enums';
@@ -37,8 +37,8 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
   const photos = await listPhotosBySession(ctx.db, sid);
   const byId = new Map(photos.map((p) => [p.id, p]));
   // backing-sheet.md §3: card photos are not targets, so they never appear here or in the count.
-  // REV-68: sighting targets, then precision, each in capture order, however the photos were added.
-  const ordered = groupedByTemplate(
+  // REV-68/90: Sight in, Confirm, Precision prone, Precision standing, each in capture order, however the photos were added.
+  const ordered = orderedByKind(
     session.photoIds.map((id) => byId.get(id)).filter((p): p is TargetPhoto => p !== undefined && isTargetPhoto(p)),
   );
   const analysisEntries = await Promise.all(

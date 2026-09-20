@@ -44,7 +44,7 @@ function analyzed(photoId: string, result: AnalysisResult): TargetAnalysis {
 }
 
 describe('composite/select-defaults selectDefaultSlots (rendering-composite.md ยง5)', () => {
-  it('3 analyzed precision targets at 10:00/11:00/12:00 -> slots [11:00, 12:00]', () => {
+  it('precision slots are the latest prone and the latest standing (REV-90): prone 10:00, standing 11:00, prone 12:00 -> [12:00, 11:00]', () => {
     const p10 = makePhoto({
       status: 'analyzed',
       categorization: { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null },
@@ -52,7 +52,7 @@ describe('composite/select-defaults selectDefaultSlots (rendering-composite.md ย
     });
     const p11 = makePhoto({
       status: 'analyzed',
-      categorization: { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null },
+      categorization: { template: 'precision', position: 'standing', roundsProne: null, roundsStanding: 10 },
       captureTime: { local: '2026-09-05T11:00:00', offset: '+00:00', utc: '2026-09-05T11:00:00.000Z', source: 'exif' },
     });
     const p12 = makePhoto({
@@ -68,8 +68,23 @@ describe('composite/select-defaults selectDefaultSlots (rendering-composite.md ย
     ]);
 
     const slots = selectDefaultSlots([p10, p11, p12], analyses);
-    expect(slots.precision).toEqual([p11.id, p12.id]);
+    expect(slots.precision).toEqual([p12.id, p11.id]);
     expect(slots.sighting).toEqual([null, null]);
+  });
+
+  it('with no standing target slot 4 is empty, and legacy targets without a single position keep the two most recent', () => {
+    const at = (h: number, position: 'prone' | 'both' | null) =>
+      makePhoto({
+        status: 'analyzed',
+        categorization: { template: 'precision', position, roundsProne: 10, roundsStanding: null },
+        captureTime: { local: '2026-09-05T1' + h + ':00:00', offset: '+00:00', utc: `2026-09-05T1${h}:00:00.000Z`, source: 'exif' },
+      });
+    const [a, b] = [at(0, 'prone'), at(1, 'prone')];
+    const proneOnly = new Map([a, b].map((p) => [p.id, analyzed(p.id, precisionResult(70))]));
+    expect(selectDefaultSlots([a, b], proneOnly).precision).toEqual([b.id, null]);
+    const [c, d] = [at(0, 'both'), at(1, null)];
+    const legacy = new Map([c, d].map((p) => [p.id, analyzed(p.id, precisionResult(70))]));
+    expect(selectDefaultSlots([c, d], legacy).precision).toEqual([c.id, d.id]);
   });
 
   it('excludes needs-attention (rejected, too-many-holes) targets even though `computed` may be set on older stores', () => {
@@ -109,10 +124,8 @@ describe('composite/select-defaults selectDefaultSlots (rendering-composite.md ย
     ]);
 
     const slots = selectDefaultSlots([a, b], analyses);
-    // Both timestamps tie, so both fit in the two slots regardless of order; the important assertion is
-    // that neither is dropped and the better one is not excluded by the tie-break.
-    expect(slots.precision).toContain(b.id);
-    expect(slots.precision).toContain(a.id);
+    // Both are prone with tied timestamps: the tie-break picks the better result for the prone slot.
+    expect(slots.precision).toEqual([b.id, null]);
   });
 
   it('sighting tie-break: smaller extremeSpreadMm wins, null is worst', () => {

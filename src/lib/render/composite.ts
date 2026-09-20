@@ -49,7 +49,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 11;
+export const COMPOSITE_RENDERER_VERSION = 12;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -92,7 +92,7 @@ export const COMPOSITE_GRID_HEIGHT = 1440;
  */
 export function positionName(template: 'sighting' | 'precision', index: 0 | 1): string {
   if (template === 'sighting') return index === 0 ? 'Sight in' : 'Confirm';
-  return `Precision ${index + 1}`;
+  return index === 0 ? 'Precision prone' : 'Precision standing';
 }
 
 /** §5: the analysis band's height for `lines` text lines — sized to its content, never a fixed block. */
@@ -179,7 +179,7 @@ function mpiCompactLine(offset: MpiOffset | null): string | null {
 /** §5 line 2: one summary line per filled slot, built from the same `targetHeadline` the results card
  * and target detail screen use (M24: all three stay in step), e.g.
  * "Sight in (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm"
- * "Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)". */
+ * "Precision prone: 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)". */
 function slotSummaryLine(label: string, slot: SlotData): string {
   const subset = slot.result.all;
   const position = shortPositionLabel(slot.result.position);
@@ -187,7 +187,9 @@ function slotSummaryLine(label: string, slot: SlotData): string {
   const headline = targetHeadline(slot.result);
 
   if (slot.result.template === 'precision') {
-    return `${label} (${position}): ${headline} · ${esText}`;
+    // The label already names the position ("Precision prone"); a legacy prone + standing target keeps its note.
+    const named = slot.result.position === 'prone' || slot.result.position === 'standing';
+    return `${label}${named ? '' : ` (${position})`}: ${headline} · ${esText}`;
   }
 
   const mpi = mpiCompactLine(subset.mpiOffset);

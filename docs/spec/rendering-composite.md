@@ -208,7 +208,7 @@ black border), described only that one target, and left a fixed 600 px band most
   precision 2 (720, 720). Grid height **1440**.
 - **Position names (REV-53)** — `positionName(template, index)`. The owner: "typically how a session works is you sight in on one
   target and then you confirm on a second target", so the sighting positions are **Sight in** and **Confirm**, not "Sighting 1"
-  and "Sighting 2"; precision stays `Precision 1` / `Precision 2`. Slot 1 is the earlier target (selection is chronological), the
+  and "Sighting 2"; precision is **Precision prone** and **Precision standing** (REV-90, was `Precision 1` / `Precision 2`). Slot 1 is the earlier target (selection is chronological), the
   one sighted in on. The name is used for the chip (uppercased) and for the analysis band's per-slot line. At least one filled slot is required; 0 throws `EmptyCompositeError`.
 - **Canvas.** Width **1440**. A full-canvas `panel` rect is drawn first, so no area is ever unfilled (transparent renders black).
 - **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); subtitle 18 `#CFE6F3` at
@@ -228,7 +228,7 @@ black border), described only that one target, and left a fixed 600 px band most
        ` · same under every rule`. Always present, so a shared image is never ambiguous about how it was scored.
     2. One per filled slot, built from `targetHeadline` (M24: the same helper the card and target detail use), e.g.
        `Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
-       `Precision 1 (prone): 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)`; for a `both` slot the `targetHeadline` `both` form.
+       `Precision prone: 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)` (the position is in the name; a legacy `both` slot keeps `(prone + standing)`); for a `both` slot the `targetHeadline` `both` form.
     2a. **The other rules' scores, only where they differ (REV-59).** Under a filled slot's line, when its score is not the same under
        all three rules: `By rule: gauge 72 · centre 70 · visible 71` (precision: the total) or `By rule (hits): gauge 7 · centre 6 ·
        visible 7` (sighting: hits; a `both` slot sums its two positions). A slot that scores the same under every rule gets no line.
@@ -253,7 +253,7 @@ it. 1 filled precision slot → 120 + 1440 + (100 + 34·6 + 64) = **1928**; 2 fi
 
 **Slot selection (automatic, pure)**: candidates per template = photos with `status === 'analyzed'`, sorted by `captureTime.utc`
 descending (null last, then `importedAt` descending). Break ties with the better result (precision: higher `identifiedTotal`;
-sighting: smaller `extremeSpreadMm`, null worst). Take the first two, then order chronologically (older = slot 1). Returns photo ids. **Sighting roles (REV-67):** when any analysed sighting target in the session has an explicit `categorization.sightingRole`, slot 1 (SIGHT IN) is the most recent sighting target whose effective role is `sight-in` and slot 2 (CONFIRM) the most recent whose effective role is `confirm` (either may be empty); with no explicit role the rule above applies unchanged. A target with no role is inferred by `sightingRoles` (`domain/sighting-role.ts`): if none is explicitly `sight-in`, the oldest unset one is `sight-in`; every other unset one is `confirm`. A rejected target (`too-many-holes`,
+sighting: smaller `extremeSpreadMm`, null worst). Take the first two, then order chronologically (older = slot 1). Returns photo ids. **Sighting roles (REV-67):** when any analysed sighting target in the session has an explicit `categorization.sightingRole`, slot 1 (SIGHT IN) is the most recent sighting target whose effective role is `sight-in` and slot 2 (CONFIRM) the most recent whose effective role is `confirm` (either may be empty); with no explicit role the rule above applies unchanged. A target with no role is inferred by `sightingRoles` (`domain/sighting-role.ts`): if none is explicitly `sight-in`, the oldest unset one is `sight-in`; every other unset one is `confirm`. **Precision (REV-90):** slot 3 is the most recent analysed Precision prone and slot 4 the most recent Precision standing (either may be empty); precision targets with no single position (`both`, or uncategorised) fall back to the two-most-recent rule. One order everywhere: Sight in, Confirm, Precision prone, Precision standing (`domain/photo-order.ts` `orderedByKind`, used by Results, Metadata and Review). A rejected target (`too-many-holes`,
 REV-39) is `needs-attention`, never `analyzed`, so it is never a candidate: it is **excluded** from the summary image.
 
 ## 6. `CompositeArtifact` and the share rule

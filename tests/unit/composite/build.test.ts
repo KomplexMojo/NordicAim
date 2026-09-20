@@ -247,9 +247,9 @@ describe('composite/build records and prints the scoring rule (REV-59)', () => {
   }
 
   it.each([
-    ['gauge', 'Scoring: Official gauge touch', 'Precision 1 (prone): 30 / 30'],
-    ['centre', 'Scoring: Centre in ring', 'Precision 1 (prone): 28 / 30'],
-    ['visible', 'Scoring: Visible hole touch (4.5 mm)', 'Precision 1 (prone): 29 / 30'],
+    ['gauge', 'Scoring: Official gauge touch', 'Precision prone: 30 / 30'],
+    ['centre', 'Scoring: Centre in ring', 'Precision prone: 28 / 30'],
+    ['visible', 'Scoring: Visible hole touch (4.5 mm)', 'Precision prone: 29 / 30'],
   ] as const)('%s: the image names the rule and its own line uses it', async (rule, scoring, slotLine) => {
     const { ctx, sessionId } = await seedDisagreeing(rule);
     const render = stubRenderTools();

@@ -1,7 +1,7 @@
 // REV-67: which sighting target is the initial sight-in and which is the confirm. Pure.
 
 import type { TargetPhoto } from './photo';
-import { chronological } from './photo-order';
+import { chronological } from './chronological';
 
 export type SightingRole = 'sight-in' | 'confirm';
 

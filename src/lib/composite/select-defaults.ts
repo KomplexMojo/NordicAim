@@ -77,13 +77,33 @@ function selectSighting(photos: TargetPhoto[], analyses: Map<string, TargetAnaly
 }
 
 /**
+ * REV-90: slot 3 is the most recent Precision prone and slot 4 the most recent Precision standing. A session whose precision
+ * targets have no single position (stored before REV-79 with "both", or not yet categorised) keeps the two most recent.
+ */
+function selectPrecision(photos: TargetPhoto[], analyses: Map<string, TargetAnalysis>): [string | null, string | null] {
+  const candidates = photos.filter(
+    (p) =>
+      isTargetPhoto(p) &&
+      p.status === 'analyzed' &&
+      p.categorization.template === 'precision' &&
+      (analyses.get(p.id)?.computed ?? null) !== null,
+  );
+  if (!candidates.some((p) => p.categorization.position === 'prone' || p.categorization.position === 'standing')) {
+    return selectForTemplate(photos, analyses, 'precision');
+  }
+  const latest = (position: 'prone' | 'standing'): string | null =>
+    [...candidates.filter((p) => p.categorization.position === position)].sort((a, b) => compareCandidates(a, b, analyses, 'precision'))[0]?.id ?? null;
+  return [latest('prone'), latest('standing')];
+}
+
+/**
  * rendering-composite.md §5. A rejected target (M20: `needs-attention`, `too-many-holes`, `computed`
  * null) never reaches `status === 'analyzed'`, so it is never a candidate here.
  */
 export function selectDefaultSlots(photos: TargetPhoto[], analyses: Map<string, TargetAnalysis>): SlotIds {
   return {
     sighting: selectSighting(photos, analyses),
-    precision: selectForTemplate(photos, analyses, 'precision'),
+    precision: selectPrecision(photos, analyses),
   };
 }
 

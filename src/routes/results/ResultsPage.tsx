@@ -9,7 +9,7 @@ import { useServices } from '@/lib/app/services';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import { isTargetPhoto } from '@/lib/domain/backing';
-import { groupedByTemplate } from '@/lib/domain/photo-order';
+import { orderedByKind } from '@/lib/domain/photo-order';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { getRecentTimings } from '@/lib/pipeline/timing';
 import { retryFailedStage } from '@/lib/pipeline/runner-browser';
@@ -55,8 +55,8 @@ async function loadResults(ctx: ReturnType<typeof useServices>['ctx'], sid: stri
   const byId = new Map(photos.map((p) => [p.id, p]));
   // analysis-pipeline §1 step 3: "one target card per photo in capture order".
   // backing-sheet.md §3: card photos never appear in results (they are not in `photoIds` either).
-  // REV-68: sighting targets, then precision, each in capture order, however the photos were added.
-  const ordered = groupedByTemplate(
+  // REV-68/90: Sight in, Confirm, Precision prone, Precision standing, each in capture order, however the photos were added.
+  const ordered = orderedByKind(
     session.photoIds.map((id) => byId.get(id)).filter((p): p is TargetPhoto => p !== undefined && isTargetPhoto(p)),
   );
   const entries = await Promise.all(ordered.map(async (p) => [p.id, await getAnalysisRecord(ctx.db, p.id)] as const));

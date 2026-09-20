@@ -118,9 +118,9 @@ describe('render/composite height vectors (§5)', () => {
 });
 
 describe('render/composite sight in, then confirm (REV-53)', () => {
-  it('names the sighting positions for what they are; precision stays numbered', () => {
+  it('names the sighting positions for what they are; precision is prone then standing', () => {
     expect([positionName('sighting', 0), positionName('sighting', 1)]).toEqual(['Sight in', 'Confirm']);
-    expect([positionName('precision', 0), positionName('precision', 1)]).toEqual(['Precision 1', 'Precision 2']);
+    expect([positionName('precision', 0), positionName('precision', 1)]).toEqual(['Precision prone', 'Precision standing']);
   });
 
   it('chips and band lines use them, filled or blank', () => {
@@ -267,7 +267,7 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
   it('contains the required golden substrings', () => {
     expect(svg).toContain('Session analysis');
     // REV-49 (M24): the analysis band's per-slot line now reuses `targetHeadline` (issue #6).
-    expect(svg).toContain('Precision 1 (prone): 72 / 100');
+    expect(svg).toContain('Precision prone: 72 / 100');
     expect(svg).toContain('Sight in (prone): 9 hits · 1 miss — 45 mm prone');
   });
 

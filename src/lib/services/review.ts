@@ -9,30 +9,21 @@ import { samePositionMm } from '@/lib/geometry/reproject';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 import { getSessionRecord } from '@/lib/store/sessions-repo';
 
+import { orderedByKind } from '@/lib/domain/photo-order';
 import type { ServiceContext } from './context';
 
-export type ReviewOrderable = Pick<TargetPhoto, 'id' | 'status' | 'captureTime' | 'importedAt'>;
-
-/** Ascending by `captureTime.utc` (null last), then `importedAt`, then id — so the order is total. */
-export function byCaptureTime(a: ReviewOrderable, b: ReviewOrderable): number {
-  const au = a.captureTime.utc;
-  const bu = b.captureTime.utc;
-  if (au !== bu) {
-    if (au === null) return 1;
-    if (bu === null) return -1;
-    return au < bu ? -1 : 1;
-  }
-  if (a.importedAt !== b.importedAt) return a.importedAt < b.importedAt ? -1 : 1;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
+export type ReviewOrderable = Pick<TargetPhoto, 'id' | 'status' | 'captureTime' | 'importedAt' | 'categorization'>;
 
 /**
- * M21 step 4: `needs-attention` photos first (analysis-pipeline §4), then the rest, each group by capture
- * time. Pure: no clock, and the input is not modified.
+ * M21 step 4: `needs-attention` photos first (analysis-pipeline §4), then the rest; within each group the one target order
+ * (REV-90: Sight in, Confirm, Precision prone, Precision standing, each by capture time). Pure: no clock, and the input is
+ * not modified. The kinds are worked out over the whole session, so an inferred Sight in is the same in both groups.
  */
 export function reviewOrder<T extends ReviewOrderable>(photos: T[]): T[] {
-  const attention = photos.filter((p) => p.status === 'needs-attention').sort(byCaptureTime);
-  const rest = photos.filter((p) => p.status !== 'needs-attention').sort(byCaptureTime);
+  const position = new Map(orderedByKind(photos).map((p, i) => [p.id, i]));
+  const byKind = (a: T, b: T): number => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0);
+  const attention = photos.filter((p) => p.status === 'needs-attention').sort(byKind);
+  const rest = photos.filter((p) => p.status !== 'needs-attention').sort(byKind);
   return [...attention, ...rest];
 }
 

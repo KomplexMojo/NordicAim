@@ -51,6 +51,20 @@ describe('reviewOrder (M21 step 4)', () => {
     expect(reviewOrder(photos).map((p) => p.id)).toEqual(['c', 'a', 'b']);
   });
 
+  it('within a group follows the one target order: Sight in, Confirm, Precision prone, Precision standing (REV-90)', () => {
+    const kind = (id: string, utc: string, template: 'sighting' | 'precision', position: 'prone' | 'standing', role?: 'sight-in' | 'confirm') => {
+      const p = at(id, utc, 'analyzed');
+      return { ...p, categorization: { ...p.categorization, template, position, ...(role ? { sightingRole: role } : {}) } };
+    };
+    const photos = [
+      kind('stand', '2026-09-05T08:00:00.000Z', 'precision', 'standing'),
+      kind('prone', '2026-09-05T09:00:00.000Z', 'precision', 'prone'),
+      kind('confirm', '2026-09-05T10:00:00.000Z', 'sighting', 'prone', 'confirm'),
+      kind('sight', '2026-09-05T11:00:00.000Z', 'sighting', 'prone', 'sight-in'),
+    ];
+    expect(reviewOrder(photos).map((p) => p.id)).toEqual(['sight', 'confirm', 'prone', 'stand']);
+  });
+
   it('orders equal statuses by capture time, whatever the input order', () => {
     const photos = [
       at('late', '2026-09-05T12:00:00.000Z', 'analyzed'),
