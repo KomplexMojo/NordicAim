@@ -11,7 +11,7 @@ interface HookPhoto {
     frameHeightPx: number;
     calibrationPriorFramePx: { cx: number; cy: number; radiusPx: number; source: string; anchorDiameterMm: number } | null;
   } | null;
-  categorization: { template: string | null; position: string | null; roundsProne: number | null; roundsStanding: number | null };
+  categorization: { template: string | null; position: string | null; roundsProne: number | null; roundsStanding: number | null; sightingRole?: string | null };
   id: string;
 }
 
@@ -44,11 +44,10 @@ async function getAnalysis(page: Page, photoId: string): Promise<HookAnalysis | 
   return page.evaluate((pid) => (window as HookWindow).__asaTest!.getAnalysis(pid), photoId);
 }
 
-async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'precision' | 'sighting', template: string, position: string) {
+async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'precision' | 'sighting', kind: string) {
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=${fake}`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
-  await page.getByRole('radio', { name: template, exact: true }).click();
-  await page.getByRole('radio', { name: position, exact: true }).click();
+  await page.getByRole('radio', { name: kind, exact: true }).click();
   await expect(page.locator('.overlay-anchor')).toBeVisible();
 
   const shutter = page.getByRole('button', { name: 'Shutter' });
@@ -62,7 +61,7 @@ async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'preci
 
 test('precision + prone: fake camera capture is stored with its overlay prior, then Done shows 1 photo', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
 
   const photos = await listPhotos(page, sessionId);
   expect(photos).toHaveLength(1);
@@ -90,23 +89,34 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
   await expect(page.getByTestId('metadata-photo-count')).toHaveText('1 photo');
 });
 
-test('sighting + both: rounds default to 5/5', async ({ page }) => {
+test('sight in: prone, ten rounds, role stored; confirm: five rounds (REV-79)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'sighting', 'Sighting', 'Both');
+  await captureWithFakeCamera(page, sessionId, 'sighting', 'Sight in');
 
   const photos = await listPhotos(page, sessionId);
   expect(photos).toHaveLength(1);
   const photo = photos[0]!;
   expect(photo.capture?.overlayTemplate).toBe('sighting');
   expect(photo.capture?.calibrationPriorFramePx?.anchorDiameterMm).toBe(115);
-  expect(photo.categorization).toEqual({ template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 });
+  expect(photo.categorization).toEqual({ template: 'sighting', position: 'prone', roundsProne: 10, roundsStanding: null, sightingRole: 'sight-in' });
+
+  // The next target in the same session, marked Confirm at capture.
+  await page.getByRole('radio', { name: 'Confirm', exact: true }).click();
+  const shutter = page.getByRole('button', { name: 'Shutter' });
+  await expect(shutter).toBeEnabled({ timeout: 15000 });
+  await shutter.click();
+  await expect(page.locator('.review-anchor')).toBeVisible();
+  await page.getByRole('button', { name: 'Use photo' }).click();
+  await expect(page.getByTestId('capture-count')).toHaveText('2 captured', { timeout: 15000 });
+  const both = await listPhotos(page, sessionId);
+  expect(both.map((p) => p.categorization.sightingRole).sort()).toEqual(['confirm', 'sight-in']);
+  expect(both.find((p) => p.categorization.sightingRole === 'confirm')!.categorization.roundsProne).toBe(5);
 });
 
 test('import from Photos shows the overlay review screen, then Keep stores it with origin import', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=sighting`);
-  await page.getByRole('radio', { name: 'Sighting', exact: true }).click();
-  await page.getByRole('radio', { name: 'Prone', exact: true }).click();
+  await page.getByRole('radio', { name: 'Sight in', exact: true }).click();
 
   await page.getByTestId('import-input').setInputFiles(path.resolve('docs/reference/IMG_5057-sighting.jpg'));
   await expect(page.getByTestId('capture-review')).toBeVisible();
@@ -127,8 +137,7 @@ test('import from Photos shows the overlay review screen, then Keep stores it wi
 test('import two: "Imported photo 1 of 2", Discard the first, Keep the second → exactly one stored', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=sighting`);
-  await page.getByRole('radio', { name: 'Sighting', exact: true }).click();
-  await page.getByRole('radio', { name: 'Prone', exact: true }).click();
+  await page.getByRole('radio', { name: 'Sight in', exact: true }).click();
 
   await page.getByTestId('import-input').setInputFiles([
     path.resolve('docs/reference/IMG_5057-sighting.jpg'),

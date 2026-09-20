@@ -8,6 +8,7 @@ import type { Lighting } from '../domain/enums';
 import { isTouchCredited as isPrecisionTouchCredited } from '../scoring/precision';
 import { isTouchCredited as isSightingTouchCredited } from '../scoring/sighting';
 import { placeLabels, type Box, type Circle, type LabelRequest, type PlacedLabel } from './label-placement';
+import { medalFor } from '../scoring/medal';
 import { PALETTE } from './palette';
 import { PRECISION_TEMPLATE } from '../defaults/templates';
 
@@ -232,6 +233,67 @@ export function renderCellChip(templateId: string, positionLabel: string, slotLa
   return chip + labelText;
 }
 
+/**
+ * REV-79: the sighting diagram's top-left mark, in place of the text chip. A small black circle with a scatter of small shot holes
+ * is the initial sight-in; a black circle with a scope's plus sign is the confirm.
+ */
+export function renderSightingRoleSymbol(role: 'sight-in' | 'confirm'): string {
+  const cx = 48;
+  const cy = 46;
+  const disc = el('circle', { cx, cy, r: 24, fill: '#111111' });
+  let mark = '';
+  if (role === 'sight-in') {
+    // A loose scatter, well inside the disc.
+    for (const [dx, dy] of [[-10, -6], [4, -12], [11, 3], [-3, 2], [-12, 9], [5, 12], [0, -3]] as const) {
+      mark += el('circle', { cx: cx + dx, cy: cy + dy, r: 2.6, fill: '#FFFFFF' });
+    }
+  } else {
+    // Scope sight: a plus with a small gap at the centre, inside a fine ring.
+    mark +=
+      el('circle', { cx, cy, r: 15, fill: 'none', stroke: '#FFFFFF', 'stroke-width': 1.5 }) +
+      el('line', { x1: cx - 18, y1: cy, x2: cx - 4, y2: cy, stroke: '#FFFFFF', 'stroke-width': 2.5 }) +
+      el('line', { x1: cx + 4, y1: cy, x2: cx + 18, y2: cy, stroke: '#FFFFFF', 'stroke-width': 2.5 }) +
+      el('line', { x1: cx, y1: cy - 18, x2: cx, y2: cy - 4, stroke: '#FFFFFF', 'stroke-width': 2.5 }) +
+      el('line', { x1: cx, y1: cy + 4, x2: cx, y2: cy + 18, stroke: '#FFFFFF', 'stroke-width': 2.5 });
+  }
+  return el('g', { class: 'sighting-role-symbol', 'data-role': role }, disc + mark);
+}
+
+const MEDAL_COLOURS = {
+  gold: { fill: '#F2B705', stroke: '#B58500' },
+  silver: { fill: '#C5CBD3', stroke: '#8A929C' },
+  bronze: { fill: '#CD7F32', stroke: '#8B5A22' },
+} as const;
+
+/** The points of a five-pointed star centred on (cx, cy): outer radius `outer`, inner radius `inner`, one point straight up. */
+function starPoints(cx: number, cy: number, outer: number, inner: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const angle = -Math.PI / 2 + (i * Math.PI) / 5;
+    pts.push(`${(cx + r * Math.cos(angle)).toFixed(2)},${(cy + r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return pts.join(' ');
+}
+
+/**
+ * REV-80: the precision target's score in a gold, silver or bronze star (`medalFor`), the score written inside it. `scale`
+ * sizes it for the cell (1) or the detail diagram (larger).
+ */
+export function renderScoreStar(cx: number, cy: number, total: number, maxPossible: number, scale = 1): string {
+  const medal = medalFor(total, maxPossible);
+  const colours = MEDAL_COLOURS[medal];
+  const star = el('polygon', {
+    points: starPoints(cx, cy, 44 * scale, 21 * scale),
+    fill: colours.fill,
+    stroke: colours.stroke,
+    'stroke-width': 2.5 * scale,
+    'stroke-linejoin': 'round',
+  });
+  const label = text(cx, cy + 6 * scale, 17 * scale, String(total), { bold: true, anchor: 'middle', color: '#1B1F24' });
+  return el('g', { class: 'score-star', 'data-medal': medal, 'data-score': String(total) }, star + label);
+}
+
 /** §4: the caption band rect plus centred caption text. */
 export function renderCellCaptionBand(captionText: string): string {
   const band = el('rect', { x: 0, y: 668, width: 720, height: 52, fill: PALETTE.panel });
@@ -287,11 +349,11 @@ export function clipCell(id: string, content: string): string {
 export const BLANK_CELL_OPACITY = 0.35;
 
 /** §5 (REV-51): an empty slot — the template alone, faded, with its chip and a "No target" caption. */
-export function renderBlankCell(label: string, target: string): string {
+export function renderBlankCell(label: string, target: string, role?: 'sight-in' | 'confirm'): string {
   const body =
     renderBackground(720, 720) +
     el('g', { opacity: BLANK_CELL_OPACITY }, target) +
-    renderCellChip(label, '') +
+    (role === undefined ? renderCellChip(label, '') : renderSightingRoleSymbol(role)) +
     renderCellCaptionBand('No target');
   return svgRoot(720, 720, body);
 }

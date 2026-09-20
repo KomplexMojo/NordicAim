@@ -168,6 +168,7 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
               captureLocal: photo.captureTime.local,
               lighting: photo.lighting,
               holeDiameterMm,
+              ...(template === 'sighting' && photo.categorization.sightingRole ? { sightingRole: photo.categorization.sightingRole } : {}),
             },
             renderTools,
           );

@@ -3,11 +3,11 @@
 import { isTargetPhoto } from '@/lib/domain/backing';
 import { shouldRerunStageA } from '@/lib/pipeline/template-change';
 import { photoStatus } from '@/lib/domain/status';
-import type { Lighting } from '@/lib/domain/enums';
+import type { Lighting, Season } from '@/lib/domain/enums';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
 import type { BiathlonSession } from '@/lib/domain/session';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
-import { pipelineHooks, summaryHooks } from '@/lib/pipeline/hooks';
+import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { deleteAnalysisRecord, getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { diagramPrefix, photoPrefix } from '@/lib/store/blob-keys';
 import { deleteByPrefix } from '@/lib/store/blobs-repo';
@@ -40,21 +40,11 @@ function categorizationEquals(a: Categorization, b: Categorization): boolean {
   );
 }
 
-/**
- * REV-67: marks a sighting target Sight in or Confirm. It changes nothing in scoring, so no stage re-runs; the summary image
- * (whose slots follow the role) is rebuilt.
- */
-export async function setSightingRole(ctx: ServiceContext, photoId: string, role: 'sight-in' | 'confirm'): Promise<void> {
-  const photo = await getPhotoRecord(ctx.db, photoId);
-  if (photo === null) throw new PhotoNotFoundError(photoId);
-  if ((photo.categorization.sightingRole ?? null) === role) return;
-  await updatePhotoMetadata(ctx, photoId, { categorization: { ...photo.categorization, sightingRole: role } });
-  summaryHooks.schedule(photo.sessionId);
-}
-
 export interface UpdatePhotoMetadataInput {
   categorization?: Categorization;
   lighting?: Lighting;
+  /** REV-79: never re-runs anything. */
+  season?: Season;
   notes?: string | null;
 }
 
@@ -104,7 +94,15 @@ export async function updatePhotoMetadata(
   const result = nextAnalysis.computed?.result ?? null;
   const { status, reasons } = photoStatus({ categorization, analysis: nextAnalysis, result });
 
-  const updatedPhoto: TargetPhoto = { ...photo, categorization, lighting, notes, status, reasons };
+  const updatedPhoto: TargetPhoto = {
+    ...photo,
+    categorization,
+    lighting,
+    notes,
+    status,
+    reasons,
+    ...(patch.season !== undefined ? { season: patch.season } : {}),
+  };
 
   await putPhotoRecord(tx, updatedPhoto);
   if (nextAnalysis !== analysis) await putAnalysisRecord(tx, nextAnalysis);

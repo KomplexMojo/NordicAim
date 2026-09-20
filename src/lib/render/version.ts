@@ -5,6 +5,8 @@
 // one and, when behind, every finished analysis is scored again once (`refreshStaleDiagrams`).
 //
 // Bump it whenever a per-target diagram's output changes:
+//   4 — REV-80: the precision diagram's score star.
+//   3 — REV-79: a sighting diagram's top-left mark is the sight-in or confirm symbol.
 //   2 — REV-60: the target screen also shows accuracy (stored results gain `accuracyRmseMm`).
 //   1 — REV-58: one fixed cell scale (no zoom-out), `+N off view`, and a detail diagram that shows every shot.
-export const DIAGRAM_RENDERER_VERSION = 2;
+export const DIAGRAM_RENDERER_VERSION = 4;

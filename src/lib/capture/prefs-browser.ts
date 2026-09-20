@@ -1,22 +1,20 @@
-// capture-overlay.md §1.2: template and position remembered per session in localStorage `asa.capture.<sessionId>`.
+// capture-overlay.md §1.2 (REV-79): the target kind remembered per session in localStorage `asa.capture.<sessionId>`.
 
 import { z } from 'zod';
 
-import { Position, TemplateId } from '@/lib/domain/enums';
+import { isTargetKind, type TargetKind } from '@/lib/domain/target-kind';
 
 export const DEFAULT_OUTER_DIAMETER_FRACTION = 0.85;
 export const MIN_OUTER_DIAMETER_FRACTION = 0.5;
 export const MAX_OUTER_DIAMETER_FRACTION = 0.95;
 
 export interface CapturePrefs {
-  template: TemplateId | null;
-  position: Position | null;
+  kind: TargetKind | null;
   outerDiameterFraction: number;
 }
 
 const StoredPrefs = z.object({
-  template: TemplateId.nullable().catch(null),
-  position: Position.nullable().catch(null),
+  kind: z.string().nullable().catch(null).transform((v) => (isTargetKind(v) ? v : null)),
   outerDiameterFraction: z
     .number()
     .min(MIN_OUTER_DIAMETER_FRACTION)
@@ -31,7 +29,7 @@ export function capturePrefsKey(sessionId: string): string {
 }
 
 export function defaultCapturePrefs(): CapturePrefs {
-  return { template: null, position: null, outerDiameterFraction: DEFAULT_OUTER_DIAMETER_FRACTION };
+  return { kind: null, outerDiameterFraction: DEFAULT_OUTER_DIAMETER_FRACTION };
 }
 
 export function parseCapturePrefs(raw: string | null): CapturePrefs {

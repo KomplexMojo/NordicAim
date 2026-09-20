@@ -9,8 +9,9 @@ import type { CameraErrorCode } from '@/lib/capture/camera';
 import { cameraErrorMessage, ingestErrorMessage } from '@/lib/capture/messages';
 import { calibrationPriorFromOverlay, type Size } from '@/lib/capture/overlay';
 import { loadCapturePrefs, saveCapturePrefs, type CapturePrefs } from '@/lib/capture/prefs-browser';
-import { defaultCategorization, emptyCategorization } from '@/lib/domain/categorization';
-import type { Position, TemplateId } from '@/lib/domain/enums';
+import { emptyCategorization } from '@/lib/domain/categorization';
+import { categorizationForKind, kindTemplate, type TargetKind } from '@/lib/domain/target-kind';
+import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
 import { clientNow } from '@/lib/media/capture-time';
 import { ingestPhoto } from '@/lib/services/ingest';
@@ -20,7 +21,7 @@ import { CameraView, type CameraHandle } from './CameraView';
 import { CaptureFallbacks } from './CaptureFallbacks';
 import { CaptureReview } from './CaptureReview';
 import { SizeSlider } from './SizeSlider';
-import { TemplatePositionPicker } from './TemplatePositionPicker';
+import { TargetKindPicker } from './TargetKindPicker';
 
 interface Review {
   blob: Blob;
@@ -29,7 +30,7 @@ interface Review {
   prior: Calibration;
   trackSettings: Record<string, string | number | boolean> | null;
   template: TemplateId;
-  position: Position;
+  kind: TargetKind;
   outerDiameterFraction: number;
 }
 
@@ -66,9 +67,10 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
   }
 
   async function onShutter() {
-    const { template, position, outerDiameterFraction } = prefs;
+    const { kind, outerDiameterFraction } = prefs;
     const camera = cameraRef.current;
-    if (!template || !position || !camera) return;
+    if (kind === null || !camera) return;
+    const template = kindTemplate(kind);
     setBusy(true);
     try {
       const shot = await camera.capture();
@@ -80,7 +82,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
         prior: calibrationPriorFromOverlay(shot.container, frame, template, outerDiameterFraction),
         trackSettings: shot.trackSettings,
         template,
-        position,
+        kind,
         outerDiameterFraction,
       });
     } catch (err) {
@@ -111,7 +113,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
             calibrationPriorFramePx: review.prior,
             trackSettings: review.trackSettings,
           },
-          categorization: defaultCategorization(review.template, review.position),
+          categorization: categorizationForKind(review.kind),
         },
         imageTools,
       );
@@ -130,10 +132,10 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
     setBusy(false);
   }
 
-  const { template, position, outerDiameterFraction } = prefs;
-  const canShoot = ready && template !== null && position !== null && !busy;
-  const importCategorization =
-    template !== null && position !== null ? defaultCategorization(template, position) : emptyCategorization();
+  const { kind, outerDiameterFraction } = prefs;
+  const template = kind === null ? null : kindTemplate(kind);
+  const canShoot = ready && kind !== null && !busy;
+  const importCategorization = kind === null ? emptyCategorization() : categorizationForKind(kind);
 
   return (
     <main className="dark flex h-dvh flex-col bg-background text-foreground">
@@ -150,12 +152,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
       </header>
 
       <div className="px-2 pb-2">
-        <TemplatePositionPicker
-          template={template}
-          position={position}
-          onTemplateChange={(t) => updatePrefs({ template: t })}
-          onPositionChange={(p) => updatePrefs({ position: p })}
-        />
+        <TargetKindPicker kind={kind} onChange={(k) => updatePrefs({ kind: k })} className="flex-wrap justify-center" />
       </div>
 
       <div className="relative min-h-0 flex-1">
@@ -173,9 +170,9 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
             {cameraErrorMessage(cameraError)}
           </div>
         )}
-        {!cameraError && (template === null || position === null) && (
+        {!cameraError && kind === null && (
           <div className="absolute inset-x-4 bottom-4 rounded-lg bg-black/70 p-3 text-center text-sm text-white">
-            Pick a template and position to start.
+            Pick the target type to start.
           </div>
         )}
       </div>

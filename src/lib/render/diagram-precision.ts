@@ -10,6 +10,7 @@ import {
   renderBackground,
   renderCellCaptionBand,
   renderCellChip,
+  renderScoreStar,
   renderFooterPanel,
   renderGroupEllipse,
   renderLegendBand,
@@ -138,6 +139,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
       clipCell(`cellclip-precision-${slotLabel ?? '0'}`, target) +
       renderOffViewNote(offViewCount(shots, CELL.cx, CELL.cy, s)) +
       renderCellChip(input.cellLabelOverride ?? 'PRECISION', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
+      (subset.precision === null ? '' : renderScoreStar(664, 56, subset.precision.identifiedTotal, subset.precision.maxPossible)) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
   }
@@ -158,7 +160,8 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     renderLegend(isBoth) +
     target +
     renderResultsPanel(subset) +
-    renderFooterPanel(precisionFooterLines(result, shots));
+    renderFooterPanel(precisionFooterLines(result, shots)) +
+    (subset.precision === null ? '' : renderScoreStar(1400, 70, subset.precision.identifiedTotal, subset.precision.maxPossible, 1.3));
   return svgRoot(FULL.width, FULL.height, body);
 }
 

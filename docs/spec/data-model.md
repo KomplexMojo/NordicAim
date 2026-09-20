@@ -108,6 +108,8 @@ export const Categorization = z.object({
   roundsStanding: z.number().int().min(1).max(50).nullable(),
   // REV-67: for a sighting target, whether it is the initial sight-in or the confirm. absent or null = not chosen, inferred by order.
   sightingRole: z.enum(['sight-in', 'confirm']).nullable().optional(),
+  // REV-79: the UI now sets template, position, rounds and role together from one target kind (`domain/target-kind.ts`); `position: 'both'`
+  // is no longer offered but stored values still read.
 });
 
 export const TargetPhoto = z.object({

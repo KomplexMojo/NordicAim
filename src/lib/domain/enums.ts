@@ -12,6 +12,10 @@ export type ShotPosition = z.infer<typeof ShotPosition>;
 export const Lighting = z.enum(['daylight', 'night', 'artificial', 'mixed', 'unknown']);
 export type Lighting = z.infer<typeof Lighting>;
 
+/** REV-79: the season a target was shot in, beside its lighting. */
+export const Season = z.enum(['winter', 'spring', 'summer', 'fall']);
+export type Season = z.infer<typeof Season>;
+
 // backing-sheet.md §3 (REV-38): `backing-card` is a photo of the backing card, never a target.
 export const PhotoOrigin = z.enum(['camera-overlay', 'camera-native', 'import', 'backing-card']);
 export type PhotoOrigin = z.infer<typeof PhotoOrigin>;

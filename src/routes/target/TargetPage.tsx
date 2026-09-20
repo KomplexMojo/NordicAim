@@ -1,4 +1,6 @@
 import { useState } from 'react';
+
+import { suggestSeason } from '@/lib/domain/season';
 import { Link, useParams } from 'react-router';
 
 import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
@@ -257,6 +259,7 @@ export function TargetPage() {
           <div className="flex flex-col pb-2 text-sm">
           <Row label="Captured" value={`${photo.captureTime.local ?? '—'} (${photo.captureTime.source})`} />
           <Row label="Lighting" value={photo.lighting} />
+          <Row label="Season" value={photo.season ?? suggestSeason(photo.captureTime.local ?? photo.importedAt) ?? '—'} />
           <Row label="Notes" value={photo.notes ?? '—'} />
           <Row
             label="Alignment"

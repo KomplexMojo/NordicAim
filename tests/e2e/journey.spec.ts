@@ -55,13 +55,11 @@ async function captureWithFakeCamera(
   page: Page,
   sessionId: string,
   fake: 'precision' | 'sighting',
-  template: string,
-  position: string,
+  kind: string,
 ): Promise<void> {
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=${fake}`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
-  await page.getByRole('radio', { name: template, exact: true }).click();
-  await page.getByRole('radio', { name: position, exact: true }).click();
+  await page.getByRole('radio', { name: kind, exact: true }).click();
 
   const shutter = page.getByRole('button', { name: 'Shutter' });
   await expect(shutter).toBeEnabled({ timeout: 15000 });
@@ -77,10 +75,10 @@ test('journey: capture two targets, add metadata, analyze, and reach a shareable
   const sessionId = await createSessionViaHome(page);
 
   // 1. Start & capture → fake precision (Prone) and fake sighting (Both 5/5).
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
-  await captureWithFakeCamera(page, sessionId, 'sighting', 'Sighting', 'Both');
+  await captureWithFakeCamera(page, sessionId, 'sighting', 'Sight in');
   await expect(page.getByTestId('capture-count')).toHaveText('2 captured', { timeout: 15000 });
 
   // 2. Done → metadata → Analyze → waitForIdle.

@@ -9,11 +9,10 @@ async function createSessionViaHome(page: Page): Promise<string> {
   return match[1];
 }
 
-async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'precision' | 'sighting', template: string, position: string) {
+async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'precision' | 'sighting', kind: string) {
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=${fake}`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
-  await page.getByRole('radio', { name: template, exact: true }).click();
-  await page.getByRole('radio', { name: position, exact: true }).click();
+  await page.getByRole('radio', { name: kind, exact: true }).click();
   await expect(page.locator('.overlay-anchor')).toBeVisible();
 
   const shutter = page.getByRole('button', { name: 'Shutter' });
@@ -25,27 +24,27 @@ async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'preci
   await expect(page.getByTestId('capture-review')).toBeHidden();
 }
 
-test('metadata screen: prefilled card, position change resets rounds, persists, and Analyze navigates to results', async ({
+test('metadata screen: prefilled card, changing the target type resets rounds, persists, and Analyze navigates to results', async ({
   page,
 }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
 
   await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
 
   const card = page.getByTestId('photo-metadata-card');
   await expect(card).toHaveCount(1);
-  await expect(card.getByRole('radio', { name: 'Precision', exact: true })).toHaveAttribute('aria-checked', 'true');
-  await expect(card.getByRole('radio', { name: 'Prone', exact: true })).toHaveAttribute('aria-checked', 'true');
+  // One choice says what was shot (REV-79); there is no separate template, position or "Both".
+  await expect(card.getByRole('radio', { name: 'Precision prone', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(card.getByRole('radio', { name: 'Both', exact: true })).toHaveCount(0);
   const roundsProneInput = card.locator('input[id$="-rounds-prone"]');
   await expect(roundsProneInput).toHaveValue('10');
 
-  // Step 2: change position to Both -> rounds default to 5/5.
-  await card.getByRole('radio', { name: 'Both', exact: true }).click();
+  // Step 2: change to Precision standing -> the standing rounds field appears at its default.
+  await card.getByRole('radio', { name: 'Precision standing', exact: true }).click();
   const roundsStandingInput = card.locator('input[id$="-rounds-standing"]');
-  await expect(roundsProneInput).toHaveValue('5');
-  await expect(roundsStandingInput).toHaveValue('5');
+  await expect(roundsStandingInput).toHaveValue('10');
 
   await roundsStandingInput.fill('3');
   await roundsStandingInput.blur();
@@ -86,15 +85,14 @@ test('metadata screen: Analyze is disabled until the imported photo is categoriz
   await expect(analyzeButton).toBeDisabled();
   await expect(page.getByTestId('photo-incomplete-hint')).toBeVisible();
 
-  await card.getByRole('radio', { name: 'Sighting', exact: true }).click();
-  await card.getByRole('radio', { name: 'Prone', exact: true }).click();
+  await card.getByRole('radio', { name: 'Sight in', exact: true }).click();
 
   await expect(analyzeButton).toBeEnabled({ timeout: 10000 });
 });
 
 test('the metadata screen has no Session options (REV-48: the backing lives in Settings)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
 
   await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));

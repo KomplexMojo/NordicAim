@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { Lighting, PhotoOrigin, PhotoStatus, Position, Reason, TemplateId } from './enums';
+import { Lighting, PhotoOrigin, PhotoStatus, Position, Reason, Season, TemplateId } from './enums';
 import { Id, LocalDateTime, Offset, UtcIso } from './primitives';
 
 export const Calibration = z.object({
@@ -105,6 +105,8 @@ export const TargetPhoto = z.object({
   lightingSuggestion: LightingSuggestion,
   lighting: Lighting,
   lightingConfirmed: z.boolean(),
+  // REV-79: absent or null = not chosen; the metadata screen then offers the season the capture date falls in.
+  season: Season.nullable().optional(),
   categorization: Categorization,
   notes: z.string().max(1000).nullable(),
   status: PhotoStatus, // computed by photoStatus (analysis-pipeline §4); never set by UI code

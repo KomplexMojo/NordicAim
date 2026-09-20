@@ -1,8 +1,6 @@
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { sightingRoles } from '@/lib/domain/sighting-role';
-import { setSightingRole } from '@/lib/services/photos';
 import { BackupReminder } from '@/components/settings/BackupReminder';
 import { SummaryCard } from '@/components/results/SummaryCard';
 import { leftOutOfSummary } from '@/lib/composite/select-defaults';
@@ -73,14 +71,6 @@ export function ResultsPage() {
   const [searchParams] = useSearchParams();
   const showDebug = searchParams.get('debug') === '1';
 
-  async function onRole(photoId: string, role: 'sight-in' | 'confirm') {
-    try {
-      await setSightingRole(ctx, photoId, role);
-    } catch (err) {
-      toast.error(`Could not change the role: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }
-
   async function onRetry(photoId: string) {
     try {
       await retryFailedStage(ctx, photoId);
@@ -88,8 +78,6 @@ export function ResultsPage() {
       toast.error(`Could not retry: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-
-  const roles = data == null ? new Map<string, 'sight-in' | 'confirm'>() : sightingRoles(data.photos);
 
   if (data === undefined) {
     return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
@@ -138,8 +126,6 @@ export function ResultsPage() {
           {data.photos.map((photo) => (
             <TargetCard
               key={photo.id}
-              role={roles.get(photo.id) ?? null}
-              onRoleChange={(r) => void onRole(photo.id, r)}
               sessionId={sid}
               photo={photo}
               analysis={data.analyses.get(photo.id) ?? null}

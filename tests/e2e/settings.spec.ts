@@ -175,8 +175,7 @@ test('Coloured in Settings reaches A5: the photo analyzed afterwards records a f
   const sessionId = await createSessionViaHome(page);
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
-  await page.getByRole('radio', { name: 'Precision', exact: true }).click();
-  await page.getByRole('radio', { name: 'Prone', exact: true }).click();
+  await page.getByRole('radio', { name: 'Precision prone', exact: true }).click();
   const shutter = page.getByRole('button', { name: 'Shutter' });
   await expect(shutter).toBeEnabled({ timeout: 15000 });
   await shutter.click();

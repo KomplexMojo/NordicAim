@@ -303,3 +303,11 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
 4. On `web-share`/`download` → `recordShare`.
 5. **Attach in Garmin Connect** card: (1) In the share sheet choose **Save Image**. (2) Open the Garmin Connect app. (3) Open the
    activity (usually the most recent). (4) Tap the camera icon and choose the saved image.
+
+## REV-79 / REV-80 marks
+
+- **Sighting cell (top-left)**: the text chip is replaced by a symbol: a 24 px-radius black disc with seven small white holes for `sight-in`, or with a
+  white plus (four bars round a small gap, inside a fine ring) for `confirm`. A per-photo diagram uses `categorization.sightingRole` when set; a
+  summary slot uses its position (slot 1 sight-in, slot 2 confirm), blank slots too. Precision keeps its text chip.
+- **Precision score star (top-right)**: `renderScoreStar` draws a five-pointed star with `identifiedTotal` inside: gold when the score is above 90% of `maxPossible`,
+  silver from 80% to 90%, bronze below (`scoring/medal.ts`). In the cell at (664, 56) and in the detail diagram at (1400, 70, ×1.3).

@@ -52,13 +52,11 @@ async function captureWithFakeCamera(
   page: Page,
   sessionId: string,
   fake: 'precision' | 'sighting',
-  template: string,
-  position: string,
+  kind: string,
 ): Promise<void> {
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=${fake}`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
-  await page.getByRole('radio', { name: template, exact: true }).click();
-  await page.getByRole('radio', { name: position, exact: true }).click();
+  await page.getByRole('radio', { name: kind, exact: true }).click();
 
   const shutter = page.getByRole('button', { name: 'Shutter' });
   await expect(shutter).toBeEnabled({ timeout: 15000 });
@@ -88,7 +86,7 @@ test('summary: a target added later joins the summary, including after it is fix
   const sessionId = await createSessionViaHome(page);
 
   // 1. One target, analyzed, summary built.
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
   await expect(page.getByTestId('summary-image')).toBeVisible({ timeout: 30_000 });
@@ -99,7 +97,7 @@ test('summary: a target added later joins the summary, including after it is fix
   await page.goto(`/#/sessions/${sessionId}/metadata`);
   await page.getByRole('button', { name: 'Add more photos' }).click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/capture`));
-  await captureWithFakeCamera(page, sessionId, 'sighting', 'Sighting', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'sighting', 'Sight in');
   await expect(page.getByTestId('capture-count')).toHaveText('2 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
   await expect(page.getByTestId('target-card')).toHaveCount(2);
@@ -143,7 +141,7 @@ test('summary: a target added later joins the summary, including after it is fix
 
 test('adjust: saving shots without moving the rings confirms an overlay-guess alignment (rule 9)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
 
@@ -176,7 +174,7 @@ test('adjust: saving shots without moving the rings confirms an overlay-guess al
 
 test('summary: Update summary rebuilds on demand (owner report 2026-09-19)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
   await expect(page.getByTestId('summary-image')).toBeVisible({ timeout: 30_000 });
@@ -188,7 +186,7 @@ test('summary: Update summary rebuilds on demand (owner report 2026-09-19)', asy
 
 test('diagnostics: Your data reports what is stored and exports it (owner report 2026-09-19)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision', 'Prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
   await page.goto('/#/diagnostics');

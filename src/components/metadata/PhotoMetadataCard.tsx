@@ -16,7 +16,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useServices } from '@/lib/app/services';
 import type { Lighting } from '@/lib/domain/enums';
-import { SightingRoleField } from '@/components/metadata/SightingRoleField';
 import type { SightingRole } from '@/lib/domain/sighting-role';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
@@ -25,9 +24,13 @@ import { photoThumbKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
 
 import { LightingField } from './LightingField';
+import { SeasonField } from './SeasonField';
+import type { Season } from '@/lib/domain/enums';
+import { suggestSeason } from '@/lib/domain/season';
 import { RoundsFields } from './RoundsFields';
 import { StageAProgress } from './StageAProgress';
-import { TemplatePositionFields } from './TemplatePositionFields';
+import { TargetKindPicker } from '@/components/capture/TargetKindPicker';
+import { categorizationForKind, kindOfCategorization } from '@/lib/domain/target-kind';
 
 const NOTES_DEBOUNCE_MS = 600;
 
@@ -38,6 +41,7 @@ interface PhotoMetadataCardProps {
   analysis: TargetAnalysis | null;
   onCategorizationChange(categorization: Categorization): void;
   onLightingChange(lighting: Lighting): void;
+  onSeasonChange(season: Season): void;
   onNotesChange(notes: string | null): void;
   onRemove(): void;
 }
@@ -76,6 +80,7 @@ export function PhotoMetadataCard({
   analysis,
   onCategorizationChange,
   onLightingChange,
+  onSeasonChange,
   onNotesChange,
   onRemove,
 }: PhotoMetadataCardProps) {
@@ -91,6 +96,7 @@ export function PhotoMetadataCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notes]);
 
+  const suggestedSeason = suggestSeason(photo.captureTime.local ?? photo.importedAt);
   const complete = isCategorizationComplete(photo.categorization);
 
   return (
@@ -115,17 +121,25 @@ export function PhotoMetadataCard({
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <TemplatePositionFields categorization={photo.categorization} onChange={onCategorizationChange} />
-        {role !== null && (
-          <SightingRoleField role={role} onChange={(next) => onCategorizationChange({ ...photo.categorization, sightingRole: next })} />
-        )}
+        <TargetKindPicker
+          kind={kindOfCategorization(photo.categorization, role)}
+          onChange={(kind) => onCategorizationChange(categorizationForKind(kind))}
+        />
         <RoundsFields categorization={photo.categorization} idPrefix={photo.id} onChange={onCategorizationChange} />
-        <LightingField
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <LightingField
           idPrefix={photo.id}
           value={photo.lighting}
           suggestion={photo.lightingSuggestion}
           onChange={onLightingChange}
         />
+          <SeasonField
+            idPrefix={photo.id}
+            value={photo.season ?? suggestedSeason}
+            suggested={suggestedSeason}
+            onChange={onSeasonChange}
+          />
+        </div>
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${photo.id}-notes`}>Notes</Label>
           <Textarea

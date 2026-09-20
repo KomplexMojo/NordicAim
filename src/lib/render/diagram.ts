@@ -20,6 +20,8 @@ export interface DiagramInput {
    * name (`SIGHTING`), which is what a standalone thumbnail shows.
    */
   cellLabelOverride?: string;
+  /** REV-79: on a sighting `cell`, the top-left mark is a symbol for this role instead of the text chip. */
+  sightingRole?: 'sight-in' | 'confirm';
 }
 
 export type DiagramVariant = 'full' | 'cell';
@@ -31,6 +33,6 @@ export function renderDiagramSvg(input: DiagramInput, variant: DiagramVariant, s
 }
 
 /** rendering-composite.md §5 (REV-51): an empty slot's cell — the template alone, faded, captioned "No target". */
-export function renderBlankCellSvg(template: 'sighting' | 'precision', label: string): string {
-  return template === 'precision' ? renderBlankPrecisionCell(label) : renderBlankSightingCell(label);
+export function renderBlankCellSvg(template: 'sighting' | 'precision', label: string, sightingRole?: 'sight-in' | 'confirm'): string {
+  return template === 'precision' ? renderBlankPrecisionCell(label) : renderBlankSightingCell(label, sightingRole);
 }

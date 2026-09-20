@@ -23,25 +23,23 @@ describe('capture prefs (capture-overlay §1.2)', () => {
   });
 
   it('defaults to no picks and size 0.85', () => {
-    expect(defaultCapturePrefs()).toEqual({ template: null, position: null, outerDiameterFraction: 0.85 });
+    expect(defaultCapturePrefs()).toEqual({ kind: null, outerDiameterFraction: 0.85 });
     expect(parseCapturePrefs(null)).toEqual(defaultCapturePrefs());
     expect(parseCapturePrefs('not json')).toEqual(defaultCapturePrefs());
   });
 
   it('round-trips per session', () => {
     const storage = memoryStorage();
-    saveCapturePrefs('s1', { template: 'precision', position: 'both', outerDiameterFraction: 0.6 }, storage);
+    saveCapturePrefs('s1', { kind: 'precision-prone', outerDiameterFraction: 0.6 }, storage);
     expect(storage.data.has('asa.capture.s1')).toBe(true);
-    expect(loadCapturePrefs('s1', storage)).toEqual({ template: 'precision', position: 'both', outerDiameterFraction: 0.6 });
+    expect(loadCapturePrefs('s1', storage)).toEqual({ kind: 'precision-prone', outerDiameterFraction: 0.6 });
     expect(loadCapturePrefs('s2', storage)).toEqual(defaultCapturePrefs());
   });
 
-  it('drops invalid fields individually', () => {
-    expect(parseCapturePrefs(JSON.stringify({ template: 'sighting', position: 'kneeling', outerDiameterFraction: 0.99 }))).toEqual({
-      template: 'sighting',
-      position: null,
-      outerDiameterFraction: 0.85,
-    });
+  it('drops invalid fields individually, and an unknown kind (including the old template/position pair) reads as none', () => {
+    expect(parseCapturePrefs(JSON.stringify({ kind: 'kneeling', outerDiameterFraction: 0.99 }))).toEqual({ kind: null, outerDiameterFraction: 0.85 });
+    expect(parseCapturePrefs(JSON.stringify({ template: 'sighting', position: 'prone', outerDiameterFraction: 0.6 }))).toEqual({ kind: null, outerDiameterFraction: 0.6 });
+    expect(parseCapturePrefs(JSON.stringify({ kind: 'confirm', outerDiameterFraction: 0.6 }))).toEqual({ kind: 'confirm', outerDiameterFraction: 0.6 });
   });
 
   it('survives a throwing storage', () => {

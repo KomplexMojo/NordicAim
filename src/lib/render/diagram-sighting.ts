@@ -8,6 +8,7 @@ import {
   renderBackground,
   renderCellCaptionBand,
   renderCellChip,
+  renderSightingRoleSymbol,
   renderFooterPanel,
   renderGroupEllipse,
   renderLegendBand,
@@ -110,7 +111,9 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
       renderBackground(CELL.width, CELL.height) +
       clipCell(`cellclip-sighting-${slotLabel ?? '0'}`, target) +
       renderOffViewNote(offViewCount(shots, CELL.cx, CELL.cy, s)) +
-      renderCellChip(input.cellLabelOverride ?? 'SIGHTING', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
+      (input.sightingRole !== undefined
+        ? renderSightingRoleSymbol(input.sightingRole)
+        : renderCellChip(input.cellLabelOverride ?? 'SIGHTING', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined)) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
   }
@@ -136,6 +139,6 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
 }
 
 /** rendering-composite.md §5 (REV-51): an empty sighting slot in the summary image. */
-export function renderBlankSightingCell(label: string): string {
-  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, CELL.s));
+export function renderBlankSightingCell(label: string, role?: 'sight-in' | 'confirm'): string {
+  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, CELL.s), role);
 }

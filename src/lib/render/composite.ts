@@ -49,7 +49,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 7;
+export const COMPOSITE_RENDERER_VERSION = 9;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -122,9 +122,10 @@ function shortPositionLabel(position: Position): string {
   return position;
 }
 
-function slotDiagramInput(slot: SlotData, holeDiameterMm: number, cellLabelOverride: string): DiagramInput {
+function slotDiagramInput(slot: SlotData, holeDiameterMm: number, cellLabelOverride: string, sightingRole?: 'sight-in' | 'confirm'): DiagramInput {
   return {
     cellLabelOverride,
+    sightingRole,
     template: slot.result.template,
     result: slot.result,
     shots: slot.analysis.shots,
@@ -311,11 +312,13 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
   for (const cell of COMPOSITE_CELLS) {
     const slot = input.slots[cell.template][cell.index];
     const label = positionName(cell.template, cell.index).toUpperCase();
+    // REV-79: a sighting slot is drawn with its role's symbol, not the text chip.
+    const role = cell.template === 'sighting' ? (cell.index === 0 ? ('sight-in' as const) : ('confirm' as const)) : undefined;
     const svg =
       slot === null
-        ? renderBlankCellSvg(cell.template, label)
+        ? renderBlankCellSvg(cell.template, label, role)
         : renderDiagramSvg(
-            slotDiagramInput(slot, input.holeDiameterMm, label),
+            slotDiagramInput(slot, input.holeDiameterMm, label, role),
             'cell',
             String(cell.index + 1), // only the clip id still needs the slot number
           );

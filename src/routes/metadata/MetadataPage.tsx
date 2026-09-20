@@ -13,7 +13,7 @@ import { isTargetPhoto } from '@/lib/domain/backing';
 import { groupedByTemplate } from '@/lib/domain/photo-order';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
-import type { Lighting } from '@/lib/domain/enums';
+import type { Lighting, Season } from '@/lib/domain/enums';
 import type { Categorization, TargetPhoto } from '@/lib/domain/photo';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
@@ -98,6 +98,14 @@ export function MetadataPage() {
   async function onCategorizationChange(photoId: string, categorization: Categorization) {
     try {
       await updatePhotoMetadata(ctx, photoId, { categorization });
+    } catch (err) {
+      toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function onSeasonChange(photoId: string, season: Season) {
+    try {
+      await updatePhotoMetadata(ctx, photoId, { season });
     } catch (err) {
       toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -193,6 +201,7 @@ export function MetadataPage() {
             analysis={data.analyses.get(photo.id) ?? null}
             onCategorizationChange={(c) => void onCategorizationChange(photo.id, c)}
             onLightingChange={(l) => void onLightingChange(photo.id, l)}
+            onSeasonChange={(s) => void onSeasonChange(photo.id, s)}
             onNotesChange={(n) => void onNotesChange(photo.id, n)}
             onRemove={() => void onRemovePhoto(photo.id)}
           />

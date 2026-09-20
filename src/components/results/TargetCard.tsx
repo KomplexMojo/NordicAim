@@ -8,8 +8,6 @@ import { positionLabel } from '@/lib/pipeline/stage-b';
 import { shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 
-import { SightingRoleField } from '@/components/metadata/SightingRoleField';
-import type { SightingRole } from '@/lib/domain/sighting-role';
 import { DiagramSvg } from './DiagramSvg';
 import { MetricsList } from './MetricsList';
 import { PhotoThumbnail } from './PhotoThumbnail';
@@ -21,9 +19,6 @@ interface TargetCardProps {
   photo: TargetPhoto;
   analysis: TargetAnalysis | null;
   onRetry(): void;
-  /** REV-67: the sighting target's effective role, or null for any other target. */
-  role?: SightingRole | null;
-  onRoleChange?(next: SightingRole): void;
 }
 
 function cardTitle(photo: TargetPhoto): string {
@@ -35,7 +30,7 @@ function cardTitle(photo: TargetPhoto): string {
 
 /** analysis-pipeline §1 step 3: one card per photo — cell diagram, headline, metrics, status, reasons,
  * and the View / Adjust shots buttons. */
-export function TargetCard({ sessionId, photo, analysis, onRetry, role = null, onRoleChange }: TargetCardProps) {
+export function TargetCard({ sessionId, photo, analysis, onRetry }: TargetCardProps) {
   const result = analysis?.computed?.result ?? null;
   const missing = result === null ? 0 : result.subsets.reduce((sum, subset) => sum + subset.missing, 0);
   // REV-39 (M20): a rejected target (too many holes for the declared rounds) carries no score, so the
@@ -80,7 +75,6 @@ export function TargetCard({ sessionId, photo, analysis, onRetry, role = null, o
             />
           )}
         </Link>
-        {role !== null && onRoleChange !== undefined && <SightingRoleField role={role} onChange={onRoleChange} />}
         {result !== null && !rejected && <MetricsList result={result} />}
         <StatusChip
           status={photo.status}
