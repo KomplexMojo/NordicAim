@@ -38,8 +38,8 @@ no ellipse. No conclusions are invented.
 ## 5. Drawing (`render/patterns.ts`, pure)
 
 A 1200 px square SVG, no page background, of the printed target (the detail diagram's target drawing) at the detail scale, zoomed out by
-`fitScale` so **every** shot shows (strays included, floor 0.5×). Each shot is a 3 px dot, `PALETTE` accent colour, opacity
-0.35, so overlap deepens. The mean point of impact marker is drawn; the ellipse only when the summary allows it. Above 5 000
+`fitScale` so **every** shot shows (strays included, floor 0.5×). Each shot is an 8 px-radius dot, red-orange `#FF3B1F` at opacity 0.6 with a thin white edge (bright enough to see on a phone,
+on both the black disc and the white rings), so overlap deepens. The mean point of impact marker is drawn; the ellipse only when the summary allows it. Above 5 000
 points the dots are drawn as one path per 500 (still SVG; a canvas fallback is not needed at this size).
 
 ## 6. Screen

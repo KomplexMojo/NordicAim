@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 import { AboutSettings } from '@/components/settings/AboutSettings';
 import { BackingSettings } from '@/components/settings/BackingSettings';
+import { GlossarySettings } from '@/components/settings/GlossarySettings';
 import { BackupSettings } from '@/components/settings/BackupSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
@@ -139,6 +140,7 @@ export function SettingsPage() {
           <BackupSettings settings={settings} />
         </>
       )}
+      <GlossarySettings />
       <AboutSettings />
     </main>
   );

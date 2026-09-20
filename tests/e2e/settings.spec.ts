@@ -198,3 +198,14 @@ test('Coloured in Settings reaches A5: the photo analyzed afterwards records a f
     expect(analysis.pipeline.detection.fallbackReason).not.toBeNull();
   }
 });
+
+test('the Glossary starts collapsed and lists MOA with its formula when opened (REV-66)', async ({ page }) => {
+  await page.goto('/#/settings');
+  const toggle = page.getByTestId('panel-toggle-glossary');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  await toggle.click();
+  const moa = page.locator('[data-testid="glossary-entry"][data-term="MOA"]');
+  await expect(moa).toContainText('minutes of angle');
+  await expect(moa).toContainText('atan');
+  await expect(page.locator('[data-testid="glossary-entry"][data-term="MPI"]')).toBeVisible();
+});
