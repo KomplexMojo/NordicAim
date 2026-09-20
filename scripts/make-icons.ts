@@ -26,9 +26,9 @@ export function targetSvg(size: number, inset: number, rounded = false): string 
   const len = (v: number) => (v * k).toFixed(2);
   const HOLE = '#E8604C';
   const holes = [
-    [58, 40, 7.6],
-    [64, 52, 7],
-    [53, 50, 6.4],
+    [57, 39, 7],
+    [65, 51, 7],
+    [51, 52, 7],
   ]
     .map(([x, y, r]) => `<circle cx="${at(x!)}" cy="${at(y!)}" r="${len(r!)}" fill="${HOLE}" stroke="#FFFFFF" stroke-width="${len(2.2)}" />`)
     .join('\n    ');
