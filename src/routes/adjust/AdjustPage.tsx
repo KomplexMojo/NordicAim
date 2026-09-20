@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { AdjustSurface } from '@/components/adjust/AdjustSurface';
@@ -28,6 +28,13 @@ import { getCvClient } from '@/workers/cv-client';
 export function AdjustPage() {
   const { sid = '', pid = '' } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  /**
+   * Where Save and the back link go. Adjust is opened from the results list and from a target's detail
+   * screen; it used to return to the results list either way, throwing away where the user was (owner,
+   * 2026-09-19). `?from=detail` is the only value that changes it, so an unknown value is simply results.
+   */
+  const origin = searchParams.get('from') === 'detail' ? `/sessions/${sid}/photos/${pid}` : `/sessions/${sid}/results`;
   const draft = useAdjustDraft(pid);
   const { ctx, data, calibration, shots } = draft;
   const [busy, setBusy] = useState(false);
@@ -54,7 +61,7 @@ export function AdjustPage() {
     setBusy(true);
     try {
       await saveAdjustments(ctx, pid, patch);
-      void navigate(`/sessions/${sid}/results`);
+      void navigate(origin);
     } catch (err) {
       toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
       setBusy(false);
@@ -99,10 +106,11 @@ export function AdjustPage() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8">
       <header className="flex items-center justify-between gap-2">
         <Link
-          to={`/sessions/${sid}/results`}
+          to={origin}
           className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
+          data-testid="adjust-back"
         >
-          Back to results
+          {origin.endsWith('/results') ? 'Back to results' : 'Back to target'}
         </Link>
         <span className="text-sm text-muted-foreground" data-testid="adjust-shot-count">
           {shots.length} {shots.length === 1 ? 'hole' : 'holes'} · {units} {units === 1 ? 'shot' : 'shots'}

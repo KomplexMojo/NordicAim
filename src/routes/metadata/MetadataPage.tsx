@@ -151,8 +151,13 @@ export function MetadataPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8">
       <header className="flex items-center justify-between gap-2">
-        <Link to="/" className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4">
-          Home
+        {/* The Shooting tab already goes Home; this returns to the session being worked on. */}
+        <Link
+          to={`/sessions/${sid}/results`}
+          className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
+          data-testid="metadata-back"
+        >
+          Back to session
         </Link>
         <span className="text-sm text-muted-foreground" data-testid="metadata-photo-count">
           {photos.length} {photos.length === 1 ? 'photo' : 'photos'}

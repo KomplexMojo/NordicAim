@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
-
 import { Badge } from '@/components/ui/badge';
 import { DataRecovery } from '@/components/diagnostics/DataRecovery';
 import { Button } from '@/components/ui/button';
@@ -44,9 +42,6 @@ export function DiagnosticsPage() {
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Diagnostics</h1>
-        <Link to="/" className="text-sm underline underline-offset-4">
-          Home
-        </Link>
       </div>
 
       {/* Always shown, including when the checks themselves fail: this is how a stuck database is seen and exported. */}

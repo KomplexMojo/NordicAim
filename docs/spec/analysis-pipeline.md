@@ -5,6 +5,12 @@ screens listed in §1.
 
 ## 1. User flow and routes
 
+**Navigation (REV-55, 2026-09-19).** Home is the Shooting tab; no screen carries its own Home link (the app header
+does not either). Each screen's back link is its parent: results → `All sessions`, metadata → `Back to session`,
+target detail → `Back to results`, Adjust → wherever it was opened from. Adjust takes `?from=detail`, which sends Save
+and the back link to that target instead of the results list; any other value means results. Target detail carries
+**Adjust shots**, and results carries **Add photos** (`/sessions/:sid/capture`).
+
 The user experience is three steps: **take picture(s) → add metadata → receive analysis**.
 
 | Route (hash) | Screen | Milestone |

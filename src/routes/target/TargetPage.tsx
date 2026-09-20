@@ -248,6 +248,16 @@ export function TargetPage() {
         >
           Back to results
         </Link>
+        {/*
+          The screen where a wrong shot is noticed is the screen that should fix it: from here it used to
+          be back to results, find the card, then Adjust (owner, 2026-09-19). `from=detail` brings Save
+          back here rather than dumping the user on the results list.
+        */}
+        <Button asChild className="h-11">
+          <Link to={`/sessions/${sid}/photos/${pid}/adjust?from=detail`} data-testid="detail-adjust">
+            Adjust shots
+          </Link>
+        </Button>
       </header>
 
       <h1 className="text-xl font-semibold" data-testid="target-detail-title">

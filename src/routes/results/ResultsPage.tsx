@@ -93,8 +93,13 @@ export function ResultsPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8">
       <header className="flex items-center justify-between gap-2">
-        <Link to="/" className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4">
-          Home
+        {/* The Shooting tab already goes Home; this is the parent of a session (owner, 2026-09-19). */}
+        <Link
+          to="/sessions"
+          className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
+          data-testid="results-back"
+        >
+          All sessions
         </Link>
         <span className="text-sm text-muted-foreground" data-testid="results-photo-count">
           {data.photos.length} {data.photos.length === 1 ? 'target' : 'targets'}
@@ -133,6 +138,15 @@ export function ResultsPage() {
           Review session
         </Link>
       )}
+
+      {/* Step 1 of the app: adding more targets was three taps away, behind the metadata screen. */}
+      <Link
+        to={`/sessions/${sid}/capture`}
+        className="inline-flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium"
+        data-testid="add-photos-link"
+      >
+        Add photos
+      </Link>
 
       <Link
         to={`/sessions/${sid}/metadata`}
