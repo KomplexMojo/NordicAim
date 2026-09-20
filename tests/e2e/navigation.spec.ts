@@ -30,7 +30,9 @@ test('the result card picture opens the target, where the photo is editable on t
   // The photo section edits in place, and Save stays on the target.
   await expect(page.getByTestId('image-stage')).toHaveAttribute('data-ready', 'true');
   const url = page.url();
-  await page.getByTestId('save-adjustments').click();
+  // REV-94: nothing changed, so Save is idle.
+  await expect(page.getByTestId('save-adjustments')).toBeDisabled();
+  await expect(page.getByTestId('save-state')).toHaveText('No unsaved changes');
   await expect(page).toHaveURL(url);
   await expect(page.getByTestId('target-detail-title')).toBeVisible();
 

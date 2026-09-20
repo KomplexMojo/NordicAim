@@ -208,6 +208,7 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
           hintTemplate={analysis.pipeline.templateHint?.template ?? null}
           declared={declaredRoundsOrNull(photo.categorization)}
           reconcile={preview.reconcile}
+          modified={draft.modified}
         />
       )}
     </>

@@ -100,7 +100,7 @@ export function BackingSettings({
           data-testid="photograph-card"
           onClick={onPhotographCard}
         >
-          Photograph backing card
+          Take Picture
         </Button>
         <Button
           variant="outline"
@@ -109,7 +109,7 @@ export function BackingSettings({
           data-testid="choose-card-photo"
           onClick={() => fileRef.current?.click()}
         >
-          Choose card photo
+          Choose Picture
         </Button>
       </div>
       <input

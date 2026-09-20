@@ -1,6 +1,7 @@
 import { MetricsList } from '@/components/results/MetricsList';
 import { ReasonList } from '@/components/results/ReasonList';
 import { StatusChip } from '@/components/results/StatusChip';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AnalysisResult } from '@/lib/domain/analysis';
 import type { PhotoStatus, Reason, TemplateId } from '@/lib/domain/enums';
@@ -16,13 +17,15 @@ interface LivePreviewProps {
   declared: number | null;
   /** REV-39 (M20): the numbers the reconciliation reasons name; null while the categorization is incomplete. */
   reconcile: ReconcileReasonContext | null;
+  /** REV-94: the shots or alignment on screen differ from what is saved. */
+  modified?: boolean;
 }
 
 /**
  * M13 step 3: the score this photo would get if the edits on screen were saved — `analyzeTarget`,
  * `targetHeadline` and the `photoStatus` reasons, recomputed on every edit.
  */
-export function LivePreview({ result, status, reasons, hintTemplate, declared, reconcile }: LivePreviewProps) {
+export function LivePreview({ result, status, reasons, hintTemplate, declared, reconcile, modified = false }: LivePreviewProps) {
   const missing = result === null ? 0 : result.subsets.reduce((sum, subset) => sum + subset.missing, 0);
 
   return (
@@ -45,8 +48,12 @@ export function LivePreview({ result, status, reasons, hintTemplate, declared, r
         ) : (
           <MetricsList result={result} />
         )}
-        <div data-testid="live-status" data-status={status}>
-          <StatusChip status={status} stageA="done" stageB="done" />
+        <div data-testid="live-status" data-status={modified ? 'modified' : status}>
+          {modified ? (
+            <Badge className="bg-sky-200 text-sky-950 dark:bg-sky-900 dark:text-sky-50">Modified: not saved</Badge>
+          ) : (
+            <StatusChip status={status} stageA="done" stageB="done" />
+          )}
         </div>
         <ReasonList
           reasons={reasons}

@@ -195,7 +195,8 @@ test('adjust: deleting a shot rescored live, saved, and put back again', async (
   );
 
   await expect(page.getByTestId('adjust-shot-count')).toContainText('10 shots');
-  await expect(page.getByTestId('live-status')).toHaveAttribute('data-status', 'analyzed');
+  // REV-94: the chip says Modified from the first touch, until Save.
+  await expect(page.getByTestId('live-status')).toHaveAttribute('data-status', 'modified');
 
   await page.getByTestId('save-adjustments').click();
   // REV-73: Save stays on the target; go to the results to look at the effect.
@@ -218,7 +219,7 @@ test('adjust: the alignment mode edits the calibration and saves it as manual', 
 
   await page.getByTestId('cal-cx').fill('600');
   await page.getByTestId('cal-angle').fill('10');
-  await page.getByTestId('save-adjustments').click();
+  await page.getByTestId('save-only').click();
   // REV-73: Save stays on the target; go to the results to look at the effect.
   await expect(page.getByText('Saved.').first()).toBeVisible();
   await page.goto(`/#/sessions/${sessionId}/results`);
@@ -288,7 +289,7 @@ test('adjust: a parked marker dragged onto the target places the missing round (
   // The shot exists, so the tray count (which is derived) falls to zero and the tray disappears.
   await expect(page.getByTestId('adjust-shot-count')).toContainText('10 shots');
   await expect(page.getByTestId('unplaced-tray')).toHaveCount(0);
-  await expect(page.getByTestId('live-status')).toHaveAttribute('data-status', 'analyzed');
+  await expect(page.getByTestId('live-status')).toHaveAttribute('data-status', 'modified');
 
   // It is a manual shot of multiplicity 1 (M17 step 1).
   await page.getByTestId('save-adjustments').click();
@@ -367,7 +368,7 @@ test('adjust: re-aligning keeps every shot on its hole, and Re-analyze uses the 
   await readyStage(page);
   await page.getByTestId('mode-alignment').click();
   await page.getByTestId('cal-cx').fill(String(Math.round(cal0.cx + 24)));
-  await page.getByTestId('save-adjustments').click();
+  await page.getByTestId('save-only').click();
   // REV-73: Save stays on the target; go to the results to look at the effect.
   await expect(page.getByText('Saved.').first()).toBeVisible();
   await page.goto(`/#/sessions/${sessionId}/results`);
@@ -390,8 +391,10 @@ test('adjust: re-aligning keeps every shot on its hole, and Re-analyze uses the 
   await page.getByTestId('mode-alignment').click();
   const cx2 = Math.round(cal0.cx - 12);
   await page.getByTestId('cal-cx').fill(String(cx2));
-  await page.getByTestId('reanalyze').click();
-  await expect(page.getByText('Re-analyzed with your alignment and shots.')).toBeVisible({ timeout: 120_000 });
+  // REV-94: with the alignment moved, the one Save re-runs detection.
+  await expect(page.getByTestId('save-adjustments')).toHaveText('Save and re-analyze');
+  await page.getByTestId('save-adjustments').click();
+  await expect(page.getByText('Saved and re-analyzed with your alignment and shots.')).toBeVisible({ timeout: 120_000 });
   await waitForIdle(page);
 
   const after = await getAnalysis(page, photoId);
@@ -418,7 +421,7 @@ test('adjust: a manual edit keeps the sheet\'s tilt and Reset alignment clears i
   await page.getByTestId('mode-alignment').click();
   await expect(page.getByTestId('cal-reset-alignment')).toBeEnabled();
   await page.getByTestId('cal-cx').fill(String(Math.round(before.calibration!.cx + 5)));
-  await page.getByTestId('save-adjustments').click();
+  await page.getByTestId('save-only').click();
   // REV-73: Save stays on the target; go to the results to look at the effect.
   await expect(page.getByText('Saved.').first()).toBeVisible();
   await page.goto(`/#/sessions/${sessionId}/results`);
@@ -431,8 +434,10 @@ test('adjust: a manual edit keeps the sheet\'s tilt and Reset alignment clears i
   // Re-analyze with the tilt: A5's rectification takes the perspective warp in the real worker.
   await page.goto(`/#/sessions/${sessionId}/photos/${photoId}`);
   await readyStage(page);
-  await page.getByTestId('reanalyze').click();
-  await expect(page.getByText('Re-analyzed with your alignment and shots.')).toBeVisible({ timeout: 120_000 });
+  await page.getByTestId('mode-alignment').click();
+  await page.getByTestId('cal-cx').fill(String(Math.round(before.calibration!.cx + 6)));
+  await page.getByTestId('save-adjustments').click();
+  await expect(page.getByText('Saved and re-analyzed with your alignment and shots.')).toBeVisible({ timeout: 120_000 });
   await waitForIdle(page);
   const reanalyzed = await getAnalysis(page, photoId);
   expect(reanalyzed.calibration?.perspective).toEqual(tilt);
@@ -444,14 +449,14 @@ test('adjust: a manual edit keeps the sheet\'s tilt and Reset alignment clears i
   await page.getByTestId('mode-alignment').click();
   await page.getByTestId('cal-reset-alignment').click();
   await expect(page.getByTestId('cal-reset-alignment')).toBeDisabled();
-  await page.getByTestId('save-adjustments').click();
+  await page.getByTestId('save-only').click();
   // REV-73: Save stays on the target; go to the results to look at the effect.
   await expect(page.getByText('Saved.').first()).toBeVisible();
   await page.goto(`/#/sessions/${sessionId}/results`);
   await waitForIdle(page);
   const reset = await getAnalysis(page, photoId);
   expect(reset.calibration?.perspective).toBeNull();
-  expect(reset.calibration?.cx).toBe(edited.calibration?.cx);
+  expect(reset.calibration?.cx).toBe(reanalyzed.calibration?.cx);
   expect(reset.calibration?.source).toBe('manual');
 });
 

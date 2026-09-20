@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { AdjustSurface } from '@/components/adjust/AdjustSurface';
+import { UnsavedGuard } from '@/components/adjust/UnsavedGuard';
 import { loadAdjust, useAdjustDraft } from '@/components/adjust/useAdjustDraft';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +25,7 @@ interface PhotoSectionProps {
   analysis: TargetAnalysis | null;
 }
 
-/** The photo with its rings and shots, editable (M13), with Save, Re-analyze and More. */
+/** The photo with its rings and shots, editable (M13), with one Save (which also re-analyzes when the alignment moved) and More. */
 function EditView({ photo }: { photo: TargetPhoto }) {
   const draft = useAdjustDraft(photo.id);
   const { ctx, data, calibration, shots } = draft;
@@ -33,40 +34,27 @@ function EditView({ photo }: { photo: TargetPhoto }) {
   const units = shots.reduce((sum, shot) => sum + shot.multiplicity, 0);
   const pid = photo.id;
 
-  async function onSave() {
+  /**
+   * REV-94: one Save. When the alignment was moved it also re-runs detection against it (REV-46: the manual shots are kept);
+   * `Save only` skips the re-run. Shots-only edits just save.
+   */
+  async function onSave(rerun: boolean) {
     // §8: a manual calibration stops Stage A re-aligning this photo, so only send one the user moved.
     const patch = draft.patch();
-    if (patch === null) {
-      toast('Nothing to save: no shot or alignment changed.');
-      return;
-    }
+    if (patch === null || !draft.canSave) return;
     setBusy(true);
     try {
-      await saveAdjustments(ctx, pid, patch);
+      if (rerun) await reanalyze(ctx, pid, patch, getCvClient());
+      else await saveAdjustments(ctx, pid, patch);
       draft.setData(await loadAdjust(ctx, pid));
-      toast.success('Saved.');
+      toast.success(rerun ? 'Saved and re-analyzed with your alignment and shots.' : 'Saved.');
     } catch (err) {
-      toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`Could not ${rerun ? 'save and re-analyze' : 'save'}: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
   }
-
-  /** REV-46: save what is on screen, then re-run detection against the alignment just set, keeping the manual shots. */
-  async function onReanalyze() {
-    const patch = draft.patch();
-    if (patch === null) return;
-    setBusy(true);
-    try {
-      await reanalyze(ctx, pid, patch, getCvClient());
-      draft.setData(await loadAdjust(ctx, pid));
-      toast.success('Re-analyzed with your alignment and shots.');
-    } catch (err) {
-      toast.error(`Could not re-analyze: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const rerun = draft.alignmentMoved;
 
   /** M13 step 7: the ground-truth JSON for `cv:eval` — calibration, shots and the image size only. */
   function onExportGroundTruth() {
@@ -88,13 +76,23 @@ function EditView({ photo }: { photo: TargetPhoto }) {
         {shots.length} {shots.length === 1 ? 'hole' : 'holes'} · {units} {units === 1 ? 'shot' : 'shots'}
       </p>
       <AdjustSurface draft={draft} />
+      <UnsavedGuard modified={draft.modified} />
+      <p
+        className={draft.modified ? 'text-sm font-medium text-sky-800 dark:text-sky-200' : 'text-sm text-muted-foreground'}
+        data-testid="save-state"
+        data-modified={draft.modified}
+      >
+        {draft.modified ? 'Unsaved changes' : 'No unsaved changes'}
+      </p>
       <div className="flex gap-2">
-        <Button className="h-11 flex-1" data-testid="save-adjustments" disabled={busy} onClick={() => void onSave()}>
-          {busy ? 'Saving…' : 'Save'}
+        <Button className="h-11 flex-1" data-testid="save-adjustments" disabled={busy || !draft.canSave} onClick={() => void onSave(rerun)}>
+          {busy ? 'Saving…' : rerun ? 'Save and re-analyze' : 'Save'}
         </Button>
-        <Button variant="outline" className="h-11 flex-1" data-testid="reanalyze" disabled={busy} onClick={() => void onReanalyze()}>
-          Re-analyze
-        </Button>
+        {rerun && (
+          <Button variant="outline" className="h-11 flex-1" data-testid="save-only" disabled={busy} onClick={() => void onSave(false)}>
+            Save only
+          </Button>
+        )}
       </div>
       <Dialog>
         <DialogTrigger asChild>

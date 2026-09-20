@@ -81,13 +81,13 @@ export function useAdjustDraft(pid: string) {
   // delivers several changes between renders and each must re-project from the one before it.
   const shotsCalibration = useRef<Calibration | null>(null);
   // M21 step 4: what the draft started from, so the review can tell whether anything changed.
-  const start = useRef<{ calibration: Calibration; shots: Shot[] } | null>(null);
+  const [start, setStart] = useState<{ calibration: Calibration; shots: Shot[] } | null>(null);
 
   /** Loads a fresh record's alignment and shots as they are — nothing to re-project. */
   function resetDraft(next: AdjustData) {
     const first = adjustStartCalibration(next.photo, next.analysis);
     shotsCalibration.current = first;
-    start.current = { calibration: first, shots: next.analysis.shots };
+    setStart({ calibration: first, shots: next.analysis.shots });
     setCalibration(first);
     setShots(next.analysis.shots);
     setSelectedId(null);
@@ -267,9 +267,23 @@ export function useAdjustDraft(pid: string) {
   }
 
   function dirty(): boolean {
-    if (start.current === null || calibration === null) return false;
-    return hasAdjustEdits(start.current, { calibration, shots });
+    if (start === null || calibration === null) return false;
+    return hasAdjustEdits(start, { calibration, shots });
   }
+
+  // REV-94: what the screen shows differs from what is stored (recomputed each render, so the UI follows every touch).
+  const modified = dirty();
+  /** The alignment itself was moved: saving should re-run detection against it. */
+  const alignmentMoved = start !== null && calibration !== null && !sameCalibration(start.calibration, calibration);
+  /**
+   * Save has something to do: an edit; an alignment on screen that was never confirmed (none stored, or an overlay guess); or a
+   * target flagged for attention, where saving is how the owner confirms what is on screen.
+   */
+  const canSave =
+    modified ||
+    (data != null &&
+      calibration !== null &&
+      (data.photo.status === 'needs-attention' || adjustSavePatch(data.analysis, calibration, shots).calibration !== undefined));
 
   return {
     ctx,
@@ -294,6 +308,9 @@ export function useAdjustDraft(pid: string) {
     proposalFor,
     patch,
     dirty,
+    modified,
+    alignmentMoved,
+    canSave,
   };
 }
 

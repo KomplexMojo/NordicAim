@@ -300,7 +300,7 @@ template is already set is aligned against the right disc size.
 
 - If the user saves a calibration in Adjust, its `source` is `'manual'` and `pipeline.alignment.method = 'manual'`.
 - Stage A never runs A4 when `calibration?.source === 'manual'`, and never runs A5 when any shot has `source === 'manual'`.
-- Adjust offers **Re-analyze** (explicit; REV-46, formerly *Re-detect shots*): it first **saves what is on screen** —
+- Adjust offers **Re-analyze** (explicit; REV-46, formerly *Re-detect shots*): it first **saves what is on screen** — **REV-94:** there is no separate Re-analyze button: when the alignment was moved, the editor's one **Save** reads *Save and re-analyze* and does this (with *Save only* to skip it); shots-only edits just save.
   the alignment and every shot, exactly as Save does — then runs detection against **that** alignment, with the **Settings**
   backing and hole size as they are now (REV-48; changing a setting never re-runs anything by itself), replaces `auto`
   shots with what it finds, keeps `manual` ones, and re-scores. Nothing the user has on screen is discarded.

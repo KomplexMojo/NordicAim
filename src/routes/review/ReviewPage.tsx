@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { AdjustSurface } from '@/components/adjust/AdjustSurface';
-import { useAdjustDraft } from '@/components/adjust/useAdjustDraft';
+import { UnsavedGuard } from '@/components/adjust/UnsavedGuard';
+import { loadAdjust, useAdjustDraft } from '@/components/adjust/useAdjustDraft';
 import { Button } from '@/components/ui/button';
 import { useServices } from '@/lib/app/services';
 import type { TargetPhoto } from '@/lib/domain/photo';
@@ -51,6 +52,7 @@ function ReviewStep({ photo, index, total, onDone }: StepProps) {
     setBusy(true);
     try {
       await saveAdjustments(ctx, photo.id, patch);
+      draft.setData(await loadAdjust(ctx, photo.id));
       onDone('saved');
     } catch (err) {
       toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
@@ -80,12 +82,13 @@ function ReviewStep({ photo, index, total, onDone }: StepProps) {
         <AdjustSurface draft={draft} />
       )}
 
+      <UnsavedGuard modified={draft.modified} />
       <div className="flex gap-2">
         <Button className="h-11 flex-1" data-testid="review-confirm" disabled={busy || !data} onClick={() => void onConfirm()}>
           {busy ? 'Saving…' : 'Confirm'}
         </Button>
         <Button variant="outline" className="h-11 flex-1" data-testid="review-skip" disabled={busy} onClick={() => onDone('skipped')}>
-          Skip
+          {draft.modified ? 'Discard changes and skip' : 'Skip'}
         </Button>
       </div>
     </>
