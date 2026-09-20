@@ -24,7 +24,7 @@ Shots are the located **units** of `computed.result.all.units`, in mm from the t
 
 ## 3. Date range
 
-By `session.sessionDate` (`YYYY-MM-DD`): **30 days**, **90 days**, **All time** (default). "Days" count back from today (the
+By `session.sessionDate` (`YYYY-MM-DD`): **Latest session** (one session: the latest date that has shots in the view, then the latest session creation time, all its shots), **This week** (the calendar week, Monday to today), **30 days**, **90 days**, **All time** (default). "Days" count back from today (the
 service supplies today; `patterns/` never reads the clock). The dots and the summary change together.
 
 ## 4. Summary (per view, over the shown points)

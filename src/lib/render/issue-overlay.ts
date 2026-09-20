@@ -72,9 +72,3 @@ export function renderIssueOverlays(ids: readonly string[], frame: TargetFrame, 
   return out === '' ? '' : el('g', { class: 'issue-overlays', 'pointer-events': 'none' }, out);
 }
 
-/** Puts an overlay fragment inside an existing SVG document, above everything drawn (just before the closing tag). */
-export function injectIntoSvg(svg: string, fragment: string): string {
-  if (fragment === '') return svg;
-  const i = svg.lastIndexOf('</svg>');
-  return i === -1 ? svg : svg.slice(0, i) + fragment + svg.slice(i);
-}

@@ -18,6 +18,8 @@ import { loadPatterns } from '@/lib/services/patterns';
 import { formatMm } from '@/lib/scoring/format';
 
 const RANGES: ReadonlyArray<{ id: PatternRange; label: string }> = [
+  { id: 'last', label: 'Latest session' },
+  { id: 'week', label: 'This week' },
   { id: '30', label: '30 days' },
   { id: '90', label: '90 days' },
   { id: 'all', label: 'All time' },
@@ -75,7 +77,7 @@ export function PatternsPage() {
           </Button>
         ))}
       </div>
-      <div role="group" aria-label="Date range" className="grid grid-cols-3 gap-2 sm:max-w-sm">
+      <div role="group" aria-label="Date range" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {RANGES.map((r) => (
           <Button
             key={r.id}

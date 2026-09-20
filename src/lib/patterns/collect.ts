@@ -14,12 +14,14 @@ export const PATTERN_VIEW_LABEL: Record<PatternView, string> = {
   'precision-standing': 'Precision standing',
 };
 
-export type PatternRange = '30' | '90' | 'all';
+export type PatternRange = 'last' | 'week' | '30' | '90' | 'all';
 
 export interface PatternSource {
   sessionId: string;
   /** `YYYY-MM-DD`. */
   sessionDate: string;
+  /** When the session was created (ISO), to tell two sessions on the same day apart. */
+  sessionStamp: string;
   photo: Pick<TargetPhoto, 'id' | 'sessionId' | 'status' | 'captureTime' | 'importedAt'> & {
     categorization: Pick<TargetPhoto['categorization'], 'template' | 'sightingRole'>;
   };
@@ -35,6 +37,7 @@ export interface PatternPoint {
   photoId: string;
   sessionId: string;
   sessionDate: string;
+  sessionStamp: string;
 }
 
 export interface PatternData {
@@ -61,6 +64,7 @@ function toPoint(unit: UnitResult, source: PatternSource): PatternPoint {
     photoId: source.photo.id,
     sessionId: source.sessionId,
     sessionDate: source.sessionDate,
+    sessionStamp: source.sessionStamp,
   };
 }
 
@@ -103,9 +107,32 @@ export function collectPatterns(sources: PatternSource[]): PatternData {
   return { points, leftOut };
 }
 
-/** patterns.md §3: `today` is `YYYY-MM-DD`, supplied by the caller. */
+/** The Monday on or before `today` (`YYYY-MM-DD`), the start of the calendar week. */
+function weekStart(today: string): string {
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * patterns.md §3: `today` is `YYYY-MM-DD`, supplied by the caller. `last` is the most recent session that has points here
+ * (latest session date, then latest creation time); `week` is this calendar week, Monday to today; `30` and `90` count back days.
+ */
 export function filterByRange(points: PatternPoint[], range: PatternRange, today: string): PatternPoint[] {
   if (range === 'all') return points;
+  if (range === 'last') {
+    let latest: PatternPoint | null = null;
+    for (const p of points) {
+      if (latest === null || p.sessionDate > latest.sessionDate || (p.sessionDate === latest.sessionDate && p.sessionStamp > latest.sessionStamp)) {
+        latest = p;
+      }
+    }
+    return latest === null ? [] : points.filter((p) => p.sessionId === latest.sessionId);
+  }
+  if (range === 'week') {
+    const start = weekStart(today);
+    return points.filter((p) => p.sessionDate >= start);
+  }
   const cutoff = new Date(`${today}T00:00:00Z`);
   cutoff.setUTCDate(cutoff.getUTCDate() - Number(range));
   const cutoffDate = cutoff.toISOString().slice(0, 10);

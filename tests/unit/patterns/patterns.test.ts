@@ -21,6 +21,7 @@ function source(over: {
   return {
     sessionId: over.session ?? 's1',
     sessionDate: over.date ?? '2026-09-10',
+    sessionStamp: '2026-09-10T08:00:00.000Z',
     photo: {
       id: over.id,
       sessionId: over.session ?? 's1',
@@ -103,12 +104,46 @@ describe('collectPatterns (patterns.md §1, §2)', () => {
 });
 
 describe('filterByRange (patterns.md §3)', () => {
-  const at = (date: string): PatternPoint => ({ xMm: 0, yMm: 0, ring: null, isX: null, zone: null, photoId: date, sessionId: date, sessionDate: date });
+  const at = (date: string): PatternPoint => ({ xMm: 0, yMm: 0, ring: null, isX: null, zone: null, photoId: date, sessionId: date, sessionDate: date, sessionStamp: `${date}T08:00:00.000Z` });
   const points = [at('2026-06-01'), at('2026-07-15'), at('2026-08-25'), at('2026-09-18')];
   it('all keeps everything; 30 and 90 days count back from today', () => {
     expect(filterByRange(points, 'all', '2026-09-20')).toHaveLength(4);
     expect(filterByRange(points, '30', '2026-09-20').map((p) => p.sessionDate)).toEqual(['2026-08-25', '2026-09-18']);
     expect(filterByRange(points, '30', '2026-09-20')).not.toContainEqual(expect.objectContaining({ sessionDate: '2026-06-01' }));
+  });
+});
+
+describe('filterByRange: this week and latest session (REV-77)', () => {
+  const at = (sessionId: string, sessionDate: string, sessionStamp: string): PatternPoint => ({
+    xMm: 0,
+    yMm: 0,
+    ring: null,
+    isX: null,
+    zone: null,
+    photoId: `${sessionId}-photo`,
+    sessionId,
+    sessionDate,
+    sessionStamp,
+  });
+
+  it('this week is the calendar week from Monday to today', () => {
+    // 2026-09-20 is a Sunday, so the week began on Monday 2026-09-14.
+    const points = [at('a', '2026-09-13', '2026-09-13T08:00:00Z'), at('b', '2026-09-14', '2026-09-14T08:00:00Z'), at('c', '2026-09-20', '2026-09-20T08:00:00Z')];
+    expect(filterByRange(points, 'week', '2026-09-20').map((p) => p.sessionId)).toEqual(['b', 'c']);
+    // On a Monday the week is just that day.
+    expect(filterByRange(points, 'week', '2026-09-14').map((p) => p.sessionId)).toEqual(['b', 'c']);
+    expect(filterByRange([at('a', '2026-09-13', 'x')], 'week', '2026-09-14')).toEqual([]);
+  });
+
+  it('the latest session is one session: the latest date, then the latest creation time, with all its points', () => {
+    const points = [
+      at('old', '2026-09-01', '2026-09-01T08:00:00Z'),
+      at('morning', '2026-09-10', '2026-09-10T07:00:00Z'),
+      at('evening', '2026-09-10', '2026-09-10T18:00:00Z'),
+      at('evening', '2026-09-10', '2026-09-10T18:00:00Z'),
+    ];
+    expect(filterByRange(points, 'last', '2026-09-20').map((p) => p.sessionId)).toEqual(['evening', 'evening']);
+    expect(filterByRange([], 'last', '2026-09-20')).toEqual([]);
   });
 });
 
@@ -122,6 +157,7 @@ describe('summarizePatterns (patterns.md §4)', () => {
     photoId,
     sessionId,
     sessionDate: '2026-09-10',
+    sessionStamp: '2026-09-10T08:00:00.000Z',
   });
 
   it('empty', () => {
@@ -148,7 +184,7 @@ describe('summarizePatterns (patterns.md §4)', () => {
 });
 
 describe('renderPatternsSvg (patterns.md §5)', () => {
-  const pt = (xMm: number, yMm: number): PatternPoint => ({ xMm, yMm, ring: 9, isX: false, zone: null, photoId: 'a', sessionId: 's', sessionDate: '2026-09-10' });
+  const pt = (xMm: number, yMm: number): PatternPoint => ({ xMm, yMm, ring: 9, isX: false, zone: null, photoId: 'a', sessionId: 's', sessionDate: '2026-09-10', sessionStamp: '2026-09-10T08:00:00.000Z' });
 
   it('draws one dot per point and is deterministic', () => {
     const points = [pt(1, 1), pt(-3, 2), pt(0, -5)];

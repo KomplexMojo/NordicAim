@@ -90,11 +90,6 @@ function renderLegend(isBoth: boolean): string {
   return renderLegendBand(48, 120, 1404, 52, proneIcon + proneLabel + standingIcon + standingLabel + guideLabel + both);
 }
 
-/** REV-74: where the target sits in the detail (`full`) diagram, for anything drawn over it. */
-export function sightingFullFrame(shots: Array<{ xMm: number; yMm: number }>): { cx: number; cy: number; s: number } {
-  return { cx: FULL.cx, cy: FULL.cy, s: fitScale(FULL.s, HALO_RADIUS_MM, shots) };
-}
-
 export function renderSightingDiagram(input: DiagramInput, variant: DiagramVariant, slotLabel?: string): string {
   const { result, shots, positionLabel, captureLocal, lighting, holeDiameterMm } = input;
   const subset = result.all;

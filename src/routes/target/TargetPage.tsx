@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 
-import { IssueOverlayPanel } from '@/components/results/IssueOverlayPanel';
 import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { PhotoSection } from '@/components/target/PhotoSection';
 import { DiagramSvg } from '@/components/results/DiagramSvg';
@@ -15,8 +14,6 @@ import type { AnalysisResult, SubsetResult, TargetAnalysis } from '@/lib/domain/
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { positionLabel } from '@/lib/pipeline/stage-b';
-import { diagramFullFrame } from '@/lib/render/diagram';
-import { renderIssueOverlays } from '@/lib/render/issue-overlay';
 import { shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
 import { formatAngular, formatMm } from '@/lib/scoring/format';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
@@ -165,7 +162,6 @@ export function TargetPage() {
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadTarget(ctx, pid), [ctx, pid]);
   const [zoomed, setZoomed] = useState(false);
-  const [issues, setIssues] = useState<string[]>([]);
 
   if (data === undefined) {
     return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
@@ -186,11 +182,6 @@ export function TargetPage() {
   const missing = result === null ? 0 : result.subsets.reduce((sum, subset) => sum + subset.missing, 0);
   const warnings = analysis?.pipeline.warnings ?? [];
   const template = photo.categorization.template;
-  // REV-74: the chosen shooting-issue regions, drawn over the diagram at the same scale the diagram used.
-  const issueOverlay =
-    template === null || analysis === null
-      ? ''
-      : renderIssueOverlays(issues, diagramFullFrame(template, analysis.shots), template);
   const position = photo.categorization.position;
 
   return (
@@ -237,22 +228,17 @@ export function TargetPage() {
         }
       />
 
-      {/* REV-76: the issue toggles sit above the diagram on a phone and beside it on a wide screen, so the diagram stays in view. */}
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-start">
-      <IssueOverlayPanel selected={issues} onChange={setIssues} className="lg:order-2 lg:w-48 lg:shrink-0" />
-      <div className={`min-w-0 flex-1 lg:order-1 ${zoomed ? 'max-h-[70vh] overflow-auto' : ''}`}>
+      <div className={zoomed ? 'max-h-[70vh] overflow-auto' : ''}>
         <DiagramSvg
           photoId={photo.id}
           variant="full"
           label="Full target diagram"
-          overlay={issueOverlay}
           className={
             zoomed
               ? 'w-[1200px] max-w-none [&>svg]:block [&>svg]:h-auto [&>svg]:w-full'
               : '[&>svg]:mx-auto [&>svg]:block [&>svg]:h-auto [&>svg]:w-full lg:[&>svg]:max-h-[calc(100dvh-8rem)] lg:[&>svg]:w-auto'
           }
         />
-      </div>
       </div>
 
       <Button variant="outline" className="h-11" data-testid="zoom-toggle" onClick={() => setZoomed(!zoomed)}>

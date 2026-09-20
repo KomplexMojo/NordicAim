@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ISSUE_OVERLAYS, issueById } from '@/lib/issues/catalog';
-import { diagramFullFrame } from '@/lib/render/diagram';
-import { injectIntoSvg, issueUnitMm, renderIssueOverlays } from '@/lib/render/issue-overlay';
+import { issueUnitMm, renderIssueOverlays } from '@/lib/render/issue-overlay';
 
 describe('shooting-issue catalog (REV-74)', () => {
   it('has the two group shapes and chart items a to p, each with a region', () => {
@@ -59,16 +58,3 @@ describe('renderIssueOverlays', () => {
   });
 });
 
-describe('injectIntoSvg', () => {
-  it('goes just before the closing tag, and does nothing for an empty fragment', () => {
-    expect(injectIntoSvg('<svg><g/></svg>', '<x/>')).toBe('<svg><g/><x/></svg>');
-    expect(injectIntoSvg('<svg></svg>', '')).toBe('<svg></svg>');
-  });
-});
-
-describe('diagramFullFrame', () => {
-  it('zooms out only for a stray, like the diagram itself', () => {
-    expect(diagramFullFrame('precision', [{ id: 'a', xMm: 1, yMm: 1 } as never]).s).toBe(6.35);
-    expect(diagramFullFrame('precision', [{ id: 'a', xMm: 200, yMm: 0 } as never]).s).toBeLessThan(6.35);
-  });
-});

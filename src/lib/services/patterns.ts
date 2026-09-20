@@ -21,10 +21,10 @@ export async function loadPatterns(ctx: ServiceContext): Promise<PatternsLoaded>
     ctx.db.getAll('analyses') as Promise<unknown[]>,
   ]);
 
-  const dates = new Map<string, string>();
+  const dates = new Map<string, { date: string; stamp: string }>();
   for (const raw of rawSessions) {
     const parsed = BiathlonSession.safeParse(upgradeSession(raw));
-    if (parsed.success) dates.set(parsed.data.id, parsed.data.sessionDate);
+    if (parsed.success) dates.set(parsed.data.id, { date: parsed.data.sessionDate, stamp: parsed.data.createdAt });
   }
   const analyses = new Map<string, TargetAnalysis>();
   for (const raw of rawAnalyses) {
@@ -37,9 +37,9 @@ export async function loadPatterns(ctx: ServiceContext): Promise<PatternsLoaded>
     const parsed = TargetPhoto.safeParse(raw);
     if (!parsed.success) continue;
     const photo = parsed.data;
-    const sessionDate = dates.get(photo.sessionId);
-    if (sessionDate === undefined || photo.categorization.template === null) continue;
-    sources.push({ sessionId: photo.sessionId, sessionDate, photo, analysis: analyses.get(photo.id) ?? null });
+    const session = dates.get(photo.sessionId);
+    if (session === undefined || photo.categorization.template === null) continue;
+    sources.push({ sessionId: photo.sessionId, sessionDate: session.date, sessionStamp: session.stamp, photo, analysis: analyses.get(photo.id) ?? null });
   }
   return { data: collectPatterns(sources), today: ctx.now().toISOString().slice(0, 10) };
 }
