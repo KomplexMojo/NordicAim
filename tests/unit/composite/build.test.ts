@@ -258,7 +258,7 @@ describe('composite/build records and prints the scoring rule (REV-59)', () => {
     expect(svg).toContain(scoring);
     expect(svg).toContain(slotLine);
     // Whatever rule is in force, the image shows what every rule would have scored.
-    expect(svg).toContain('By rule: gauge 30 · centre 28 · visible 29');
+    for (const part of ['By rule:', 'gauge 30', 'centre 28', 'visible 29']) expect(svg).toContain(part);
     expect(artifact.scoringRule).toBe(rule);
     // ... and the stored artifact carries it, so an image from before a rule change can be told from one after.
     expect((await getSessionRecord(ctx.db, sessionId))?.artifacts.at(-1)?.scoringRule).toBe(rule);

@@ -230,7 +230,7 @@ black border), described only that one target, and left a fixed 600 px band most
        `Sighting 1 (prone): 9 hits · 1 miss — 45 mm prone · ES 27.7 mm (1.90 MOA) · MPI 9.7 R / 3.9 U mm`,
        `Precision prone: 72 / 100 · X 1 · ES 41.9 mm (2.88 MOA)` (the position is in the name; a legacy `both` slot keeps `(prone + standing)`); for a `both` slot the `targetHeadline` `both` form.
     2a. **The other rules' scores, only where they differ (REV-59).** Under a filled slot's line, when its score is not the same under
-       all three rules: `By rule: gauge 72 · centre 70 · visible 71` (precision: the total) or `By rule (hits): gauge 7 · centre 6 ·
+       all three rules: `By rule: gauge 72 · centre 70 · visible 71` (precision: the total) or `By rule (hits): gauge 7 · centre 6 · (REV-91: drawn with each rule's icon beside its number, the words kept.)
        visible 7` (sighting: hits; a `both` slot sums its two positions). A slot that scores the same under every rule gets no line.
        Each is computed by `analyzeTarget` with that rule's effective hole size (`geometry-scoring.md` §3); the total on the slot's
        own line is always the rule in force.

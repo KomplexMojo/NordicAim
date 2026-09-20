@@ -387,8 +387,15 @@ describe('render/composite names the scoring method (REV-59)', () => {
     // 3.55, 7.05, 7.67 mm: gauge 10+10+10, centre 10+9+9, visible(4.5) 10+10+9 — worked by hand for issue #4
     const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
-    expect(svg).toContain('By rule: gauge 30 · centre 28 · visible 29');
+    for (const part of ['By rule:', 'gauge 30', 'centre 28', 'visible 29']) expect(svg).toContain(part);
     expect(svg).not.toContain('same under every rule');
+  });
+
+  it('REV-91: each number in the by-rule line has its rule icon beside it', () => {
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    const band = svg.slice(svg.indexOf('Session analysis'));
+    for (const rule of ['gauge', 'centre', 'visible']) expect(band).toContain(`data-rule="${rule}"`);
   });
 
   it('a target that scores the same under every rule adds no line, and the Scoring line says so', () => {
@@ -412,7 +419,7 @@ describe('render/composite names the scoring method (REV-59)', () => {
     // 45 mm prone zone (radius 22.5): gauge 24 - 2.8 = 21.2 hit; centre 24 > 22.5 miss; visible 24 - 2.25 = 21.75 hit
     const slots = { sighting: [slotByRule('sighting', [10, 24]), null], precision: [null, null] } as const;
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
-    expect(svg).toContain('By rule (hits): gauge 2 · centre 1 · visible 2');
+    for (const part of ['By rule (hits):', 'gauge 2', 'centre 1', 'visible 2']) expect(svg).toContain(part);
   });
 
   it('shows the method but no comparison when the slots carry no per-rule results', () => {
@@ -430,3 +437,4 @@ describe('render/composite names the scoring method (REV-59)', () => {
     expect(height).toBe(120 + 1440 + 100 + 34 * 10 + 64);
   });
 });
+

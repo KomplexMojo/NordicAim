@@ -21,4 +21,9 @@ describe('glossary (REV-66)', () => {
     expect(angular(50, 50_000)!.mrad).toBeCloseTo(1, 3);
     expect(angular(14.5444, 50_000)!.mrad).toBeCloseTo(0.291, 3);
   });
+
+  it('names the three scoring rules, each with its icon (REV-91)', () => {
+    const icons = GLOSSARY.filter((e) => e.icon !== undefined).map((e) => e.icon);
+    expect(icons).toEqual(['gauge', 'centre', 'visible']);
+  });
 });

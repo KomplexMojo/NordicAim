@@ -1,5 +1,6 @@
 import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { GLOSSARY } from '@/lib/glossary';
+import { renderScoringIcon } from '@/lib/render/scoring-icons';
 
 /** REV-66: Settings → Glossary, a collapsed box of every acronym and measure the app uses. */
 export function GlossarySettings() {
@@ -9,7 +10,16 @@ export function GlossarySettings() {
         <dl className="flex flex-col gap-3 pb-3 text-sm">
           {GLOSSARY.map((entry) => (
             <div key={entry.term} data-testid="glossary-entry" data-term={entry.term}>
-              <dt className="font-semibold">
+              <dt className="flex items-center gap-2 font-semibold">
+                {entry.icon !== undefined && (
+                  <svg
+                    viewBox="0 0 48 48"
+                    className="size-8 shrink-0"
+                    aria-hidden="true"
+                    data-testid={`glossary-icon-${entry.icon}`}
+                    dangerouslySetInnerHTML={{ __html: renderScoringIcon(entry.icon, 24, 24, 1) }}
+                  />
+                )}
                 {entry.term}
                 {entry.stands !== null && <span className="ml-2 font-normal text-muted-foreground">{entry.stands}</span>}
               </dt>

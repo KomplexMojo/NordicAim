@@ -11,6 +11,8 @@ export interface GlossaryEntry {
   means: string;
   /** The calculation, when there is one. */
   formula: string | null;
+  /** REV-91: the scoring-rule mark shown beside the term (the same one under a precision score star). */
+  icon?: 'gauge' | 'centre' | 'visible';
 }
 
 const TEN = PRECISION_TEMPLATE.innerTenDiameterMm;
@@ -132,5 +134,27 @@ export const GLOSSARY: ReadonlyArray<GlossaryEntry> = [
     stands: 'megabytes',
     means: 'File size. A backup is roughly the size of all your photos together.',
     formula: null,
+  },
+  {
+    term: 'Official gauge touch',
+    stands: null,
+    icon: 'gauge',
+    means:
+      'The scoring rule that mirrors the official gauge: a shot scores the higher ring when the edge of its hole touches the ring line. The mark is a hole just touching the line from inside.',
+    formula: 'the ring is credited when distance from the target centre − hole radius ≤ the ring radius, with the official gauge hole size.',
+  },
+  {
+    term: 'Centre in ring',
+    stands: null,
+    icon: 'centre',
+    means: 'The strictest rule: only the centre of the hole counts, so touching a line is not enough. The mark is a hole across the line with a dot at its centre.',
+    formula: 'the ring is credited when distance from the target centre ≤ the ring radius.',
+  },
+  {
+    term: 'Visible hole touch',
+    stands: null,
+    icon: 'visible',
+    means: 'Like the official gauge, but with the smaller hole you can actually see on the paper (set in Settings → Scoring). The mark is a smaller hole touching the line.',
+    formula: 'the ring is credited when distance from the target centre − visible hole radius ≤ the ring radius.',
   },
 ];

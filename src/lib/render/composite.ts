@@ -11,6 +11,7 @@ import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
 import { PALETTE } from './palette';
+import { renderScoringIcon } from './scoring-icons';
 import { el, num, text } from './svg';
 import { fmtAngular, fmtMm, precisionFooterLines, sightingFooterLines, targetHeadline } from './text-lines';
 
@@ -49,7 +50,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 12;
+export const COMPOSITE_RENDERER_VERSION = 13;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -278,6 +279,24 @@ function bandLines(input: CompositeInput, placed: Placed[]): string[] {
   return lines.map((line) => truncate(line));
 }
 
+/** REV-91: the "By rule: gauge N · centre N · visible N" line with each rule's icon beside its number (words kept for the PNG). */
+function ruleComparisonMarks(line: string, y: number): string | null {
+  const m = /^(By rule[^:]*:) (.+)$/.exec(line);
+  if (m === null) return null;
+  const CHAR = 8.7;
+  let x = 40;
+  let out = text(x, y, 18, m[1]!, { color: PALETTE.textPrimary });
+  x += m[1]!.length * CHAR + 14;
+  for (const part of m[2]!.split(' · ')) {
+    const rule = RULES.find((r) => part.startsWith(`${r} `));
+    if (rule === undefined) return null;
+    out += renderScoringIcon(rule, x + 14, y - 6, 0.64);
+    out += text(x + 36, y, 18, part, { color: PALETTE.textPrimary });
+    x += 36 + part.length * CHAR + 34;
+  }
+  return out;
+}
+
 function renderAnalysisBand(lines: string[], release: string, bandY: number): string {
   const height = bandHeight(lines.length);
   const panel = el('rect', { x: 0, y: bandY, width: WIDTH, height, fill: PALETTE.panel });
@@ -286,7 +305,7 @@ function renderAnalysisBand(lines: string[], release: string, bandY: number): st
   let body = '';
   let y = bandY + 100;
   for (const line of lines) {
-    body += text(40, y, 18, line, { color: PALETTE.textPrimary });
+    body += ruleComparisonMarks(line, y) ?? text(40, y, 18, line, { color: PALETTE.textPrimary });
     y += LINE_STEP;
   }
   const footer = text(
