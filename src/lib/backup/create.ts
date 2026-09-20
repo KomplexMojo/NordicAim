@@ -2,7 +2,7 @@
 
 import type { AppDb } from '@/lib/store/db';
 
-import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, bytesToBase64, sha256Hex, type BackupBlob, type BackupManifest } from './format';
+import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, bytesToBase64, sha256Hex, type BackupBlob, type BackupManifest, type BackupPreference } from './format';
 
 function str(raw: unknown, key: string): string | null {
   return raw !== null && typeof raw === 'object' && key in raw && typeof (raw as Record<string, unknown>)[key] === 'string'
@@ -15,7 +15,10 @@ export interface CreatedBackup {
   manifest: BackupManifest;
 }
 
-export async function createBackup(db: AppDb, opts: { appBuild: string; nowIso: string }): Promise<CreatedBackup> {
+export async function createBackup(
+  db: AppDb,
+  opts: { appBuild: string; nowIso: string; preferences?: BackupPreference[] },
+): Promise<CreatedBackup> {
   // All reads happen before anything is built; they are plain reads, each its own transaction.
   const [sessions, photos, analyses, settings, keys] = await Promise.all([
     db.getAll('sessions') as Promise<unknown[]>,
@@ -66,6 +69,6 @@ export async function createBackup(db: AppDb, opts: { appBuild: string; nowIso: 
     '"blobs":[',
   ];
   blobs.forEach((b, i) => parts.push((i === 0 ? '' : ',') + JSON.stringify(b)));
-  parts.push(']}');
+  parts.push(`],"preferences":${JSON.stringify(opts.preferences ?? [])}}`);
   return { blob: new Blob(parts, { type: 'application/json' }), manifest };
 }

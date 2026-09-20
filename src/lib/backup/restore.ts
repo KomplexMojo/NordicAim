@@ -82,6 +82,9 @@ export interface RestoreReport {
 export async function applyRestore(db: AppDb, backup: VerifiedBackup, plan: RestorePlan, policy: ConflictPolicy): Promise<RestoreReport> {
   const wanted = (id: string): boolean => {
     const status = plan.verdicts.get(id);
+    // REV-115: settings are the phone's one configuration, not a collection: a restore brings back the backup's, whichever policy was
+    // chosen for sessions and photos (under "keep" they used to stay at the phone's defaults, so a restore lost them).
+    if (id.startsWith('settings:')) return status === 'new' || status === 'different';
     return status === 'new' || (status === 'different' && policy === 'replace');
   };
 

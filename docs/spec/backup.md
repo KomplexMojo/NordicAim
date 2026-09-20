@@ -46,8 +46,7 @@ A refused file writes nothing.
 
 ## 4a. Settings restore
 
-The `settings` row is a record like any other: `same`, or `different` under the owner's choice. Restoring never clears the
-`lastBackup*` fields the restore itself does not carry: they are set from the file's `createdAt` only if newer.
+**Superseded by REV-115 (see "Complete restore" below):** the `settings` row is not subject to the Keep / Replace choice; a restore always writes the backup's settings.
 
 ## 5. Reminders
 
@@ -61,3 +60,15 @@ shows the last backup's date and session count. `lastBackupAt` is set when the f
 Round trip (build → parse → restore into an empty DB gives equal stores and blobs); truncated and edited files are refused
 and write nothing; idempotent restore; `different` skip/replace; unreadable records survive the round trip; `backupDue`.
 Owner check: a backup of the real device (~43 MB) completes on the phone; note its time against `analysis-pipeline.md` §9.
+
+## Complete restore (REV-115)
+
+A restore returns the application to its previous state, not just its sessions:
+
+- **Settings are always restored.** The settings row is the phone's one configuration (athlete name and club, handedness, scoring rule and visible-hole size, hole size, backing sheet, backup reminder, the key's salt and fingerprint), not a collection to merge, so a restore writes the backup's row whichever policy (Keep / Replace) is chosen for sessions and photos. Before this, "Keep" left the phone's own (often default) settings in place and a restore appeared to lose them.
+- **Preferences travel too.** The file has an optional top-level `"preferences": [{ "key", "value" }]`: the app's `localStorage` entries under `asa.` (the open or closed state of each Settings panel, the capture screen's remembered choices). Only well-formed `asa.` entries are read back; a backup from before this has none and still restores. Written by `collectPreferences` and put back by `applyPreferences` (`backup/preferences-browser.ts`).
+- **The key is not.** The derived provenance key stays out of every backup (`provenance.md` §1). After a restore the report says so, and Settings → Athlete shows **Unlock**: the same passphrase re-derives it with the restored salt.
+- The Settings screen re-reads the restored settings and preferences at once; no reload is needed.
+
+The format version stays 1: the new field is optional.
+

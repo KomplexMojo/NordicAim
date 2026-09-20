@@ -1,6 +1,6 @@
 // backup.md §3: nothing is trusted until the whole file verifies.
 
-import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, base64ToBytes, sha256Hex, type BackupFile } from './format';
+import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, PREFERENCE_PREFIX, base64ToBytes, sha256Hex, type BackupFile, type BackupPreference } from './format';
 
 export interface VerifiedBackup {
   file: BackupFile;
@@ -59,5 +59,11 @@ export async function verifyBackup(text: string): Promise<VerifyResult> {
     if ((await sha256Hex(decoded)) !== want.sha256) return { ok: false, problem: `Image ${key} does not match its checksum: the file was changed or damaged.` };
     bytes.set(key, decoded);
   }
-  return { ok: true, backup: { file: raw as unknown as BackupFile, bytes } };
+  // REV-115: preferences are optional (older backups have none); only well-formed `asa.` entries are kept.
+  const prefs: BackupPreference[] = Array.isArray(raw.preferences)
+    ? (raw.preferences as unknown[]).flatMap((p) =>
+        isRecord(p) && typeof p.key === 'string' && p.key.startsWith(PREFERENCE_PREFIX) && typeof p.value === 'string' ? [{ key: p.key, value: p.value }] : [],
+      )
+    : [];
+  return { ok: true, backup: { file: { ...(raw as unknown as BackupFile), preferences: prefs }, bytes } };
 }

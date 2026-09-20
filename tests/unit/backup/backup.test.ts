@@ -191,3 +191,75 @@ describe('provenance key and backup (REV-100)', () => {
   });
 });
 
+describe('a complete restore (REV-115)', () => {
+  it('restores the settings row even under "keep", over a phone that already has its own', async () => {
+    const { db, ctx } = await seeded();
+    const { setAthlete, setHandedness } = await import('@/lib/services/settings');
+    await setAthlete(ctx, { name: 'Jane Doe', club: 'Caledonia Nordic Ski Club' });
+    await setHandedness(ctx, 'left');
+    const text = await backupText(db);
+    const verified = await verifyBackup(text);
+    if (!verified.ok) throw new Error(verified.problem);
+
+    const fresh = makeTestContext(await openTestDb());
+    await setAthlete(fresh, { name: 'Someone Else', club: 'Other Club' });
+    const plan = await planRestore(fresh.db, verified.backup);
+    expect(plan.settings.different).toBe(1);
+    await applyRestore(fresh.db, verified.backup, plan, 'keep');
+    const { getSettings } = await import('@/lib/store/settings-repo');
+    const restored = await getSettings(fresh.db);
+    expect([restored.athleteName, restored.athleteClub, restored.handedness]).toEqual(['Jane Doe', 'Caledonia Nordic Ski Club', 'left']);
+  });
+
+  it('carries the app preferences, keeps only well-formed asa.* entries, and an older backup without them still verifies', async () => {
+    const { db } = await seeded();
+    const prefs = [
+      { key: 'asa.panel.glossary', value: 'open' },
+      { key: 'asa.capture.abc', value: '{"kind":"confirm"}' },
+    ];
+    const text = await (await createBackup(db, { appBuild: 'test', nowIso: NOW, preferences: prefs })).blob.text();
+    const verified = await verifyBackup(text);
+    if (!verified.ok) throw new Error(verified.problem);
+    expect(verified.backup.file.preferences).toEqual(prefs);
+
+    // Tampered entries: a foreign key and a non-string value are dropped.
+    const parsed = JSON.parse(text) as { preferences: unknown[] };
+    parsed.preferences.push({ key: 'other.thing', value: 'x' }, { key: 'asa.bad', value: 5 });
+    const filtered = await verifyBackup(JSON.stringify(parsed));
+    if (!filtered.ok) throw new Error(filtered.problem);
+    expect(filtered.backup.file.preferences).toEqual(prefs);
+
+    // A backup from before REV-115 has no preferences at all.
+    delete (parsed as { preferences?: unknown }).preferences;
+    const older = await verifyBackup(JSON.stringify(parsed));
+    if (!older.ok) throw new Error(older.problem);
+    expect(older.backup.file.preferences).toEqual([]);
+  });
+
+  it('collects and re-applies localStorage preferences', async () => {
+    const { collectPreferences, applyPreferences } = await import('@/lib/backup/preferences-browser');
+    const data = new Map<string, string>([
+      ['asa.panel.backup', 'closed'],
+      ['unrelated', 'x'],
+    ]);
+    const fake = {
+      get length() {
+        return data.size;
+      },
+      key: (i: number) => [...data.keys()][i] ?? null,
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => void data.set(k, v),
+    };
+    (globalThis as unknown as { window: unknown }).window = { localStorage: fake };
+    try {
+      expect(collectPreferences()).toEqual([{ key: 'asa.panel.backup', value: 'closed' }]);
+      data.clear();
+      expect(applyPreferences([{ key: 'asa.panel.backup', value: 'closed' }, { key: 'evil', value: 'y' }])).toBe(1);
+      expect(data.get('asa.panel.backup')).toBe('closed');
+      expect(data.has('evil')).toBe(false);
+    } finally {
+      delete (globalThis as unknown as { window?: unknown }).window;
+    }
+  });
+});
+

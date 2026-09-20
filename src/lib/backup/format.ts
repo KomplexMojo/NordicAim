@@ -19,12 +19,22 @@ export interface BackupBlob {
   base64: string;
 }
 
+/** REV-115: the app's own preferences (localStorage keys under this prefix: panel states, the capture screen's choices) travel in a backup too. */
+export const PREFERENCE_PREFIX = 'asa.';
+
+export interface BackupPreference {
+  key: string;
+  value: string;
+}
+
 export interface BackupFile {
   format: typeof BACKUP_FORMAT;
   formatVersion: typeof BACKUP_FORMAT_VERSION;
   manifest: BackupManifest;
   records: { sessions: unknown[]; photos: unknown[]; analyses: unknown[]; settings: unknown[] };
   blobs: BackupBlob[];
+  /** Absent in a backup made before REV-115. */
+  preferences?: BackupPreference[];
 }
 
 const CHUNK = 0x8000;

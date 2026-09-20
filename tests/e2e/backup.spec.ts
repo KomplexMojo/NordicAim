@@ -80,3 +80,66 @@ test('back up, wipe the database, restore: the session and its scores come back;
   await expect(page.getByTestId('restore-counts')).toContainText('New: 0');
   await expect(page.getByTestId('restore-counts')).toContainText('identical: 1');
 });
+
+test('a restore brings the settings and preferences back too, and asks for the passphrase again (REV-115)', async ({ page }, testInfo) => {
+  await page.goto('/#/settings');
+  await page.getByTestId('athlete-name').fill('Jane Doe');
+  await page.getByTestId('athlete-club').fill('Caledonia Nordic Ski Club');
+  await page.getByTestId('athlete-club').blur();
+  await page.getByTestId('handedness-left').check();
+  await page.getByTestId('scoring-rule-centre').check();
+  await page.getByTestId('athlete-passphrase').fill('correct horse battery staple');
+  await page.getByTestId('set-passphrase').click();
+  await expect(page.getByTestId('passphrase-message')).toContainText('Key set', { timeout: 30_000 });
+  const fingerprint = (await page.getByTestId('key-fingerprint').textContent())!;
+  await page.evaluate(() => window.localStorage.setItem('asa.panel.glossary', 'open'));
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
+  });
+  await page.getByTestId('backup-now').click();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
+  const backupPath = testInfo.outputPath('backup.json');
+  await download.saveAs(backupPath);
+  await expect(page.getByTestId('backup-message')).toContainText('Backup made');
+
+  // Change everything, drop the preference and the key (a new phone has neither).
+  await page.getByTestId('athlete-name').fill('Someone Else');
+  await page.getByTestId('athlete-name').blur();
+  await page.getByTestId('handedness-right').check();
+  await page.getByTestId('scoring-rule-gauge').check();
+  await page.evaluate(async () => {
+    window.localStorage.removeItem('asa.panel.glossary');
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('asa');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('secrets', 'readwrite');
+      tx.objectStore('secrets').clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  });
+
+  await page.getByTestId('restore-file').setInputFiles(backupPath);
+  await page.getByTestId('restore-go').click();
+  await expect(page.getByTestId('backup-message')).toContainText('settings and preferences came back');
+  await expect(page.getByTestId('backup-message')).toContainText('passphrase');
+
+  // The screen shows the restored values without a reload.
+  await expect(page.getByTestId('athlete-name')).toHaveValue('Jane Doe');
+  await expect(page.getByTestId('athlete-club')).toHaveValue('Caledonia Nordic Ski Club');
+  await expect(page.getByTestId('handedness-left')).toBeChecked();
+  await expect(page.getByTestId('scoring-rule-centre')).toBeChecked();
+  await expect(page.getByTestId('key-fingerprint')).toHaveText(fingerprint);
+  await expect(page.getByTestId('unlock-passphrase')).toBeVisible();
+  expect(await page.evaluate(() => window.localStorage.getItem('asa.panel.glossary'))).toBe('open');
+
+  // The same passphrase unlocks stamping again.
+  await page.getByTestId('athlete-passphrase').fill('correct horse battery staple');
+  await page.getByTestId('unlock-passphrase').click();
+  await expect(page.getByTestId('passphrase-message')).toContainText('Unlocked', { timeout: 30_000 });
+});

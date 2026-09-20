@@ -5,6 +5,8 @@ import { createBackup, type CreatedBackup } from '@/lib/backup/create';
 import { isValidReminderDays } from '@/lib/backup/due';
 import { applyRestore, planRestore, type ConflictPolicy, type RestorePlan, type RestoreReport } from '@/lib/backup/restore';
 import type { VerifiedBackup } from '@/lib/backup/verify';
+import { applyPreferences, collectPreferences } from '@/lib/backup/preferences-browser';
+import { loadProvenanceKey } from '@/lib/services/provenance';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { getSettings, putSettings } from '@/lib/store/settings-repo';
@@ -17,7 +19,7 @@ export interface BackupFileToShare extends CreatedBackup {
 
 export async function buildBackupFile(ctx: ServiceContext, appBuild: string): Promise<BackupFileToShare> {
   const nowIso = ctx.now().toISOString();
-  const created = await createBackup(ctx.db, { appBuild, nowIso });
+  const created = await createBackup(ctx.db, { appBuild, nowIso, preferences: collectPreferences() });
   return { ...created, fileName: backupFileName(nowIso) };
 }
 
@@ -49,9 +51,13 @@ export async function restoreBackup(
   backup: VerifiedBackup,
   plan: RestorePlan,
   policy: ConflictPolicy,
-): Promise<RestoreReport> {
+): Promise<RestoreReport & { preferences: number; needsUnlock: boolean }> {
   const report = await applyRestore(ctx.db, backup, plan, policy);
+  const preferences = applyPreferences(backup.file.preferences ?? []);
+  // The provenance key is never in a backup (docs/spec/provenance.md §1): after a restore the athlete enters the passphrase once more.
+  const settings = await getSettings(ctx.db);
+  const needsUnlock = settings.keyFingerprint !== null && (await loadProvenanceKey(ctx)) === null;
   emitPipelineChanged({ sessionId: '' });
   pipelineHooks.notify();
-  return report;
+  return { ...report, preferences, needsUnlock };
 }

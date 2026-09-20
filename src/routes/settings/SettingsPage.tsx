@@ -44,6 +44,8 @@ export function SettingsPage() {
   const [cardBusy, setCardBusy] = useState(false);
   const [cardError, setCardError] = useState(false);
   const [keyPresent, setKeyPresent] = useState(false);
+  // REV-115: bumped after a restore, so the sections above re-read the restored settings and preferences.
+  const [epoch, setEpoch] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,6 +120,7 @@ export function SettingsPage() {
       ) : (
         <>
           <AthleteSettings
+            key={`athlete-${epoch}`}
             name={settings.athleteName}
             club={settings.athleteClub}
             handedness={settings.handedness}
@@ -135,6 +138,7 @@ export function SettingsPage() {
             onSave={(a) => void save(() => setAthlete(ctx, a))}
           />
           <ScoringSettings
+            key={`scoring-${epoch}`}
             scoringRule={settings.scoringRule}
             visibleHoleDiameterMm={settings.visibleHoleDiameterMm}
             onRuleChange={(rule) => void saveScoring(() => setScoringRule(ctx, rule), { scoringRule: rule })}
@@ -147,6 +151,7 @@ export function SettingsPage() {
           />
           </ScoringSettings>
           <BackingSettings
+            key={`backing-${epoch}`}
             backingMode={settings.backingMode}
             backing={settings.backing}
             busy={cardBusy}
@@ -162,7 +167,17 @@ export function SettingsPage() {
               void save(() => clearBacking(ctx));
             }}
           />
-          <BackupSettings settings={settings} />
+          <BackupSettings
+            settings={settings}
+            onRestored={() => {
+              // Remount the sections only once the restored settings are in hand, so their fields start from them.
+              void Promise.all([getAppSettings(ctx), loadProvenanceKey(ctx)]).then(([fresh, key]) => {
+                setSettings(fresh);
+                setKeyPresent(key !== null);
+                setEpoch((n) => n + 1);
+              });
+            }}
+          />
         </>
       )}
       <GlossarySettings />

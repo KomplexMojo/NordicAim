@@ -25,7 +25,7 @@ interface Loaded {
  * backup.md (REV-63, issue #13): Settings → **Backup**. Everything here is an explicit tap: creating a file, choosing a
  * file to restore, and restoring it. The file holds the photos, including their GPS location, and the dialog says so.
  */
-export function BackupSettings({ settings: initial }: { settings: AppSettings }) {
+export function BackupSettings({ settings: initial, onRestored }: { settings: AppSettings; onRestored(): void }) {
   const { ctx } = useServices();
   // Live, so the last-backup line updates the moment a backup is recorded.
   const { value: live } = useLiveQuery(() => getAppSettings(ctx), [ctx]);
@@ -89,7 +89,11 @@ export function BackupSettings({ settings: initial }: { settings: AppSettings })
     setBusy(true);
     try {
       const report = await restoreBackup(ctx, loaded.backup, loaded.plan, policy);
-      setMessage(`Restored. ${report.written} items written, ${report.skipped} left as they were.`);
+      setMessage(
+        `Restored. ${report.written} items written, ${report.skipped} left as they were. Your settings and preferences came back too.` +
+          (report.needsUnlock ? ' Enter your passphrase in Settings → Athlete to keep stamping images.' : ''),
+      );
+      onRestored();
       setLoaded(null);
     } catch (err) {
       setProblem(`Nothing was changed. ${err instanceof Error ? err.message : String(err)}`);
