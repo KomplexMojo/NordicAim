@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { angular, extremeSpread, groupEllipse, meanRadius, mpi, mpiOffset } from '@/lib/scoring/groups';
+import { accuracyRmse, angular, extremeSpread, groupEllipse, meanRadius, mpi, mpiOffset } from '@/lib/scoring/groups';
 
 const DISTANCE_MM = 50000; // BIATHLON_50M distanceM (50) * 1000
 
@@ -30,6 +30,24 @@ describe('scoring/groups extremeSpread', () => {
   it('duplicates at one of two distinct coordinates still yield the true spread', () => {
     const units = [{ xMm: 0, yMm: 0 }, { xMm: 0, yMm: 0 }, { xMm: 3, yMm: 4 }];
     expect(extremeSpread(units)).toBe(5);
+  });
+});
+
+describe('scoring/groups accuracyRmse', () => {
+  it('N = 0 -> null', () => {
+    expect(accuracyRmse([])).toBeNull();
+  });
+
+  it('is measured from the bullseye, not from the group centre', () => {
+    // A tight group 3 mm off centre: precision 0, accuracy 3.
+    const units = [{ xMm: 3, yMm: 0 }, { xMm: 3, yMm: 0 }];
+    expect(meanRadius(units, mpi(units))).toBe(0);
+    expect(accuracyRmse(units)).toBe(3);
+  });
+
+  it('root of the mean of squared distances', () => {
+    // (3,4) is 5 away, (0,0) is 0 away: sqrt((25 + 0) / 2)
+    expect(accuracyRmse([{ xMm: 3, yMm: 4 }, { xMm: 0, yMm: 0 }])).toBeCloseTo(Math.sqrt(12.5), 12);
   });
 });
 

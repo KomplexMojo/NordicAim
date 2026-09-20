@@ -6,7 +6,7 @@ import type { AnalysisResult, Shot, SubsetResult, UnitResult } from '../domain/a
 import { IncompleteCategorizationError, declaredRounds, isCategorizationComplete } from '../domain/categorization';
 import type { Position, ShotPosition, TemplateId } from '../domain/enums';
 import type { Categorization } from '../domain/photo';
-import { angular, extremeSpread, groupEllipse, meanRadius, mpi, mpiOffset } from './groups';
+import { accuracyRmse, angular, extremeSpread, groupEllipse, meanRadius, mpi, mpiOffset } from './groups';
 import { buildPrecisionScore, buildSightingOutcome, combinePrecisionScores, combineSightingOutcomes, missingInfo } from './missing';
 import type { SightingUnit } from './missing';
 import { scoreRing } from './precision';
@@ -73,6 +73,7 @@ export function analyzeTarget(input: AnalyzeTargetInput): AnalysisResult {
       extremeSpreadMm: es,
       extremeSpreadAngular: angular(es, distanceMm),
       meanRadiusMm: meanRadius(units, center),
+      accuracyRmseMm: accuracyRmse(units),
       mpiOffset: mpiOffset(center, distanceMm),
       groupEllipse: groupEllipse(units),
       precision: template === 'precision' ? buildPrecisionScore(units.map((u) => ({ ring: u.ring!, isX: u.isX! })), declared) : null,
@@ -124,6 +125,7 @@ export function analyzeTarget(input: AnalyzeTargetInput): AnalysisResult {
     extremeSpreadMm: esAll,
     extremeSpreadAngular: angular(esAll, distanceMm),
     meanRadiusMm: meanRadius(allUnits, centerAll),
+    accuracyRmseMm: accuracyRmse(allUnits),
     mpiOffset: mpiOffset(centerAll, distanceMm),
     groupEllipse: groupEllipse(allUnits),
     precision: template === 'precision' ? combinePrecisionScores(proneSubset.precision!, standingSubset.precision!, declaredAll) : null,

@@ -120,7 +120,8 @@ function SubsetSection({ subset }: { subset: SubsetResult }) {
             label="Angular size @ 50 m"
             value={`${formatAngular(angular?.moa ?? null)} MOA · ${formatAngular(angular?.mrad ?? null)} MRAD`}
           />
-          <Row label="Mean radius" value={`${formatMm(subset.meanRadiusMm)} mm`} />
+          <Row label="Precision (mean radius from group centre)" value={`${formatMm(subset.meanRadiusMm)} mm`} />
+          <Row label="Accuracy (RMS distance from bullseye)" value={`${formatMm(subset.accuracyRmseMm ?? null)} mm`} />
           <Row
             label="MPI"
             value={

@@ -46,6 +46,15 @@ export function meanRadius(units: Point[], center: Point | null): number | null 
 }
 
 /**
+ * Accuracy: root-mean-square distance of the units from the bullseye (0, 0), not from the group's own centre.
+ * Undefined (null) when N = 0.
+ */
+export function accuracyRmse(units: Point[]): number | null {
+  if (units.length === 0) return null;
+  return Math.sqrt(units.reduce((sum, u) => sum + u.xMm * u.xMm + u.yMm * u.yMm, 0) / units.length);
+}
+
+/**
  * 2-sigma population-covariance ellipse. Undefined (null) when N < 3, fewer than 3 distinct
  * coordinates, or fully degenerate (both eigenvalues 0). `ry = 0` alone is allowed.
  */

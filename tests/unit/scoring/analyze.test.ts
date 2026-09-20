@@ -68,6 +68,8 @@ describe('scoring/analyze analyzeTarget: golden parity (geometry-scoring.md §9)
     expect(subset.mpi!.xMm).toBeCloseTo(9.7, 6);
     expect(subset.mpi!.yMm).toBeCloseTo(3.85, 6);
     expect(subset.meanRadiusMm).toBeCloseTo(8.624, 3);
+    const squares = subset.units.map((u) => u.xMm * u.xMm + u.yMm * u.yMm);
+    expect(subset.accuracyRmseMm).toBeCloseTo(Math.sqrt(squares.reduce((a, b) => a + b, 0) / squares.length), 9);
   });
 
   it('§9.2 sighting fixture, re-categorized standing -> hits 10, misses 0', () => {

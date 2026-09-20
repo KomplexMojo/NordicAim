@@ -195,7 +195,8 @@ Let the units be `(x_i, y_i)` for i = 1..N, each with weight 1.
 |---|---|---|
 | `mpi` | `(mean x, mean y)` | N = 0 |
 | `extremeSpreadMm` | max Euclidean distance over all unit pairs | < 2 **distinct** coordinates (return `null`) |
-| `meanRadiusMm` | mean distance of units from `mpi` | N = 0 |
+| `meanRadiusMm` | **Precision**: mean distance of units from `mpi` (the group's own centre) | N = 0 |
+| `accuracyRmseMm` | **Accuracy**: `sqrt(mean(x² + y²))`, root-mean-square distance of units from the bullseye (0, 0) | N = 0 |
 | `groupEllipse` | 2σ covariance ellipse, see below | N < 3 or < 3 distinct coordinates or degenerate (λ2 = 0 and λ1 = 0) |
 | `angular(sizeMm)` | `rad = 2*atan(sizeMm / (2*distanceMm))`; `moa = rad * (180/π) * 60`; `mrad = rad * 1000` | size null |
 | `mpiOffset` | per axis: `rad = atan(mpi.x / distanceMm)` → `xMoa`, `xMrad`; same for y. Also `xMm`, `yMm` | mpi null |
@@ -334,7 +335,7 @@ mpi **(-14.49, -18.55)** (±1e-6).
 | S7 | 1.5 | -12.0 | 1 | 12.093 | clean | clean |
 
 Expected (prone): hits **9**, misses **1**, clean 9; identified 10; ES **27.681** (±0.001, pair S5–S7);
-moa **1.9032** (±0.0005); mrad **0.5536** (±0.0005); mpi **(9.7, 3.85)**; meanRadius **8.624** (±0.001).
+moa **1.9032** (±0.0005); mrad **0.5536** (±0.0005); mpi **(9.7, 3.85)**; meanRadius **8.624** (±0.001); accuracy (RMSE from the bullseye) = `sqrt(mean(radialMm²))` of the same units.
 If the same shots are re-categorized `standing` (roundsStanding 10): hits **10**, misses 0.
 
 ## 10. `analyzeTarget` contract (`src/lib/scoring/analyze.ts`)

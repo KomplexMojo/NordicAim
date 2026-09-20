@@ -26,6 +26,7 @@ function subsetStub(overrides: Partial<SubsetResult> = {}): SubsetResult {
     extremeSpreadMm: null,
     extremeSpreadAngular: null,
     meanRadiusMm: null,
+    accuracyRmseMm: null,
     mpiOffset: null,
     groupEllipse: null,
     precision: null,

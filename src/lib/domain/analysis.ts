@@ -139,7 +139,10 @@ export interface SubsetResult {
   mpi: { xMm: number; yMm: number } | null;
   extremeSpreadMm: number | null;
   extremeSpreadAngular: Angular | null;
+  /** Precision: mean distance of the units from the group's own centre (`mpi`). */
   meanRadiusMm: number | null;
+  /** Accuracy: root-mean-square distance of the units from the bullseye (0, 0). */
+  accuracyRmseMm: number | null;
   mpiOffset: MpiOffset | null;
   groupEllipse: GroupEllipse | null;
   precision: PrecisionScore | null;
