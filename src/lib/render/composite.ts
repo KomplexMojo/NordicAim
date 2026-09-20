@@ -10,6 +10,7 @@ import type { BiathlonSession } from '@/lib/domain/session';
 import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
+import { brandMotif } from './brand-mark';
 import { PALETTE } from './palette';
 import { renderScoringIcon } from './scoring-icons';
 import { el, num, text } from './svg';
@@ -52,7 +53,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 14;
+export const COMPOSITE_RENDERER_VERSION = 15;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'NordicAim';
@@ -159,9 +160,13 @@ function nestCellSvg(svg: string, x: number, y: number, size: number): string {
 
 function renderHeader(session: BiathlonSession, lightingSummary: string): string {
   const bg = el('rect', { x: 0, y: 0, width: WIDTH, height: HEADER_HEIGHT, fill: PALETTE.header });
-  const title = text(40, 58, 36, `Shooting analysis — ${session.name}`, { bold: true, color: '#FFFFFF' });
+  // Kept clear of the wordmark on the right: about 52 characters fit at this size.
+  const title = text(40, 58, 36, truncate(`Shooting analysis — ${session.name}`, 52), { bold: true, color: '#FFFFFF' });
   const subtitle = text(40, 94, 18, `${session.sessionDate} · ${lightingSummary}`, { color: '#CFE6F3' });
-  return bg + title + subtitle;
+  // REV-104: the NordicAim wordmark and mark at the right of the header.
+  const mark = brandMotif(WIDTH - 40 - 76, 22, 76);
+  const name = text(WIDTH - 40 - 76 - 14, 71, 34, APP_NAME, { bold: true, anchor: 'end', color: '#FFFFFF' });
+  return bg + title + subtitle + name + mark;
 }
 
 /** §5: "shared label if all slots agree, else `mixed lighting`". */

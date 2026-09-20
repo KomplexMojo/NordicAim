@@ -438,3 +438,14 @@ describe('render/composite names the scoring method (REV-59)', () => {
   });
 });
 
+describe('render/composite header carries the NordicAim mark (REV-104)', () => {
+  it('draws the wordmark and the target mark once, and cuts a very long session title', () => {
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    expect(svg).toContain('>NordicAim<');
+    expect((svg.match(/class="brand-mark"/g) ?? []).length).toBe(1);
+    const long = renderComposite(baseInput({ slots: slots as never, session: { ...baseInput({}).session, name: 'x'.repeat(80) } })).svg;
+    expect(long).toContain('…');
+  });
+});
+

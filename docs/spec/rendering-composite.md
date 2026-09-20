@@ -213,7 +213,7 @@ black border), described only that one target, and left a fixed 600 px band most
   and "Sighting 2"; precision is **Precision prone** and **Precision standing** (REV-90, was `Precision 1` / `Precision 2`). Slot 1 is the earlier target (selection is chronological), the
   one sighted in on. The name is used for the chip (uppercased) and for the analysis band's per-slot line. At least one filled slot is required; 0 throws `EmptyCompositeError`.
 - **Canvas.** Width **1440**. A full-canvas `panel` rect is drawn first, so no area is ever unfilled (transparent renders black).
-- **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); subtitle 18 `#CFE6F3` at
+- **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); cut to 52 characters with `…` (REV-104); the NordicAim wordmark (34 bold white, right-aligned to x 1310, baseline 71) and the target mark (`render/brand-mark.ts`, 76 px square at (1324, 22)) sit at the right; subtitle 18 `#CFE6F3` at
   (40, 94): `<sessionDate> · <lightingSummary>` (shared label if all filled slots agree, else `mixed lighting`).
 - **One fixed scale for the whole image (REV-52, REV-58).** Every cell — filled or blank — is drawn at `CELL_SCALE` (§4): the
   precision sheet's halo sets it, so sighting targets are drawn smaller than their cell. **It never zooms out for a stray shot**;

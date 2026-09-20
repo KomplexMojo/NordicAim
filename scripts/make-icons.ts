@@ -7,39 +7,17 @@ import { fileURLToPath } from 'node:url';
 
 import sharp from 'sharp';
 
+import { BRAND_TILE, brandMotif } from '../src/lib/render/brand-mark.ts';
+
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT_DIR = `${REPO_ROOT}public/icons`;
 
-// rendering-composite.md §1.
-const PAGE = '#F7FAFD';
-const ACCENT = '#4B94C3';
-const DISC = '#1F2630';
-
-/**
- * The NordicAim mark: a biathlon target seen from the firing line. Bold on purpose, so it still reads at 16 px: a dark tile,
- * a white paper disc, a black aiming disc with an accent ring and a single white scoring ring inside it, and a tight group of three holes just off centre.
- * `inset` shrinks the motif (the maskable icon's safe zone, where Android may crop to a centred circle). Drawn on a 100-unit grid.
- */
+/** The NordicAim mark on a dark tile (the shared motif is `src/lib/render/brand-mark.ts`); `inset` is the maskable safe zone. */
 export function targetSvg(size: number, inset: number, rounded = false): string {
-  const k = (size - 2 * inset) / 100;
-  const at = (v: number) => (inset + v * k).toFixed(2);
-  const len = (v: number) => (v * k).toFixed(2);
-  const HOLE = '#E8604C';
-  const holes = [
-    [57, 39, 7],
-    [65, 51, 7],
-    [51, 52, 7],
-  ]
-    .map(([x, y, r]) => `<circle cx="${at(x!)}" cy="${at(y!)}" r="${len(r!)}" fill="${HOLE}" stroke="#FFFFFF" stroke-width="${len(2.2)}" />`)
-    .join('\n    ');
   const radius = rounded ? size * 0.22 : 0;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <rect width="${size}" height="${size}" rx="${radius}" fill="${DISC}" />
-    <circle cx="${at(50)}" cy="${at(50)}" r="${len(48)}" fill="${PAGE}" />
-    <circle cx="${at(50)}" cy="${at(50)}" r="${len(33)}" fill="#0B1220" />
-    <circle cx="${at(50)}" cy="${at(50)}" r="${len(33)}" fill="none" stroke="${ACCENT}" stroke-width="${len(4.5)}" />
-    <circle cx="${at(50)}" cy="${at(50)}" r="${len(17)}" fill="none" stroke="${PAGE}" stroke-width="${len(2.6)}" />
-    ${holes}
+    <rect width="${size}" height="${size}" rx="${radius}" fill="${BRAND_TILE}" />
+    ${brandMotif(inset, inset, size - 2 * inset)}
   </svg>`;
 }
 
