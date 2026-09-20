@@ -3,7 +3,6 @@
 // shares or downloads (`CompositeArtifact`, §6; the "share rule" in AGENTS.md).
 
 import { EmptyCompositeError } from '@/lib/composite/artifact';
-import { PRECISION_TEMPLATE, SIGHTING_TEMPLATE } from '@/lib/defaults/templates';
 import type { AnalysisResult, MpiOffset, TargetAnalysis } from '@/lib/domain/analysis';
 import type { Position } from '@/lib/domain/enums';
 import type { TargetPhoto } from '@/lib/domain/photo';
@@ -36,10 +35,10 @@ export interface CompositeInput {
 
 /**
  * rendering-composite.md §6: bumped whenever this renderer's output changes (REV-51 layout, REV-52 shared
- * scale, REV-53 position names, REV-54 the credit stamp). A stored artifact drawn by an older version is rebuilt when its session's
+ * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 4;
+export const COMPOSITE_RENDERER_VERSION = 5;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'Nordic Aim';
@@ -83,38 +82,6 @@ export function positionName(template: 'sighting' | 'precision', index: 0 | 1): 
   return `Precision ${index + 1}`;
 }
 
-/** §4/§5 (REV-52): each template's halo radius in mm — what a cell's 300 px drawing radius must cover. */
-const HALO_RADIUS_MM = {
-  sighting: SIGHTING_TEMPLATE.haloDiameterMm / 2, // 62.5
-  precision: PRECISION_TEMPLATE.haloDiameterMm / 2, // 82.7
-} as const;
-
-/** The drawing radius a cell has for its target, and the floor on the shared scale (half the tightest fit). */
-const CELL_DRAW_RADIUS_PX = 300;
-
-/**
- * §5 (REV-52, owner: "make sure that the targets all show at the same scale"): **one** mm → px scale for
- * every cell in the image, so two targets can be compared by eye. It is the tightest fit any position
- * needs: each template's halo must fit (the precision sheet is the larger, so it sets the baseline), and a
- * shot out on the paper beyond its printed target zooms **every** cell out together, never just its own.
- * Floored at half the precision baseline so one wild manual shot cannot shrink the whole image away.
- */
-export function sharedCellScale(input: CompositeInput): number {
-  let scale = Infinity;
-  for (const cell of COMPOSITE_CELLS) {
-    const slot = input.slots[cell.template][cell.index];
-    const reach =
-      slot === null
-        ? 0
-        : slot.analysis.shots.reduce(
-            (max, shot) => Math.max(max, Math.hypot(shot.xMm, shot.yMm) + input.holeDiameterMm / 2 + 2),
-            0,
-          );
-    scale = Math.min(scale, CELL_DRAW_RADIUS_PX / Math.max(HALO_RADIUS_MM[cell.template], reach));
-  }
-  return Math.max(scale, 0.5 * (CELL_DRAW_RADIUS_PX / HALO_RADIUS_MM.precision));
-}
-
 /** §5: the analysis band's height for `lines` text lines — sized to its content, never a fixed block. */
 export function bandHeight(lines: number): number {
   return 100 + LINE_STEP * lines + 64;
@@ -142,14 +109,8 @@ function shortPositionLabel(position: Position): string {
   return position;
 }
 
-function slotDiagramInput(
-  slot: SlotData,
-  holeDiameterMm: number,
-  cellScaleOverride: number,
-  cellLabelOverride: string,
-): DiagramInput {
+function slotDiagramInput(slot: SlotData, holeDiameterMm: number, cellLabelOverride: string): DiagramInput {
   return {
-    cellScaleOverride,
     cellLabelOverride,
     template: slot.result.template,
     result: slot.result,
@@ -296,7 +257,6 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
   const bandY = HEADER_HEIGHT + COMPOSITE_GRID_HEIGHT;
   const height = bandY + bandHeight(lines.length);
 
-  const scale = sharedCellScale(input); // REV-52: one scale for every cell
   let body = el('rect', { x: 0, y: 0, width: WIDTH, height, fill: PALETTE.panel });
   body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)));
   for (const cell of COMPOSITE_CELLS) {
@@ -304,9 +264,9 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
     const label = positionName(cell.template, cell.index).toUpperCase();
     const svg =
       slot === null
-        ? renderBlankCellSvg(cell.template, label, scale)
+        ? renderBlankCellSvg(cell.template, label)
         : renderDiagramSvg(
-            slotDiagramInput(slot, input.holeDiameterMm, scale, label),
+            slotDiagramInput(slot, input.holeDiameterMm, label),
             'cell',
             String(cell.index + 1), // only the clip id still needs the slot number
           );

@@ -20,8 +20,11 @@ import {
   renderSubtitle,
   renderTitle,
   svgRoot,
-  cellScale,
+  CELL_SCALE,
   clipCell,
+  fitScale,
+  offViewCount,
+  renderOffViewNote,
   renderBlankCell,
 } from './diagram-shared';
 import { cellCaption, precisionFooterLines } from './text-lines';
@@ -31,7 +34,7 @@ const TITLE = PRECISION_TEMPLATE.label; // 'Precision — Olympic 50m Rifle'
 
 const FULL = { width: 1500, height: 1700, cx: 790, cy: 690, s: 6.35 };
 const HALO_RADIUS_MM = PRECISION_TEMPLATE.haloDiameterMm / 2; // 82.7
-const CELL = { width: 720, height: 720, cx: 360, cy: 350, s: 300 / HALO_RADIUS_MM };
+const CELL = { width: 720, height: 720, cx: 360, cy: 350, s: CELL_SCALE };
 const BLACK_RADIUS_MM = PRECISION_TEMPLATE.blackDiameterMm / 2; // 56.2
 
 type RingN = keyof typeof PRECISION_TEMPLATE.ringDiameterMm;
@@ -120,8 +123,9 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
   const isBoth = result.position === 'both';
 
   if (variant === 'cell') {
-    // §4 (REV-51): zoom out so every shot fits, then clip the drawing above the caption band.
-    const s = input.cellScaleOverride ?? cellScale(CELL.s, shots, holeDiameterMm);
+    // §4 (REV-58): one fixed scale, never a zoom-out; the drawing is clipped above the caption band and a clipped
+    // shot is counted.
+    const s = CELL.s;
     const target =
       renderTarget(CELL.cx, CELL.cy, s, s >= 4) +
       renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, s) +
@@ -132,17 +136,20 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     const body =
       renderBackground(CELL.width, CELL.height) +
       clipCell(`cellclip-precision-${slotLabel ?? '0'}`, target) +
+      renderOffViewNote(offViewCount(shots, CELL.cx, CELL.cy, s)) +
       renderCellChip(input.cellLabelOverride ?? 'PRECISION', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
   }
 
+  // §3 (REV-58): the detail diagram always shows every shot.
+  const s = fitScale(FULL.s, HALO_RADIUS_MM, shots);
   const target =
-    renderTarget(FULL.cx, FULL.cy, FULL.s, FULL.s >= 4) +
-    renderGroupEllipse(subset.groupEllipse, FULL.cx, FULL.cy, FULL.s) +
-    renderShots(shots, subset.units, FULL.cx, FULL.cy, FULL.s, 8, holeDiameterMm) +
-    renderMpiMarker(subset.mpi, FULL.cx, FULL.cy, FULL.s) +
-    renderMarkerLabels(shots, subset.mpi, FULL.cx, FULL.cy, FULL.s, 8, 'full');
+    renderTarget(FULL.cx, FULL.cy, s, s >= 4) +
+    renderGroupEllipse(subset.groupEllipse, FULL.cx, FULL.cy, s) +
+    renderShots(shots, subset.units, FULL.cx, FULL.cy, s, 8, holeDiameterMm) +
+    renderMpiMarker(subset.mpi, FULL.cx, FULL.cy, s) +
+    renderMarkerLabels(shots, subset.mpi, FULL.cx, FULL.cy, s, 8, 'full');
 
   const body =
     renderBackground(FULL.width, FULL.height) +
@@ -156,6 +163,6 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
 }
 
 /** rendering-composite.md §5 (REV-51): an empty precision slot in the summary image. */
-export function renderBlankPrecisionCell(label: string, scale = CELL.s): string {
-  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, scale, scale >= 4));
+export function renderBlankPrecisionCell(label: string): string {
+  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, CELL.s, CELL.s >= 4));
 }

@@ -7,8 +7,8 @@ import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot } from '@/lib/domain/analysis';
 import { initialAnalysis } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
-import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, positionName, renderComposite, sharedCellScale, renderCompositeSvg } from '@/lib/render/composite';
-import { PRECISION_TEMPLATE } from '@/lib/defaults/templates';
+import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, positionName, renderComposite, renderCompositeSvg } from '@/lib/render/composite';
+import { CELL_SCALE } from '@/lib/render/diagram-shared';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 
 import { makePhoto, makeSession } from '../../helpers/records';
@@ -143,7 +143,7 @@ describe('render/composite sight in, then confirm (REV-53)', () => {
   });
 });
 
-describe('render/composite one scale for every target (REV-52)', () => {
+describe('render/composite one fixed scale for every target (REV-52, REV-58)', () => {
   const s1 = () => slot(sightingFixture, sightingResult);
   const p1 = () => slot(precisionFixture, precisionResult);
 
@@ -179,23 +179,26 @@ describe('render/composite one scale for every target (REV-52)', () => {
     expect(radii.get('PRECISION 1')).toEqual(radii.get('PRECISION 2'));
   });
 
-  it('the precision sheet sets the baseline, so a sighting-only image uses it too', () => {
-    const base = 300 / (PRECISION_TEMPLATE.haloDiameterMm / 2);
-    expect(sharedCellScale(baseInput({ slots: { sighting: [s1(), null], precision: [null, null] } }))).toBeCloseTo(base, 9);
-    expect(sharedCellScale(baseInput({ slots: { sighting: [s1(), s1()], precision: [p1(), p1()] } }))).toBeCloseTo(base, 9);
-  });
-
-  it('a shot beyond the target zooms every cell out together, down to a floor', () => {
-    const base = 300 / (PRECISION_TEMPLATE.haloDiameterMm / 2);
+  it('a stray shot never zooms anything out: the far cell is clipped and counted, not shrunk (REV-58)', () => {
     const far = { ...sightingFixture.shots[0]!, id: 'far', xMm: 0, yMm: -120 };
     const withFar = slot({ ...sightingFixture, shots: [...sightingFixture.shots, far] } as never, sightingResult);
-    const zoomed = sharedCellScale(baseInput({ slots: { sighting: [withFar, null], precision: [p1(), null] } }));
-    expect(zoomed).toBeLessThan(base);
-    expect(zoomed).toBeCloseTo(300 / (120 + 5.6 / 2 + 2), 9);
+    const alone = renderComposite(baseInput({ slots: { sighting: [s1(), null], precision: [p1(), null] } })).svg;
+    const strayed = renderComposite(baseInput({ slots: { sighting: [withFar, null], precision: [p1(), null] } })).svg;
+    // Every target keeps the same outer radius whether or not a stray is present ...
+    expect(cellRadii(strayed).get('SIGHT IN')).toBe(cellRadii(alone).get('SIGHT IN'));
+    expect(cellRadii(strayed).get('PRECISION 1')).toBe(cellRadii(alone).get('PRECISION 1'));
+    // ... and the stray is counted instead.
+    expect(strayed).toContain('+1 off view');
+    expect(alone).not.toContain('off view');
+  });
 
-    const wild = { ...far, yMm: -900 };
-    const withWild = slot({ ...sightingFixture, shots: [...sightingFixture.shots, wild] } as never, sightingResult);
-    expect(sharedCellScale(baseInput({ slots: { sighting: [withWild, null], precision: [p1(), null] } }))).toBeCloseTo(0.5 * base, 9);
+  it('the precision sheet\'s halo sets the one scale, so a sighting target is drawn smaller than its cell (REV-58)', () => {
+    expect(CELL_SCALE).toBeCloseTo(300 / 82.7, 6);
+    const { svg } = renderComposite(baseInput({ slots: { sighting: [s1(), null], precision: [p1(), null] } }));
+    const radii = cellRadii(svg);
+    // sighting halo 62.5 mm and precision halo 82.7 mm at the same scale
+    expect(radii.get('SIGHT IN')! / radii.get('PRECISION 1')!).toBeCloseTo(62.5 / 82.7, 2);
+    expect(radii.get('PRECISION 1')).toBeCloseTo(300, 0);
   });
 });
 

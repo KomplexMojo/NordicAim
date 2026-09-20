@@ -15,12 +15,6 @@ export interface DiagramInput {
   lighting: Lighting;
   holeDiameterMm: number;
   /**
-   * rendering-composite.md §4 (REV-52): the `cell` variant's scale, when the caller sets it. The summary
-   * image gives every cell the same one so its targets can be compared by eye; a standalone cell (a result
-   * card's thumbnail) leaves it undefined and fits itself.
-   */
-  cellScaleOverride?: number;
-  /**
    * rendering-composite.md §4 (REV-53): the `cell` chip's label, when the caller sets it — the summary
    * image names a sighting session's two targets `SIGHT IN` and `CONFIRM`. Undefined keeps the template
    * name (`SIGHTING`), which is what a standalone thumbnail shows.
@@ -37,6 +31,6 @@ export function renderDiagramSvg(input: DiagramInput, variant: DiagramVariant, s
 }
 
 /** rendering-composite.md §5 (REV-51): an empty slot's cell — the template alone, faded, captioned "No target". */
-export function renderBlankCellSvg(template: 'sighting' | 'precision', label: string, scale?: number): string {
-  return template === 'precision' ? renderBlankPrecisionCell(label, scale) : renderBlankSightingCell(label, scale);
+export function renderBlankCellSvg(template: 'sighting' | 'precision', label: string): string {
+  return template === 'precision' ? renderBlankPrecisionCell(label) : renderBlankSightingCell(label);
 }

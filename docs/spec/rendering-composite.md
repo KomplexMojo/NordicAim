@@ -66,6 +66,12 @@ export function renderDiagramSvg(input: DiagramInput, variant: 'full' | 'cell', 
 ```
 
 Layout (px):
+**The full diagram always shows every shot (REV-58).** It is one target with nothing to compare against, so its scale is
+`fitScale(s₀, haloRadiusMm, shots)`: with `reach` the largest `hypot(xMm, yMm)` over the shots and `s₀` the fixed scale below,
+`s = s₀` while `reach <= haloRadiusMm`, else `s = max(0.5 · s₀, s₀ · haloRadiusMm / reach)` — a stray on the paper zooms the detail
+diagram out until the farthest shot lands on the printed halo's edge, never below half scale. **While every shot is inside the halo
+`s = s₀` and the diagram is unchanged.** All the coordinates below use that `s`.
+
 1. Background `page`; left rail (0, 0, 8, 1700) `accent`.
 2. Title (48, 70) 34 bold: **"Sighting / Zeroing — Biathlon 50m"** or **"Precision — Olympic 50m Rifle"**.
 3. Subtitle (48, 104) 19 `textSecondary`: `positionLabel · <declared> rounds · <YYYY-MM-DD HH:mm> · <Lighting>` (omit empty parts).
@@ -153,14 +159,15 @@ and it is what pushed the summary image's per-slot line, below, past its 110-cha
 
 ## 4. `cell` variant (720 × 720)
 
-- Target centre (360, 350); base scale s₀ = 300 / haloRadiusMm (sighting 4.8, precision ≈ 3.6276). Same target, ellipse, shots
-  (r 5 px), MPI. Precision ring labels omitted when s < 4; sighting zone labels omitted.
-- **In the summary image every cell shares one scale (REV-52).** `DiagramInput.cellScaleOverride`, set by
-  `sharedCellScale` (§5), replaces the per-cell fit below, so two targets in one image can be compared by eye. A standalone cell
-  (a result card's thumbnail) leaves it undefined and fits itself.
-- **Every shot stays inside the drawing (REV-51).** With `reach` = the largest `hypot(xMm, yMm) + holeDiameterMm / 2 + 2` over the
-  shots, `s = max(0.5 · s₀, min(s₀, 300 / reach))`: a shot on the paper beyond the printed target zooms the cell out until it fits,
-  never below half scale (2 × the halo radius — beyond anything detection can produce). The rings shrink with it; nothing is hidden.
+- Target centre (360, 350). **One fixed scale for every small target view, both templates: `CELL_SCALE` = 300 / 82.7 ≈ 3.6276
+  px/mm (REV-58)** — the precision sheet's halo fills the drawing, so a sighting target is drawn smaller than its panel. It is the
+  same scale on a result card and in the shareable image, so targets can be compared by eye and sight-in / confirm always match.
+  **There is no zoom-out**: a shot beyond the drawing is clipped (below) and counted (`+N off view`), never allowed to shrink the
+  target. (Supersedes the per-cell fit of REV-51 and the shared zoom-out of REV-52; REV-52's one-scale-for-every-target stands.)
+  Same target, ellipse, shots (r 5 px), MPI. Precision ring labels omitted when s < 4; sighting zone labels omitted.
+- **A clipped shot is said so (REV-58).** A shot is *off view* when its projected position lies outside the clip rectangle. When
+  any are, a `+N off view` label (13 px `textSecondary`, right-aligned at (704, 654), N counting **shots**, not units) is drawn just
+  above the caption band, outside the clip; none when every shot is inside. The full detail diagram (§3) always shows every shot.
 - **Nothing crosses the caption.** The target, ellipse, shots, MPI and marker labels are clipped to (0, 0, 720, 668) with a
   `clipPath` whose id is unique in the composite (`cellclip-<template>-<slot>`); the group ellipse of a scattered group is cut at
   the edge rather than drawn over the caption band.
@@ -206,11 +213,10 @@ black border), described only that one target, and left a fixed 600 px band most
 - **Canvas.** Width **1440**. A full-canvas `panel` rect is drawn first, so no area is ever unfilled (transparent renders black).
 - **Header** (0, 0, 1440, 120) `header`: `Shooting analysis — <session.name>` 36 bold white at (40, 58); subtitle 18 `#CFE6F3` at
   (40, 94): `<sessionDate> · <lightingSummary>` (shared label if all filled slots agree, else `mixed lighting`).
-- **One scale for the whole image (REV-52).** `sharedCellScale(input)` is the tightest fit any of the four positions needs:
-  every template's halo must fit within the 300 px drawing radius — the precision sheet is larger, so it sets the baseline
-  3.6276 px/mm, and sighting targets are drawn smaller than their cell rather than at their own fit — and a shot out on the paper
-  beyond its printed target zooms **every** cell out together, never only its own. Floored at half the precision baseline, so one
-  wild manual shot cannot shrink the image away (a shot beyond that is clipped).
+- **One fixed scale for the whole image (REV-52, REV-58).** Every cell — filled or blank — is drawn at `CELL_SCALE` (§4): the
+  precision sheet's halo sets it, so sighting targets are drawn smaller than their cell. **It never zooms out for a stray shot**;
+  a shot beyond a cell is clipped and counted (`+N off view`, §4). (REV-52 first zoomed every cell out together; the owner then
+  preferred equal size to showing the stray, since the detail screen shows every shot.)
 - **Cells** start at y = 120, each nested as `<svg x y width="720" height="720" viewBox="0 0 720 720">` — the `cell` diagram (§4)
   for a filled slot, the blank template for an empty one.
 - **Analysis band** at y = 120 + 1440, **sized to its content**: `panel`, 8 px `accent` rail.
@@ -252,11 +258,15 @@ export async function loadArtifact(ctx: ServiceContext, sessionId: string, artif
 export async function latestArtifact(ctx: ServiceContext, sessionId: string): Promise<{ artifact: CompositeArtifact; png: Blob } | null>;
 ```
 
+- **Stored diagrams are versioned too (REV-58).** The per-photo `full` and `cell` diagrams are written when a photo is scored, so a
+  renderer change would not reach existing sessions. `DIAGRAM_RENDERER_VERSION` (currently **1**) is compared, at app start, with
+  `AppSettings.diagramRendererVersion` (default 0); when the setting is behind, every finished analysis goes back to Stage B once
+  (`rescoreAll`) and the setting is brought up to date. Bump it whenever a per-target diagram's output changes.
 - `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **3**) records which renderer drew an artifact; it
   defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
   current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
   a rebuild by hand. Bump the constant whenever this renderer's output changes.
-- `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **4**) records which renderer drew an artifact; it
+- `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **5**) records which renderer drew an artifact; it
   defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
   current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
   a rebuild by hand. Bump the constant whenever this renderer's output changes.

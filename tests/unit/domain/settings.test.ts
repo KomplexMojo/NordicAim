@@ -43,6 +43,8 @@ describe('defaultAppSettings', () => {
       // REV-56 (data-model §5): gauge touch is today's rule, so the default changes no score; 4.5 mm is provisional.
       scoringRule: 'gauge',
       visibleHoleDiameterMm: 4.5,
+      // REV-58: 0 = no diagram renderer version recorded yet, so the first launch redraws stored diagrams once.
+      diagramRendererVersion: 0,
     });
   });
 

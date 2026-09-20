@@ -215,6 +215,9 @@ export const AppSettings = z.object({
   // REV-56: how a hole is scored (`geometry-scoring.md` §3). Both default when absent, so older rows read back.
   scoringRule: z.enum(['gauge', 'centre', 'visible']).default('gauge'),
   visibleHoleDiameterMm: z.number().min(2).max(5.6).default(4.5), // provisional
+  // REV-58: which diagram renderer last drew every stored diagram (`rendering-composite.md` §6). Behind the code's
+  // DIAGRAM_RENDERER_VERSION at app start means every finished analysis goes back to Stage B once.
+  diagramRendererVersion: z.number().int().min(0).default(0),
 });
 // default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null,
 //            backingMode 'auto', backing null, scoringRule 'gauge', visibleHoleDiameterMm 4.5 }

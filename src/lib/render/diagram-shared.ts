@@ -9,6 +9,8 @@ import { isTouchCredited as isPrecisionTouchCredited } from '../scoring/precisio
 import { isTouchCredited as isSightingTouchCredited } from '../scoring/sighting';
 import { placeLabels, type Box, type Circle, type LabelRequest, type PlacedLabel } from './label-placement';
 import { PALETTE } from './palette';
+import { PRECISION_TEMPLATE } from '../defaults/templates';
+
 import { el, num, text } from './svg';
 
 /**
@@ -241,14 +243,34 @@ export function renderCellCaptionBand(captionText: string): string {
 export const CELL_CAPTION_TOP = 668;
 
 /**
- * §4 (REV-51): a cell's scale. The base scale fits the printed target's halo; a shot on the paper beyond
- * it zooms the cell out until the shot fits, never below half scale (2× the halo radius, beyond anything
- * detection produces). Before, such a shot was drawn below the target and over the caption band.
+ * §4 (REV-58): the one scale every small target view is drawn at, both templates — the precision sheet's halo fills the 300 px
+ * drawing radius, so a sighting target is drawn smaller than its panel. The same on a result card and in the shareable image, so
+ * targets can be compared by eye. **Never zooms out for a stray shot** (it is clipped and counted instead).
  */
-export function cellScale(baseScale: number, shots: Array<{ xMm: number; yMm: number }>, holeDiameterMm: number): number {
-  const reach = shots.reduce((max, shot) => Math.max(max, Math.hypot(shot.xMm, shot.yMm) + holeDiameterMm / 2 + 2), 0);
-  if (reach === 0) return baseScale;
-  return Math.max(0.5 * baseScale, Math.min(baseScale, 300 / reach));
+export const CELL_SCALE = 300 / (PRECISION_TEMPLATE.haloDiameterMm / 2);
+
+/**
+ * §3 (REV-58): the detail diagram's scale. One target, nothing to compare against, so it zooms out until every shot is shown:
+ * `baseScale` while every shot is inside the printed halo, else the scale that puts the farthest shot on the halo's edge, never
+ * below half of `baseScale`.
+ */
+export function fitScale(baseScale: number, haloRadiusMm: number, shots: Array<{ xMm: number; yMm: number }>): number {
+  const reach = shots.reduce((max, shot) => Math.max(max, Math.hypot(shot.xMm, shot.yMm)), 0);
+  if (reach <= haloRadiusMm) return baseScale;
+  return Math.max(0.5 * baseScale, (baseScale * haloRadiusMm) / reach);
+}
+
+/** §4 (REV-58): how many shots (not units) a small view's clip leaves out. */
+export function offViewCount(shots: Array<{ xMm: number; yMm: number }>, cx: number, cy: number, s: number): number {
+  return shots.filter((shot) => {
+    const { x, y } = projectMm(cx, cy, s, shot.xMm, shot.yMm);
+    return x < 0 || x > 720 || y < 0 || y > CELL_CAPTION_TOP;
+  }).length;
+}
+
+/** §4 (REV-58): `+N off view`, just above the caption band and outside the clip; nothing when N is 0. */
+export function renderOffViewNote(count: number): string {
+  return count === 0 ? '' : text(704, 654, 13, `+${count} off view`, { anchor: 'end', color: PALETTE.textSecondary });
 }
 
 /**

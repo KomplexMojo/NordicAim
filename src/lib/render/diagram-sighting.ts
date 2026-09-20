@@ -18,8 +18,11 @@ import {
   renderSubtitle,
   renderTitle,
   svgRoot,
-  cellScale,
+  CELL_SCALE,
   clipCell,
+  fitScale,
+  offViewCount,
+  renderOffViewNote,
   renderBlankCell,
 } from './diagram-shared';
 import { cellCaption, sightingFooterLines } from './text-lines';
@@ -29,7 +32,7 @@ const TITLE = 'Sighting / Zeroing — Biathlon 50m';
 
 const FULL = { width: 1500, height: 1700, cx: 750, cy: 720, s: 8 };
 const HALO_RADIUS_MM = SIGHTING_TEMPLATE.haloDiameterMm / 2; // 62.5
-const CELL = { width: 720, height: 720, cx: 360, cy: 350, s: 300 / HALO_RADIUS_MM };
+const CELL = { width: 720, height: 720, cx: 360, cy: 350, s: CELL_SCALE };
 
 /** §3 item 5 (sighting): halo, standing disc + dotted 110mm guide, prone disc + dotted 40mm guide,
  * and a small centre reference dot. Shared verbatim by the full and cell variants (only cx/cy/s differ). */
@@ -93,8 +96,9 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
   const isBoth = result.position === 'both';
 
   if (variant === 'cell') {
-    // §4 (REV-51): zoom out so every shot fits, then clip the drawing above the caption band.
-    const s = input.cellScaleOverride ?? cellScale(CELL.s, shots, holeDiameterMm);
+    // §4 (REV-58): one fixed scale, never a zoom-out; the drawing is clipped above the caption band and a clipped
+    // shot is counted.
+    const s = CELL.s;
     const target =
       renderTarget(CELL.cx, CELL.cy, s) +
       renderGroupEllipse(subset.groupEllipse, CELL.cx, CELL.cy, s) +
@@ -105,18 +109,21 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
     const body =
       renderBackground(CELL.width, CELL.height) +
       clipCell(`cellclip-sighting-${slotLabel ?? '0'}`, target) +
+      renderOffViewNote(offViewCount(shots, CELL.cx, CELL.cy, s)) +
       renderCellChip(input.cellLabelOverride ?? 'SIGHTING', positionLabel, input.cellLabelOverride === undefined ? slotLabel : undefined) +
       renderCellCaptionBand(cellCaption(result));
     return svgRoot(CELL.width, CELL.height, body);
   }
 
+  // §3 (REV-58): the detail diagram always shows every shot.
+  const s = fitScale(FULL.s, HALO_RADIUS_MM, shots);
   const target =
-    renderTarget(FULL.cx, FULL.cy, FULL.s) +
-    renderZoneLabels(FULL.cx, FULL.cy, FULL.s) +
-    renderGroupEllipse(subset.groupEllipse, FULL.cx, FULL.cy, FULL.s) +
-    renderShots(shots, subset.units, FULL.cx, FULL.cy, FULL.s, 8, holeDiameterMm) +
-    renderMpiMarker(subset.mpi, FULL.cx, FULL.cy, FULL.s) +
-    renderMarkerLabels(shots, subset.mpi, FULL.cx, FULL.cy, FULL.s, 8, 'full');
+    renderTarget(FULL.cx, FULL.cy, s) +
+    renderZoneLabels(FULL.cx, FULL.cy, s) +
+    renderGroupEllipse(subset.groupEllipse, FULL.cx, FULL.cy, s) +
+    renderShots(shots, subset.units, FULL.cx, FULL.cy, s, 8, holeDiameterMm) +
+    renderMpiMarker(subset.mpi, FULL.cx, FULL.cy, s) +
+    renderMarkerLabels(shots, subset.mpi, FULL.cx, FULL.cy, s, 8, 'full');
 
   const body =
     renderBackground(FULL.width, FULL.height) +
@@ -129,6 +136,6 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
 }
 
 /** rendering-composite.md §5 (REV-51): an empty sighting slot in the summary image. */
-export function renderBlankSightingCell(label: string, scale = CELL.s): string {
-  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, scale));
+export function renderBlankSightingCell(label: string): string {
+  return renderBlankCell(label, renderTarget(CELL.cx, CELL.cy, CELL.s));
 }

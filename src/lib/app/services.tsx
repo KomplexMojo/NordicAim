@@ -6,6 +6,7 @@ import { browserImageTools } from '@/lib/media/image-browser';
 import { browserRenderTools, type RenderTools } from '@/lib/render/rasterize-browser';
 import type { ServiceContext } from '@/lib/services/context';
 import { openAppDb } from '@/lib/store/db';
+import { refreshStaleDiagrams } from '@/lib/services/diagram-version';
 import { migrateBackingToSettings } from '@/lib/store/migrate-backing';
 
 export interface AppServices {
@@ -23,8 +24,12 @@ export function loadAppServices(): Promise<AppServices> {
     servicesPromise = openAppDb().then(async (db) => {
       // backing-sheet.md §3a (REV-48): before any screen or the pipeline reads a record.
       await migrateBackingToSettings(db);
+      const ctx: ServiceContext = { db, now: () => new Date(), newId: () => crypto.randomUUID() };
+      // rendering-composite.md §6 (REV-58): redraw stored diagrams once when the renderer has changed since they
+      // were drawn. Never allowed to stop the app opening: the worst case is a diagram at the old scale.
+      await refreshStaleDiagrams(ctx).catch((err: unknown) => console.error('[diagrams] refresh failed', err));
       return {
-        ctx: { db, now: () => new Date(), newId: () => crypto.randomUUID() },
+        ctx,
         imageTools: browserImageTools,
         renderTools: browserRenderTools,
       };

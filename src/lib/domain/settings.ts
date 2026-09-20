@@ -36,6 +36,9 @@ export const AppSettings = z.object({
     .min(MIN_VISIBLE_HOLE_DIAMETER_MM)
     .max(MAX_VISIBLE_HOLE_DIAMETER_MM)
     .default(DEFAULT_VISIBLE_HOLE_DIAMETER_MM),
+  // REV-58 (rendering-composite.md §6): which diagram renderer last drew every stored diagram; behind the code's
+  // DIAGRAM_RENDERER_VERSION at app start means every finished analysis is scored again once. 0 = never recorded.
+  diagramRendererVersion: z.number().int().min(0).default(0),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 
@@ -59,6 +62,7 @@ export function defaultAppSettings(): AppSettings {
     backing: null,
     scoringRule: DEFAULT_SCORING_RULE,
     visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
+    diagramRendererVersion: 0,
   };
 }
 
