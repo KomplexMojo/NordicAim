@@ -55,7 +55,18 @@ test('a session is deleted only after three steps and its exact name; cancelling
   await expect(track).toHaveAttribute('data-state', 'idle');
 
   // Sliding all the way but letting go before the hold is up cancels: the handle springs back and nothing is deleted.
+  // The handle springs back over 150 ms after a release; read its position only once it has stopped moving.
+  const atRest = async () => {
+    let last = JSON.stringify(await handle.boundingBox());
+    for (let i = 0; i < 40; i++) {
+      await page.waitForTimeout(100);
+      const now = JSON.stringify(await handle.boundingBox());
+      if (now === last) return;
+      last = now;
+    }
+  };
   const drag = async (holdMs: number, release: boolean) => {
+    await atRest();
     const h = (await handle.boundingBox())!;
     const t = (await track.boundingBox())!;
     const y = h.y + h.height / 2;
@@ -71,6 +82,7 @@ test('a session is deleted only after three steps and its exact name; cancelling
 
   // Sliding only part of the way and holding does nothing either.
   {
+    await atRest();
     const h = (await handle.boundingBox())!;
     const t = (await track.boundingBox())!;
     const y = h.y + h.height / 2;
@@ -84,10 +96,10 @@ test('a session is deleted only after three steps and its exact name; cancelling
   await expect(dialog).toBeVisible();
 
   // Slide to the trash and hold: only then is it deleted.
-  await drag(1300, false);
-  await page.mouse.up();
-
+  // Holding at the trash completes the delete, which closes the dialog; wait for that (not for a transient 'done' state), then let go.
+  await drag(0, false);
   await expect(dialog).toHaveCount(0, { timeout: 30_000 });
+  await page.mouse.up();
   await expect(doomedDelete).toHaveCount(0);
   await expect(page.getByTestId('session-delete')).toHaveCount(rowsBefore - 1);
   await expect(page.locator(`[data-testid="session-delete"][data-session-id="${keptId}"]`)).toBeVisible();

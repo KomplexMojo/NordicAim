@@ -301,8 +301,7 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
    `navigator.share({ files: [file], title })`; `AbortError` → `cancelled`.
 3. Otherwise download via a temporary `<a download>` (object URL, revoked after 60 s) → `download`.
 4. On `web-share`/`download` → `recordShare`.
-5. **Attach in Garmin Connect** card: (1) In the share sheet choose **Save Image**. (2) Open the Garmin Connect app. (3) Open the
-   activity (usually the most recent). (4) Tap the camera icon and choose the saved image.
+5. ~~Attach in Garmin Connect card~~ removed from the app (REV-87); the four steps are in `docs/MANUAL.md`.
 
 ## REV-79 / REV-80 marks
 

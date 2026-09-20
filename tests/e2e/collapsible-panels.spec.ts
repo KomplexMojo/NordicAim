@@ -40,10 +40,8 @@ test('the Garmin steps start collapsed, and the diagnostics data panel opens on 
   const sid = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   await page.goto(`/#/sessions/${sid}/results`);
-  const garmin = page.getByTestId('panel-toggle-garmin');
-  await expect(garmin).toHaveAttribute('aria-expanded', 'false');
-  await garmin.click();
-  await expect(page.getByText('Open the Garmin Connect app.')).toBeVisible();
+  // The Garmin steps are in the manual, not on the results screen (REV-87).
+  await expect(page.getByTestId('attach-garmin-card')).toHaveCount(0);
 
   await page.goto('/#/diagnostics');
   const data = page.getByTestId('panel-toggle-diag-data');

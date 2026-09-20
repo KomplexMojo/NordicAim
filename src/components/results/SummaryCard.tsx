@@ -11,7 +11,6 @@ import { COMPOSITE_RENDERER_VERSION } from '@/lib/render/composite';
 import { recordShare } from '@/lib/services/shares';
 import { shareArtifact } from '@/lib/share/share-browser';
 
-import { AttachInGarminCard } from './AttachInGarminCard';
 
 interface SummaryCardProps {
   sessionId: string;
@@ -32,8 +31,7 @@ function slugify(name: string): string {
 
 /**
  * rendering-composite.md §5-§7, milestone M14 step 5: the session summary image at the top of the
- * results screen — the latest `CompositeArtifact`, a Share button, and the "Attach in Garmin Connect"
- * steps. The image and PNG blob are loaded ahead of time (`useLiveQuery`/`latestArtifact`) so Share can
+ * results screen — the latest `CompositeArtifact`, and a Share button. The image and PNG blob are loaded ahead of time (`useLiveQuery`/`latestArtifact`) so Share can
  * call `navigator.share` directly inside the tap handler (§7 pitfall).
  */
 export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProps) {
@@ -132,7 +130,6 @@ export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProp
             <Button className="h-11" onClick={() => void handleShare()} disabled={sharing} data-testid="summary-share">
               Share
             </Button>
-            <AttachInGarminCard />
           </>
         )}
       </CardContent>
