@@ -100,6 +100,9 @@ async function runJob(runner: { ctx: ServiceContext; deps: RunnerDeps }, job: Jo
     }
     recordTiming({ kind: job.kind, photoId: job.photoId, ms: performance.now() - startedAt });
   } catch (err) {
+    // The photo was deleted while its job ran (issue #18: deleting a session). Nothing was written — the stage
+    // re-reads its record inside the write transaction and throws first — so this is not a failure to report.
+    if (err instanceof PhotoNotFoundError || err instanceof AnalysisNotFoundError) return;
     // runStageA/runStageB record their own failures; reaching here means the job could not even be recorded.
     poisoned.add(jobKey(job));
     console.error(`[pipeline] ${job.kind} job failed for photo ${job.photoId}`, err);

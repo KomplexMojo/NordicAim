@@ -1,16 +1,18 @@
-import { BiathlonSession } from '@/lib/domain/session';
+import { BiathlonSession, repairSession, upgradeSession } from '@/lib/domain/session';
 import { photoPrefix, diagramPrefix, artifactPrefix } from '@/lib/store/blob-keys';
 import { deleteByPrefix } from '@/lib/store/blobs-repo';
 import { deleteAnalysisRecord } from '@/lib/store/analyses-repo';
-import { deletePhotoRecord, listPhotosBySession } from '@/lib/store/photos-repo';
+import { deletePhotoRecord, listPhotoIdsBySession } from '@/lib/store/photos-repo';
 import {
   deleteSessionRecord,
+  getRawSessionRecord,
   getSessionRecord,
   listSessionRecords,
   listSessionRecordsWithProblems,
   putSessionRecord,
   type UnreadableRecord,
 } from '@/lib/store/sessions-repo';
+import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 
 import type { ServiceContext } from './context';
@@ -98,24 +100,103 @@ export async function updateSession(
   return updated;
 }
 
-/** Cascade delete: session, its photos (including any pre-REV-48 backing-card photo), their analyses, and every
- * `photo:<pid>:*` / `diagram:<pid>:*` / `artifact:<aid>:*` blob. */
-export async function deleteSession(ctx: ServiceContext, sessionId: string): Promise<void> {
-  const tx = ctx.db.transaction(['sessions', 'photos', 'analyses', 'blobs'], 'readwrite');
-  const session = await getSessionRecord(tx, sessionId);
-  if (session === null) throw new SessionNotFoundError(sessionId);
-  const photos = await listPhotosBySession(tx, sessionId);
+/** What deleting a session removes, for the confirmation dialog and the toast afterwards. */
+export interface SessionDeletionReport {
+  /** The stored name, or `null` when the record is too damaged to have a readable one. */
+  name: string | null;
+  sessionDate: string | null;
+  /** False for a session record the schema rejects (it can still be deleted). */
+  readable: boolean;
+  photos: number;
+  analyses: number;
+  artifacts: number;
+  shares: number;
+}
 
-  for (const photo of photos) {
-    await deleteAnalysisRecord(tx, photo.id);
-    await deletePhotoRecord(tx, photo.id);
-    await deleteByPrefix(tx, photoPrefix(photo.id));
-    await deleteByPrefix(tx, diagramPrefix(photo.id));
+function stringOf(raw: unknown, key: string): string | null {
+  if (raw === null || typeof raw !== 'object' || !(key in raw)) return null;
+  const value = (raw as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function idsOf(raw: unknown, key: string): string[] {
+  if (raw === null || typeof raw !== 'object' || !(key in raw)) return [];
+  const value = (raw as Record<string, unknown>)[key];
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === 'string' ? item : stringOf(item, 'id')))
+    .filter((id): id is string => id !== null);
+}
+
+function countOf(raw: unknown, key: string): number {
+  if (raw === null || typeof raw !== 'object' || !(key in raw)) return 0;
+  const value = (raw as Record<string, unknown>)[key];
+  return Array.isArray(value) ? value.length : 0;
+}
+
+/** Every photo the session owns: those the photo index finds, plus any its own list names (a record may be missing). */
+async function photoIdsFor(tx: Parameters<typeof listPhotoIdsBySession>[0], sessionId: string, raw: unknown): Promise<string[]> {
+  return [...new Set([...(await listPhotoIdsBySession(tx, sessionId)), ...idsOf(raw, 'photoIds')])];
+}
+
+/**
+ * Issue #18. What deleting this session would remove — read-only, and computed exactly as `deleteSession` does, so the
+ * counts the owner is shown are the counts that go. Works on a session the schema cannot read.
+ */
+export async function previewSessionDeletion(ctx: ServiceContext, sessionId: string): Promise<SessionDeletionReport> {
+  // Plain reads on the database: this changes nothing, so it needs no transaction of its own.
+  const raw = await getRawSessionRecord(ctx.db, sessionId);
+  if (raw === undefined || raw === null) throw new SessionNotFoundError(sessionId);
+  const photoIds = await photoIdsFor(ctx.db, sessionId, raw);
+  let analyses = 0;
+  for (const id of photoIds) if ((await ctx.db.get('analyses', id)) !== undefined) analyses += 1;
+  return {
+    name: stringOf(raw, 'name'),
+    sessionDate: stringOf(raw, 'sessionDate'),
+    readable: BiathlonSession.safeParse(repairSession(upgradeSession(raw))).success,
+    photos: photoIds.length,
+    analyses,
+    artifacts: countOf(raw, 'artifacts'),
+    shares: countOf(raw, 'shares'),
+  };
+}
+
+/**
+ * Cascade delete (issue #18): the session, its photos, their analyses, every `photo:<pid>:*` / `diagram:<pid>:*` blob and every
+ * summary image (`artifact:<aid>:*`), in one transaction. **It works from raw records and parses nothing**, so a photo or a
+ * session record the schema rejects is removed too — "everything attached" means everything. Returns what was removed.
+ */
+export async function deleteSession(ctx: ServiceContext, sessionId: string): Promise<SessionDeletionReport> {
+  const tx = ctx.db.transaction(['sessions', 'photos', 'analyses', 'blobs'], 'readwrite');
+  const raw = await getRawSessionRecord(tx, sessionId);
+  if (raw === undefined || raw === null) throw new SessionNotFoundError(sessionId);
+
+  const photoIds = await photoIdsFor(tx, sessionId, raw);
+  const readable = BiathlonSession.safeParse(repairSession(upgradeSession(raw))).success;
+  let analyses = 0;
+  for (const id of photoIds) {
+    if ((await tx.objectStore('analyses').get(id)) !== undefined) analyses += 1;
+    await deleteAnalysisRecord(tx, id);
+    await deletePhotoRecord(tx, id);
+    await deleteByPrefix(tx, photoPrefix(id));
+    await deleteByPrefix(tx, diagramPrefix(id));
   }
-  for (const artifact of session.artifacts) {
-    await deleteByPrefix(tx, artifactPrefix(artifact.id));
+  for (const artifactId of idsOf(raw, 'artifacts')) {
+    await deleteByPrefix(tx, artifactPrefix(artifactId));
   }
   await deleteSessionRecord(tx, sessionId);
   await tx.done;
+  // Screens re-read on this event (analysis-pipeline §5); without it the session list would keep showing the row.
+  emitPipelineChanged({ sessionId });
   pipelineHooks.notify();
+
+  return {
+    name: stringOf(raw, 'name'),
+    sessionDate: stringOf(raw, 'sessionDate'),
+    readable,
+    photos: photoIds.length,
+    analyses,
+    artifacts: countOf(raw, 'artifacts'),
+    shares: countOf(raw, 'shares'),
+  };
 }

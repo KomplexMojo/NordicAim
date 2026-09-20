@@ -79,3 +79,8 @@ export async function listSessionRecordsWithProblems(
 export async function listSessionRecords(dbOrTx: Executor): Promise<BiathlonSession[]> {
   return (await listSessionRecordsWithProblems(dbOrTx)).sessions;
 }
+
+/** A session record exactly as stored, **without parsing** — for deleting a session the schema cannot read (issue #18). */
+export async function getRawSessionRecord(dbOrTx: Executor, id: string): Promise<unknown> {
+  return isTx(dbOrTx) ? dbOrTx.objectStore('sessions').get(id) : dbOrTx.get('sessions', id);
+}

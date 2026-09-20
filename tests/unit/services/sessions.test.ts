@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { createSession, deleteSession, getSession, listSessions, updateSession } from '@/lib/services/sessions';
+import {
+  SessionNotFoundError,
+  createSession,
+  deleteSession,
+  getSession,
+  listSessions,
+  previewSessionDeletion,
+  updateSession,
+} from '@/lib/services/sessions';
 import { ingestPhoto } from '@/lib/services/ingest';
 import { photoOriginalKey, photoThumbKey, photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
@@ -100,6 +108,78 @@ describe('deleteSession', () => {
 
     const remaining = await db.getAllKeys('blobs');
     expect(remaining.filter((k) => String(k).startsWith(`photo:${photo.id}:`))).toHaveLength(0);
+    db.close();
+  });
+});
+
+describe('deleteSession (REV-61)', () => {
+  const ingest = (ctx: ReturnType<typeof makeTestContext>, sessionId: string) =>
+    ingestPhoto(
+      ctx,
+      {
+        sessionId,
+        blob: jpegBlob(),
+        origin: 'import',
+        originalFilename: 'a.jpg',
+        clientLocal: '2026-09-05T12:00:00',
+        clientOffset: '-07:00',
+        capture: null,
+        categorization: emptyCategorization(),
+      },
+      stubImageTools(),
+    );
+
+  it('previews the counts it then deletes, and leaves another session untouched', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    const doomed = await createSession(ctx, { name: 'Doomed' });
+    const kept = await createSession(ctx, { name: 'Kept' });
+    const a = await ingest(ctx, doomed.id);
+    const b = await ingest(ctx, doomed.id);
+    const other = await ingest(ctx, kept.id);
+
+    const preview = await previewSessionDeletion(ctx, doomed.id);
+    expect(preview).toMatchObject({ name: 'Doomed', readable: true, photos: 2 });
+    expect(await getSession(ctx, doomed.id)).not.toBeNull();
+
+    const report = await deleteSession(ctx, doomed.id);
+    expect(report).toEqual(preview);
+
+    for (const id of [a.id, b.id]) {
+      expect(await getPhotoRecord(db, id)).toBeNull();
+      expect(await getAnalysisRecord(db, id)).toBeNull();
+    }
+    expect(await getSession(ctx, kept.id)).not.toBeNull();
+    expect(await getPhotoRecord(db, other.id)).not.toBeNull();
+    expect(await getAnalysisRecord(db, other.id)).not.toBeNull();
+    expect(await getBlob(db, photoOriginalKey(other.id))).not.toBeNull();
+    db.close();
+  });
+
+  it('removes a session record that no longer parses, and its photos', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    const session = await createSession(ctx, { name: 'Broken' });
+    const photo = await ingest(ctx, session.id);
+    const stored = await db.get('sessions', session.id);
+    await db.put('sessions', { ...stored, createdAt: 'not a date', photoIds: 'nonsense' } as never);
+
+    const preview = await previewSessionDeletion(ctx, session.id);
+    expect(preview.readable).toBe(false);
+    expect(preview.photos).toBe(1);
+
+    await deleteSession(ctx, session.id);
+    expect(await db.get('sessions', session.id)).toBeUndefined();
+    expect(await getPhotoRecord(db, photo.id)).toBeNull();
+    expect(await getBlob(db, photoOriginalKey(photo.id))).toBeNull();
+    db.close();
+  });
+
+  it('throws SessionNotFoundError for a session that is not there', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    await expect(deleteSession(ctx, 'nope')).rejects.toBeInstanceOf(SessionNotFoundError);
+    await expect(previewSessionDeletion(ctx, 'nope')).rejects.toBeInstanceOf(SessionNotFoundError);
     db.close();
   });
 });

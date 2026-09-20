@@ -78,3 +78,20 @@ export async function listUnreadablePhotos(dbOrTx: Executor): Promise<Unreadable
   }
   return bad;
 }
+
+/**
+ * The ids of every photo record for a session, **without parsing anything** — so a photo the schema rejects is
+ * still found. Deleting a session must remove everything attached to it, readable or not (issue #18): the
+ * tolerant list above skips unreadable records, which would leave them and their blobs behind.
+ */
+export async function listPhotoIdsBySession(dbOrTx: Executor, sessionId: string): Promise<string[]> {
+  let raws: unknown[];
+  if (isTx(dbOrTx)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const store = dbOrTx.objectStore('photos') as any;
+    raws = await store.index('by-sessionId').getAll(sessionId);
+  } else {
+    raws = await dbOrTx.getAllFromIndex('photos', 'by-sessionId', sessionId);
+  }
+  return raws.map((raw) => idOf(raw)).filter((id) => id !== 'unknown');
+}

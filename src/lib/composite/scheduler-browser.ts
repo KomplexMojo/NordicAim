@@ -8,6 +8,7 @@ import { registerSummaryScheduler } from '@/lib/pipeline/hooks';
 import { waitForIdle } from '@/lib/pipeline/runner-browser';
 import type { RenderTools } from '@/lib/render/rasterize-browser';
 import type { ServiceContext } from '@/lib/services/context';
+import { SessionNotFoundError } from '@/lib/services/sessions';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 
 import { EmptyCompositeError } from './artifact';
@@ -48,8 +49,12 @@ async function runBuild(sessionId: string): Promise<void> {
 
     await buildComposite(ctx, sessionId, renderTools);
   } catch (err) {
-    // A momentarily-empty session (every candidate rejected) is not an error worth logging.
-    if (!(err instanceof EmptyCompositeError)) console.error('[summary] build failed', err);
+    // A momentarily-empty session (every candidate rejected) is not an error worth logging, and neither is one that
+    // was deleted while its rebuild waited (issue #18): nothing was written, `buildComposite` re-reads the session
+    // inside its write transaction and throws first.
+    if (!(err instanceof EmptyCompositeError) && !(err instanceof SessionNotFoundError)) {
+      console.error('[summary] build failed', err);
+    }
   } finally {
     pending.delete(sessionId);
     emitPipelineChanged({ sessionId });

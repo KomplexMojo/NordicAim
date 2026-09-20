@@ -191,7 +191,7 @@ export interface PrecisionScore { tally: number[]; xCount: number; identifiedTot
 export interface SightingOutcome { zoneDiameterMm: 45 | 115 | null; hits: number; clean: number; misses: number }
 export interface SubsetResult { key: 'prone' | 'standing' | 'all'; declared: number; identified: number; missing: number;
   overcount: number; units: UnitResult[]; mpi: { xMm: number; yMm: number } | null; extremeSpreadMm: number | null;
-  extremeSpreadAngular: Angular | null; meanRadiusMm: number | null; mpiOffset: MpiOffset | null;
+  extremeSpreadAngular: Angular | null; meanRadiusMm: number | null; accuracyRmseMm: number | null; mpiOffset: MpiOffset | null;
   groupEllipse: GroupEllipse | null; precision: PrecisionScore | null; sighting: SightingOutcome | null; warnings: Array<'overcount'> }
 export interface AnalysisResult { engineVersion: string; template: 'sighting' | 'precision'; position: 'prone' | 'standing' | 'both';
   subsets: SubsetResult[]; all: SubsetResult }
@@ -270,7 +270,7 @@ export interface RenderTools { svgToPng(svg: string, widthPx: number, heightPx: 
 
 | Function | File | Milestone |
 |---|---|---|
-| `createSession` · `getSession` · `listSessions` · `updateSession(name, sessionDate, notes)` · `deleteSession` (cascade) | `services/sessions.ts` | M04 |
+| `createSession` · `getSession` · `listSessions` · `updateSession(name, sessionDate, notes)` · `previewSessionDeletion` · `deleteSession` (cascade, REV-61: removes the session, its photos, analyses, `photo:*`/`diagram:*` blobs and the session's `artifact:*` blobs, working from raw records so an unreadable one is still removed; returns a `SessionDeletionReport`) | `services/sessions.ts` | M04 |
 | `ingestPhoto(ctx, input, imageTools)` → photo + `initialAnalysis` + status | `services/ingest.ts` | M04, M08 |
 | `updatePhotoMetadata(ctx, photoId, { categorization?, lighting?, notes? })` · `deletePhoto` | `services/photos.ts` | M09 |
 | `requestAnalysis(ctx, sessionId)` (sets `analyzeRequestedAt`, confirms lighting on all photos) | `services/photos.ts` | M09 |
