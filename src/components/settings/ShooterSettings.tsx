@@ -20,7 +20,7 @@ export function ShooterSettings({ handedness, onChange }: ShooterSettingsProps) 
             <label
               key={value}
               htmlFor={id}
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border p-3 has-[:checked]:border-primary"
+              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border p-3 has-[:checked]:border-primary has-[:checked]:bg-primary/10 has-[:checked]:ring-1 has-[:checked]:ring-primary"
             >
               <input
                 id={id}

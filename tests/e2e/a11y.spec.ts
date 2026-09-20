@@ -69,3 +69,24 @@ test('a11y: metadata, results, target detail, adjust', async ({ page }) => {
   await expect(page.getByTestId('image-stage')).toBeVisible({ timeout: 30_000 });
   await assertNoSevereViolations(page);
 });
+
+test('a11y: settings, patterns, review, capture (M-B #27)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+
+  await page.goto('/#/settings');
+  await expect(page.getByTestId('handedness-right')).toBeVisible({ timeout: 15000 });
+  await assertNoSevereViolations(page);
+
+  await page.goto('/#/patterns');
+  await expect(page.getByTestId('observed-patterns').first()).toBeVisible({ timeout: 30_000 });
+  await assertNoSevereViolations(page);
+
+  await page.goto(`/#/review/${sessionId}`);
+  await expect(page.getByTestId('review-confirm')).toBeEnabled({ timeout: 30_000 });
+  await page.waitForTimeout(500); // let the button's colour transition finish
+  await assertNoSevereViolations(page);
+
+  await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
+  await expect(page.getByRole('radio', { name: 'Precision prone', exact: true })).toBeVisible({ timeout: 15000 });
+  await assertNoSevereViolations(page);
+});
