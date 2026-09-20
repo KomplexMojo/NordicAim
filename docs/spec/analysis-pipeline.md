@@ -41,7 +41,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 - One card per photo: thumbnail, a small Stage A progress indicator ("Checking photo…", "Aligning…", "Finding shots…",
   "Ready"), and these fields:
   - **Template** (prefilled from capture) and **Position** (prefilled)
-  - **Rounds** for prone and/or standing (defaults from `defaultCategorization`)
+  - **Rounds** for prone and/or standing (defaults from `categorizationForKind`, REV-79)
   - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`
   - **Notes** (optional)
   - **Remove photo**.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { medalFor } from '@/lib/scoring/medal';
-import { renderScoreStar, renderSightingRoleSymbol } from '@/lib/render/diagram-shared';
+import { renderScoreStar, renderSightingRoleSymbol } from '@/lib/render/diagram-marks';
 
 describe('medalFor (REV-80)', () => {
   it('above 90 is gold, 80 to 90 silver, 70 up to 80 bronze, below 70 plain (REV-81)', () => {

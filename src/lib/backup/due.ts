@@ -1,6 +1,5 @@
 // backup.md §5: when to remind the owner. Pure: the caller supplies the time.
 
-export const DEFAULT_BACKUP_REMINDER_DAYS = 14;
 export const MIN_BACKUP_REMINDER_DAYS = 1;
 export const MAX_BACKUP_REMINDER_DAYS = 365;
 

@@ -138,7 +138,7 @@ export const TargetPhoto = z.object({
 - `isCategorizationComplete(c)`: template and position set; `roundsProne` set if position ∈ {prone, both}; `roundsStanding`
   set if position ∈ {standing, both}.
 - `declaredRounds(c)`: geometry-scoring §7; throws `IncompleteCategorizationError`.
-- `defaultCategorization(template, position)`: prone → `{ roundsProne: 10 }`; standing → `{ roundsStanding: 10 }`; both → `{ 5, 5 }`.
+- ~~`defaultCategorization`~~ removed (REV-92): `categorizationForKind(kind)` in `domain/target-kind.ts` (REV-79) gives the default rounds per kind.
 - `emptyCategorization()`: all null.
 
 ## 4. Analysis (`analysis.ts`) → store `analyses`

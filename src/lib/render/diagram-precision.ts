@@ -11,8 +11,6 @@ import {
   renderBackground,
   renderCellCaptionBand,
   renderCellChip,
-  renderPositionSilhouette,
-  renderScoreStar,
   renderFooterPanel,
   renderGroupEllipse,
   renderLegendBand,
@@ -30,6 +28,7 @@ import {
   renderOffViewNote,
   renderBlankCell,
 } from './diagram-shared';
+import { renderPositionSilhouette, renderScoreStar } from './diagram-marks';
 import { cellCaption, precisionFooterLines } from './text-lines';
 import type { DiagramInput, DiagramVariant } from './diagram';
 

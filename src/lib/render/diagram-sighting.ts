@@ -8,7 +8,6 @@ import {
   renderBackground,
   renderCellCaptionBand,
   renderCellChip,
-  renderSightingRoleSymbol,
   renderFooterPanel,
   renderGroupEllipse,
   renderLegendBand,
@@ -26,6 +25,7 @@ import {
   renderOffViewNote,
   renderBlankCell,
 } from './diagram-shared';
+import { renderSightingRoleSymbol } from './diagram-marks';
 import { cellCaption, sightingFooterLines } from './text-lines';
 import type { DiagramInput, DiagramVariant } from './diagram';
 

@@ -19,16 +19,3 @@ export async function maybeRequestPersistence(ctx: ServiceContext): Promise<void
   if (settings.persistRequested) return;
   await requestPersistence(ctx);
 }
-
-export async function storageStatus(): Promise<{
-  persisted: boolean | null;
-  usageBytes: number | null;
-  quotaBytes: number | null;
-}> {
-  const persisted = navigator.storage?.persisted ? await navigator.storage.persisted() : null;
-  if (!navigator.storage?.estimate) {
-    return { persisted, usageBytes: null, quotaBytes: null };
-  }
-  const { usage, quota } = await navigator.storage.estimate();
-  return { persisted, usageBytes: usage ?? null, quotaBytes: quota ?? null };
-}

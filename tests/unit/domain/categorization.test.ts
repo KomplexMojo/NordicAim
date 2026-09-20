@@ -4,39 +4,11 @@ import {
   IncompleteCategorizationError,
   declaredRounds,
   declaredRoundsOrNull,
-  defaultCategorization,
   emptyCategorization,
   isCategorizationComplete,
 } from '@/lib/domain/categorization';
 
 describe('categorization', () => {
-  it('defaultCategorization: prone', () => {
-    expect(defaultCategorization('precision', 'prone')).toEqual({
-      template: 'precision',
-      position: 'prone',
-      roundsProne: 10,
-      roundsStanding: null,
-    });
-  });
-
-  it('defaultCategorization: standing', () => {
-    expect(defaultCategorization('sighting', 'standing')).toEqual({
-      template: 'sighting',
-      position: 'standing',
-      roundsProne: null,
-      roundsStanding: 10,
-    });
-  });
-
-  it("defaultCategorization('precision', 'both') -> rounds 5/5", () => {
-    expect(defaultCategorization('precision', 'both')).toEqual({
-      template: 'precision',
-      position: 'both',
-      roundsProne: 5,
-      roundsStanding: 5,
-    });
-  });
-
   it('emptyCategorization: all null', () => {
     expect(emptyCategorization()).toEqual({
       template: null,

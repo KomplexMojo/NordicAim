@@ -1,4 +1,4 @@
-import type { Position, TemplateId } from './enums';
+import type { Position } from './enums';
 import type { Categorization } from './photo';
 
 export class IncompleteCategorizationError extends Error {
@@ -31,16 +31,6 @@ export function declaredRounds(c: Categorization): number {
  */
 export function declaredRoundsOrNull(c: Categorization): number | null {
   return isCategorizationComplete(c) ? declaredRounds(c) : null;
-}
-
-export function defaultCategorization(template: TemplateId, position: Position): Categorization {
-  if (position === 'prone') {
-    return { template, position, roundsProne: 10, roundsStanding: null };
-  }
-  if (position === 'standing') {
-    return { template, position, roundsProne: null, roundsStanding: 10 };
-  }
-  return { template, position, roundsProne: 5, roundsStanding: 5 };
 }
 
 export function emptyCategorization(): Categorization {

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { backingDisplayColour, withBackingColour } from '@/lib/domain/backing';
-import { renderScoreStar, renderShots } from '@/lib/render/diagram-shared';
+import { renderPositionSilhouette, renderScoreStar } from '@/lib/render/diagram-marks';
+import { renderShots } from '@/lib/render/diagram-shared';
 import { renderScoringIcon } from '@/lib/render/scoring-icons';
 import { medalFor } from '@/lib/scoring/medal';
 
@@ -87,8 +88,7 @@ describe('shot colour from the backing (REV-82)', () => {
 });
 
 describe('position marks (REV-86)', () => {
-  it('prone is a black disc with a white horizontal bar, standing one with a white vertical bar', async () => {
-    const { renderPositionSilhouette } = await import('@/lib/render/diagram-shared');
+  it('prone is a black disc with a white horizontal bar, standing one with a white vertical bar', () => {
     const prone = renderPositionSilhouette('prone');
     const standing = renderPositionSilhouette('standing');
     expect(prone).toContain('data-position="prone"');

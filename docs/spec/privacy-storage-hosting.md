@@ -20,7 +20,6 @@ Facts: Home Screen web apps aren't subject to Safari's 7-day eviction; quotas sc
 export async function requestPersistence(ctx: ServiceContext): Promise<boolean | null>;
 // no navigator.storage?.persist → settings.persisted = null → null; else r = await persist(); store { persistRequested: true, persisted: r }
 export async function maybeRequestPersistence(ctx: ServiceContext): Promise<void>; // only if !settings.persistRequested
-export async function storageStatus(): Promise<{ persisted: boolean | null; usageBytes: number | null; quotaBytes: number | null }>;
 ```
 
 Call `maybeRequestPersistence` after each successful capture or import (it only prompts the first time).

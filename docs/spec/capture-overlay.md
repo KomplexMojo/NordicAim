@@ -132,7 +132,7 @@ const photo = await ingestPhoto(ctx, {
   ...clientNow(new Date()),
   capture: { overlayTemplate, outerDiameterFraction, frameWidthPx, frameHeightPx,
              calibrationPriorFramePx: calibrationPriorFromOverlay(container, frame, template, fraction), trackSettings },
-  categorization: defaultCategorization(template, position),
+  categorization: categorizationForKind(kind),
 }, browserImageTools);
 await maybeRequestPersistence(ctx);  // privacy-storage-hosting §2
 // ingestPhoto stores initialAnalysis (stageA 'pending') and calls pipelineHooks.notify() → Stage A runs in the background

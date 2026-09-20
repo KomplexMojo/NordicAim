@@ -21,5 +21,3 @@ export const PALETTE = {
   ellipse: '#2F7FB0',
   header: '#1F2630',
 } as const;
-
-export type PaletteToken = keyof typeof PALETTE;

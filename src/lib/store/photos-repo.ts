@@ -2,7 +2,6 @@ import { TargetPhoto } from '@/lib/domain/photo';
 
 import type { AppDb, AppTx } from './db';
 import { CorruptRecordError } from './errors';
-import type { UnreadableRecord } from './sessions-repo';
 
 type Executor = AppDb | AppTx;
 
@@ -65,18 +64,6 @@ export async function listPhotosBySession(dbOrTx: Executor, sessionId: string): 
 export async function listPhotoRecords(dbOrTx: Executor): Promise<TargetPhoto[]> {
   const raws = isTx(dbOrTx) ? await dbOrTx.objectStore('photos').getAll() : await dbOrTx.getAll('photos');
   return readable(raws);
-}
-
-/** Every photo the schema rejected, for Diagnostics to report. */
-export async function listUnreadablePhotos(dbOrTx: Executor): Promise<UnreadableRecord[]> {
-  const raws = isTx(dbOrTx) ? await dbOrTx.objectStore('photos').getAll() : await dbOrTx.getAll('photos');
-  const bad: UnreadableRecord[] = [];
-  for (const raw of raws) {
-    const id = idOf(raw);
-    const parsed = TargetPhoto.safeParse(raw);
-    if (!parsed.success) bad.push({ id, reason: new CorruptRecordError('photos', id, parsed.error).message });
-  }
-  return bad;
 }
 
 /**

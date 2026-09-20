@@ -18,8 +18,7 @@ import {
 import type { CvMat, OpenCv } from './opencv';
 import type { Rectified } from './rectify';
 
-/** Pixel surfaces: the black aiming mark (inside the anchor radius) and the paper around it. */
-export const SURFACE_NONE = 0;
+/** Pixel surfaces (0 = neither): the black aiming mark (inside the anchor radius) and the paper around it. */
 export const SURFACE_MARK = 1;
 export const SURFACE_PAPER = 2;
 
