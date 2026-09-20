@@ -12,6 +12,7 @@ import { HomePage } from '@/routes/home/HomePage';
 import { MetadataPage } from '@/routes/metadata/MetadataPage';
 import { ResultsPage } from '@/routes/results/ResultsPage';
 import { ReviewPage } from '@/routes/review/ReviewPage';
+import { PatternsPage } from '@/routes/patterns/PatternsPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { SessionsPage } from '@/routes/sessions/SessionsPage';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
@@ -55,6 +56,7 @@ const router = createHashRouter([
         children: [
           { path: '/', element: <HomePage /> },
           { path: '/sessions', element: <SessionsPage /> },
+          { path: '/patterns', element: <PatternsPage /> },
           { path: '/sessions/:sid', element: <SessionRedirect /> },
           { path: '/sessions/:sid/capture', element: <CapturePage /> },
           { path: '/sessions/:sid/metadata', element: <MetadataPage /> },

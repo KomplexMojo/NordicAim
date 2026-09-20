@@ -46,7 +46,7 @@ function ringR(n: number): number {
 /** §3 item 5 (precision): halo, rings 1-3 on white, the black disc, rings 4-10 on black, the dashed
  * inner-ten circle, and (when `includeLabels`) the ring-value labels. §4: "ring labels omitted when
  * s < 4" — the caller decides `includeLabels` from the variant's scale. */
-function renderTarget(cx: number, cy: number, s: number, includeLabels: boolean): string {
+export function renderTarget(cx: number, cy: number, s: number, includeLabels: boolean): string {
   const halo = el('circle', { cx, cy, r: HALO_RADIUS_MM * s, fill: '#FFFFFF', stroke: PALETTE.panelBorder, 'stroke-width': 1.5 });
 
   let outerRings = '';

@@ -36,7 +36,7 @@ const CELL = { width: 720, height: 720, cx: 360, cy: 350, s: CELL_SCALE };
 
 /** §3 item 5 (sighting): halo, standing disc + dotted 110mm guide, prone disc + dotted 40mm guide,
  * and a small centre reference dot. Shared verbatim by the full and cell variants (only cx/cy/s differ). */
-function renderTarget(cx: number, cy: number, s: number): string {
+export function renderTarget(cx: number, cy: number, s: number): string {
   const standing = SIGHTING_TEMPLATE.zones.standing;
   const prone = SIGHTING_TEMPLATE.zones.prone;
 

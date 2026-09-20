@@ -25,6 +25,14 @@ export function HomePage() {
         <QuickStartButton sessions={sessions ?? []} />
       </div>
 
+      <Link
+        to="/patterns"
+        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border text-sm hover:bg-muted"
+        data-testid="open-patterns"
+      >
+        Patterns: every shot, every session
+      </Link>
+
       <BackupReminder />
 
       <section className="flex flex-col gap-2">

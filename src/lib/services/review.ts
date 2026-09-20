@@ -14,7 +14,7 @@ import type { ServiceContext } from './context';
 export type ReviewOrderable = Pick<TargetPhoto, 'id' | 'status' | 'captureTime' | 'importedAt'>;
 
 /** Ascending by `captureTime.utc` (null last), then `importedAt`, then id — so the order is total. */
-function byCaptureTime(a: ReviewOrderable, b: ReviewOrderable): number {
+export function byCaptureTime(a: ReviewOrderable, b: ReviewOrderable): number {
   const au = a.captureTime.utc;
   const bu = b.captureTime.utc;
   if (au !== bu) {
