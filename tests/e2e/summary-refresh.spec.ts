@@ -118,10 +118,12 @@ test('summary: a target added later joins the summary, including after it is fix
   await expect(page.getByTestId('summary-left-out')).toContainText('1 target needs attention', { timeout: 30_000 });
 
   // 4. The owner checks it in Adjust and saves. That confirms the capped set, so it joins the summary.
-  await page.goto(`/#/sessions/${sessionId}/photos/${sighting.id}/adjust`);
+  await page.goto(`/#/sessions/${sessionId}/photos/${sighting.id}`);
   await expect(page.getByTestId('image-stage')).toHaveAttribute('data-ready', 'true');
   await page.getByTestId('save-adjustments').click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  // REV-73: Save stays on the target; go to the results to look at the effect.
+  await expect(page.getByText('Saved.').first()).toBeVisible();
+  await page.goto(`/#/sessions/${sessionId}/results`);
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   // Wait for the positive outcome first: a bare "note absent" check would pass during the moment the
   // target is being re-scored, before its final status lands.
@@ -157,10 +159,12 @@ test('adjust: saving shots without moving the rings confirms an overlay-guess al
     .toBe('needs-attention');
 
   // The owner opens Adjust, looks at the rings over the photo, leaves them, and saves.
-  await page.goto(`/#/sessions/${sessionId}/photos/${photo!.id}/adjust`);
+  await page.goto(`/#/sessions/${sessionId}/photos/${photo!.id}`);
   await expect(page.getByTestId('image-stage')).toHaveAttribute('data-ready', 'true');
   await page.getByTestId('save-adjustments').click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  // REV-73: Save stays on the target; go to the results to look at the effect.
+  await expect(page.getByText('Saved.').first()).toBeVisible();
+  await page.goto(`/#/sessions/${sessionId}/results`);
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   await expect
     .poll(async () => {

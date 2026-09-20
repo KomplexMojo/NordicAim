@@ -1,11 +1,10 @@
-import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router';
+import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation, useParams } from 'react-router';
 
 import { AppHeader } from '@/components/layout/AppHeader';
 import { TabBar } from '@/components/nav/TabBar';
 import { Toaster } from '@/components/ui/sonner';
 import { activeTab, showsTabBar } from '@/lib/app/nav';
 import { ServicesProvider } from '@/lib/app/services';
-import { AdjustPage } from '@/routes/adjust/AdjustPage';
 import { CapturePage } from '@/routes/capture/CapturePage';
 import { DiagnosticsPage } from '@/routes/diagnostics/DiagnosticsPage';
 import { HomePage } from '@/routes/home/HomePage';
@@ -17,6 +16,11 @@ import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
 import { TargetPage } from '@/routes/target/TargetPage';
+
+function AdjustRedirect() {
+  const { sid = '', pid = '' } = useParams();
+  return <Navigate to={`/sessions/${sid}/photos/${pid}`} replace />;
+}
 
 function ServicesLayout() {
   return (
@@ -62,7 +66,8 @@ const router = createHashRouter([
           { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
           { path: '/sessions/:sid/results', element: <ResultsPage /> },
           { path: '/sessions/:sid/photos/:pid', element: <TargetPage /> },
-          { path: '/sessions/:sid/photos/:pid/adjust', element: <AdjustPage /> },
+          // REV-73: view and adjust are one screen; an old adjust address goes to the target.
+          { path: '/sessions/:sid/photos/:pid/adjust', element: <AdjustRedirect /> },
           // M21 step 4 (REV-42): the session review pass.
           { path: '/review/:sessionId', element: <ReviewPage /> },
           // M22 (REV-47, REV-48): Settings, and its full-screen backing-card capture.

@@ -65,7 +65,7 @@ test('a11y: metadata, results, target detail, adjust', async ({ page }) => {
   await expect(page.getByTestId('target-detail-title')).toBeVisible({ timeout: 30_000 });
   await assertNoSevereViolations(page);
 
-  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}`);
   await expect(page.getByTestId('image-stage')).toBeVisible({ timeout: 30_000 });
   await assertNoSevereViolations(page);
 });

@@ -1,6 +1,5 @@
 import { Link } from 'react-router';
 
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
@@ -63,16 +62,24 @@ export function TargetCard({ sessionId, photo, analysis, onRetry, role = null, o
         )}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        {rejected ? (
-          <PhotoThumbnail photoId={photo.id} alt={`${cardTitle(photo)} photo`} className="block h-auto w-full rounded-md" />
-        ) : (
-          <DiagramSvg
-            photoId={photo.id}
-            variant="cell"
-            label={`${cardTitle(photo)} diagram`}
-            className="[&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
-          />
-        )}
+        {/* REV-73: the picture opens the target (view and adjust are one screen); there are no View / Adjust buttons. */}
+        <Link
+          to={`/sessions/${sessionId}/photos/${photo.id}`}
+          className="block rounded-md focus-visible:outline-2 focus-visible:outline-offset-2"
+          data-testid="view-target"
+          aria-label={`Open ${cardTitle(photo)}`}
+        >
+          {rejected ? (
+            <PhotoThumbnail photoId={photo.id} alt={`${cardTitle(photo)} photo`} className="block h-auto w-full rounded-md" />
+          ) : (
+            <DiagramSvg
+              photoId={photo.id}
+              variant="cell"
+              label={`${cardTitle(photo)} diagram`}
+              className="[&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+            />
+          )}
+        </Link>
         {role !== null && onRoleChange !== undefined && <SightingRoleField role={role} onChange={onRoleChange} />}
         {result !== null && !rejected && <MetricsList result={result} />}
         <StatusChip
@@ -88,19 +95,6 @@ export function TargetCard({ sessionId, photo, analysis, onRetry, role = null, o
           declared={declaredRoundsOrNull(photo.categorization)}
           reconcile={reconcile}
         />
-        <div className="flex gap-2">
-          <Button asChild variant="outline" className="h-11 flex-1">
-            <Link to={`/sessions/${sessionId}/photos/${photo.id}`} data-testid="view-target">
-              View
-            </Link>
-          </Button>
-          {/* M13: the optional correction screen (analysis-pipeline §1, §8). */}
-          <Button asChild variant="outline" className="h-11 flex-1">
-            <Link to={`/sessions/${sessionId}/photos/${photo.id}/adjust`} data-testid="adjust-shots">
-              Adjust shots
-            </Link>
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

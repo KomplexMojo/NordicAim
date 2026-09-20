@@ -17,31 +17,34 @@ async function demoSession(page: Page): Promise<{ sessionId: string; photoId: st
   return { sessionId, photoId: photos[0]!.id };
 }
 
-test('target detail reaches Adjust in one tap, and Save comes back to the target', async ({ page }) => {
-  const { sessionId, photoId } = await demoSession(page);
-
-  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}`);
-  await page.getByTestId('detail-adjust').click();
-  await page.waitForURL(new RegExp(`/photos/${photoId}/adjust`));
-
-  // The way back names where it goes, and Save returns there rather than to the results list.
-  await expect(page.getByTestId('adjust-back')).toHaveText('Back to target');
-  await expect(page.getByTestId('image-stage')).toHaveAttribute('data-ready', 'true');
-  await page.getByTestId('save-adjustments').click();
-  await page.waitForURL(new RegExp(`/photos/${photoId}$`));
-  await expect(page.getByTestId('target-detail-title')).toBeVisible();
-});
-
-test('Adjust opened from the results list still returns to the results list', async ({ page }) => {
+test('the result card picture opens the target, where the photo is editable on the same screen (REV-73)', async ({ page }) => {
   const { sessionId } = await demoSession(page);
 
   await page.goto(`/#/sessions/${sessionId}/results`);
-  await page.getByTestId('adjust-shots').first().click();
-  await page.waitForURL(/\/adjust/);
-  await expect(page.getByTestId('adjust-back')).toHaveText('Back to results');
+  // No View / Adjust buttons: the picture is the link.
+  await expect(page.getByTestId('adjust-shots')).toHaveCount(0);
+  await page.getByTestId('view-target').first().click();
+  await page.waitForURL(/\/photos\/[^/]+$/);
+  await expect(page.getByTestId('target-detail-title')).toBeVisible();
+
+  // The photo section edits in place, and Save stays on the target.
   await expect(page.getByTestId('image-stage')).toHaveAttribute('data-ready', 'true');
+  const url = page.url();
   await page.getByTestId('save-adjustments').click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
+  await expect(page).toHaveURL(url);
+  await expect(page.getByTestId('target-detail-title')).toBeVisible();
+
+  // The swipe (wipe) comparison is kept beside it.
+  await page.getByTestId('photo-view-compare').click();
+  await expect(page.getByTestId('compare-slider')).toBeVisible();
+  await page.getByTestId('photo-view-edit').click();
+  await expect(page.getByTestId('image-stage')).toBeVisible();
+});
+
+test('the old adjust address goes to the target screen', async ({ page }) => {
+  const { sessionId, photoId } = await demoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/photos/${photoId}/adjust`);
+  await expect(page).toHaveURL(new RegExp(`/photos/${photoId}$`));
 });
 
 test('adding more photos is one tap from results, and the session parent is one tap up', async ({ page }) => {

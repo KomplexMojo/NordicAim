@@ -21,8 +21,8 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |
 | `#/sessions/:sid/metadata` | **Step 2: add metadata** | M09 |
 | `#/sessions/:sid/results` | **Step 3: receive analysis** (summary image + target cards) | M12, M14 |
-| `#/sessions/:sid/photos/:pid` | Target detail (full diagram + all metrics) | M12 |
-| `#/sessions/:sid/photos/:pid/adjust` | Optional: adjust alignment and shots | M13 |
+| `#/sessions/:sid/photos/:pid` | Target: full diagram, all metrics, and the photo section — **Edit shots** (the M13 editor in place, Save / Re-analyze) or **Compare** (the wipe, M17) (REV-73) | M12, M13 |
+| `#/sessions/:sid/photos/:pid/adjust` | Redirects to the target screen (REV-73): viewing and adjusting are one screen | M13 |
 | `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with Adjust embedded | M21 |
 | `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |
 | `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
@@ -59,7 +59,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
   - key metrics (group size mm · MOA · MRAD; MPI offset)
   - a **rejected** target (`too-many-holes`) shows the photo and its reason instead of a diagram, headline and metrics
   - status chip plus reason messages (§4)
-  - buttons **View** (target detail) and **Adjust shots**.
+  - no buttons (REV-73): the cell diagram is the link to the target screen, where the photo is editable in place.
 - While a target is processing, its card shows a spinner with the current stage.
 
 ## 2. Pipeline stages (per photo)
