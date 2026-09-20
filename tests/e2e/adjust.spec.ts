@@ -141,8 +141,16 @@ async function tapImagePoint(
     await page.waitForTimeout(150);
   }
 
-  const g = await stageGeometry(page);
-  const css = toCss(g, target);
+  let g = await stageGeometry(page);
+  let css = toCss(g, target);
+  // The tab bar is fixed over the bottom of the viewport: bring the point clear of it.
+  const clearBottom = (page.viewportSize()?.height ?? 700) - 90;
+  if (css.y > clearBottom) {
+    await page.evaluate((dy) => window.scrollBy(0, dy), css.y - clearBottom + 20);
+    await page.waitForTimeout(150);
+    g = await stageGeometry(page);
+    css = toCss(g, target);
+  }
   expect(onScreen(g, css)).toBe(true);
   expect(nearestShotCss(g, css, others)).toBeGreaterThan(SHOT_HIT_RADIUS_CSS);
   await page.mouse.click(css.x, css.y);

@@ -37,6 +37,7 @@ export interface StageApi {
 type Gesture =
   | { kind: 'pan'; pointerId: number; start: Point; startPan: Point; moved: boolean; suggestionId?: string }
   | { kind: 'shot'; pointerId: number; id: string }
+  | { kind: 'tag'; pointerId: number; id: string; dx: number; dy: number }
   | { kind: 'handle'; pointerId: number; handle: 'centre' | 'radius' }
   | { kind: 'pinch'; startDist: number; startZoom: number; anchorCss: Point; anchorImage: Point };
 
@@ -178,6 +179,38 @@ export function ImageStage(props: ImageStageProps) {
     zoomAround(zoom * factor, centre, toImage(centre));
   }
 
+  function fit() {
+    setZoom(MIN_ZOOM);
+    setPan({ x: 0, y: 0 });
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === '+' || e.key === '=') zoomByButton(ZOOM_STEP);
+    else if (e.key === '-' || e.key === '_') zoomByButton(1 / ZOOM_STEP);
+    else if (e.key === '0') fit();
+    else return;
+    e.preventDefault();
+  }
+
+  // Trackpad pinch (and ctrl + wheel) zooms about the cursor; a plain wheel still scrolls the page.
+  const wheelRef = useRef<(e: WheelEvent) => void>(() => {});
+  useEffect(() => {
+    wheelRef.current = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || base === null) return;
+      e.preventDefault();
+      const rect = containerRef.current?.getBoundingClientRect();
+      const at = { x: e.clientX - (rect?.left ?? 0), y: e.clientY - (rect?.top ?? 0) };
+      zoomAround(zoom * Math.exp(-e.deltaY * 0.01), at, toImage(at));
+    };
+  });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => wheelRef.current(e);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (base === null) return;
     const p = localPoint(e);
@@ -200,6 +233,18 @@ export function ImageStage(props: ImageStageProps) {
     }
 
     const target = e.target as Element;
+    // REV-96: the grab tag. The marker follows the finger with the offset it had when the tag was pressed.
+    const tagEl = mode === 'shots' ? target.closest?.('[data-tag-for]') : null;
+    if (tagEl !== null && tagEl !== undefined) {
+      const id = tagEl.getAttribute('data-tag-for') ?? '';
+      const shot = shots.find((s) => s.id === id);
+      if (shot !== undefined) {
+        const at = toImage(p);
+        const marker = mmToPx(shot, calibration);
+        gesture.current = { kind: 'tag', pointerId: e.pointerId, id, dx: marker.x - at.x, dy: marker.y - at.y };
+        return;
+      }
+    }
     const shotEl = target.closest?.('[data-shot-id]');
     const handleEl = target.closest?.('[data-handle]');
     const suggestionEl = mode === 'shots' ? target.closest?.('[data-suggestion-id]') : null;
@@ -237,6 +282,11 @@ export function ImageStage(props: ImageStageProps) {
       props.onMoveShot(g.id, pxToMm(toImage(p), calibration));
       return;
     }
+    if (g.kind === 'tag') {
+      const at = toImage(p);
+      props.onMoveShot(g.id, pxToMm({ x: at.x + g.dx, y: at.y + g.dy }, calibration));
+      return;
+    }
     if (g.kind === 'handle') {
       const img = toImage(p);
       if (g.handle === 'centre') {
@@ -260,7 +310,7 @@ export function ImageStage(props: ImageStageProps) {
     pointers.current.delete(e.pointerId);
     containerRef.current?.releasePointerCapture?.(e.pointerId);
 
-    if (g !== null && g.kind === 'shot') {
+    if (g !== null && (g.kind === 'shot' || g.kind === 'tag')) {
       // M17 step 1: dropping a shot on the tray removes it; the page decides from the drop point.
       props.onShotDragEnd?.(g.id, { x: e.clientX, y: e.clientY });
     }
@@ -281,6 +331,14 @@ export function ImageStage(props: ImageStageProps) {
         : { kind: 'pan', pointerId: remaining[0], start: remaining[1], startPan: pan, moved: true };
   }
 
+  const visible =
+    base === null || container === null
+      ? null
+      : (() => {
+          const a = toImage({ x: 0, y: 0 });
+          const b = toImage({ x: container.w, y: container.h });
+          return { x0: Math.max(0, a.x), y0: Math.max(0, a.y), x1: Math.min(image.w, b.x), y1: Math.min(image.h, b.y) };
+        })();
   const anchorEdge = mmToPx({ xMm: calibration.anchorDiameterMm / 2, yMm: 0 }, calibration);
   const handleRadius = 16 / scale;
 
@@ -298,6 +356,9 @@ export function ImageStage(props: ImageStageProps) {
         data-zoom={zoom}
         className="relative w-full touch-none select-none overflow-hidden rounded-lg bg-black"
         style={{ aspectRatio: `${image.w} / ${image.h}`, maxHeight: '60vh' }}
+        tabIndex={0}
+        aria-label="Photo of the target. Plus and minus zoom, 0 fits the whole photo."
+        onKeyDown={onKeyDown}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -386,6 +447,7 @@ export function ImageStage(props: ImageStageProps) {
                   holeDiameterMm={holeDiameterMm}
                   mpiMm={mpiMm}
                   interactive={mode === 'shots'}
+                  visible={visible}
                 />
                 {mode === 'alignment' && (
                   <g data-testid="alignment-handles">
@@ -415,30 +477,26 @@ export function ImageStage(props: ImageStageProps) {
             </div>
           </div>
         )}
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          className="h-11 flex-1"
-          data-testid="zoom-out"
-          onClick={() => zoomByButton(1 / ZOOM_STEP)}
-          disabled={zoom <= MIN_ZOOM}
+        {/* REV-96: one zoom control, on the picture. Its own pointer events never reach the stage, so pressing it can never add a shot. */}
+        <div
+          className="absolute right-2 top-2 flex items-center gap-1 rounded-lg bg-black/55 p-1 text-white"
+          data-testid="viewport-control"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
         >
-          Zoom out
-        </Button>
-        <span className="min-w-16 text-center text-sm text-muted-foreground" data-testid="zoom-label">
-          {zoom.toFixed(1)}x
-        </span>
-        <Button
-          variant="outline"
-          className="h-11 flex-1"
-          data-testid="zoom-in"
-          onClick={() => zoomByButton(ZOOM_STEP)}
-          disabled={zoom >= MAX_ZOOM}
-        >
-          Zoom in
-        </Button>
+          <Button variant="ghost" className="size-11 text-lg text-white hover:bg-white/20 hover:text-white" data-testid="zoom-out" aria-label="Zoom out" onClick={() => zoomByButton(1 / ZOOM_STEP)} disabled={zoom <= MIN_ZOOM}>
+            −
+          </Button>
+          <span className="min-w-10 text-center text-xs tabular-nums" data-testid="zoom-label">
+            {zoom.toFixed(1)}x
+          </span>
+          <Button variant="ghost" className="size-11 text-lg text-white hover:bg-white/20 hover:text-white" data-testid="zoom-in" aria-label="Zoom in" onClick={() => zoomByButton(ZOOM_STEP)} disabled={zoom >= MAX_ZOOM}>
+            +
+          </Button>
+          <Button variant="ghost" className="h-11 px-2 text-xs text-white hover:bg-white/20 hover:text-white" data-testid="zoom-fit" aria-label="Fit the whole photo" onClick={fit} disabled={zoom <= MIN_ZOOM && pan.x === 0 && pan.y === 0}>
+            Fit
+          </Button>
+        </div>
       </div>
     </div>
   );

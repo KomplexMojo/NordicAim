@@ -142,6 +142,8 @@
     }
   html {
     @apply font-sans;
+    /* REV-96: no double-tap zoom anywhere; pinch still works. A tap never zooms the page. */
+    touch-action: manipulation;
     }
   /* M15 step 4: a visible focus ring on every keyboard-focused control (contrast checked against `page`/`panel`). */
   :focus-visible {

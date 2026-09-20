@@ -1,6 +1,7 @@
 import type { Shot } from '@/lib/domain/analysis';
 import type { Calibration } from '@/lib/domain/photo';
 import { mmToPx } from '@/lib/geometry/transform';
+import { TAG_RADIUS_CSS, tagOffsetCss } from '@/lib/ui/tag-offset';
 
 /** M13 Pitfalls: "Hit radius for shots: 22 CSS px at the current zoom". */
 export const SHOT_HIT_RADIUS_CSS = 22;
@@ -16,6 +17,8 @@ interface ShotLayerProps {
   mpiMm: { xMm: number; yMm: number } | null;
   /** Shots only accept taps in the Shots mode; the alignment handles own the pointer otherwise. */
   interactive: boolean;
+  /** REV-96: the part of the image on screen, in image px, so the grab tag can flip to stay visible. */
+  visible?: { x0: number; y0: number; x1: number; y1: number } | null;
 }
 
 /** M13 step 1: the shots and the MPI, drawn in image px over the working photo. */
@@ -27,6 +30,7 @@ export function ShotLayer({
   holeDiameterMm,
   mpiMm,
   interactive,
+  visible,
 }: ShotLayerProps) {
   const pxPerMm = calibration.radiusPx / (calibration.anchorDiameterMm / 2);
   const holeRadius = (holeDiameterMm / 2) * pxPerMm;
@@ -72,6 +76,33 @@ export function ShotLayer({
             {interactive && (
               <circle cx={p.x} cy={p.y} r={hitRadius} fill="transparent" style={{ pointerEvents: 'auto' }} />
             )}
+            {interactive && selected && (() => {
+              // REV-96: a grab tag on a leader line, so the finger is clear of the hole being placed.
+              const [dx, dy] = tagOffsetCss(p, scale, visible);
+              const tx = p.x + dx / scale;
+              const ty = p.y + dy / scale;
+              const tr = TAG_RADIUS_CSS / scale;
+              const len = Math.hypot(tx - p.x, ty - p.y);
+              const ux = (tx - p.x) / len;
+              const uy = (ty - p.y) / len;
+              return (
+                <g data-testid="shot-tag" data-tag-for={shot.id}>
+                  <line
+                    x1={p.x + ux * holeRadius}
+                    y1={p.y + uy * holeRadius}
+                    x2={tx - ux * tr}
+                    y2={ty - uy * tr}
+                    stroke="#FACC15"
+                    strokeWidth={2 / scale}
+                  />
+                  <circle cx={tx} cy={ty} r={tr} fill="#FACC15" stroke="#0B1220" strokeWidth={1.5 / scale} style={{ pointerEvents: 'auto' }} />
+                  <g stroke="#0B1220" strokeWidth={2 / scale} strokeLinecap="round">
+                    <line x1={tx - tr * 0.45} y1={ty} x2={tx + tr * 0.45} y2={ty} />
+                    <line x1={tx} y1={ty - tr * 0.45} x2={tx} y2={ty + tr * 0.45} />
+                  </g>
+                </g>
+              );
+            })()}
           </g>
         );
       })}
