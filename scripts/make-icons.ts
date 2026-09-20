@@ -38,7 +38,7 @@ export function targetSvg(size: number, inset: number, rounded = false): string 
     <circle cx="${at(50)}" cy="${at(50)}" r="${len(48)}" fill="${PAGE}" />
     <circle cx="${at(50)}" cy="${at(50)}" r="${len(33)}" fill="#0B1220" />
     <circle cx="${at(50)}" cy="${at(50)}" r="${len(33)}" fill="none" stroke="${ACCENT}" stroke-width="${len(4.5)}" />
-    <circle cx="${at(50)}" cy="${at(50)}" r="${len(25)}" fill="none" stroke="${PAGE}" stroke-width="${len(2.6)}" />
+    <circle cx="${at(50)}" cy="${at(50)}" r="${len(17)}" fill="none" stroke="${PAGE}" stroke-width="${len(2.6)}" />
     ${holes}
   </svg>`;
 }
