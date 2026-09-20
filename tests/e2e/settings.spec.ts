@@ -208,3 +208,14 @@ test('the Glossary starts collapsed and lists MOA with its formula when opened (
   await expect(moa).toContainText('atan');
   await expect(page.locator('[data-testid="glossary-entry"][data-term="MPI"]')).toBeVisible();
 });
+
+test('Settings → Athlete keeps the name and ski club (REV-99)', async ({ page }) => {
+  await page.goto('/#/settings');
+  await page.getByTestId('athlete-name').fill('  Jane   Doe ');
+  await page.getByTestId('athlete-club').fill('Caledonia Nordic Ski Club');
+  await page.getByTestId('athlete-club').blur();
+  await expect(page.getByTestId('athlete-stamp')).toContainText('not set');
+  await page.reload();
+  await expect(page.getByTestId('athlete-name')).toHaveValue('Jane Doe');
+  await expect(page.getByTestId('athlete-club')).toHaveValue('Caledonia Nordic Ski Club');
+});

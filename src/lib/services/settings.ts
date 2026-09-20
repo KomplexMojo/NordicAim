@@ -8,7 +8,10 @@
 
 import type { BackingMode, BackingSheet } from '@/lib/domain/backing';
 import {
+  cleanIdentityText,
   DEFAULT_HOLE_DIAMETER_MM,
+  MAX_ATHLETE_CLUB,
+  MAX_ATHLETE_NAME,
   isValidHoleDiameterMm,
   isValidVisibleHoleDiameterMm,
   type AppSettings,
@@ -107,4 +110,13 @@ export async function setHandedness(ctx: ServiceContext, handedness: Handedness)
   const before = await getSettings(ctx.db);
   const settings = await updateSettings(ctx, (s) => ({ ...s, handedness }));
   return { settings, rescored: before.handedness !== handedness ? await rescoreAll(ctx) : null };
+}
+
+/** REV-99: the athlete's name and ski club, cleaned before they are stored. Re-runs nothing. */
+export async function setAthlete(ctx: ServiceContext, athlete: { name: string; club: string }): Promise<AppSettings> {
+  return updateSettings(ctx, (s) => ({
+    ...s,
+    athleteName: cleanIdentityText(athlete.name, MAX_ATHLETE_NAME),
+    athleteClub: cleanIdentityText(athlete.club, MAX_ATHLETE_CLUB),
+  }));
 }

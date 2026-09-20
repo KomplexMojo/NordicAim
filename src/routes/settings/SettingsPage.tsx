@@ -6,6 +6,7 @@ import { AboutSettings } from '@/components/settings/AboutSettings';
 import { BackingSettings } from '@/components/settings/BackingSettings';
 import { GlossarySettings } from '@/components/settings/GlossarySettings';
 import { BackupSettings } from '@/components/settings/BackupSettings';
+import { AthleteSettings } from '@/components/settings/AthleteSettings';
 import { ShooterSettings } from '@/components/settings/ShooterSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
@@ -19,6 +20,7 @@ import {
   resetHoleDiameterMm,
   setBackingMode,
   setHoleDiameterMm,
+  setAthlete,
   setHandedness,
   setScoringRule,
   setVisibleHoleDiameterMm,
@@ -126,6 +128,11 @@ export function SettingsPage() {
               setCardError(false);
               void save(() => clearBacking(ctx));
             }}
+          />
+          <AthleteSettings
+            name={settings.athleteName}
+            club={settings.athleteClub}
+            onSave={(a) => void save(() => setAthlete(ctx, a))}
           />
           <ShooterSettings
             handedness={settings.handedness}

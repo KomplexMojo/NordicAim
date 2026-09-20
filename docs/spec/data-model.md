@@ -218,6 +218,9 @@ export const AppSettings = z.object({
   backing: BackingSheet.nullable(),
   // REV-56: how a hole is scored (`geometry-scoring.md` §3). Both default when absent, so older rows read back.
   scoringRule: z.enum(['gauge', 'centre', 'visible']).default('gauge'),
+  handedness: z.enum(['right', 'left']).default('right'), // REV-88
+  athleteName: z.string().max(40).default(''), // REV-99: Settings → Athlete; free text, trimmed
+  athleteClub: z.string().max(60).default(''), // REV-99: the ski club
   visibleHoleDiameterMm: z.number().min(2).max(5.6).default(4.5), // provisional
   // REV-58: which diagram renderer last drew every stored diagram (`rendering-composite.md` §6). Behind the code's
   // DIAGRAM_RENDERER_VERSION at app start means every finished analysis goes back to Stage B once.

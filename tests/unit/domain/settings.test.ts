@@ -43,6 +43,8 @@ describe('defaultAppSettings', () => {
       // REV-56 (data-model §5): gauge touch is today's rule, so the default changes no score; 4.5 mm is provisional.
       scoringRule: 'gauge',
       handedness: 'right',
+      athleteName: '',
+      athleteClub: '',
       visibleHoleDiameterMm: 4.5,
       // REV-58: 0 = no diagram renderer version recorded yet, so the first launch redraws stored diagrams once.
       diagramRendererVersion: 0,
@@ -103,5 +105,21 @@ describe('backingInputFromSettings (backing-sheet.md §5, REV-48)', () => {
       colour: ORANGE,
     });
     expect(backingInputFromSettings(defaultAppSettings())).toEqual({ mode: 'auto', colour: null });
+  });
+});
+
+describe('athlete identity (REV-99)', () => {
+  it('trims, collapses spaces and cuts to the limit', async () => {
+    const { cleanIdentityText } = await import('@/lib/domain/settings');
+    expect(cleanIdentityText('  Jane   Doe ', 40)).toBe('Jane Doe');
+    expect(cleanIdentityText('abcdefghij', 4)).toBe('abcd');
+  });
+
+  it('an older row without them reads back empty', () => {
+    const { athleteName, athleteClub, ...older } = defaultAppSettings();
+    void athleteName;
+    void athleteClub;
+    const parsed = AppSettings.parse(older);
+    expect([parsed.athleteName, parsed.athleteClub]).toEqual(['', '']);
   });
 });

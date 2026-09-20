@@ -35,6 +35,15 @@ export function isValidVisibleHoleDiameterMm(mm: number): boolean {
   return Number.isFinite(mm) && mm >= MIN_VISIBLE_HOLE_DIAMETER_MM && mm <= MAX_VISIBLE_HOLE_DIAMETER_MM;
 }
 
+/** REV-99: who the athlete is, for the image footer once the provenance stamp exists (#41). Free text, trimmed. */
+export const MAX_ATHLETE_NAME = 40;
+export const MAX_ATHLETE_CLUB = 60;
+
+/** Trims, collapses runs of spaces and cuts to `max` characters. */
+export function cleanIdentityText(raw: string, max: number): string {
+  return raw.replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
 export const AppSettings = z.object({
   schemaVersion: z.literal(1),
   key: z.literal('app'),
@@ -48,6 +57,9 @@ export const AppSettings = z.object({
   // REV-56 (geometry-scoring.md §3): how a hole is scored. Both default when absent so older rows read back.
   scoringRule: ScoringRule.default(DEFAULT_SCORING_RULE),
   handedness: Handedness.default(DEFAULT_HANDEDNESS),
+  // REV-99: the athlete's name and ski club. Both default to empty so older rows read back.
+  athleteName: z.string().max(MAX_ATHLETE_NAME).default(''),
+  athleteClub: z.string().max(MAX_ATHLETE_CLUB).default(''),
   visibleHoleDiameterMm: z
     .number()
     .min(MIN_VISIBLE_HOLE_DIAMETER_MM)
@@ -84,6 +96,8 @@ export function defaultAppSettings(): AppSettings {
     backing: null,
     scoringRule: DEFAULT_SCORING_RULE,
     handedness: DEFAULT_HANDEDNESS,
+    athleteName: '',
+    athleteClub: '',
     visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
     diagramRendererVersion: 0,
     lastBackupAt: null,
