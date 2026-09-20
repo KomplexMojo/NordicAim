@@ -1,7 +1,7 @@
-import { BiathlonSession, upgradeSession } from '@/lib/domain/session';
+import { BiathlonSession, repairSession, upgradeSession } from '@/lib/domain/session';
 
 import type { AppDb, AppTx } from './db';
-import { CorruptRecordError } from './errors';
+import { CorruptRecordError, UnwritableRecordError } from './errors';
 
 type Executor = AppDb | AppTx;
 
@@ -15,7 +15,7 @@ function idOf(raw: unknown): string {
 
 /** Schema-1 and schema-2 records are upgraded to schema 3 on read (backing-sheet.md §3a step 3). */
 function parse(id: string, raw: unknown): BiathlonSession {
-  const parsed = BiathlonSession.safeParse(upgradeSession(raw));
+  const parsed = BiathlonSession.safeParse(repairSession(upgradeSession(raw)));
   if (!parsed.success) throw new CorruptRecordError('sessions', id, parsed.error);
   return parsed.data;
 }
@@ -26,7 +26,14 @@ export async function getSessionRecord(dbOrTx: Executor, id: string): Promise<Bi
   return parse(id, raw);
 }
 
+/**
+ * Never write a record this module could not read back. A blank name slipped through once and made the
+ * session — and so the whole app — unreadable (owner, 2026-09-19); the schema is the same on both sides,
+ * so the write is the place to catch it.
+ */
 export async function putSessionRecord(dbOrTx: Executor, session: BiathlonSession): Promise<void> {
+  const checked = BiathlonSession.safeParse(session);
+  if (!checked.success) throw new UnwritableRecordError('sessions', session.id, checked.error);
   if (isTx(dbOrTx)) await dbOrTx.objectStore('sessions').put(session);
   else await dbOrTx.put('sessions', session);
 }
@@ -60,7 +67,7 @@ export async function listSessionRecordsWithProblems(
   const unreadable: UnreadableRecord[] = [];
   for (const raw of raws) {
     const id = idOf(raw);
-    const parsed = BiathlonSession.safeParse(upgradeSession(raw));
+    const parsed = BiathlonSession.safeParse(repairSession(upgradeSession(raw)));
     if (parsed.success) sessions.push(parsed.data);
     else unreadable.push({ id, reason: new CorruptRecordError('sessions', id, parsed.error).message });
   }

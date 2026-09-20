@@ -86,7 +86,8 @@ export async function updateSession(
   if (session === null) throw new SessionNotFoundError(sessionId);
   const updated: BiathlonSession = {
     ...session,
-    name: input.name ?? session.name,
+    // A blank name is a field being retyped, not a rename: keep the current one (owner, 2026-09-19).
+    name: input.name?.trim() ? input.name.trim() : session.name,
     sessionDate: input.sessionDate ?? session.sessionDate,
     notes: input.notes ?? session.notes,
     updatedAt: ctx.now().toISOString(),

@@ -69,6 +69,19 @@ export type BiathlonSession = z.infer<typeof BiathlonSession>;
  * store migration's job (`migrateBackingToSettings`), which runs before anything reads a session.
  * Anything else (including a current record) is returned unchanged for the schema to judge.
  */
+export function repairSession(raw: unknown): unknown {
+  if (raw === null || typeof raw !== 'object') return raw;
+  const record = raw as Record<string, unknown>;
+  // A blank name fails `min(1)`, which made the whole record unreadable and emptied the app (owner,
+  // 2026-09-19: the metadata screen's auto-save stored "" while the name field was being retyped). The
+  // record is otherwise perfectly good, so it gets the same default name `createSession` uses.
+  if (typeof record.name === 'string' && record.name.trim() === '') {
+    const date = typeof record.sessionDate === 'string' ? record.sessionDate : 'recovered';
+    return { ...record, name: `Session ${date}` };
+  }
+  return raw;
+}
+
 export function upgradeSession(raw: unknown): unknown {
   const v1 = BiathlonSessionV1.safeParse(raw);
   if (v1.success) return { ...v1.data, schemaVersion: 3 };

@@ -25,3 +25,11 @@ export class CorruptRecordError extends Error {
     this.name = 'CorruptRecordError';
   }
 }
+
+/** Refusing to store a record the schema would reject on the way back in (see `putSessionRecord`). */
+export class UnwritableRecordError extends Error {
+  constructor(store: string, key: string, error?: ZodError) {
+    super(`Refused to save an unreadable record in store "${store}" for key "${key}"${describe(error)}`);
+    this.name = 'UnwritableRecordError';
+  }
+}
