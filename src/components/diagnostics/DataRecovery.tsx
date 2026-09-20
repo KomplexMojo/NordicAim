@@ -1,3 +1,5 @@
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
+import { dataLabel } from '@/lib/ui/panel-labels';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -58,10 +60,14 @@ export function DataRecovery() {
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border p-4" aria-labelledby="diag-data-title">
-      <h2 id="diag-data-title" className="text-base font-semibold">
-        Your data
-      </h2>
+    <section className="rounded-lg border px-4 py-1" aria-label="Your data">
+      <CollapsiblePanel
+        panelId="diag-data"
+        title="Your data"
+        summary={report === undefined ? undefined : dataLabel(report)}
+        defaultOpen={failed !== null || (report?.unreadable.length ?? 0) > 0}
+      >
+      <div className="flex flex-col gap-3 pb-3">
 
       {failed !== null ? (
         <p className="text-sm" data-testid="data-failed">
@@ -108,6 +114,8 @@ export function DataRecovery() {
         The export holds every session, photo record and analysis — including unreadable ones, exactly as stored — but not
         the photos themselves. It never leaves your phone unless you share the file.
       </p>
+      </div>
+      </CollapsiblePanel>
     </section>
   );
 }

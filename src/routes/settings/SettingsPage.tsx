@@ -128,12 +128,13 @@ export function SettingsPage() {
             visibleHoleDiameterMm={settings.visibleHoleDiameterMm}
             onRuleChange={(rule) => void saveScoring(() => setScoringRule(ctx, rule), { scoringRule: rule })}
             onVisibleSizeChange={(mm) => void saveScoring(() => setVisibleHoleDiameterMm(ctx, mm), { visibleHoleDiameterMm: mm })}
-          />
-          <HoleSizeSettings
+          >
+            <HoleSizeSettings
             holeDiameterMm={settings.profileOverrides.holeDiameterMm}
             onChange={(mm) => void save(() => setHoleDiameterMm(ctx, mm))}
             onReset={() => void save(() => resetHoleDiameterMm(ctx))}
           />
+          </ScoringSettings>
         </>
       )}
       <AboutSettings />

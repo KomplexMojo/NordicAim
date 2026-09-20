@@ -1,5 +1,7 @@
 import type { AnalysisResult, MpiOffset, SubsetResult } from '@/lib/domain/analysis';
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { formatAngular, formatMm } from '@/lib/scoring/format';
+import { metricsLabel } from '@/lib/ui/panel-labels';
 
 interface MetricsListProps {
   result: AnalysisResult;
@@ -35,6 +37,7 @@ function subsetLine(subset: SubsetResult): string {
  * definite headline. */
 export function MetricsList({ result }: MetricsListProps) {
   return (
+    <CollapsiblePanel panelId="metrics" title="Group details" summary={metricsLabel(result)} defaultOpen>
     <ul className="flex flex-col gap-1 text-sm" data-testid="metrics-list">
       <li data-metric="group-size">{groupSizeLine(result.all)}</li>
       <li data-metric="mpi-offset">MPI offset: {mpiOffsetText(result.all.mpiOffset)}</li>
@@ -45,5 +48,6 @@ export function MetricsList({ result }: MetricsListProps) {
           </li>
         ))}
     </ul>
+    </CollapsiblePanel>
   );
 }

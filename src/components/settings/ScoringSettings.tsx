@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,8 @@ interface ScoringSettingsProps {
   visibleHoleDiameterMm: number;
   onRuleChange(next: ScoringRule): void;
   onVisibleSizeChange(mm: number): void;
+  /** The physical hole diameter control, shown between the rules and the visible size. */
+  children?: ReactNode;
 }
 
 /** One line each: what the rule does, in words a shooter uses (REV-56). */
@@ -42,7 +44,7 @@ const RULES: ReadonlyArray<{ value: ScoringRule; label: string; blurb: string }>
  * session, **including past ones** — it changes how the same shots are read, so changing it re-scores
  * everything stored. Shots and alignment are never touched.
  */
-export function ScoringSettings({ scoringRule, visibleHoleDiameterMm, onRuleChange, onVisibleSizeChange }: ScoringSettingsProps) {
+export function ScoringSettings({ scoringRule, visibleHoleDiameterMm, onRuleChange, onVisibleSizeChange, children }: ScoringSettingsProps) {
   const [draft, setDraft] = useState<{ for: number; text: string }>({
     for: visibleHoleDiameterMm,
     text: String(visibleHoleDiameterMm),
@@ -60,7 +62,7 @@ export function ScoringSettings({ scoringRule, visibleHoleDiameterMm, onRuleChan
   return (
     <section className="flex flex-col gap-3 rounded-lg border p-4" aria-labelledby="settings-scoring-title">
       <h2 id="settings-scoring-title" className="text-base font-semibold">
-        Scoring
+        Scoring and hole size
       </h2>
 
       <fieldset className="flex flex-col gap-2">
@@ -91,6 +93,8 @@ export function ScoringSettings({ scoringRule, visibleHoleDiameterMm, onRuleChan
           );
         })}
       </fieldset>
+
+      {children}
 
       {scoringRule === 'visible' && (
         <div className="flex flex-col gap-1">

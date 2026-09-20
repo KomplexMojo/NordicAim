@@ -34,12 +34,9 @@ export function HoleSizeSettings({ holeDiameterMm, onChange, onReset }: HoleSize
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border p-4" aria-labelledby="settings-hole-title">
-      <h2 id="settings-hole-title" className="text-base font-semibold">
-        Hole size
-      </h2>
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <Label htmlFor="hole-diameter">Hole diameter (mm)</Label>
+        <Label htmlFor="hole-diameter">Hole diameter (mm), used to find holes and for gauge touch</Label>
         <div className="flex gap-2">
           <Input
             id="hole-diameter"
@@ -76,10 +73,10 @@ export function HoleSizeSettings({ holeDiameterMm, onChange, onReset }: HoleSize
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            .22 LR is {DEFAULT_HOLE_DIAMETER_MM} mm. Used to find and score holes in photos analyzed from now on.
+            .22 LR is {DEFAULT_HOLE_DIAMETER_MM} mm. Applies to photos analyzed from now on.
           </p>
         )}
       </div>
-    </section>
+    </div>
   );
 }

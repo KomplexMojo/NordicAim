@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { DataRecovery } from '@/components/diagnostics/DataRecovery';
 import { Button } from '@/components/ui/button';
+import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
+import { checksLabel } from '@/lib/ui/panel-labels';
 import { runDiagnostics } from '@/lib/diagnostics/checks-browser';
 import { summarizeDiagnostics, type DiagnosticResult } from '@/lib/diagnostics/summarize';
 
@@ -54,6 +56,7 @@ export function DiagnosticsPage() {
           <p className="text-sm text-muted-foreground">
             {summary.pass} pass · {summary.fail} fail · {summary.na} n/a
           </p>
+          <CollapsiblePanel panelId="diag-checks" title="Checks" summary={checksLabel(summary)} defaultOpen={false}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b">
@@ -74,6 +77,7 @@ export function DiagnosticsPage() {
               ))}
             </tbody>
           </table>
+          </CollapsiblePanel>
           <Button type="button" onClick={() => void copyReport()}>
             {copied ? 'Copied!' : 'Copy report'}
           </Button>

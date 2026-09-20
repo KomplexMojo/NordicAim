@@ -42,6 +42,7 @@ test('a11y: home', async ({ page }) => {
 
 test('a11y: diagnostics', async ({ page }) => {
   await page.goto('/#/diagnostics');
+  await page.getByTestId('panel-toggle-diag-checks').click({ timeout: 15000 });
   await expect(page.locator('tr[data-check-id="indexeddb"]')).toBeVisible({ timeout: 15000 });
   await assertNoSevereViolations(page);
 });

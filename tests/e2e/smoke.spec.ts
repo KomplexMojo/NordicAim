@@ -26,6 +26,7 @@ test('home page shows the heading and the Diagnostics tab (REV-47)', async ({ pa
 
 test('diagnostics page runs every check', async ({ page }) => {
   await page.goto('/#/diagnostics');
+  await page.getByTestId('panel-toggle-diag-checks').click({ timeout: 15000 });
 
   for (const id of CHECK_IDS) {
     await expect(page.locator(`tr[data-check-id="${id}"]`)).toBeVisible({ timeout: 15000 });

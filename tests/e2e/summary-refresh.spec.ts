@@ -188,6 +188,7 @@ test('diagnostics: Your data reports what is stored and exports it (owner report
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
   await page.goto('/#/diagnostics');
+  await page.getByTestId('panel-toggle-diag-data').click();
   await expect(page.getByTestId('data-counts')).toContainText('1 session', { timeout: 30_000 });
   await expect(page.getByTestId('data-counts')).toContainText('1 photo');
 
