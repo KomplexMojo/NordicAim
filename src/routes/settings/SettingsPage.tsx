@@ -99,7 +99,7 @@ export function SettingsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-3xl">
       <h1 className="pt-4 text-xl font-semibold">Settings</h1>
       <p className="text-sm text-muted-foreground">These apply to every session.</p>
 

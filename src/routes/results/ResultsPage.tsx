@@ -92,7 +92,7 @@ export function ResultsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-6xl">
       <header className="flex items-center justify-between gap-2">
         {/* The Shooting tab already goes Home; this is the parent of a session (owner, 2026-09-19). */}
         <Link
@@ -113,12 +113,14 @@ export function ResultsPage() {
 
       <BackupReminder />
 
-      <SummaryCard sessionId={sid} sessionName={data.name} leftOut={leftOutOfSummary(data.photos)} />
+      <div className="lg:mx-auto lg:w-full lg:max-w-4xl">
+        <SummaryCard sessionId={sid} sessionName={data.name} leftOut={leftOutOfSummary(data.photos)} />
+      </div>
 
       {data.photos.length === 0 ? (
         <p className="text-sm text-muted-foreground">No targets in this session yet.</p>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 xl:grid-cols-3">
           {data.photos.map((photo) => (
             <TargetCard
               key={photo.id}

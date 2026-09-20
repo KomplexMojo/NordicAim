@@ -41,7 +41,7 @@ export function DiagnosticsPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4">
+    <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4 lg:max-w-5xl">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Diagnostics</h1>
       </div>

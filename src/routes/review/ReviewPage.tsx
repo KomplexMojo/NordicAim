@@ -146,7 +146,7 @@ export function ReviewPage() {
   if (current === undefined) {
     // The final step: what changed, and the way back.
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8" data-testid="review-summary">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl" data-testid="review-summary">
         <header className="flex items-center justify-between gap-2">{resultsLink}</header>
         <h1 className="text-xl font-semibold">Review finished</h1>
         {photos.length === 0 ? (
@@ -196,7 +196,7 @@ export function ReviewPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
       <div className="flex items-center justify-between gap-2">{resultsLink}</div>
       <ReviewStep key={current.id} photo={current} index={index} total={photos.length} onDone={onDone} />
     </main>

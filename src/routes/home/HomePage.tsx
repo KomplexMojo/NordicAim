@@ -18,7 +18,7 @@ export function HomePage() {
   const recent = (sessions ?? []).slice(0, RECENT_COUNT);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 p-6">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 p-6 lg:max-w-3xl">
       <h1 className="pt-4 text-center text-2xl font-semibold">Nordic Aim</h1>
 
       <div className="flex justify-center">

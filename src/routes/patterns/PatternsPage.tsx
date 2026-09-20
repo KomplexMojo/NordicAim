@@ -43,7 +43,7 @@ export function PatternsPage() {
   const svg = useMemo(() => renderPatternsSvg({ kind, points: shown, summary }), [kind, shown, summary]);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 lg:max-w-5xl">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 lg:max-w-6xl">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Patterns</h1>
         <Link to="/" className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">

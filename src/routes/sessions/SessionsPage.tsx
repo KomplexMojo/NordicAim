@@ -16,7 +16,7 @@ export function SessionsPage() {
   const unreadable = value?.unreadable ?? [];
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-6">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-6 lg:max-w-3xl">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Sessions</h1>
       </header>

@@ -241,7 +241,7 @@ export function TargetPage() {
   const position = photo.categorization.position;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
       <header className="flex items-center justify-between gap-2">
         <Link
           to={`/sessions/${sid}/results`}
@@ -302,7 +302,7 @@ export function TargetPage() {
           className={
             zoomed
               ? 'w-[1200px] max-w-none [&>svg]:block [&>svg]:h-auto [&>svg]:w-full'
-              : '[&>svg]:block [&>svg]:h-auto [&>svg]:w-full'
+              : '[&>svg]:mx-auto [&>svg]:block [&>svg]:h-auto [&>svg]:w-full lg:[&>svg]:max-h-[calc(100dvh-8rem)] lg:[&>svg]:w-auto'
           }
         />
       </div>
