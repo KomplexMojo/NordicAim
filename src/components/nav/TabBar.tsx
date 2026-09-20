@@ -5,15 +5,12 @@ import { Link } from 'react-router';
 import { MAIN_TABS, type MainTab } from '@/lib/app/nav';
 import { cn } from '@/lib/utils';
 
-/** REV-111: the Sessions tab's icon: a crosshair with a camera at its lower right (shoot it, photograph it). */
+/** REV-111/112: the Sessions tab's icon: a camera. */
 function SessionsIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <circle cx="9.5" cy="9.5" r="6" />
-      <path d="M9.5 1.5v3M9.5 14.5v3M1.5 9.5h3M14.5 9.5h3" />
-      <rect x="12" y="13" width="11" height="8.5" rx="1.6" className="fill-background" />
-      <path d="M15 13l1-1.8h4L21 13" className="fill-background" />
-      <circle cx="17.5" cy="17.3" r="2.3" />
+      <path d="M3 8h4l1.6-2.5h6.8L17 8h4v12H3z" />
+      <circle cx="12" cy="13.5" r="3.8" />
     </svg>
   );
 }
