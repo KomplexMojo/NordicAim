@@ -284,6 +284,8 @@ export function ImageStage(props: ImageStageProps) {
   const anchorEdge = mmToPx({ xMm: calibration.anchorDiameterMm / 2, yMm: 0 }, calibration);
   const handleRadius = 16 / scale;
 
+  // Aligning needs the rings in full view, so the slider governs them only while placing shots.
+  const blended = diagram != null && mode === 'shots';
   return (
     <div className="flex flex-col gap-2">
       <div
@@ -338,11 +340,15 @@ export function ImageStage(props: ImageStageProps) {
                   )}
                 </>
               )}
+              {/* REV-95: the reference rings follow the Diagram ↔ Photo slider like the diagram layer does; the shot markers and the
+                  alignment handles below are editing controls and always stay. */}
               <svg
                 viewBox={`0 0 ${image.w} ${image.h}`}
-                className="absolute inset-0 size-full"
-                style={{ pointerEvents: 'none' }}
-                data-testid="stage-overlay"
+                className="pointer-events-none absolute inset-0 size-full"
+                data-testid="stage-rings"
+                data-clip-path={blended ? diagram.clipPath : 'none'}
+                data-opacity={blended ? diagram.opacity : 1}
+                style={blended ? { clipPath: diagram.clipPath, opacity: diagram.opacity } : undefined}
               >
                 {rings.map((ring) => (
                   <polygon
@@ -357,6 +363,13 @@ export function ImageStage(props: ImageStageProps) {
                     opacity={0.85}
                   />
                 ))}
+              </svg>
+              <svg
+                viewBox={`0 0 ${image.w} ${image.h}`}
+                className="absolute inset-0 size-full"
+                style={{ pointerEvents: 'none' }}
+                data-testid="stage-overlay"
+              >
                 {/* M21 step 2: under the shots, so a real shot always wins the tap. */}
                 <SuggestionLayer
                   suggestions={suggestions}

@@ -77,10 +77,14 @@ test('target: the swipe slider wipes the diagram across the photo (M17 step 3, R
   await expect(swipe).toHaveValue('1');
   await expect(page.getByTestId('fade-range')).toHaveValue('0');
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
+  // REV-95: the reference rings drawn by the editor follow the slider too, so the photo end shows the bare photo.
+  const rings = page.getByTestId('stage-rings');
+  await expect(rings).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
   await swipe.focus();
   await swipe.press('Home');
   await expect(swipe).toHaveValue('0');
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
+  await expect(rings).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
 
   // It is a real <input type="range">, so the keyboard drives it (M17 step 3).
   await swipe.press('End');
@@ -114,6 +118,7 @@ test('target: the fade slider drives the opacity, beside the swipe slider (REV-3
   // Fade leaves the swipe clip alone.
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
   expect(await overlay.evaluate((el) => getComputedStyle(el).opacity)).toBe('0');
+  await expect(page.getByTestId('stage-rings')).toHaveAttribute('data-opacity', '0');
 });
 
 test('target: the rest of the detail screen is unchanged (M12 step 4)', async ({ page }) => {
