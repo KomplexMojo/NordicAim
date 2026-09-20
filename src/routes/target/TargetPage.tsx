@@ -249,16 +249,6 @@ export function TargetPage() {
         >
           Back to results
         </Link>
-        {/*
-          The screen where a wrong shot is noticed is the screen that should fix it: from here it used to
-          be back to results, find the card, then Adjust (owner, 2026-09-19). `from=detail` brings Save
-          back here rather than dumping the user on the results list.
-        */}
-        <Button asChild className="h-11">
-          <Link to={`/sessions/${sid}/photos/${pid}/adjust?from=detail`} data-testid="detail-adjust">
-            Adjust shots
-          </Link>
-        </Button>
       </header>
 
       <h1 className="text-xl font-semibold" data-testid="target-detail-title">
@@ -306,9 +296,21 @@ export function TargetPage() {
           }
         />
       </div>
-      <Button variant="outline" className="h-11" data-testid="zoom-toggle" onClick={() => setZoomed(!zoomed)}>
-        {zoomed ? 'Fit to width' : 'Zoom in'}
-      </Button>
+      {/*
+        The screen where a wrong shot is noticed is the screen that should fix it (owner, 2026-09-19), and the control sits
+        right under the target it corrects, not at the top of the screen (owner, 2026-09-20, REV-70). `from=detail` brings
+        Save back here rather than dumping the user on the results list.
+      */}
+      <div className="flex gap-2">
+        <Button variant="outline" className="h-11 flex-1" data-testid="zoom-toggle" onClick={() => setZoomed(!zoomed)}>
+          {zoomed ? 'Fit to width' : 'Zoom in'}
+        </Button>
+        <Button asChild className="h-11 flex-1">
+          <Link to={`/sessions/${sid}/photos/${pid}/adjust?from=detail`} data-testid="detail-adjust">
+            Adjust shots
+          </Link>
+        </Button>
+      </div>
 
       {result !== null && (
         <div className="flex flex-col gap-4">
