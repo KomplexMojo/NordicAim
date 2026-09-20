@@ -3,19 +3,9 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { SlideToConfirm } from '@/components/ui/slide-to-confirm';
 import { useServices } from '@/lib/app/services';
 import { deleteSession, previewSessionDeletion, type SessionDeletionReport } from '@/lib/services/sessions';
-
-/** What the owner is asked to type: the session's name, or `DELETE` when it is blank, damaged or long. */
-const MAX_TYPED_NAME = 40;
-export const FALLBACK_PHRASE = 'DELETE';
-
-export function confirmPhrase(report: Pick<SessionDeletionReport, 'name'>): string {
-  const name = report.name;
-  return name !== null && name.trim().length > 0 && name.length <= MAX_TYPED_NAME ? name : FALLBACK_PHRASE;
-}
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -35,7 +25,6 @@ export function DeleteSessionDialog({ sessionId, onClose }: DeleteSessionDialogP
   const { ctx } = useServices();
   const [report, setReport] = useState<SessionDeletionReport | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -58,11 +47,10 @@ export function DeleteSessionDialog({ sessionId, onClose }: DeleteSessionDialogP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx, sessionId]);
 
-  const phrase = report === null ? FALLBACK_PHRASE : confirmPhrase(report);
   const label = report?.name?.trim() ? `"${report.name}"` : 'this session';
 
   async function onConfirm() {
-    if (sessionId === null || report === null || typed !== phrase) return;
+    if (sessionId === null || report === null) return;
     setBusy(true);
     try {
       const removed = await deleteSession(ctx, sessionId);
@@ -128,37 +116,15 @@ export function DeleteSessionDialog({ sessionId, onClose }: DeleteSessionDialogP
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Type to confirm</DialogTitle>
+              <DialogTitle>Slide to delete</DialogTitle>
               <DialogDescription>
-                To delete {label} permanently, type <strong data-testid="delete-phrase">{phrase}</strong> below.
+                To delete {label} permanently, put your finger on the handle, slide it to the trash can and hold it there.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex flex-col gap-1">
-              <Label htmlFor="delete-phrase-input">Type {phrase} exactly</Label>
-              <Input
-                id="delete-phrase-input"
-                data-testid="delete-phrase-input"
-                className="h-11"
-                autoComplete="off"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                value={typed}
-                onChange={(e) => setTyped(e.currentTarget.value)}
-              />
-            </div>
+            <SlideToConfirm label="Slide to the trash and hold" disabled={busy} onConfirm={() => void onConfirm()} />
             <DialogFooter>
               <Button variant="outline" className="h-11" onClick={() => setStep(2)} disabled={busy} data-testid="delete-back-3">
                 Back
-              </Button>
-              <Button
-                variant="destructive"
-                className="h-11"
-                disabled={typed !== phrase || busy}
-                onClick={() => void onConfirm()}
-                data-testid="delete-confirm"
-              >
-                {busy ? 'Deleting…' : 'Delete permanently'}
               </Button>
             </DialogFooter>
           </>

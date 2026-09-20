@@ -46,16 +46,46 @@ test('a session is deleted only after three steps and its exact name; cancelling
   await page.getByTestId('delete-continue-1').click();
   await page.getByTestId('delete-continue-2').click();
   await expect(dialog).toHaveAttribute('data-step', '3');
-  const confirm = page.getByTestId('delete-confirm');
-  const phrase = (await page.getByTestId('delete-phrase').textContent())!;
-  await expect(confirm).toBeDisabled();
-  await page.getByTestId('delete-phrase-input').fill(`${phrase} `);
-  await expect(confirm).toBeDisabled();
-  await page.getByTestId('delete-phrase-input').fill(phrase.toLowerCase() === phrase ? phrase.toUpperCase() : phrase.toLowerCase());
-  await expect(confirm).toBeDisabled();
-  await page.getByTestId('delete-phrase-input').fill(phrase);
-  await expect(confirm).toBeEnabled();
-  await confirm.click();
+  const track = page.getByTestId('slide-to-delete');
+  const handle = page.getByTestId('slide-handle');
+  await expect(track).toHaveAttribute('data-state', 'idle');
+
+  // A tap does nothing.
+  await handle.click();
+  await expect(track).toHaveAttribute('data-state', 'idle');
+
+  // Sliding all the way but letting go before the hold is up cancels: the handle springs back and nothing is deleted.
+  const drag = async (holdMs: number, release: boolean) => {
+    const h = (await handle.boundingBox())!;
+    const t = (await track.boundingBox())!;
+    const y = h.y + h.height / 2;
+    await page.mouse.move(h.x + h.width / 2, y);
+    await page.mouse.down();
+    await page.mouse.move(t.x + t.width - 10, y, { steps: 12 });
+    await page.waitForTimeout(holdMs);
+    if (release) await page.mouse.up();
+  };
+  await drag(300, true);
+  await expect(track).toHaveAttribute('data-state', 'idle');
+  await expect(dialog).toBeVisible();
+
+  // Sliding only part of the way and holding does nothing either.
+  {
+    const h = (await handle.boundingBox())!;
+    const t = (await track.boundingBox())!;
+    const y = h.y + h.height / 2;
+    await page.mouse.move(h.x + h.width / 2, y);
+    await page.mouse.down();
+    await page.mouse.move(t.x + t.width / 2, y, { steps: 8 });
+    await page.waitForTimeout(1300);
+    await expect(track).not.toHaveAttribute('data-state', 'done');
+    await page.mouse.up();
+  }
+  await expect(dialog).toBeVisible();
+
+  // Slide to the trash and hold: only then is it deleted.
+  await drag(1300, false);
+  await page.mouse.up();
 
   await expect(dialog).toHaveCount(0, { timeout: 30_000 });
   await expect(doomedDelete).toHaveCount(0);
