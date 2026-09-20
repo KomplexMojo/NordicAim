@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { collectPatterns, filterByRange, type PatternPoint, type PatternSource } from '@/lib/patterns/collect';
 import { summarizePatterns } from '@/lib/patterns/summarize';
-import { PATTERNS_SIZE, patternsScale, renderPatternsSvg } from '@/lib/render/patterns';
+import { PATTERNS_SIZE, patternsScale, patternsSizeFactor, renderPatternsSvg } from '@/lib/render/patterns';
 
 type Unit = { xMm: number; yMm: number; position: 'prone' | 'standing'; ring: number | null; zone: 'clean' | 'hit' | 'miss' | null };
 
@@ -152,18 +152,27 @@ describe('renderPatternsSvg (patterns.md §5)', () => {
 
   it('draws one dot per point and is deterministic', () => {
     const points = [pt(1, 1), pt(-3, 2), pt(0, -5)];
-    const input = { kind: 'precision' as const, points, summary: summarizePatterns(points, 'precision') };
+    const input = { kind: 'precision' as const, points, summary: summarizePatterns(points, 'precision'), factor: 1 };
     const svg = renderPatternsSvg(input);
     expect(svg.match(/class="pattern-dot"/g)).toHaveLength(3);
     expect(svg).toContain(`viewBox="0 0 ${PATTERNS_SIZE} ${PATTERNS_SIZE}"`);
     expect(renderPatternsSvg(input)).toBe(svg);
   });
 
-  it('zooms out for a stray, never below half the base scale, and shows it', () => {
-    expect(patternsScale('precision', [pt(0, 0)])).toBe(6.35);
-    const stray = patternsScale('precision', [pt(150, 0)]);
-    expect(stray).toBeLessThan(6.35);
-    expect(stray).toBeGreaterThanOrEqual(6.35 / 2);
-    expect(patternsScale('precision', [pt(5000, 0)])).toBe(6.35 / 2);
+  it('draws both targets with the same outer diameter, and one shared zoom-out keeps a stray on the paper in every view', () => {
+    const halo = { precision: 82.7, sighting: 62.5 };
+    expect(patternsScale('precision', 1) * halo.precision).toBeCloseTo(patternsScale('sighting', 1) * halo.sighting, 6);
+
+    expect(patternsSizeFactor([{ kind: 'precision', points: [pt(0, 0)] }, { kind: 'sighting', points: [pt(1, 1)] }])).toBe(1);
+    const shared = patternsSizeFactor([
+      { kind: 'precision', points: [pt(0, 0)] },
+      { kind: 'sighting', points: [pt(120, 0)] }, // a stray on the small sighting target only
+    ]);
+    expect(shared).toBeLessThan(1);
+    expect(shared).toBeGreaterThanOrEqual(0.5);
+    // The same factor is applied to both, so the two halos stay the same size.
+    expect(patternsScale('precision', shared) * halo.precision).toBeCloseTo(patternsScale('sighting', shared) * halo.sighting, 6);
+    expect(patternsScale('sighting', shared) * 120).toBeLessThanOrEqual(patternsScale('sighting', 1) * halo.sighting + 1e-6);
+    expect(patternsSizeFactor([{ kind: 'precision', points: [pt(5000, 0)] }])).toBe(0.5);
   });
 });

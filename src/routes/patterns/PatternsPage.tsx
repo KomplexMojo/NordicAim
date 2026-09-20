@@ -12,7 +12,7 @@ import {
   type PatternView,
 } from '@/lib/patterns/collect';
 import { summarizePatterns, THIN_SHOT_COUNT } from '@/lib/patterns/summarize';
-import { renderPatternsSvg } from '@/lib/render/patterns';
+import { patternsSizeFactor, renderPatternsSvg } from '@/lib/render/patterns';
 import { loadPatterns } from '@/lib/services/patterns';
 import { formatMm } from '@/lib/scoring/format';
 
@@ -40,7 +40,15 @@ export function PatternsPage() {
     [value, view, range],
   );
   const summary = useMemo(() => summarizePatterns(shown, kind), [shown, kind]);
-  const svg = useMemo(() => renderPatternsSvg({ kind, points: shown, summary }), [kind, shown, summary]);
+  // One size for all four views, worked out from every shot ever recorded (patterns.md §5).
+  const factor = useMemo(
+    () =>
+      value === undefined
+        ? 1
+        : patternsSizeFactor(PATTERN_VIEWS.map((v) => ({ kind: v.startsWith('precision') ? ('precision' as const) : ('sighting' as const), points: value.data.points[v] }))),
+    [value],
+  );
+  const svg = useMemo(() => renderPatternsSvg({ kind, points: shown, summary, factor }), [kind, shown, summary, factor]);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 lg:max-w-6xl">

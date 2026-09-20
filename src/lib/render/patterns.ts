@@ -15,24 +15,42 @@ const CENTRE = PATTERNS_SIZE / 2;
 export const DOT_RADIUS_PX = 8;
 export const DOT_OPACITY = 0.6;
 export const DOT_COLOUR = '#FF3B1F';
-const PRECISION_BASE_SCALE = 6.35;
-const SIGHTING_BASE_SCALE = 8;
+// Both printed targets are drawn with the same outer diameter (halo radius 525 px of the 1200 px drawing), so the four views
+// are the same size; one shared zoom-out (`patternsSizeFactor`) keeps every shot on the paper in all of them.
+const HALO_PX = 525;
+const PRECISION_BASE_SCALE = HALO_PX / (PRECISION_TEMPLATE.haloDiameterMm / 2);
+const SIGHTING_BASE_SCALE = HALO_PX / (SIGHTING_TEMPLATE.haloDiameterMm / 2);
+const MIN_FACTOR = 0.5;
 
 export interface PatternsInput {
   kind: 'precision' | 'sighting';
   points: PatternPoint[];
   summary: PatternSummary;
+  /** From `patternsSizeFactor`; 1 draws the halo at full size. */
+  factor: number;
 }
 
-/** The scale the drawing uses: the detail scale, zoomed out so the farthest shot is on the paper (floor 0.5×). */
-export function patternsScale(kind: 'precision' | 'sighting', points: PatternPoint[]): number {
-  return kind === 'precision'
-    ? fitScale(PRECISION_BASE_SCALE, PRECISION_TEMPLATE.haloDiameterMm / 2, points)
-    : fitScale(SIGHTING_BASE_SCALE, SIGHTING_TEMPLATE.haloDiameterMm / 2, points);
+/**
+ * The one zoom-out every view shares: 1 while every shot of every view is inside its printed halo, else small enough that the
+ * farthest shot of any view is on the paper (floor 0.5). Computed from all shots, not the date range, so the size does not jump
+ * when the range or the view changes.
+ */
+export function patternsSizeFactor(views: ReadonlyArray<{ kind: 'precision' | 'sighting'; points: PatternPoint[] }>): number {
+  let factor = 1;
+  for (const { kind, points } of views) {
+    const halo = (kind === 'precision' ? PRECISION_TEMPLATE.haloDiameterMm : SIGHTING_TEMPLATE.haloDiameterMm) / 2;
+    const base = kind === 'precision' ? PRECISION_BASE_SCALE : SIGHTING_BASE_SCALE;
+    factor = Math.min(factor, fitScale(base, halo, points) / base);
+  }
+  return Math.max(MIN_FACTOR, factor);
 }
 
-export function renderPatternsSvg({ kind, points, summary }: PatternsInput): string {
-  const s = patternsScale(kind, points);
+export function patternsScale(kind: 'precision' | 'sighting', factor: number): number {
+  return (kind === 'precision' ? PRECISION_BASE_SCALE : SIGHTING_BASE_SCALE) * factor;
+}
+
+export function renderPatternsSvg({ kind, points, summary, factor }: PatternsInput): string {
+  const s = patternsScale(kind, factor);
   const target = kind === 'precision' ? renderPrecisionTarget(CENTRE, CENTRE, s, s >= 4) : renderSightingTarget(CENTRE, CENTRE, s);
 
   let dots = '';
