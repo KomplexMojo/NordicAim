@@ -59,6 +59,8 @@ production build, in CI too.
 - **Owner step:** repo Settings → Pages → Source: **GitHub Actions**.
 - The Pages build never sets `VITE_FAKE_CAMERA`.
 
+**Update check (REV-101).** `version.json` is a same-origin static file, so it is within the no-network rule; it is not precached. The banner never sends anything.
+
 ## 5. Testing on the iPhone
 
 - Push to `main`, wait for the Pages deploy, then open the URL in Safari and as a Home Screen app.

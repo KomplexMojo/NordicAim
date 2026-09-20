@@ -52,6 +52,17 @@ function buildSha(): string {
   }
 }
 
+/** REV-101 (#43): `version.json` beside index.html, so a running app can tell whether a newer build is deployed (same-origin GET). */
+function emitVersionFile(): Plugin {
+  return {
+    name: 'emit-version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ sha: buildSha(), builtAt: new Date().toISOString() }) });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
@@ -69,6 +80,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     injectCsp(),
+    emitVersionFile(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
@@ -88,6 +100,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,heic,wasm,json,webmanifest}'],
+        // Never cached by the worker: the whole point is to ask the network what is deployed now.
+        globIgnores: ['**/version.json'],
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
       },
     }),

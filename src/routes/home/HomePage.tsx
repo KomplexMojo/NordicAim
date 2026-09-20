@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 
+import { UpdateBanner } from '@/components/UpdateBanner';
+import { BUILD_SHA } from '@/lib/app/build-info';
 import { DeleteSessionDialog } from '@/components/sessions/DeleteSessionDialog';
 import { SessionList } from '@/components/sessions/SessionList';
 import { QuickStartButton } from '@/components/sessions/QuickStartButton';
@@ -24,6 +26,8 @@ export function HomePage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 p-6 lg:max-w-3xl">
       <h1 className="pt-4 text-center text-2xl font-semibold">Nordic Aim</h1>
+
+      <UpdateBanner />
 
       <div className="flex justify-center">
         <QuickStartButton sessions={sessions ?? []} />
@@ -85,7 +89,12 @@ export function HomePage() {
 
       <DeleteSessionDialog key={deleting ?? 'none'} sessionId={deleting} onClose={() => setDeleting(null)} />
 
-      <p className="mt-auto text-center text-xs text-muted-foreground">Results are stored only on this phone.</p>
+      <p className="mt-auto text-center text-xs text-muted-foreground">
+        Results are stored only on this phone. Version{' '}
+        <span className="font-mono" data-testid="app-version">
+          {BUILD_SHA}
+        </span>
+      </p>
     </main>
   );
 }
