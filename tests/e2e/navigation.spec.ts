@@ -66,3 +66,16 @@ test('the tab bar is the only Home link on screens that have it', async ({ page 
     await expect(page.getByTestId('tab-shooting')).toBeVisible();
   }
 });
+
+test('a tab opens its screen at the top, not at the scroll position of the last one (REV-116)', async ({ page }) => {
+  await page.goto('/#/settings');
+  await expect(page.getByTestId('athlete-settings')).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+
+  for (const tab of ['tab-shooting', 'tab-diagnostics', 'tab-settings']) {
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.getByTestId(tab).click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  }
+});

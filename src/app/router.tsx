@@ -1,4 +1,4 @@
-import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation, useParams } from 'react-router';
+import { createHashRouter, Navigate, Outlet, RouterProvider, ScrollRestoration, useLocation, useParams } from 'react-router';
 
 import { AppHeader } from '@/components/layout/AppHeader';
 import { TabBar } from '@/components/nav/TabBar';
@@ -45,6 +45,8 @@ function AppShell() {
         <Outlet />
       </div>
       {withBar && <TabBar active={activeTab(pathname)} />}
+      {/* REV-116: a new screen opens at its top (Back still returns to where you were). */}
+      <ScrollRestoration />
     </>
   );
 }
