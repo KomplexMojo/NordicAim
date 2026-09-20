@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
+import { compareLayerStyle, renderDiagramOverlaySvg, type CompareMode } from '@/lib/render/diagram-overlay';
 import { unplacedRounds } from '@/lib/services/adjust';
 
 import { AlignmentControls } from './AlignmentControls';
@@ -22,7 +23,25 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
   const [mode, setMode] = useState<'shots' | 'alignment'>('shots');
   // M17 step 1: the stage's live transform, so a dragged tray marker lands under the finger.
   const stageApi = useRef<StageApi | null>(null);
+  // REV-78: 0 is the whole diagram and 1 the whole photo (the M17 compare slider, now part of the editor); the photo shows first.
+  const [compareValue, setCompareValue] = useState(1);
+  const [compareMode, setCompareMode] = useState<CompareMode>('wipe');
+  const sliderId = useId();
   const { data, calibration, shots, selectedId, setSelectedId, preview } = draft;
+  const diagram = useMemo(() => {
+    if (!data || calibration === null) return null;
+    const { photo, analysis, holeDiameterMm } = data;
+    const svg = renderDiagramOverlaySvg(
+      preview?.result ?? analysis.computed?.result ?? null,
+      shots,
+      calibration,
+      shotTemplate(photo, analysis.pipeline.templateHint, calibration),
+      photo.working,
+      holeDiameterMm,
+    );
+    const style = compareLayerStyle(compareMode, draft.imageUrl === null ? 0 : compareValue);
+    return { svg, ...style, showHandle: compareMode === 'wipe' && compareValue > 0 && compareValue < 1 };
+  }, [data, calibration, shots, preview, compareMode, compareValue, draft.imageUrl]);
   if (!data || calibration === null) return null;
 
   const { photo, analysis, holeDiameterMm } = data;
@@ -93,12 +112,46 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
             onShotDragEnd={onShotDragEnd}
             suggestions={draft.suggestions}
             onAcceptSuggestion={draft.acceptSuggestion}
+            diagram={diagram}
           />
         </div>
         {/* M17 step 1 (REV-29): one parked marker per round with no hole yet. Derived, never stored.
             M20 (REV-39): each one is scored as a miss until it is dragged onto a hole. */}
         {mode === 'shots' && <UnplacedTray count={unplaced} onPlace={placeUnplaced} />}
       </div>
+
+      {/* REV-78 (was the separate Compare view): slide between the diagram and the photo, or fade instead of wipe. */}
+      <section
+        className="flex flex-col gap-1"
+        data-testid="compare-slider"
+        data-compare-mode={compareMode}
+        data-compare-value={compareValue}
+      >
+        <label htmlFor={sliderId} className="text-sm text-muted-foreground">
+          Diagram ↔ Photo
+        </label>
+        <input
+          id={sliderId}
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={compareValue}
+          data-testid="compare-range"
+          aria-label="Diagram ↔ Photo"
+          className="h-11 w-full"
+          onChange={(e) => setCompareValue(Number(e.target.value))}
+        />
+        <Button
+          variant="outline"
+          className="h-11"
+          data-testid="compare-mode"
+          aria-pressed={compareMode === 'fade'}
+          onClick={() => setCompareMode(compareMode === 'wipe' ? 'fade' : 'wipe')}
+        >
+          {compareMode === 'wipe' ? 'Fade instead of wipe' : 'Wipe instead of fade'}
+        </Button>
+      </section>
 
       {/* M21 step 2: only when there is something to hide; with no suggestions nothing is shown or said. */}
       {mode === 'shots' && draft.suggestionCount > 0 && (

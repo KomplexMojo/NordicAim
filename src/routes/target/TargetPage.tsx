@@ -19,24 +19,20 @@ import { formatAngular, formatMm } from '@/lib/scoring/format';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { getPhotoRecord } from '@/lib/store/photos-repo';
-import { getSettings } from '@/lib/store/settings-repo';
 
 interface TargetData {
   pid: string;
   photo: TargetPhoto;
   analysis: TargetAnalysis | null;
-  holeDiameterMm: number;
 }
 
 async function loadTarget(ctx: ReturnType<typeof useServices>['ctx'], pid: string): Promise<TargetData | null> {
   const photo = await getPhotoRecord(ctx.db, pid);
   if (photo === null) return null;
-  const settings = await getSettings(ctx.db);
   return {
     pid,
     photo,
     analysis: await getAnalysisRecord(ctx.db, pid),
-    holeDiameterMm: settings.profileOverrides.holeDiameterMm,
   };
 }
 
@@ -277,7 +273,7 @@ export function TargetPage() {
         </CardContent>
       </Card>
 
-      <PhotoSection photo={photo} analysis={analysis} holeDiameterMm={data.holeDiameterMm} />
+      <PhotoSection photo={photo} analysis={analysis} />
     </main>
   );
 }

@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { AdjustSurface } from '@/components/adjust/AdjustSurface';
 import { loadAdjust, useAdjustDraft } from '@/components/adjust/useAdjustDraft';
-import { CompareSlider } from '@/components/results/CompareSlider';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,70 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useServices } from '@/lib/app/services';
 import type { TargetAnalysis } from '@/lib/domain/analysis';
 import type { TargetPhoto } from '@/lib/domain/photo';
-import { shotTemplate } from '@/lib/pipeline/stage-a';
-import { renderDiagramOverlaySvg } from '@/lib/render/diagram-overlay';
 import { buildGroundTruth, reanalyze, saveAdjustments } from '@/lib/services/adjust';
-import { photoWorkingKey } from '@/lib/store/blob-keys';
-import { getBlob } from '@/lib/store/blobs-repo';
 import { getCvClient } from '@/workers/cv-client';
 
 interface PhotoSectionProps {
   photo: TargetPhoto;
   analysis: TargetAnalysis | null;
-  holeDiameterMm: number;
-}
-
-/**
- * M17 step 3 (REV-30): the diagram drawn in this photo's own pixel space, over the photo, with the wipe/fade slider.
- * `ready` only turns true once the blob lookup has settled, so a photo that is still loading is not mistaken for one that
- * was deleted (step 4).
- */
-function CompareView({ photo, analysis, holeDiameterMm }: PhotoSectionProps) {
-  const { ctx } = useServices();
-  const [url, setUrl] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    getBlob(ctx.db, photoWorkingKey(photo.id)).then(
-      (blob) => {
-        if (cancelled) return;
-        if (blob !== null) {
-          objectUrl = URL.createObjectURL(blob);
-          setUrl(objectUrl);
-        }
-        setReady(true);
-      },
-      () => {
-        if (!cancelled) setReady(true);
-      },
-    );
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [ctx, photo.id]);
-
-  const calibration = analysis?.calibration ?? null;
-  const overlaySvg = useMemo(() => {
-    if (analysis === null || calibration === null) return null;
-    return renderDiagramOverlaySvg(
-      analysis.computed?.result ?? null,
-      analysis.shots,
-      calibration,
-      shotTemplate(photo, analysis.pipeline.templateHint, calibration),
-      photo.working,
-      holeDiameterMm,
-    );
-  }, [analysis, calibration, photo, holeDiameterMm]);
-
-  if (!ready) return null;
-  if (overlaySvg === null) return null;
-  return <CompareSlider photoUrl={url} imageSize={photo.working} overlaySvg={overlaySvg} />;
 }
 
 /** The photo with its rings and shots, editable (M13), with Save, Re-analyze and More. */
@@ -182,15 +125,12 @@ function EditView({ photo }: { photo: TargetPhoto }) {
   );
 }
 
-type View = 'edit' | 'compare';
-
 /**
- * REV-73: where the photo is on the target screen. Viewing and adjusting are one screen: **Edit shots** shows the photo
- * with its rings and shots, which can be moved, added or removed and the alignment nudged; **Compare** keeps the wipe
- * between the diagram and the photo (M17). A target with no alignment yet has neither, and says so.
+ * REV-73/REV-78: where the photo is on the target screen. Viewing and adjusting are one screen: the photo with its rings and
+ * shots, editable, with the diagram↔photo slider and the wipe/fade switch built in. A target with no alignment yet has
+ * neither, and says so.
  */
-export function PhotoSection({ photo, analysis, holeDiameterMm }: PhotoSectionProps) {
-  const [view, setView] = useState<View>('edit');
+export function PhotoSection({ photo, analysis }: PhotoSectionProps) {
   if (analysis === null || analysis.calibration === null) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="compare-unavailable">
@@ -200,27 +140,7 @@ export function PhotoSection({ photo, analysis, holeDiameterMm }: PhotoSectionPr
   }
   return (
     <section className="flex flex-col gap-3" data-testid="photo-section" aria-label="Photo and shots">
-      <div className="flex gap-2" role="group" aria-label="Photo view">
-        <Button
-          variant={view === 'edit' ? 'default' : 'outline'}
-          className="h-11 flex-1"
-          aria-pressed={view === 'edit'}
-          data-testid="photo-view-edit"
-          onClick={() => setView('edit')}
-        >
-          Edit shots
-        </Button>
-        <Button
-          variant={view === 'compare' ? 'default' : 'outline'}
-          className="h-11 flex-1"
-          aria-pressed={view === 'compare'}
-          data-testid="photo-view-compare"
-          onClick={() => setView('compare')}
-        >
-          Compare
-        </Button>
-      </div>
-      {view === 'edit' ? <EditView photo={photo} /> : <CompareView photo={photo} analysis={analysis} holeDiameterMm={holeDiameterMm} />}
+      <EditView photo={photo} />
     </section>
   );
 }

@@ -69,7 +69,7 @@ test('review: walks the session needing-attention first, Confirm advances and sa
   await expect(page.getByTestId('review-progress')).toHaveText('Photo 2 of 2');
   await expect(page.getByTestId('review-headline')).not.toHaveText('No score yet');
   await expect(page.getByTestId('image-stage')).toHaveAttribute('data-ready', 'true');
-  await page.locator('[data-shot-id="P9"]').click();
+  await page.locator('[data-testid="shot"][data-shot-id="P9"]').click();
   await page.getByTestId('delete-shot').click();
   await expect(page.getByTestId('review-headline')).toContainText('1 miss');
   await page.getByTestId('review-confirm').click();

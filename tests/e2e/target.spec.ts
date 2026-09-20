@@ -64,7 +64,6 @@ test('target: the compare slider wipes the diagram across the photo (M17 step 3)
   const sessionId = await loadDemoSession(page);
   await openPrecisionTarget(page, sessionId);
 
-  await page.getByTestId('photo-view-compare').click({ timeout: 30_000 });
   const slider = page.getByTestId('compare-slider');
   await expect(slider).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('compare-photo')).toBeVisible();
@@ -74,8 +73,12 @@ test('target: the compare slider wipes the diagram across the photo (M17 step 3)
   await expect(overlay.locator('svg.diagram-overlay')).toHaveCount(1);
   await expect(overlay.locator('.overlay-ring')).toHaveCount(5); // capture-overlay §3.1 precision set
 
-  // Default 0: the whole diagram.
+  // Editing shows the photo first (REV-78): the diagram layer starts fully clipped away.
   const range = page.getByTestId('compare-range');
+  await expect(range).toHaveValue('1');
+  await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
+  await range.focus();
+  await range.press('Home');
   await expect(range).toHaveValue('0');
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
 
@@ -96,15 +99,15 @@ test('target: the fade mode drives the opacity instead of the clip (REV-30)', as
   const sessionId = await loadDemoSession(page);
   await openPrecisionTarget(page, sessionId);
 
-  await page.getByTestId('photo-view-compare').click({ timeout: 30_000 });
   const overlay = page.getByTestId('compare-overlay');
   await expect(overlay).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('compare-mode').click();
   await expect(page.getByTestId('compare-slider')).toHaveAttribute('data-compare-mode', 'fade');
 
-  await expect(overlay).toHaveAttribute('data-opacity', '1');
   const range = page.getByTestId('compare-range');
   await range.focus();
+  await range.press('Home');
+  await expect(overlay).toHaveAttribute('data-opacity', '1');
   await range.press('End');
   await expect(range).toHaveValue('1');
   await expect(overlay).toHaveAttribute('data-opacity', '0');

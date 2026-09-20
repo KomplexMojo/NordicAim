@@ -20,7 +20,7 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |
 | `#/sessions/:sid/metadata` | **Step 2: add metadata** | M09 |
 | `#/sessions/:sid/results` | **Step 3: receive analysis** (summary image + target cards) | M12, M14 |
-| `#/sessions/:sid/photos/:pid` | Target: full diagram, all metrics, and the photo section — **Edit shots** (the M13 editor in place, Save / Re-analyze) or **Compare** (the wipe, M17) (REV-73) | M12, M13 |
+| `#/sessions/:sid/photos/:pid` | Target: full diagram, all metrics, and the photo section — the M13 editor in place (Save / Re-analyze) with the diagram↔photo slider and the wipe/fade switch built in (REV-73, REV-78) | M12, M13 |
 | `#/sessions/:sid/photos/:pid/adjust` | Redirects to the target screen (REV-73): viewing and adjusting are one screen | M13 |
 | `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with Adjust embedded | M21 |
 | `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |

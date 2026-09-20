@@ -62,6 +62,11 @@ interface ImageStageProps {
   suggestions?: ScreenSuggestion[];
   /** M21 step 2: a tap on a suggestion (not a drag) accepts it. */
   onAcceptSuggestion?(id: string): void;
+  /**
+   * REV-78: the app's own diagram of this target drawn in the photo's pixel space (`renderDiagramOverlaySvg`), laid over the
+   * photo but under the editing marks, with the wipe or fade that `compareLayerStyle` gives. Moves and zooms with the photo.
+   */
+  diagram?: { svg: string; clipPath: string; opacity: number; boundaryFraction: number; showHandle: boolean } | null;
 }
 
 function clampAxis(pan: number, originAtZoom: number, content: number, container: number): number {
@@ -90,6 +95,7 @@ export function ImageStage(props: ImageStageProps) {
     holeDiameterMm,
     suggestions = NO_SUGGESTIONS,
     onAcceptSuggestion,
+    diagram = null,
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const [container, setContainer] = useState<Size | null>(null);
@@ -305,7 +311,32 @@ export function ImageStage(props: ImageStageProps) {
               style={{ left: base.ox, top: base.oy, width: image.w * base.k, height: image.h * base.k }}
             >
               {imageUrl !== null && (
-                <img src={imageUrl} alt="The photo of this target" className="block size-full" draggable={false} />
+                <img
+                  src={imageUrl}
+                  alt="The photo of this target"
+                  className="block size-full"
+                  data-testid="compare-photo"
+                  draggable={false}
+                />
+              )}
+              {diagram != null && (
+                <>
+                  <div
+                    className="pointer-events-none absolute inset-0 [&>svg]:size-full"
+                    data-testid="compare-overlay"
+                    data-clip-path={diagram.clipPath}
+                    data-opacity={diagram.opacity}
+                    style={{ clipPath: diagram.clipPath, opacity: diagram.opacity }}
+                    dangerouslySetInnerHTML={{ __html: diagram.svg }}
+                  />
+                  {diagram.showHandle && (
+                    <div
+                      className="pointer-events-none absolute inset-y-0 w-[2px] bg-white/80"
+                      data-testid="compare-handle"
+                      style={{ left: `${diagram.boundaryFraction * 100}%` }}
+                    />
+                  )}
+                </>
               )}
               <svg
                 viewBox={`0 0 ${image.w} ${image.h}`}

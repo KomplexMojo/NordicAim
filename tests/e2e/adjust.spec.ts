@@ -161,7 +161,7 @@ test('adjust: deleting a shot rescored live, saved, and put back again', async (
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/photos/${photoId}`));
 
   // 2. Select P9 and delete it: 9 identified of 10, total 67, missing 1.
-  await page.locator('[data-shot-id="P9"]').click();
+  await page.locator('[data-testid="shot"][data-shot-id="P9"]').click();
   await expect(page.getByTestId('shot-inspector')).toBeVisible();
   await page.getByTestId('delete-shot').click();
 
@@ -270,7 +270,7 @@ test('adjust: a parked marker dragged onto the target places the missing round (
   await expect(page.getByTestId('unplaced-tray')).toHaveCount(0);
 
   // Remove P9, leaving one declared round with no hole: one parked marker.
-  await page.locator('[data-shot-id="P9"]').click();
+  await page.locator('[data-testid="shot"][data-shot-id="P9"]').click();
   await page.getByTestId('delete-shot').click();
   await expect(page.getByTestId('unplaced-tray')).toHaveAttribute('data-count', '1');
   await expect(page.getByTestId('unplaced-marker')).toHaveCount(1);
@@ -318,7 +318,7 @@ test('adjust: a placed shot dragged onto the tray is removed (M17 step 1)', asyn
   await readyStage(page);
 
   // Delete one shot the ordinary way so the tray is on screen to drag onto.
-  await page.locator('[data-shot-id="P9"]').click();
+  await page.locator('[data-testid="shot"][data-shot-id="P9"]').click();
   await page.getByTestId('delete-shot').click();
   await expect(page.getByTestId('unplaced-tray')).toHaveAttribute('data-count', '1');
 
@@ -327,7 +327,7 @@ test('adjust: a placed shot dragged onto the tray is removed (M17 step 1)', asyn
   let grabbed: { id: string; multiplicity: number; from: { x: number; y: number } } | null = null;
   for (const candidate of FIXTURE.shots) {
     if (candidate.id === 'P9') continue;
-    const b = await page.locator(`[data-shot-id="${candidate.id}"]`).boundingBox();
+    const b = await page.locator(`[data-testid="shot"][data-shot-id="${candidate.id}"]`).boundingBox();
     if (b === null) continue;
     const from = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
     const onTop = await page.evaluate(
@@ -342,7 +342,7 @@ test('adjust: a placed shot dragged onto the tray is removed (M17 step 1)', asyn
   if (grabbed === null) throw new Error('no shot is grabbable at its own centre');
   const unitsLeft = 10 - 1 - grabbed.multiplicity;
 
-  const shot = page.locator(`[data-shot-id="${grabbed.id}"]`);
+  const shot = page.locator(`[data-testid="shot"][data-shot-id="${grabbed.id}"]`);
   await dragTo(page, grabbed.from, await centreOf(page, 'unplaced-tray'));
 
   await expect(shot).toHaveCount(0);
