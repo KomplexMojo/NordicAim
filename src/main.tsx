@@ -1,3 +1,4 @@
+import { BUILD_SHA } from '@/lib/app/build-info';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -21,7 +22,7 @@ void loadAppServices()
   .then(({ ctx, imageTools, renderTools }) => {
     startPipelineRunner(ctx, { getCvApi: getCvClient, imageTools, renderTools });
     // analysis-pipeline §7: rebuilds the session summary image after Stage B settles.
-    startSummaryScheduler(ctx, renderTools);
+    startSummaryScheduler(ctx, renderTools, BUILD_SHA);
   })
   .catch((err: unknown) => {
     console.error('[pipeline] runner failed to start', err);

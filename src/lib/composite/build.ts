@@ -82,7 +82,13 @@ function toSlotData(
  * it in one transaction, pruning to the newest 3 artifacts. Everything but the IDB writes happens
  * before the transaction (data-model §6).
  */
-export async function buildComposite(ctx: ServiceContext, sessionId: string, render: RenderTools): Promise<CompositeArtifact> {
+/** `release` is the running build's git short SHA (`BUILD_SHA`), printed in the image's footer (REV-69). */
+export async function buildComposite(
+  ctx: ServiceContext,
+  sessionId: string,
+  render: RenderTools,
+  release = 'dev',
+): Promise<CompositeArtifact> {
   const session = await getSessionRecord(ctx.db, sessionId);
   if (session === null) throw new SessionNotFoundError(sessionId);
 
@@ -135,6 +141,7 @@ export async function buildComposite(ctx: ServiceContext, sessionId: string, ren
     session,
     slots,
     generatedAtLocal: formatGeneratedAtLocal(now),
+    release,
     holeDiameterMm,
     scoring: { rule, visibleHoleDiameterMm: settings.visibleHoleDiameterMm },
     moreCount,

@@ -23,7 +23,7 @@ const DEBOUNCE_MS = 1500;
  */
 const IDLE_WAIT_MS = 3000;
 
-let deps: { ctx: ServiceContext; renderTools: RenderTools } | null = null;
+let deps: { ctx: ServiceContext; renderTools: RenderTools; release: string } | null = null;
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 /** Sessions with a build scheduled or currently running — the Summary card's "Updating summary…" state. */
 const pending = new Set<string>();
@@ -34,7 +34,7 @@ async function runBuild(sessionId: string): Promise<void> {
     pending.delete(sessionId);
     return;
   }
-  const { ctx, renderTools } = deps;
+  const { ctx, renderTools, release } = deps;
 
   try {
     // Don't build while the pipeline is mid-run, or the image would show half a session. Waiting for the
@@ -47,7 +47,7 @@ async function runBuild(sessionId: string): Promise<void> {
     const photos = await listPhotosBySession(ctx.db, sessionId);
     if (!photos.some((p) => p.status === 'analyzed')) return;
 
-    await buildComposite(ctx, sessionId, renderTools);
+    await buildComposite(ctx, sessionId, renderTools, release);
   } catch (err) {
     // A momentarily-empty session (every candidate rejected) is not an error worth logging, and neither is one that
     // was deleted while its rebuild waited (issue #18): nothing was written, `buildComposite` re-reads the session
@@ -73,8 +73,8 @@ function schedule(sessionId: string): void {
 }
 
 /** Starts the scheduler (idempotent) and wires `summaryHooks.schedule()` to it. Call once from `main.tsx`. */
-export function startSummaryScheduler(ctx: ServiceContext, renderTools: RenderTools): void {
-  deps = { ctx, renderTools };
+export function startSummaryScheduler(ctx: ServiceContext, renderTools: RenderTools, release = 'dev'): void {
+  deps = { ctx, renderTools, release };
   registerSummaryScheduler(schedule);
 }
 
