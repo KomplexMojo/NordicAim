@@ -40,6 +40,9 @@ describe('defaultAppSettings', () => {
       // REV-48 (data-model §5): the backing setting for every session.
       backingMode: 'auto',
       backing: null,
+      // REV-56 (data-model §5): gauge touch is today's rule, so the default changes no score; 4.5 mm is provisional.
+      scoringRule: 'gauge',
+      visibleHoleDiameterMm: 4.5,
     });
   });
 

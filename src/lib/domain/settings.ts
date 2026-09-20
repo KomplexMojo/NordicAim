@@ -2,6 +2,23 @@ import { z } from 'zod';
 
 import { BackingMode, BackingSheet, DEFAULT_BACKING_MODE, type ColourSignature } from './backing';
 
+/**
+ * REV-56: `gauge` = official gauge touch (the full hole), `centre` = centre in ring, `visible` = visible hole
+ * touch (a smaller, adjustable hole). One formula, a different effective hole radius (`scoring/rule.ts`).
+ */
+export const ScoringRule = z.enum(['gauge', 'centre', 'visible']);
+export type ScoringRule = z.infer<typeof ScoringRule>;
+export const DEFAULT_SCORING_RULE: ScoringRule = 'gauge';
+
+/** Provisional: the lowest edge measured on the owner's holes (p10 4.5 mm of compact single holes). */
+export const DEFAULT_VISIBLE_HOLE_DIAMETER_MM = 4.5;
+export const MIN_VISIBLE_HOLE_DIAMETER_MM = 2;
+export const MAX_VISIBLE_HOLE_DIAMETER_MM = 5.6;
+
+export function isValidVisibleHoleDiameterMm(mm: number): boolean {
+  return Number.isFinite(mm) && mm >= MIN_VISIBLE_HOLE_DIAMETER_MM && mm <= MAX_VISIBLE_HOLE_DIAMETER_MM;
+}
+
 export const AppSettings = z.object({
   schemaVersion: z.literal(1),
   key: z.literal('app'),
@@ -12,6 +29,13 @@ export const AppSettings = z.object({
   // `backing.cardPhotoId` is always null — the card photo is not kept, only its measured colour.
   backingMode: BackingMode,
   backing: BackingSheet.nullable(),
+  // REV-56 (geometry-scoring.md §3): how a hole is scored. Both default when absent so older rows read back.
+  scoringRule: ScoringRule.default(DEFAULT_SCORING_RULE),
+  visibleHoleDiameterMm: z
+    .number()
+    .min(MIN_VISIBLE_HOLE_DIAMETER_MM)
+    .max(MAX_VISIBLE_HOLE_DIAMETER_MM)
+    .default(DEFAULT_VISIBLE_HOLE_DIAMETER_MM),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 
@@ -33,6 +57,8 @@ export function defaultAppSettings(): AppSettings {
     persisted: null,
     backingMode: DEFAULT_BACKING_MODE,
     backing: null,
+    scoringRule: DEFAULT_SCORING_RULE,
+    visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
   };
 }
 

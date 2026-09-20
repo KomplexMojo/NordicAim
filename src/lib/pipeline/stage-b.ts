@@ -21,6 +21,7 @@ import { deleteByPrefix, putBlob } from '@/lib/store/blobs-repo';
 import type { StoredBlob } from '@/lib/store/db';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
+import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { getSettings } from '@/lib/store/settings-repo';
 
 /** rendering-composite §3: the `full` diagram variant is 1500 × 1700 for both templates. */
@@ -123,7 +124,9 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
 
   try {
     const settings = await getSettings(ctx.db);
-    const holeDiameterMm = settings.profileOverrides.holeDiameterMm;
+    // REV-56: scoring, the touch-credit ring and the sighting footer all follow the owner's scoring rule;
+    // detection never does (it looks for the physical hole).
+    const holeDiameterMm = scoringDiameterFromSettings(settings);
     // `BIATHLON_50M` is declared `as const`, so overriding one field widens it away from the literal
     // profile type `analyzeTarget` accepts; the assertion restores it (data-model §5 override).
     const profile = { ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M;

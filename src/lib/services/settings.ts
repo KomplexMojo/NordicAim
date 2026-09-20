@@ -2,12 +2,23 @@
 // only writes the settings row: **it re-runs nothing** and marks no photo pending, so a finished
 // session's numbers never change behind the user's back. New photos, and any photo the user
 // re-analyzes, read the setting when their detection runs.
+//
+// The one exception is the scoring rule (REV-56): it changes how the same shots are read, not what is
+// found, so `setScoringRule` / `setVisibleHoleDiameterMm` re-score every stored session (`rescoreAll`).
 
 import type { BackingMode, BackingSheet } from '@/lib/domain/backing';
-import { DEFAULT_HOLE_DIAMETER_MM, isValidHoleDiameterMm, type AppSettings } from '@/lib/domain/settings';
+import {
+  DEFAULT_HOLE_DIAMETER_MM,
+  isValidHoleDiameterMm,
+  isValidVisibleHoleDiameterMm,
+  type AppSettings,
+  type ScoringRule,
+} from '@/lib/domain/settings';
+import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { getSettings, putSettings } from '@/lib/store/settings-repo';
 
 import type { ServiceContext } from './context';
+import { rescoreAll, type RescoreReport } from './rescore';
 
 export class InvalidHoleDiameterError extends Error {
   constructor(mm: number) {
@@ -53,4 +64,36 @@ export function setHoleDiameterMm(ctx: ServiceContext, mm: number): Promise<AppS
 /** data-model §5 **Reset to 5.6** (.22 LR). */
 export function resetHoleDiameterMm(ctx: ServiceContext): Promise<AppSettings> {
   return setHoleDiameterMm(ctx, DEFAULT_HOLE_DIAMETER_MM);
+}
+
+export class InvalidVisibleHoleDiameterError extends Error {
+  constructor(mm: number) {
+    super(`Visible hole size must be 2–5.6 mm, got ${mm}`);
+    this.name = 'InvalidVisibleHoleDiameterError';
+  }
+}
+
+export interface ScoringChange {
+  settings: AppSettings;
+  /** Present only when the change altered what a hole is scored as, so stored sessions were re-scored. */
+  rescored: RescoreReport | null;
+}
+
+/** Saves a scoring change, and re-scores stored sessions only if it changed the effective hole size. */
+async function applyScoringChange(ctx: ServiceContext, change: (s: AppSettings) => AppSettings): Promise<ScoringChange> {
+  const before = await getSettings(ctx.db);
+  const settings = await updateSettings(ctx, change);
+  const changed = scoringDiameterFromSettings(before) !== scoringDiameterFromSettings(settings);
+  return { settings, rescored: changed ? await rescoreAll(ctx) : null };
+}
+
+/** REV-56: gauge touch / centre in ring / visible hole touch. Re-scores every stored session when it matters. */
+export function setScoringRule(ctx: ServiceContext, scoringRule: ScoringRule): Promise<ScoringChange> {
+  return applyScoringChange(ctx, (s) => ({ ...s, scoringRule }));
+}
+
+/** REV-56: the visible hole's size, 2–5.6 mm. Out of range throws and stores nothing. */
+export function setVisibleHoleDiameterMm(ctx: ServiceContext, mm: number): Promise<ScoringChange> {
+  if (!isValidVisibleHoleDiameterMm(mm)) return Promise.reject(new InvalidVisibleHoleDiameterError(mm));
+  return applyScoringChange(ctx, (s) => ({ ...s, visibleHoleDiameterMm: mm }));
 }

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 import { AboutSettings } from '@/components/settings/AboutSettings';
 import { BackingSettings } from '@/components/settings/BackingSettings';
+import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
 import { useServices } from '@/lib/app/services';
 import type { BackingMode } from '@/lib/domain/backing';
@@ -15,6 +16,9 @@ import {
   resetHoleDiameterMm,
   setBackingMode,
   setHoleDiameterMm,
+  setScoringRule,
+  setVisibleHoleDiameterMm,
+  type ScoringChange,
 } from '@/lib/services/settings';
 
 function errorText(err: unknown): string {
@@ -54,6 +58,27 @@ export function SettingsPage() {
       setSettings(await write());
     } catch (err) {
       toast.error(`Could not save: ${errorText(err)}`);
+    }
+  }
+
+  /** REV-56: a scoring change re-scores stored sessions, and the toast says how many. */
+  async function saveScoring(write: () => Promise<ScoringChange>, optimistic: Partial<AppSettings>) {
+    // Show the choice at once: the write also re-scores every stored session, which can take a moment, and a
+    // radio that only flips when that finishes looks like it did not take.
+    setSettings((current) => (current === null ? current : { ...current, ...optimistic }));
+    try {
+      const { settings: next, rescored } = await write();
+      setSettings(next);
+      if (rescored !== null && rescored.photos > 0) {
+        toast.success(
+          `Re-scored ${rescored.photos} ${rescored.photos === 1 ? 'target' : 'targets'} in ${rescored.sessions} ${
+            rescored.sessions === 1 ? 'session' : 'sessions'
+          }.`,
+        );
+      }
+    } catch (err) {
+      toast.error(`Could not save: ${errorText(err)}`);
+      setSettings(await getAppSettings(ctx)); // put back what is actually stored
     }
   }
 
@@ -97,6 +122,12 @@ export function SettingsPage() {
               setCardError(false);
               void save(() => clearBacking(ctx));
             }}
+          />
+          <ScoringSettings
+            scoringRule={settings.scoringRule}
+            visibleHoleDiameterMm={settings.visibleHoleDiameterMm}
+            onRuleChange={(rule) => void saveScoring(() => setScoringRule(ctx, rule), { scoringRule: rule })}
+            onVisibleSizeChange={(mm) => void saveScoring(() => setVisibleHoleDiameterMm(ctx, mm), { visibleHoleDiameterMm: mm })}
           />
           <HoleSizeSettings
             holeDiameterMm={settings.profileOverrides.holeDiameterMm}

@@ -212,13 +212,19 @@ export const AppSettings = z.object({
   // is always null: the card photo is not kept, only its measured colour.
   backingMode: BackingMode,              // 'auto' | 'none' | 'coloured'
   backing: BackingSheet.nullable(),
+  // REV-56: how a hole is scored (`geometry-scoring.md` §3). Both default when absent, so older rows read back.
+  scoringRule: z.enum(['gauge', 'centre', 'visible']).default('gauge'),
+  visibleHoleDiameterMm: z.number().min(2).max(5.6).default(4.5), // provisional
 });
 // default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null,
-//            backingMode 'auto', backing null }
+//            backingMode 'auto', backing null, scoringRule 'gauge', visibleHoleDiameterMm 4.5 }
 ```
 
 - **Hole size** (REV-47 Settings screen): `profileOverrides.holeDiameterMm` is editable in Settings, **2–12 mm**, reset to
   **5.6** (.22 LR). It feeds detection and scoring; changing it re-runs and re-scores nothing already stored.
+- **Scoring rule** (REV-56): `scoringRule` and `visibleHoleDiameterMm`, chosen in Settings. Unlike the hole size and the backing,
+  which change *detection*, the rule only changes how the same shots are *read*, so **changing it re-scores every stored session**
+  (marks `stageB` pending; shots and alignment are never touched, and each session's summary rebuilds).
 - **Migration (REV-48).** A settings row written by REV-38 carries `lastBackingMode` / `lastBacking`; on read they are
   copied to `backingMode` / `backing` (the schema version stays 1, as REV-38's own additions did). A row with neither
   reads as `'auto'` / `null`.

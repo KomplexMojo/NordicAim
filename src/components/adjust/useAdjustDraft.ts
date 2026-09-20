@@ -13,6 +13,7 @@ import type { PhotoStatus, Reason } from '@/lib/domain/enums';
 import { photoStatus } from '@/lib/domain/status';
 import { reprojectShots } from '@/lib/geometry/reproject';
 import { analyzeTarget } from '@/lib/scoring/analyze';
+import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { mergeReconcileWarnings, reconcileReasonContext, reconcileShots } from '@/lib/scoring/reconcile-shots';
 import { adjustStartCalibration, SAME_HOLE_DIAMETERS, type AdjustmentsPatch } from '@/lib/services/adjust';
 import { loadDetectionAids, type DetectionAids } from '@/lib/services/detection-aids';
@@ -30,6 +31,8 @@ export interface AdjustData {
   photo: TargetPhoto;
   analysis: TargetAnalysis;
   holeDiameterMm: number;
+  /** REV-56: what the score preview treats a hole as (the owner's scoring rule); detection uses `holeDiameterMm`. */
+  scoringHoleDiameterMm: number;
 }
 
 type Ctx = ReturnType<typeof useServices>['ctx'];
@@ -40,7 +43,12 @@ export async function loadAdjust(ctx: Ctx, pid: string): Promise<AdjustData | nu
   const analysis = await getAnalysisRecord(ctx.db, pid);
   if (analysis === null) return null;
   const settings = await getSettings(ctx.db);
-  return { photo, analysis, holeDiameterMm: settings.profileOverrides.holeDiameterMm };
+  return {
+    photo,
+    analysis,
+    holeDiameterMm: settings.profileOverrides.holeDiameterMm,
+    scoringHoleDiameterMm: scoringDiameterFromSettings(settings),
+  };
 }
 
 export interface AdjustPreview {
@@ -156,7 +164,7 @@ export function useAdjustDraft(pid: string) {
   // M13 step 3: the score the edits on screen would produce, recomputed on every change.
   const preview = useMemo((): AdjustPreview | null => {
     if (!data || calibration === null) return null;
-    const { photo, analysis, holeDiameterMm } = data;
+    const { photo, analysis, scoringHoleDiameterMm } = data;
     const categorization = photo.categorization;
     let result: AnalysisResult | null = null;
     // The preview shows what Save will produce, not what is stored: Save confirms the capped set (drops
@@ -166,7 +174,7 @@ export function useAdjustDraft(pid: string) {
     let warnings: Warning[] = analysis.pipeline.warnings.filter((w) => w !== 'extra-candidates-dropped');
     const method = analysis.pipeline.detection.method;
     if (categorization.template !== null && isCategorizationComplete(categorization)) {
-      const profile = { ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M;
+      const profile = { ...BIATHLON_50M, holeDiameterMm: scoringHoleDiameterMm } as typeof BIATHLON_50M;
       // REV-39 (M20): the same reconciliation Stage B runs after Save, so the preview matches it.
       const reconciled = reconcileShots({ shots, categorization, method });
       warnings = mergeReconcileWarnings(warnings, reconciled);

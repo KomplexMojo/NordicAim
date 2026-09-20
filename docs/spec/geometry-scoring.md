@@ -127,7 +127,23 @@ coordinates, so duplicates add nothing.
 
 `radialMm = hypot(xMm, yMm)` (distance from the **target centre**, not from the MPI).
 
-Hole radius `h = holeDiameterMm / 2 = 2.8`.
+**Scoring hole radius `h`** (REV-56). Scoring is one formula — a unit scores the highest ring or zone whose boundary satisfies
+`radialMm - h <= boundary` — and the owner chooses the rule in Settings, which only changes `h`:
+
+| `scoringRule` | Effective hole diameter | `h` |
+|---|---|---|
+| `gauge` — official gauge touch (**default**) | `holeDiameterMm` = 5.6 | **2.8** |
+| `centre` — centre in ring | 0 | **0** |
+| `visible` — visible hole touch | `visibleHoleDiameterMm` (default **4.5**, provisional, 2-5.6) | **2.25** |
+
+`scoringHoleDiameterMm(rule, holeDiameterMm, visibleHoleDiameterMm)` (`src/lib/scoring/rule.ts`) gives the effective diameter and
+is the only place the rule is applied. **Detection always uses the physical `holeDiameterMm`**; only scoring, the touch-credit
+marker and the sighting footer use the effective size. Every number and test vector below is for `gauge` (`h = 2.8`) unless it
+says otherwise; `centre` and `visible` reuse the same formula with their own `h`.
+
+**`visibleHoleDiameterMm` is provisional.** Measured on the owner's 108 compact single holes, the detector's blob is a median
+5.8 mm equivalent diameter (p10 4.5 mm) because it includes torn fibres, so it cannot say what a *clean* visible hole is; 4.5 mm
+is the lowest edge measured. Re-measure against paper the owner has gauged by hand.
 
 ## 4. Precision scoring (touch rule)
 

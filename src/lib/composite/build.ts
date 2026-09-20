@@ -16,6 +16,7 @@ import { artifactJsonKey, artifactPngKey, artifactPrefix } from '@/lib/store/blo
 import { deleteByPrefix, getBlob, putBlob } from '@/lib/store/blobs-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
+import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { getSettings } from '@/lib/store/settings-repo';
 
 import { ArtifactNotFoundError, EmptyCompositeError, type CompositeArtifact } from './artifact';
@@ -92,7 +93,8 @@ export async function buildComposite(ctx: ServiceContext, sessionId: string, ren
   if (!anySighting && !anyPrecision) throw new EmptyCompositeError(sessionId);
 
   const settings = await getSettings(ctx.db);
-  const holeDiameterMm = settings.profileOverrides.holeDiameterMm;
+  // REV-56: the summary is scored and drawn under the owner's scoring rule, like Stage B.
+  const holeDiameterMm = scoringDiameterFromSettings(settings);
   // `BIATHLON_50M` is `as const`; overriding one field widens the type away from the literal profile
   // `analyzeTarget` accepts, so the assertion restores it (same pattern as `runStageB`).
   const profile = { ...BIATHLON_50M, holeDiameterMm } as typeof BIATHLON_50M;
