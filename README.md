@@ -119,6 +119,10 @@ Want the whole routine, from installing to comparing against your history? See t
 
 New to it? The **[guide](docs/guide/README.md)** covers getting good photos, reading the results, corrections, patterns and backup in more detail.
 
+## Security and code review
+
+NordicAim was built with Claude, and a **cross-model security and code review** has been performed on it: an independent review run in Cursor, by a different model from the one that wrote the code. Every finding is logged as a [GitHub issue](https://github.com/KomplexMojo/NordicAim/issues), so what was found, and what was done about it, is public. The privacy design is easy to check for yourself: no server, no runtime network calls, and a content security policy that enforces it.
+
 ## Status and feedback
 
 NordicAim is an early release, built in the open with biathletes who shoot. If a score looks wrong, a screen is confusing, or you want something it does not do, [open an issue](https://github.com/KomplexMojo/NordicAim/issues). A photo of the target helps, but check it carries no location you would rather keep private.
