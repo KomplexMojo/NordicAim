@@ -12,9 +12,9 @@ import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
 import { brandMotif } from './brand-mark';
+import { layoutBand, type BandModel, type BandRow } from './composite-band';
 import { renderLightingIcon, renderSeasonIcon } from './condition-icons';
 import { PALETTE } from './palette';
-import { renderScoringIcon } from './scoring-icons';
 import { el, num, text } from './svg';
 import { fmtMm, precisionFooterLines, sightingFooterLines } from './text-lines';
 
@@ -55,7 +55,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 17;
+export const COMPOSITE_RENDERER_VERSION = 18;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'NordicAim';
@@ -66,7 +66,6 @@ export const FOOTER_APP_NAME = 'NordicAim';
 const WIDTH = 1440;
 const HEADER_HEIGHT = 120;
 const MAX_LINE_CHARS = 110;
-const LINE_STEP = 34;
 
 /** §5 (REV-51): one of the four fixed positions, its offset within the grid, and its drawn size. */
 export interface CellPlacement {
@@ -99,11 +98,6 @@ export const COMPOSITE_GRID_HEIGHT = 1440;
 export function positionName(template: 'sighting' | 'precision', index: 0 | 1): string {
   if (template === 'sighting') return index === 0 ? 'Sight in' : 'Confirm';
   return index === 0 ? 'Precision prone' : 'Precision standing';
-}
-
-/** §5: the analysis band's height for `lines` text lines — sized to its content, never a fixed block. */
-export function bandHeight(lines: number): number {
-  return 100 + LINE_STEP * lines + 64;
 }
 
 function capitalize(value: string): string {
@@ -223,13 +217,6 @@ function scoringLine(input: CompositeInput, placed: Placed[]): string {
   return `Scoring: ${name}${allSame ? ' · same under every rule' : ''}`;
 }
 
-/** REV-59: the other rules' scores under a slot, only when they differ from one another. */
-function ruleComparisonLine(label: string, slot: SlotData): string | null {
-  if (slot.byRule === undefined || sameUnderEveryRule(slot) !== false) return null;
-  const scores = RULES.map((rule) => `${rule} ${scoreOf(slot.byRule![rule])}`).join(' · ');
-  return slot.result.template === 'precision' ? `${label} by rule: ${scores}` : `${label} by rule (hits): ${scores}`;
-}
-
 /** A filled slot with its chip label, in §5's reading order: sighting 1, sighting 2, precision 1, precision 2. */
 interface Placed {
   label: string;
@@ -254,85 +241,51 @@ function placedSlots(input: CompositeInput): Placed[] {
  */
 const REPEATS_HEADLINE = [/^Scoring summary$/, /^Total: /, /^Scored \(/];
 
-/** §5's band lines, in order. N = 1 adds that target's `full` footer lines (what the old stat card held). */
-function bandLines(input: CompositeInput, placed: Placed[]): string[] {
-  // REV-106: what a target's own caption already says (hits, score, ES, MOA) is not repeated here, and neither is the lighting (in the
-  // header) or the count of targets (the grid). The band keeps only what is not shown elsewhere.
-  const lines: string[] = [scoringLine(input, placed)];
-  for (const p of placed) {
+/** REV-118: what the band shows, as data for `layoutBand`: the scoring method, one table row per target, extra lines, notes, athlete. */
+function bandModel(input: CompositeInput, placed: Placed[]): BandModel {
+  // REV-106: what a target's own caption says (hits, score, ES, MOA) is not repeated here, nor the lighting (header) or the count (grid).
+  const showRules = placed.some((p) => sameUnderEveryRule(p.slot) === false);
+  const rows: BandRow[] = placed.map((p) => {
     const mpi = p.slot.result.template === 'sighting' ? mpiCompactLine(p.slot.result.all.mpiOffset) : null;
-    if (mpi !== null) lines.push(`${p.label} ${mpi}`);
-    const comparison = ruleComparisonLine(p.label, p.slot);
-    if (comparison !== null) lines.push(comparison);
-  }
+    const hits = p.slot.result.template === 'sighting';
+    const scores =
+      showRules && p.slot.byRule !== undefined
+        ? (Object.fromEntries(
+            RULES.map((rule) => {
+              const n = scoreOf(p.slot.byRule![rule]);
+              return [rule, hits ? `${n} ${n === 1 ? 'hit' : 'hits'}` : String(n)];
+            }),
+          ) as BandRow['scores'])
+        : null;
+    return { label: p.label, mpi: mpi === null ? null : mpi.replace(/^MPI /, ''), scores };
+  });
+  const extra: string[] = [];
   if (placed.length === 1) {
     const only = placed[0]!.slot;
     const footer =
       only.result.template === 'precision'
         ? precisionFooterLines(only.result, only.analysis.shots)
         : sightingFooterLines(only.result, only.analysis.shots, fullPositionLabel(only.result.position), input.holeDiameterMm);
-    lines.push(...footer.filter((line) => !REPEATS_HEADLINE.some((re) => re.test(line))));
+    extra.push(...footer.filter((line) => !REPEATS_HEADLINE.some((re) => re.test(line))).map((l) => truncate(l)));
   }
-  if (input.moreCount > 0) lines.push(`+${input.moreCount} more target(s) in the app`);
-  if (input.session.notes.trim().length > 0) lines.push(...noteLines(input.session.notes));
-  const out = lines.map((line) => truncate(line));
-  // Never truncated: cutting the stamp would make it unverifiable.
-  if (input.provenance !== undefined) out.push(provenanceLine(input.provenance));
-  return out;
+  if (input.moreCount > 0) extra.push(`+${input.moreCount} more target(s) in the app`);
+  return {
+    scoring: scoringLine(input, placed),
+    rows,
+    showMpi: rows.some((r) => r.mpi !== null),
+    showRules,
+    extra,
+    notes: input.session.notes.trim().length > 0 ? input.session.notes : null,
+    // Never truncated: cutting the stamp would make it unverifiable.
+    athlete: input.provenance === undefined ? null : provenanceLine(input.provenance),
+    footer: `Generated by ${FOOTER_APP_NAME} created by ${DEVELOPER_NAME} release ${input.release}`,
+  };
 }
 
 /** REV-100: `Athlete: <name> · <club> · Stamp: <stamp>`, leaving out what is empty. */
 export function provenanceLine(p: { name: string; club: string; stamp: string | null }): string {
   const parts = [p.name === '' ? null : `Athlete: ${p.name}`, p.club === '' ? null : p.name === '' ? `Club: ${p.club}` : p.club, p.stamp === null ? null : `Stamp: ${p.stamp}`];
   return parts.filter((x): x is string => x !== null).join(' · ');
-}
-
-/** REV-91: the "By rule: gauge N · centre N · visible N" line with each rule's icon beside its number (words kept for the PNG). */
-function ruleComparisonMarks(line: string, y: number): string | null {
-  const m = /^(.+ by rule[^:]*:) (.+)$/.exec(line);
-  if (m === null) return null;
-  const CHAR = 8.7;
-  let x = 40;
-  let out = text(x, y, 18, m[1]!, { color: PALETTE.textPrimary });
-  x += m[1]!.length * CHAR + 14;
-  for (const part of m[2]!.split(' · ')) {
-    const rule = RULES.find((r) => part.startsWith(`${r} `));
-    if (rule === undefined) return null;
-    out += renderScoringIcon(rule, x + 14, y - 6, 0.64);
-    out += text(x + 36, y, 18, part, { color: PALETTE.textPrimary });
-    x += 36 + part.length * CHAR + 34;
-  }
-  return out;
-}
-
-function renderAnalysisBand(lines: string[], release: string, bandY: number): string {
-  const height = bandHeight(lines.length);
-  const panel = el('rect', { x: 0, y: bandY, width: WIDTH, height, fill: PALETTE.panel });
-  const rail = el('rect', { x: 0, y: bandY, width: 8, height, fill: PALETTE.accent });
-  const title = text(40, bandY + 56, 24, 'Session analysis', { bold: true, color: PALETTE.textPrimary });
-  let body = '';
-  let y = bandY + 100;
-  for (const line of lines) {
-    body += ruleComparisonMarks(line, y) ?? text(40, y, 18, line, { color: PALETTE.textPrimary });
-    y += LINE_STEP;
-  }
-  const footer = text(
-    40,
-    bandY + height - 28,
-    13,
-    `Generated by ${FOOTER_APP_NAME} created by ${DEVELOPER_NAME} release ${release}`,
-    { color: PALETTE.textSecondary },
-  );
-  return panel + rail + title + body + footer;
-}
-
-/** `session.notes` wrapped into at most 2 lines of `MAX_LINE_CHARS`, the second ending in `…` if more remains. */
-function noteLines(notes: string): string[] {
-  const prefixed = `Notes: ${notes.trim()}`;
-  if (prefixed.length <= MAX_LINE_CHARS) return [prefixed];
-  const first = prefixed.slice(0, MAX_LINE_CHARS);
-  const rest = prefixed.slice(MAX_LINE_CHARS);
-  return [first, truncate(rest)];
 }
 
 /**
@@ -343,9 +296,9 @@ function noteLines(notes: string): string[] {
 export function renderComposite(input: CompositeInput): { svg: string; width: number; height: number } {
   const placed = placedSlots(input);
   if (placed.length === 0) throw new EmptyCompositeError();
-  const lines = bandLines(input, placed);
   const bandY = HEADER_HEIGHT + COMPOSITE_GRID_HEIGHT;
-  const height = bandY + bandHeight(lines.length);
+  const band = layoutBand(bandModel(input, placed), bandY);
+  const height = bandY + band.height;
 
   let body = el('rect', { x: 0, y: 0, width: WIDTH, height, fill: PALETTE.panel });
   body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)), placed.map((p) => p.slot.photo));
@@ -366,7 +319,7 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
           );
     body += nestCellSvg(svg, cell.x, HEADER_HEIGHT + cell.y, cell.size);
   }
-  body += renderAnalysisBand(lines, input.release, bandY);
+  body += band.svg;
 
   const svg = el('svg', { xmlns: 'http://www.w3.org/2000/svg', width: WIDTH, height, viewBox: `0 0 ${WIDTH} ${height}` }, body);
   return { svg, width: WIDTH, height };

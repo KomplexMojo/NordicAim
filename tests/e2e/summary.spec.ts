@@ -39,9 +39,9 @@ test('summary: the summary image appears and loads at its drawn size (rendering-
 
   const dims = await image.evaluate((el: HTMLImageElement) => ({ w: el.naturalWidth, h: el.naturalHeight }));
   // REV-51: always the four fixed positions (1440) under the 120 header; the demo's 1 sighting + 1 precision
-  // leave a 2-line band (REV-106: scoring, and the sighting's MPI offset): 100 + 34 * 2 + 64 = 232. Both demo targets score the same
+  // leave a band of the scoring line and a one-column table (REV-118: MPI offset for the sighting row). Both demo targets score the same
   // under every rule, so there are no comparison lines.
-  expect(dims).toEqual({ w: 1440, h: 120 + 1440 + 232 });
+  expect(dims).toEqual({ w: 1440, h: 120 + 1440 + 302 });
 });
 
 test('summary: Share downloads a file named *-shooting-analysis.png and records one ShareRecord', async ({ page }) => {

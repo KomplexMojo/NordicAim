@@ -7,7 +7,7 @@ import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot } from '@/lib/domain/analysis';
 import { initialAnalysis } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
-import { type CompositeInput, type SlotData, COMPOSITE_CELLS, bandHeight, positionName, renderComposite, renderCompositeSvg } from '@/lib/render/composite';
+import { type CompositeInput, type SlotData, COMPOSITE_CELLS, positionName, renderComposite, renderCompositeSvg } from '@/lib/render/composite';
 import { CELL_SCALE } from '@/lib/render/diagram-shared';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 
@@ -96,8 +96,13 @@ describe('render/composite four fixed positions (rendering-composite.md §5, REV
     expect(() => renderComposite(baseInput())).toThrow('No analyzed targets');
   });
 
-  it('the band is sized to its content', () => {
-    expect(bandHeight(3)).toBe(100 + 34 * 3 + 64);
+  it('the band is sized to its content: more rows make it taller (REV-118)', () => {
+    const one = renderComposite(baseInput({ slots: { sighting: [null, null], precision: [slot(precisionFixture, precisionResult), null] } }));
+    const two = renderComposite(
+      baseInput({ slots: { sighting: [slot(sightingFixture, sightingResult), null], precision: [slot(precisionFixture, precisionResult), null] } }),
+    );
+    expect(one.height).toBeGreaterThan(120 + 1440);
+    expect(two.svg).toContain(`viewBox="0 0 1440 ${two.height}"`);
   });
 });
 
@@ -107,10 +112,10 @@ describe('render/composite height vectors (§5)', () => {
   const s1 = () => slot(sightingFixture, sightingResult);
   const p1 = () => slot(precisionFixture, precisionResult);
   it.each([
-    ['1 target', { sighting: [null, null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 4 + 64],
-    ['2 targets', { sighting: [s1(), null], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 2 + 64],
-    ['3 targets', { sighting: [s1(), s1()], precision: [p1(), null] }, 120 + 1440 + 100 + 34 * 3 + 64],
-    ['4 targets', { sighting: [s1(), s1()], precision: [p1(), p1()] }, 120 + 1440 + 100 + 34 * 3 + 64],
+    ['1 target', { sighting: [null, null], precision: [p1(), null] }, 120 + 1440 + 290],
+    ['2 targets', { sighting: [s1(), null], precision: [p1(), null] }, 120 + 1440 + 302],
+    ['3 targets', { sighting: [s1(), s1()], precision: [p1(), null] }, 120 + 1440 + 336],
+    ['4 targets', { sighting: [s1(), s1()], precision: [p1(), p1()] }, 120 + 1440 + 370],
   ] as const)('%s', (_name, slots, expected) => {
     const { svg, height } = renderComposite(baseInput({ slots: slots as never }));
     expect(height).toBe(expected);
@@ -261,7 +266,7 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
   const svg = renderCompositeSvg(input);
 
   it('two targets: root height 120 + 1440 + band (REV-51, four fixed positions)', () => {
-    const height = 120 + 1440 + 100 + 34 * 2 + 64; // scoring, and the sighting's MPI offset
+    const height = 120 + 1440 + 302; // scoring, and a table with one row per target (REV-118)
     expect(svg).toContain(`viewBox="0 0 1440 ${height}"`);
   });
 
@@ -270,7 +275,7 @@ describe('render/composite renderCompositeSvg golden render (both demo fixtures)
     // REV-49 (M24): the analysis band's per-slot line now reuses `targetHeadline` (issue #6).
     expect(svg).not.toContain('Precision prone: 72 / 100'); // REV-106: the caption says it, once
     expect(svg).toContain('72 / 100');
-    expect(svg).toContain('Sight in MPI');
+    expect(svg).toContain('MPI offset'); // the table's column, with a row per target
   });
 
   it('has no stat cards (REV-51 removed them)', () => {
@@ -377,7 +382,7 @@ describe('render/composite names the scoring method (REV-59)', () => {
     // 3.55, 7.05, 7.67 mm: gauge 10+10+10, centre 10+9+9, visible(4.5) 10+10+9 — worked by hand for issue #4
     const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
-    for (const part of ['Precision prone by rule:', 'gauge 30', 'centre 28', 'visible 29']) expect(svg).toContain(part);
+    for (const part of ['Precision prone', '>gauge<', '>centre<', '>visible<', '>30<', '>28<', '>29<']) expect(svg).toContain(part);
     expect(svg).not.toContain('same under every rule');
   });
 
@@ -392,7 +397,7 @@ describe('render/composite names the scoring method (REV-59)', () => {
     const slots = { sighting: [null, null], precision: [slotByRule('precision', [1, 2, 3]), null] } as const;
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
     expect(svg).toContain('Scoring: Official gauge touch · same under every rule');
-    expect(svg).not.toContain('by rule');
+    expect(svg).not.toContain('>gauge<'); // no comparison columns when the rules agree
   });
 
   it('does not claim "same under every rule" while any target differs', () => {
@@ -402,29 +407,28 @@ describe('render/composite names the scoring method (REV-59)', () => {
     } as const;
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
     expect(svg).not.toContain('same under every rule');
-    expect((svg.match(/by rule/g) ?? []).length).toBe(1); // only the target that differs
+    expect((svg.match(/>gauge</g) ?? []).length).toBe(1); // one table header, with a row for each target
   });
 
   it('sighting compares hits: a shot 24 mm out is a hit by gauge and visible touch, a miss by centre', () => {
     // 45 mm prone zone (radius 22.5): gauge 24 - 2.8 = 21.2 hit; centre 24 > 22.5 miss; visible 24 - 2.25 = 21.75 hit
     const slots = { sighting: [slotByRule('sighting', [10, 24]), null], precision: [null, null] } as const;
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
-    for (const part of ['Sight in by rule (hits):', 'gauge 2', 'centre 1', 'visible 2']) expect(svg).toContain(part);
+    for (const part of ['Sight in', '>2 hits<', '>1 hit<']) expect(svg).toContain(part);
   });
 
   it('shows the method but no comparison when the slots carry no per-rule results', () => {
     const { svg } = renderComposite(baseInput({ slots: { sighting: [null, null], precision: [slot(precisionFixture, precisionResult), null] } }));
     expect(svg).toContain('Scoring: Official gauge touch');
-    expect(svg).not.toContain('by rule');
+    expect(svg).not.toContain('>gauge<'); // no comparison columns when the rules agree
     expect(svg).not.toContain('same under every rule');
   });
 
-  it('keeps every band line within 110 characters and the band sized to its lines', () => {
+  it('keeps every band line within 110 characters and the band sized to its table (REV-118)', () => {
     const slots = { sighting: [slotByRule('sighting', [10, 24]), slotByRule('sighting', [10, 24])], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), slotByRule('precision', [3.55, 7.05, 7.67])] } as const;
     const { svg, height } = renderComposite(baseInput({ slots: slots as never }));
     for (const m of svg.matchAll(/<text[^>]*font-size="18"[^>]*>([^<]*)</g)) expect(m[1]!.length).toBeLessThanOrEqual(110);
-    // scoring + 2 sighting MPI lines + 4 comparison lines = 7 lines
-    expect(height).toBe(120 + 1440 + 100 + 34 * 7 + 64);
+    expect(height).toBe(120 + 1440 + 370);
   });
 });
 
@@ -462,6 +466,31 @@ describe('render/composite header shows the season, then the lighting (REV-108)'
     const b = renderComposite(baseInput({ slots: { sighting: [null, null], precision: [unknown, null] } as never })).svg;
     expect(b).toContain('data-season='); // from the session date
     expect(b).not.toContain('data-lighting=');
+  });
+});
+
+describe('render/composite band layout (REV-118)', () => {
+  it('session notes sit in a box on the right, wrapped, and no longer in a line of the list', async () => {
+    const { wrapNotes } = await import('@/lib/render/composite-band');
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
+    const base = baseInput({ slots: slots as never });
+    const noted = renderComposite({ ...base, session: { ...base.session, notes: 'Windy from the left; lighter trigger today.' } }).svg;
+    expect(noted).toContain('>Session notes<');
+    expect(noted).toContain('Windy from the left; lighter trigger today.');
+    expect(noted).not.toContain('Notes:');
+    expect(renderComposite(base).svg).not.toContain('Session notes');
+
+    const lines = wrapNotes('word '.repeat(200));
+    expect(lines.length).toBe(8);
+    expect(lines[7]!.endsWith('…')).toBe(true);
+    for (const l of lines) expect(l.length).toBeLessThanOrEqual(44);
+  });
+
+  it('the rule icons appear once, in the table header, not beside every number', () => {
+    const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), slotByRule('precision', [3.55, 7.05, 7.67])] } as const;
+    const { svg } = renderComposite(baseInput({ slots: slots as never }));
+    const band = svg.slice(svg.indexOf('Session analysis'));
+    for (const rule of ['gauge', 'centre', 'visible']) expect((band.match(new RegExp(`data-rule="${rule}"`, 'g')) ?? []).length).toBe(1);
   });
 });
 

@@ -81,10 +81,9 @@ describe('composite/build buildComposite (rendering-composite.md §6)', () => {
 
     expect(artifact.sessionId).toBe(sessionId);
     expect(artifact.widthPx).toBe(1440);
-    // REV-51: always the four fixed positions (1440) under the 120 header, then a band sized to its 4 lines (REV-106: scoring (REV-59)
-    // and the 3 footer lines that don't repeat the caption): 100 + 34 * 4 + 64 = 300.
-    // The precision fixture scores the same under every rule, so there is no comparison line.
-    expect(artifact.heightPx).toBe(120 + 1440 + 300);
+    // REV-51: always the four fixed positions (1440) under the 120 header, then a band sized to its content (REV-118: the scoring line and
+    // the 3 footer lines that don't repeat the caption). The precision fixture scores the same under every rule, so there is no table.
+    expect(artifact.heightPx).toBe(120 + 1440 + 290);
     expect(artifact.sha256).toMatch(/^[a-f0-9]{64}$/);
 
     const png = await getBlob(ctx.db, artifactPngKey(artifact.id));
@@ -258,7 +257,7 @@ describe('composite/build records and prints the scoring rule (REV-59)', () => {
     expect(svg).toContain(scoring);
     expect(svg).toContain(slotLine);
     // Whatever rule is in force, the image shows what every rule would have scored.
-    for (const part of ['Precision prone by rule:', 'gauge 30', 'centre 28', 'visible 29']) expect(svg).toContain(part);
+    for (const part of ['>gauge<', '>centre<', '>visible<', '>30<', '>28<', '>29<']) expect(svg).toContain(part);
     expect(artifact.scoringRule).toBe(rule);
     // ... and the stored artifact carries it, so an image from before a rule change can be told from one after.
     expect((await getSessionRecord(ctx.db, sessionId))?.artifacts.at(-1)?.scoringRule).toBe(rule);
