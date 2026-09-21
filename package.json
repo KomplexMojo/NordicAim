@@ -1,6 +1,7 @@
 {
-  "name": "advanced-shooting-analysis",
+  "name": "nordic-aim",
   "private": true,
+  "license": "PolyForm-Strict-1.0.0",
   "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
