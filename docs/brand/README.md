@@ -14,7 +14,7 @@ NordicAim is a measuring tool for biathletes. It should feel calm, precise and h
 
 **One line.** Shot analysis for biathletes.
 
-**Supporting line.** Photograph your target. Get the score, the group and the point of impact.
+**Supporting line.** Photograph your target. Confirm shot placement. Run analysis. Spot trends.
 
 **Promise line.** Free. Runs on your phone. Nothing leaves your device.
 

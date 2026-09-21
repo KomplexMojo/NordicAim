@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Photograph your target. Get the score, the group and the point of impact.</b><br>
+  <b>Photograph your target. Confirm shot placement. Run analysis. Spot trends.</b><br>
   Free. Runs on your iPhone. Nothing leaves your phone.
 </p>
 
