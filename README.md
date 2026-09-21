@@ -43,6 +43,20 @@ You always have the last word. Every hole and the alignment can be corrected by 
 
 Two printed sheets are supported today: the **sighting sheet** and the **Olympic 50 m rifle target** used for precision work, shot with a .22 at 50 m.
 
+## The analysis engine
+
+The score is only as good as the hole-finding behind it, so that is where the work went. Everything below runs on your phone, with no upload and no waiting on a server.
+
+- **Real computer vision, on the device.** NordicAim ships OpenCV, the industry-standard vision library, running in the background so the screen never freezes. Your photos are analysed where they were taken.
+- **It measures the sheet, not just the photo.** It finds the aiming mark, then measures every printed circle and the tilt of the paper, so the target is laid over your photo the way the sheet is actually hanging, not the way a template says it should.
+- **It reads the photo before it trusts it.** A sharpness check, a guess at which sheet you photographed, and a lighting suggestion all come before a single hole is scored. If something is off, it tells you why.
+- **It finds holes on any background.** Holes are found without assuming they are darker or lighter than the paper around them, and anywhere on the sheet, so a white ring, a black bull and a shadow are all fair game.
+- **It uses your backing colour.** Photograph a card of your backing paper once and NordicAim learns the colour, so holes that show it stand out cleanly.
+- **Tuned on real targets.** The detector was tuned and re-tuned against dozens of real photos of shot targets, with every hole marked by hand as the answer key, then reviewed by hand. Its misses and false alarms were counted, and the filters were reworked until the counts came down.
+- **Scored the way you choose.** The same shots score under official gauge touch, centre in ring or visible hole touch, and every result says which rule it used.
+
+It is not perfect, and it does not pretend to be. Suggested holes score nothing until you confirm them, and you can add, move or remove any shot. The engine does the tedious part, and you always have the last word.
+
 ## For athletes and teams
 
 Each athlete installs NordicAim on their own phone in about ten seconds. There is no account to create and nothing to set up for the squad.
