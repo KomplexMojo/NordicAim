@@ -344,6 +344,7 @@ export function ImageStage(props: ImageStageProps) {
 
   // Aligning needs the rings in full view, so the slider governs them only while placing shots.
   const blended = diagram != null && mode === 'shots';
+  const markersHidden = blended && (diagram.opacity <= 0.02 || diagram.boundaryFraction <= 0.001);
   return (
     <div className="flex flex-col gap-2">
       <div
@@ -428,8 +429,15 @@ export function ImageStage(props: ImageStageProps) {
               <svg
                 viewBox={`0 0 ${image.w} ${image.h}`}
                 className="absolute inset-0 size-full"
-                style={{ pointerEvents: 'none' }}
+                // REV-119: the shot markers, the MPI and the suggestions follow the sliders too, so sliding to the bare photo shows the
+                // holes with nothing drawn on them. When nothing of them is showing they cannot be hit either (a tap then adds a shot).
+                style={{
+                  pointerEvents: 'none',
+                  ...(blended ? { clipPath: diagram.clipPath, opacity: diagram.opacity, visibility: markersHidden ? 'hidden' : 'visible' } : {}),
+                }}
                 data-testid="stage-overlay"
+                data-clip-path={blended ? diagram.clipPath : 'none'}
+                data-opacity={blended ? diagram.opacity : 1}
               >
                 {/* M21 step 2: under the shots, so a real shot always wins the tap. */}
                 <SuggestionLayer
@@ -449,6 +457,8 @@ export function ImageStage(props: ImageStageProps) {
                   interactive={mode === 'shots'}
                   visible={visible}
                 />
+              </svg>
+              <svg viewBox={`0 0 ${image.w} ${image.h}`} className="absolute inset-0 size-full" style={{ pointerEvents: 'none' }} data-testid="stage-handles">
                 {mode === 'alignment' && (
                   <g data-testid="alignment-handles">
                     <circle

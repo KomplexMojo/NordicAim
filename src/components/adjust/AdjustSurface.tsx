@@ -32,7 +32,8 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
   // REV-85: two sliders over the diagram layer, side by side. Swipe: 0 the whole diagram to 1 the whole photo (it starts on the photo, so
   // editing looks as before). Fade: 0 the diagram solid to 1 gone; it starts solid, so swiping alone reveals the diagram.
   const [fade, setFade] = useState(0);
-  const [swipe, setSwipe] = useState(1);
+  // REV-119: everything drawn shows at first; slide right (swipe) or up (fade) to reveal the bare photo.
+  const [swipe, setSwipe] = useState(0);
   const fadeId = useId();
   const swipeId = useId();
   const { data, calibration, shots, selectedId, setSelectedId, preview } = draft;

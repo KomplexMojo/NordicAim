@@ -72,26 +72,34 @@ test('target: the swipe slider wipes the diagram across the photo (M17 step 3, R
   await expect(overlay.locator('svg.diagram-overlay')).toHaveCount(1);
   await expect(overlay.locator('.overlay-ring')).toHaveCount(5); // capture-overlay §3.1 precision set
 
-  // Editing shows the photo first: swipe starts on the photo, so the diagram layer is clipped away; fade starts solid.
+  // REV-119: everything drawn shows at first (swipe 0, fade 0); sliding reveals the bare photo, holes and all.
   const swipe = page.getByTestId('swipe-range');
-  await expect(swipe).toHaveValue('1');
+  await expect(swipe).toHaveValue('0');
   await expect(page.getByTestId('fade-range')).toHaveValue('0');
-  await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
-  // REV-95: the reference rings drawn by the editor follow the slider too, so the photo end shows the bare photo.
+  await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
   const rings = page.getByTestId('stage-rings');
-  await expect(rings).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
+  const markers = page.getByTestId('stage-overlay'); // the shot markers, the MPI cross, the suggestions
+  await expect(rings).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
+  await expect(markers).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
+  await expect(page.locator('[data-testid="shot"]').first()).toBeVisible();
+
+  // Half way: every drawn layer is wiped by the same amount.
   await swipe.focus();
   await swipe.press('Home');
-  await expect(swipe).toHaveValue('0');
-  await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
-  await expect(rings).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
+  for (let i = 0; i < 50; i += 1) await swipe.press('ArrowRight');
+  await expect(swipe).toHaveValue('0.5');
+  for (const layer of [overlay, rings, markers]) await expect(layer).toHaveAttribute('data-clip-path', 'inset(0 50% 0 0)');
 
-  // It is a real <input type="range">, so the keyboard drives it (M17 step 3).
+  // It is a real <input type="range">, so the keyboard drives it (M17 step 3). All the way: the bare photo, nothing drawn on it.
   await swipe.press('End');
   await expect(swipe).toHaveValue('1');
-  await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
-  // …and the clip really is applied, not just recorded.
+  for (const layer of [overlay, rings, markers]) await expect(layer).toHaveAttribute('data-clip-path', 'inset(0 100% 0 0)');
   expect(await overlay.evaluate((el) => getComputedStyle(el).clipPath)).toContain('100%');
+  await expect(page.locator('[data-testid="shot"]').first()).toBeHidden();
+  await expect(page.getByTestId('compare-photo')).toBeVisible();
+
+  await swipe.press('Home');
+  await expect(page.locator('[data-testid="shot"]').first()).toBeVisible();
 });
 
 test('target: the fade slider drives the opacity, beside the swipe slider (REV-30, REV-85)', async ({ page }) => {
@@ -119,6 +127,8 @@ test('target: the fade slider drives the opacity, beside the swipe slider (REV-3
   await expect(overlay).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
   expect(await overlay.evaluate((el) => getComputedStyle(el).opacity)).toBe('0');
   await expect(page.getByTestId('stage-rings')).toHaveAttribute('data-opacity', '0');
+  await expect(page.getByTestId('stage-overlay')).toHaveAttribute('data-opacity', '0'); // the shot markers fade too (REV-119)
+  await expect(page.locator('[data-testid="shot"]').first()).toBeHidden();
 });
 
 test('target: the rest of the detail screen is unchanged (M12 step 4)', async ({ page }) => {
