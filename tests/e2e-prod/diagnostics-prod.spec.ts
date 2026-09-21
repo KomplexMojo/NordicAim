@@ -10,6 +10,8 @@ test('production build ships the CSP', async ({ page }) => {
 
 test('diagnostics: OpenCV worker and core capabilities pass under the production CSP', async ({ page }) => {
   await page.goto('/#/diagnostics');
+  // The checks table sits in a panel that starts collapsed (REV-73 era); open it to read the rows.
+  await page.getByTestId('panel-toggle-diag-checks').click({ timeout: 15000 });
   for (const id of ['cv-worker', 'svg-raster', 'indexeddb', 'ingest-pipeline']) {
     const row = page.getByRole('row', { name: new RegExp(`\\b${id}\\b`) });
     await expect

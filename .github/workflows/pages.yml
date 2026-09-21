@@ -29,7 +29,8 @@ jobs:
 
       - name: Build
         env:
-          VITE_BASE: /advanced-shooting-analysis/
+          # The site is served from /<repository name>/, so a repository rename needs no change here.
+          VITE_BASE: /${{ github.event.repository.name }}/
         run: pnpm build
 
       - uses: actions/upload-pages-artifact@v3

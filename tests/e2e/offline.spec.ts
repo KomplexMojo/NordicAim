@@ -51,6 +51,7 @@ test('offline: the app installs a service worker and still runs fully offline', 
 
   // 4. the diagnostics cv-worker check passes offline.
   await page.goto('/#/diagnostics');
+  await page.getByTestId('panel-toggle-diag-checks').click({ timeout: 15000 }); // the checks panel starts collapsed
   const row = page.getByRole('row', { name: /\bcv-worker\b/ });
   await expect
     .poll(async () => (await row.innerText()).replace(/\s+/g, ' '), { timeout: 60_000 })
