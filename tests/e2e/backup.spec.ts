@@ -35,6 +35,11 @@ test('back up, wipe the database, restore: the session and its scores come back;
   await page.goto('/#/');
   await expect(page.getByTestId('backup-reminder')).toHaveCount(0);
 
+  // The delete screen knows about the backup (REV-117): it no longer says there is none.
+  await page.locator(`[data-testid="session-delete"][data-session-id="${sid}"]`).click();
+  await expect(page.getByTestId('delete-backup-note')).toContainText('holds this session as it is now');
+  await page.getByTestId('delete-cancel').click();
+
   // Lose everything (the Home Screen icon removed, or website data cleared).
   await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {

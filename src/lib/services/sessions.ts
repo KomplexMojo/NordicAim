@@ -105,6 +105,9 @@ export interface SessionDeletionReport {
   /** The stored name, or `null` when the record is too damaged to have a readable one. */
   name: string | null;
   sessionDate: string | null;
+  /** When the session record was made and last changed (REV-117), for the delete screen; null when unreadable. */
+  createdAt: string | null;
+  updatedAt: string | null;
   /** False for a session record the schema rejects (it can still be deleted). */
   readable: boolean;
   photos: number;
@@ -153,6 +156,8 @@ export async function previewSessionDeletion(ctx: ServiceContext, sessionId: str
   return {
     name: stringOf(raw, 'name'),
     sessionDate: stringOf(raw, 'sessionDate'),
+    createdAt: stringOf(raw, 'createdAt'),
+    updatedAt: stringOf(raw, 'updatedAt'),
     readable: BiathlonSession.safeParse(repairSession(upgradeSession(raw))).success,
     photos: photoIds.length,
     analyses,
@@ -193,6 +198,8 @@ export async function deleteSession(ctx: ServiceContext, sessionId: string): Pro
   return {
     name: stringOf(raw, 'name'),
     sessionDate: stringOf(raw, 'sessionDate'),
+    createdAt: stringOf(raw, 'createdAt'),
+    updatedAt: stringOf(raw, 'updatedAt'),
     readable,
     photos: photoIds.length,
     analyses,

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-// REV-61 / issue #18: deleting a session takes three deliberate steps and removes everything attached to it.
+// REV-61 / issue #18: deleting a session takes one screen with a slide and removes everything attached to it.
 
 type HookWindow = Window & {
   __asaTest?: { loadDemo(): Promise<string>; waitForIdle(): Promise<void> };
@@ -8,7 +8,7 @@ type HookWindow = Window & {
 
 test.setTimeout(240_000);
 
-test('a session is deleted only after three steps and its exact name; cancelling deletes nothing', async ({ page }) => {
+test('a session is deleted only from the one delete screen, by sliding; cancelling deletes nothing', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   const doomedId = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
@@ -27,25 +27,24 @@ test('a session is deleted only after three steps and its exact name; cancelling
   // Cancel at step 1 deletes nothing.
   const dialog = page.getByTestId('delete-session-dialog');
   await doomedDelete.click();
-  await expect(dialog).toHaveAttribute('data-step', '1');
-  await expect(page.getByTestId('delete-counts')).toContainText(/photo/);
+  // REV-117: one screen: the session, what goes with it, the backup note and the slide are all here.
+  await expect(page.getByTestId('delete-counts')).toContainText(/Photos/);
+  await expect(page.getByTestId('delete-backup-note')).toContainText('not made a backup');
+  await expect(page.getByTestId('slide-to-delete')).toBeVisible();
   await page.getByTestId('delete-cancel').click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId('session-delete')).toHaveCount(rowsBefore);
 
-  // Cancel at step 2 (go back, then out) deletes nothing.
+  // Escape closes it too and deletes nothing.
   await doomedDelete.click();
-  await page.getByTestId('delete-continue-1').click();
-  await expect(dialog).toHaveAttribute('data-step', '2');
+  await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId('session-delete')).toHaveCount(rowsBefore);
 
   // The full path: the destructive button stays disabled until the exact phrase is typed.
   await doomedDelete.click();
-  await page.getByTestId('delete-continue-1').click();
-  await page.getByTestId('delete-continue-2').click();
-  await expect(dialog).toHaveAttribute('data-step', '3');
+  await expect(dialog).toBeVisible();
   const track = page.getByTestId('slide-to-delete');
   const handle = page.getByTestId('slide-handle');
   await expect(track).toHaveAttribute('data-state', 'idle');
@@ -134,10 +133,8 @@ test('the slide can be done from the keyboard: a tap of Enter does nothing, hold
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   await page.goto('/#/');
   await page.locator(`[data-testid="session-delete"][data-session-id="${id}"]`).click();
-  await page.getByTestId('delete-continue-1').click();
-  await page.getByTestId('delete-continue-2').click();
   const dialog = page.getByTestId('delete-session-dialog');
-  await expect(dialog).toHaveAttribute('data-step', '3');
+  await expect(dialog).toBeVisible();
   const track = page.getByTestId('slide-to-delete');
   const handle = page.getByTestId('slide-handle');
 
