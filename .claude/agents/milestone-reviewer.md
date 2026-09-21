@@ -1,6 +1,6 @@
 ---
 name: milestone-reviewer
-description: Independently verifies one implemented milestone of advanced-shooting-analysis against its milestone file, the specs, and AGENTS.md invariants; runs the checks; never edits files. Used by the run-milestones workflow.
+description: Independently verifies one implemented milestone of NordicAim against its milestone file, the specs, and AGENTS.md invariants; runs the checks; never edits files. Used by the run-milestones workflow.
 disallowedTools: Write, Edit, NotebookEdit
 model: opus
 effort: high

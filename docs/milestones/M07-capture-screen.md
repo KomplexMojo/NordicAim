@@ -99,7 +99,7 @@ Commands and results:
 - `pnpm check` → pass (typecheck, lint 0 errors / 4 pre-existing warnings in `components/ui` and `cv/opencv.ts`, vitest 34 files /
   285 tests, privacy check 15 images).
 - `pnpm test:e2e` → 10/10 pass (mobile-chromium + mobile-webkit): smoke ×2, precision+prone capture, sighting+both 5/5, Photos import.
-- `VITE_BASE=/advanced-shooting-analysis/ vite build` (to a scratch dir) → the bundle contains none of `FAKE CAMERA`, `__asaTest`,
+- `VITE_BASE=/NordicAim/ vite build` (to a scratch dir) → the bundle contains none of `FAKE CAMERA`, `__asaTest`,
   `installTestHooks`, `startFakeCamera`, `captureStream`, `fake-camera`, `test-hooks` (the fake camera, its chip, and the test hooks are
   all behind `import.meta.env.VITE_FAKE_CAMERA === '1'` and tree-shaken).
 - Visual check in Playwright (iPhone 15 viewport, `fakeCamera=precision&debug=1`): overlay centred, label chip, FAKE CAMERA and debug chips,

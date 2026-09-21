@@ -1,7 +1,7 @@
 export const meta = {
   name: 'run-milestones',
   description: 'Advance the MVP milestone plan: pick the next ready milestone, implement it at its model/effort, independent review with up to 2 fix rounds, then commit and push; stops at owner gates, blocking questions or repeated review failure',
-  whenToUse: 'Implementing docs/milestones for advanced-shooting-analysis. args: { mode?: "run" | "step" (default run), maxMilestones?: number, only?: "M03", dryRun?: boolean }',
+  whenToUse: 'Implementing docs/milestones for NordicAim. args: { mode?: "run" | "step" (default run), maxMilestones?: number, only?: "M03", dryRun?: boolean }',
   phases: [
     { title: 'Select', detail: 'read docs/milestones/README.md and pick the next ready milestone' },
     { title: 'Implement', detail: 'milestone-implementer at the milestone model/effort' },
@@ -109,7 +109,7 @@ const uniq = (list) => [...new Set(list)]
 // (agent definitions are read at session start, so a session that created them cannot use them yet).
 // Keep these in sync with .claude/agents/milestone-implementer.md and milestone-reviewer.md.
 const IMPLEMENTER_INSTRUCTIONS = [
-  'ROLE: milestone implementer for advanced-shooting-analysis. You implement ONE milestone.',
+  'ROLE: milestone implementer for NordicAim. You implement ONE milestone.',
   '- Read the milestone file completely, then only the spec sections under "Read first". AGENTS.md rules and hard invariants apply in full.',
   '- Implement every step and file with the exact names, signatures, paths and formats from the specs. Never invent constants; if the spec is silent or ambiguous, add it to the milestone "Open questions" and report it.',
   '- Write every listed test and a unit test for every spec test vector the milestone touches (exact values and tolerances).',
@@ -120,7 +120,7 @@ const IMPLEMENTER_INSTRUCTIONS = [
 ].join('\n')
 
 const REVIEWER_INSTRUCTIONS = [
-  'ROLE: independent, skeptical milestone reviewer for advanced-shooting-analysis. STRICTLY READ-ONLY: never create, edit or delete files (running tests/commands is fine). The implementer report is a claim, not evidence.',
+  'ROLE: independent, skeptical milestone reviewer for NordicAim. STRICTLY READ-ONLY: never create, edit or delete files (running tests/commands is fine). The implementer report is a claim, not evidence.',
   'Checklist:',
   '1. `git status` / `git diff` including untracked files; nothing under fixtures/private/.',
   '2. Every milestone step and file exists; names, signatures, paths, store names, routes and string formats match the specs exactly.',
@@ -149,7 +149,7 @@ async function runAgent(agentType, fallbackInstructions, prompt, opts) {
 
 function selectPrompt(only) {
   return [
-    'You are the selector for the run-milestones workflow in the advanced-shooting-analysis repo. Do not modify any file.',
+    'You are the selector for the run-milestones workflow in the NordicAim repo. Do not modify any file.',
     '1. Read docs/milestones/README.md and parse the milestone table columns: ID (with a link to the milestone file), Milestone, MVP step, Depends on, Implementer ("<model> · <effort>"), Reviewer ("<model> · <effort>"), Owner gate ("yes"/"no"), Status.',
     '2. A milestone is READY when its Status is exactly "pending" or "in-progress" and every ID in its "Depends on" column has Status exactly "done".',
     only

@@ -1,4 +1,4 @@
-# Agent guide: advanced-shooting-analysis
+# Agent guide: NordicAim
 
 This guide is for any coding agent implementing this repo, including lower-reasoning models. Read it
 fully before touching code.
@@ -82,7 +82,7 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
 | `pnpm test` | Vitest unit tests |
 | `pnpm test:e2e` | Playwright (mobile Chromium + mobile WebKit) |
 
-iPhone testing: push to `main`, then open `https://komplexmojo.github.io/advanced-shooting-analysis/` (use `#/diagnostics` for checks).
+iPhone testing: push to `main`, then open `https://komplexmojo.github.io/NordicAim/` (use `#/diagnostics` for checks).
 
 ## Repo map (target state)
 

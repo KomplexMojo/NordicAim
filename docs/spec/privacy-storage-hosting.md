@@ -55,7 +55,7 @@ production build, in CI too.
   - **deploy** (`needs: build`, `permissions: { pages: write, id-token: write }`, environment `github-pages`): `actions/deploy-pages`
   - Pin the current major versions of these official actions.
 - `vite.config.ts` `base: process.env.VITE_BASE ?? '/'`; **hash routing**; PWA manifest `start_url`/`scope` = `./`.
-- URL: `https://komplexmojo.github.io/advanced-shooting-analysis/`. **Renaming the repository (2026-09-21):** the Pages URL changes with it and the old one stops working. `node scripts/rename-repo.mjs <new-name>` updates the tracked files that mention the old name. The app's data is unaffected: IndexedDB and `localStorage` belong to the origin `komplexmojo.github.io`, not the path, so the renamed site reads the same data, but a Home Screen icon added from the old URL must be removed and added again from the new one. Take a backup first.
+- URL: `https://komplexmojo.github.io/NordicAim/`. **Renaming the repository (2026-09-21):** the Pages URL changes with it and the old one stops working. `node scripts/rename-repo.mjs <new-name>` updates the tracked files that mention the old name. The app's data is unaffected: IndexedDB and `localStorage` belong to the origin `komplexmojo.github.io`, not the path, so the renamed site reads the same data, but a Home Screen icon added from the old URL must be removed and added again from the new one. Take a backup first.
 - **Owner step:** repo Settings → Pages → Source: **GitHub Actions**.
 - The Pages build never sets `VITE_FAKE_CAMERA`.
 

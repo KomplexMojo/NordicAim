@@ -149,7 +149,7 @@ Only when `import.meta.env.VITE_FAKE_CAMERA === '1'` and the hash-route query ha
 
 ## 7. Device checklist (M07, owner)
 
-On the iPhone at `https://komplexmojo.github.io/advanced-shooting-analysis/`, both in Safari and from the Home Screen:
+On the iPhone at `https://komplexmojo.github.io/NordicAim/`, both in Safari and from the Home Screen:
 1. The permission prompt appears; the rear camera is used; the screen stays awake.
 2. The overlay stays centred in portrait, including after rotation.
 3. The `debug=1` resolution is ≥ 1920 on the long side.

@@ -5,7 +5,7 @@
 | M07 | medium | S | take picture(s) |
 
 ## Goal
-From the issue sweep ([#1](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/1)). REV-50. The owner: "When I choose an
+From the issue sweep ([#1](https://github.com/KomplexMojo/NordicAim/issues/1)). REV-50. The owner: "When I choose an
 image from the local photo library, it should load the image into the screen showing the overlay, it indicate to the application
 user that the image was loaded."
 

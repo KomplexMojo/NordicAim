@@ -7,7 +7,7 @@ lines up with a printed target. The specs behind this page are `docs/spec/captur
 ## 1. Get the build on the phone
 
 1. Push to `main` and wait for the **Deploy to GitHub Pages** workflow (GitHub → Actions) to finish.
-2. On the iPhone, open **https://komplexmojo.github.io/advanced-shooting-analysis/** in Safari.
+2. On the iPhone, open **https://komplexmojo.github.io/NordicAim/** in Safari.
    - If an old version shows, close the tab and reopen it (the service worker updates on the next load).
 3. **Add to Home Screen:** tap the Share button → **Add to Home Screen** → **Add**. Open the app from the new icon.
 

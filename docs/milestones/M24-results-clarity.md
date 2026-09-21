@@ -5,9 +5,9 @@
 | M14, M20 | high | S | receive analysis |
 
 ## Goal
-From the issue sweep: [#6](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/6), the diagram half of
-[#4](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/4), and point 5 of
-[#8](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/8). REV-49.
+From the issue sweep: [#6](https://github.com/KomplexMojo/NordicAim/issues/6), the diagram half of
+[#4](https://github.com/KomplexMojo/NordicAim/issues/4), and point 5 of
+[#8](https://github.com/KomplexMojo/NordicAim/issues/8). REV-49.
 
 1. **"7/10 hits @ 45 mm" reads as "7 of 10 shots found".** The owner, looking at a sighting target where all 10 shots were found and
    7 were hits: "it still says that seven out of 10 shots are recognized. There's actually 10 in the image." The headline must say

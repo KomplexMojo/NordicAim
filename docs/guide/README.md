@@ -26,7 +26,7 @@ Everything you need to go from a shot target to a result you trust. Nordic Aim r
 
 ## 1. Install
 
-1. Open [komplexmojo.github.io/advanced-shooting-analysis](https://komplexmojo.github.io/advanced-shooting-analysis/) in **Safari** on your iPhone.
+1. Open [komplexmojo.github.io/NordicAim](https://komplexmojo.github.io/NordicAim/) in **Safari** on your iPhone.
 2. Tap **Share**, then **Add to Home Screen**.
 3. Open Nordic Aim from your Home Screen.
 
@@ -195,7 +195,7 @@ A backup file contains your photos, and those hold their location. Nordic Aim te
 - **Fewer shots than rounds.** A declared round with no hole found is counted as an assumed miss. Add any hole you can see, or correct the round count in the metadata.
 - **Something failed to open or save.** Open **Diagnostics** on the bottom bar. It runs checks on your phone (storage, camera, sharing, the analysis engine) and shows which pass and which fail, and lets you export your data.
 
-Found a bug or a score that looks wrong? [Open an issue](https://github.com/KomplexMojo/advanced-shooting-analysis/issues) and say what you shot and what you expected.
+Found a bug or a score that looks wrong? [Open an issue](https://github.com/KomplexMojo/NordicAim/issues) and say what you shot and what you expected.
 
 ## 13. Words used in Nordic Aim
 

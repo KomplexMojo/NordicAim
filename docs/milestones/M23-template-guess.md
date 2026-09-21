@@ -5,7 +5,7 @@
 | M16 | high | S | review image · generate analysis |
 
 ## Goal
-From the issue sweep ([#5](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/5)). `hintTemplate` (A3's template guess,
+From the issue sweep ([#5](https://github.com/KomplexMojo/NordicAim/issues/5)). `hintTemplate` (A3's template guess,
 `src/lib/cv/template-hint.ts`) classifies **sighting** sheets as **precision**. That picks the wrong template for scoring **and** the
 wrong anchor diameter (112.4 mm instead of 115 mm), so it affects live analyses, not just labels. First recorded as M10 open
 question 3, noted again in M16 and M18, never fixed.

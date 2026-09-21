@@ -1,4 +1,4 @@
-# Plan: Biathlete Training Harness (advanced-shooting-analysis)
+# Plan: Biathlete Training Harness (NordicAim)
 
 Revision 4 (MVP), 2026-09-14. Inputs:
 - [`DESIGN.md`](DESIGN.md) (verbatim)

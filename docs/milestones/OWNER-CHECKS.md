@@ -15,7 +15,7 @@ section here after each milestone that has them.
 - [x] Enable GitHub Pages: repo Settings → Pages → Build and deployment → Source: **GitHub Actions**. Then re-run the
       "Deploy to GitHub Pages" workflow (Actions tab → Run workflow), because the first deploy ran before Pages was enabled.
       _Done 2026-09-15 via `gh api` (build_type=workflow); deploy run 34988887060 succeeded and the site returns 200._
-- [ ] On the iPhone, open https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics in Safari, then Add to
+- [ ] On the iPhone, open https://komplexmojo.github.io/NordicAim/#/diagnostics in Safari, then Add to
       Home Screen and open it from there.
 - [x] Tap **Copy report** in both, and paste both reports into `docs/milestones/M01-scaffold.md` → Completion notes.
       _Home Screen report recorded 2026-09-15 (12 pass, 1 fail: cv-worker). Safari-tab report still optional._
@@ -46,7 +46,7 @@ section here after each milestone that has them.
       already visually checked in-session and the remaining differences are the documented REV-22/23/24 decisions
       (8 px shot dots, the in-target "115 mm" zone label placed outside the halo, and outlined/relocated x<k>/MPI
       labels) plus real computed text replacing the mockup's placeholder copy.
-- [x] After pushing, open https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics on an iPhone in real
+- [x] After pushing, open https://komplexmojo.github.io/NordicAim/#/diagnostics on an iPhone in real
       Safari and confirm the diagram-raster row passes — this exercises the SecurityError data-URL fallback in
       `svgToPng`, which the e2e run doesn't reach.
       _2026-09-15 Safari tab: `diagram-raster` pass (decoded=1500x1700). The object-URL path worked (svg-raster path=object-url), so the data-URL fallback was not needed on this device._
@@ -54,7 +54,7 @@ section here after each milestone that has them.
 ## M07 — Capture screen with template overlay
 
 - [ ] Push to `main`, wait for the "Deploy to GitHub Pages" workflow, then on the iPhone open
-      https://komplexmojo.github.io/advanced-shooting-analysis/ both in Safari and as a Home Screen app
+      https://komplexmojo.github.io/NordicAim/ both in Safari and as a Home Screen app
       (Share → Add to Home Screen), following `docs/DEVICE-TESTING.md`.
 - [ ] Tap **New session**: confirm the camera permission prompt appears, the live picture is from the rear camera, and
       the screen doesn't dim or lock past the Auto-Lock time.
@@ -202,7 +202,7 @@ during M10/M11 work._
 ## M20 — Declared rounds are fact (reject, double punches, misses)
 
 - [ ] Acceptance: with at least 10 labelled targets of known round counts (including a double punch, a shot on the wrong target, and a neighbour's shot), enter the true rounds and confirm each outcome matches what happened: rejected (photo shown, headline "Found N clear holes but you entered D rounds…"), double punch ("Shots in this hole: 2" with the assumed-double note, reason "N hole(s) look like two shots…"), or misses (headline like "68 / 100 · 1 miss · X 1", reason "N round(s) weren't found and are scored as misses").
-- [ ] On the iPhone (push to main, then open https://komplexmojo.github.io/advanced-shooting-analysis/): open a rejected target's card and confirm it shows the photo and the "Found N clear holes but you entered D rounds…" message, with no headline, score, diagram or metrics. Then open Adjust and confirm every detected shot is there to inspect.
+- [ ] On the iPhone (push to main, then open https://komplexmojo.github.io/NordicAim/): open a rejected target's card and confirm it shows the photo and the "Found N clear holes but you entered D rounds…" message, with no headline, score, diagram or metrics. Then open Adjust and confirm every detected shot is there to inspect.
 - [ ] In Adjust on a target with missing rounds, confirm the tray is labelled "Scored as miss"; dragging a marker onto a hole should turn it into a shot and drop the miss count by one. On an inferred double, set the count to 1, Save, and confirm that round becomes a miss and is not re-inferred onto another hole.
 - [ ] Confirm the decisions in M20 Open questions 3-8, especially: rule 7a (too-many-holes) runs before rule 6 and a rejected target stores computed: null; a rejected `both` target withholds the score for the whole target; the standard (no-backing) path never infers double punches (DOUBLE_PUNCH_MIN_RATIO_STANDARD = null); an inferred double is stored as the shot's multiplicity plus `inferred`; and once any shot is manual, nothing new is inferred.
 - [ ] Confirm CONFIDENT_HOLE_MIN = 0.94 is acceptable even though it makes only about 9% of real standard-path holes confident, so rejection rarely fires there.
@@ -214,7 +214,7 @@ during M10/M11 work._
 
 ## M21 — Session review, suggested holes and double punches
 
-- [ ] On the iPhone (https://komplexmojo.github.io/advanced-shooting-analysis/ after the push), open a real session's results, tap "Review session", and walk it end to end: photos needing attention should come first, the header should read "Photo N of M" with the live headline score, Confirm with no edits just moves on, Confirm after an edit saves it, Skip moves on, and the final screen should list each photo's outcome with "See results" going back to the results screen.
+- [ ] On the iPhone (https://komplexmojo.github.io/NordicAim/ after the push), open a real session's results, tap "Review session", and walk it end to end: photos needing attention should come first, the header should read "Photo N of M" with the live headline score, Confirm with no edits just moves on, Confirm after an edit saves it, Skip moves on, and the final screen should list each photo's outcome with "See results" going back to the results screen.
 - [ ] In Adjust on a real target that has suggestions (hollow dashed pink rings, which appear a moment after the page opens because one extra detection runs in the background), tap one and confirm it becomes a manual shot, the live score updates, and after Save the results card shows the new shot; confirm the rings don't read as counted shots, and that the "Hide/Show N suggested holes" control works.
 - [ ] Open Adjust on a target with no suggestions and confirm nothing extra appears: no rings, no hide/show button, no extra help text.
 - [ ] Double punch: on a target shot with a coloured backing sheet, select a hole wider than one shot and confirm "Looks like N shots" appears and one tap sets the count and marks the shot manual. On a target without a backing sheet the prompt will not appear (Open question 6, since nothing on an unbacked target measures hole width) — decide whether that's acceptable or name a width measurement to try.
@@ -240,7 +240,7 @@ during M10/M11 work._
 
 ## M22 — Three main screens and a Settings screen (issue #2)
 
-- [ ] On the iPhone (https://komplexmojo.github.io/advanced-shooting-analysis/ after the push), move between Shooting, Settings and Diagnostics one-handed. Confirm the tab bar clears the home indicator and never covers content on any page (Home, a session's metadata/results, target detail, Adjust, Review, Settings, Diagnostics).
+- [ ] On the iPhone (https://komplexmojo.github.io/NordicAim/ after the push), move between Shooting, Settings and Diagnostics one-handed. Confirm the tab bar clears the home indicator and never covers content on any page (Home, a session's metadata/results, target detail, Adjust, Review, Settings, Diagnostics).
 - [ ] Start a capture and confirm the tab bar is hidden on the camera screen; then do Settings → Photograph backing card and confirm that capture is also full screen with no tab bar.
 - [ ] In Settings, set Backing sheet to Coloured (optionally photograph the backing card and check the swatch matches). Capture and analyze a target shot over a coloured backing, and confirm detection uses the colour path (target detail or results shows "Holes found by backing colour").
 - [ ] If the phone holds data from an older build (REV-38 or M19-era, with a session that has a backing card), open the new build once and confirm the migration lifts the previously measured backing colour into Settings → Backing sheet, that old sessions still open normally, and that nothing is re-analyzed.
@@ -258,7 +258,7 @@ during M10/M11 work._
 
 ## M25 — An imported photo is shown on the overlay screen (issue #1)
 
-- [ ] On the iPhone at https://komplexmojo.github.io/advanced-shooting-analysis/, import a photo from the library and confirm it appears with the template overlay and a "Loaded" confirmation before Keep is tapped.
+- [ ] On the iPhone at https://komplexmojo.github.io/NordicAim/, import a photo from the library and confirm it appears with the template overlay and a "Loaded" confirmation before Keep is tapped.
 
 ## M15 — Install, offline, polish, MVP release
 

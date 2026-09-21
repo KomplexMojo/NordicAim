@@ -117,7 +117,7 @@ pnpm test:e2e
 ```
 **Human required (owner):**
 1. Enable Pages (Settings → Pages → Source: GitHub Actions).
-2. Open `https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics` on the iPhone, in Safari and as a Home Screen app.
+2. Open `https://komplexmojo.github.io/NordicAim/#/diagnostics` on the iPhone, in Safari and as a Home Screen app.
 3. Paste both **Copy report** outputs into Completion notes.
 4. Resolve any `fail` on `cv-worker`, `svg-raster`, `heic-decode`, `indexeddb`, or `share-files`, or record it as an Open question.
 
@@ -211,7 +211,7 @@ resulting deviations). `pnpm approve-builds --all` was run once to approve `esbu
 
 **Human required (owner) — not run by this agent:**
 1. Enable Pages (Settings → Pages → Source: GitHub Actions).
-2. Push to `main`, then open `https://komplexmojo.github.io/advanced-shooting-analysis/#/diagnostics` on the
+2. Push to `main`, then open `https://komplexmojo.github.io/NordicAim/#/diagnostics` on the
    iPhone, in Safari and as a Home Screen app.
 3. Paste both **Copy report** outputs into these Completion notes.
 4. Resolve any `fail` on `cv-worker`, `svg-raster`, `heic-decode`, `indexeddb`, or `share-files` on the real

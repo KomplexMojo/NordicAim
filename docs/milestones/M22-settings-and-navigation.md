@@ -5,8 +5,8 @@
 | M19, M21 | high | M | navigation · settings |
 
 ## Goal
-From the owner's issue sweep ([#2](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/2), plus the spec edit asked
-for in [#7](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/7)). REV-47 and REV-48:
+From the owner's issue sweep ([#2](https://github.com/KomplexMojo/NordicAim/issues/2), plus the spec edit asked
+for in [#7](https://github.com/KomplexMojo/NordicAim/issues/7)). REV-47 and REV-48:
 
 - **REV-47:** the app has **three main screens** — **Shooting** (everything that views and analyzes shooting), **Settings**
   (defaults that apply across all sessions) and **Diagnostics** — reached from a bottom tab bar.
@@ -59,7 +59,7 @@ Detection itself (M16, M19 — no constant moves), default round counts, data ex
    (`pipeline.detection`). **Changing the setting re-runs nothing** (issue #2 default): it applies to new photos and to any photo
    the user re-analyzes, so a finished session's numbers never change behind the user's back.
 5. **Remove Session options** from the metadata screen — it holds nothing but the backing.
-6. **Spec edits** ([#7](https://github.com/KomplexMojo/advanced-shooting-analysis/issues/7)): `backing-sheet.md` §2 and §3 rewritten
+6. **Spec edits** ([#7](https://github.com/KomplexMojo/NordicAim/issues/7)): `backing-sheet.md` §2 and §3 rewritten
    for Settings (REV-38's session placement marked superseded by REV-48); §4a gains M19's two Auto rules — `AUTO_MIN_CHROMA` 124
    and "the coloured pixels' 10th-percentile distance must be at most the template's outer ring radius" — and their fallback
    reasons "colour too dull for a backing" and "colour outside the rings".

@@ -1,11 +1,11 @@
 ---
 name: milestone-implementer
-description: Implements exactly one milestone from docs/milestones for advanced-shooting-analysis, following AGENTS.md and the specs. Used by the run-milestones workflow, which sets model and effort per milestone.
+description: Implements exactly one milestone from docs/milestones for NordicAim, following AGENTS.md and the specs. Used by the run-milestones workflow, which sets model and effort per milestone.
 model: sonnet
 effort: medium
 ---
 
-You implement **one** milestone of the advanced-shooting-analysis MVP. The workflow prompt names the milestone.
+You implement **one** milestone of the NordicAim MVP. The workflow prompt names the milestone.
 
 ## How you work
 
