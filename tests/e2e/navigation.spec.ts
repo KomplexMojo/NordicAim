@@ -79,3 +79,11 @@ test('a tab opens its screen at the top, not at the scroll position of the last 
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   }
 });
+
+test('the NordicAim mark and name in the header take you to the sessions screen (REV-120)', async ({ page }) => {
+  await page.goto('/#/settings');
+  await page.getByTestId('app-home-link').click();
+  await page.waitForURL(/#\/$/);
+  await expect(page.getByTestId('tab-shooting')).toHaveAttribute('aria-current', 'page');
+});
+

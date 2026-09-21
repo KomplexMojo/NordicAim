@@ -17,7 +17,7 @@ export function AppHeader() {
       className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 bg-[var(--header)] px-4 pt-[env(safe-area-inset-top)] text-white"
       data-testid="app-header"
     >
-      <span className="flex items-center gap-2 py-2">
+      <Link to="/" className="flex min-h-11 items-center gap-2 py-2" aria-label="NordicAim: back to sessions" data-testid="app-home-link">
         <svg
           viewBox="0 0 100 100"
           className="size-8 shrink-0"
@@ -26,7 +26,7 @@ export function AppHeader() {
           dangerouslySetInnerHTML={{ __html: brandMotif(0, 0, 100) }}
         />
         <span className="text-base font-semibold">NordicAim</span>
-      </span>
+      </Link>
       <Link
         to="/patterns"
         className="flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-md px-2 text-xs hover:bg-white/10"
