@@ -86,9 +86,20 @@ Your sessions live on the phone. Deleting the Home Screen app deletes them, so u
 Something look off? Tap **Adjust shots** on the results screen to add, move or remove a hole, or nudge the alignment. The score updates as you go.
 
 <p align="center">
-  <img src="docs/assets/summary-image.png" alt="A session summary image: sight in and confirm above, two precision positions below, then the session analysis" width="460">
-  <br><sub>The summary image you share, made from the project's reference target photos.</sub>
+  <img src="docs/assets/screens/adjust.jpg" alt="The shot correction screen with Shots and Alignment modes and the detected shots drawn on the photo" width="300">
+  <br><sub>Correcting shots: tap to add a hole, drag to move one, or switch to Alignment to line the rings up.</sub>
 </p>
+
+### Your brag sheet
+
+When the session is done, NordicAim builds **one summary image**: your name and club if you set them in Settings, the session, the shooting and lighting conditions, every target with its score and group, and the session analysis. It is your brag sheet, and it is made to be shared. Tap **Share** and send it from the iPhone share sheet to your Strava or Garmin Connect activity as a photo, or to a coach or the squad chat.
+
+<p align="center">
+  <img src="docs/assets/summary-image.png" alt="A brag sheet: the NordicAim summary image with sight in and confirm above, two precision positions below, then the session analysis" width="460">
+  <br><sub>An example brag sheet, made from the project's reference target photos.</sub>
+</p>
+
+You choose what to share and when. NordicAim does not connect to Strava or Garmin, and nothing is posted for you. The image is the only thing that leaves your phone, and your photos never do.
 
 Want the whole routine, from installing to comparing against your history? See the **[workflow, step by step](docs/guide/workflow.md)**.
 

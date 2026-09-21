@@ -87,7 +87,7 @@ Anything you place or move by hand is kept. NordicAim never overwrites your corr
 
 When the photos look right, go to the session results. NordicAim scores each target, measures the group and the mean point of impact, and builds **one summary image**: the session name, your name and logo, the shooting and lighting conditions, every target and the session analysis.
 
-Tap **Update summary** if you changed anything, then **Share** to send the image from the iPhone share sheet. That image is the only thing that leaves your phone, and only when you share it.
+Tap **Update summary** if you changed anything, then **Share** to send the image from the iPhone share sheet. That image is your brag sheet: post it to a Strava or Garmin Connect activity as a photo, or send it to a coach. NordicAim does not connect to either service and posts nothing for you. The image is the only thing that leaves your phone, and only when you share it.
 
 <p align="center">
   <img src="../assets/screens/results.png" width="300" alt="The results screen with the session summary image">
