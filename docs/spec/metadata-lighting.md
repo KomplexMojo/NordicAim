@@ -37,8 +37,7 @@ export async function toRgba(blob: Blob, maxLongest: number): Promise<RgbaImage>
 ```
 
 - HEIC: Safari on iOS/macOS decodes HEIC natively. Other browsers fail to decode, so throw
-  `UnsupportedOnThisBrowserError('heic')` with the message "HEIC photos can only be opened in Safari on iPhone
-  or Mac". The iOS photo picker usually hands over JPEG anyway.
+  `UnsupportedOnThisBrowserError('heic')` with the message "HEIC photos can't be opened in this browser. Re-save the photo as JPEG, or set your camera to JPEG". The iOS photo picker usually hands over JPEG anyway, and Android cameras shoot JPEG by default.
 - Never create a canvas larger than 16,000,000 px (working ≤ 3000 px guarantees this).
 - Canvas re-encoding produces JPEGs **without metadata**.
 

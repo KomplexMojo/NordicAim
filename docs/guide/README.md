@@ -65,7 +65,7 @@ The overlay is a drawing of the printed target. The app's own hint says it best:
 
 You do not have to get it perfect. NordicAim measures the target in your photo and corrects the alignment itself. If it still misses, you can fix it by hand (see [section 7](#7-correct-a-shot-or-the-alignment)).
 
-Photos taken with the iPhone camera may be in HEIC format. Those open in Safari on iPhone and Mac.
+Photos taken with the iPhone camera may be in HEIC format. Those open in Safari on iPhone and Mac; on other browsers (for example Chrome on Android) use JPEG photos.
 
 ## 4. Add the details
 

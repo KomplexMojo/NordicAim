@@ -6,7 +6,7 @@ const MAX_CANVAS_PIXELS = 16_000_000;
 
 export class UnsupportedOnThisBrowserError extends Error {
   constructor(format: string) {
-    super('HEIC photos can only be opened in Safari on iPhone or Mac');
+    super("HEIC photos can't be opened in this browser. Re-save the photo as JPEG, or set your camera to JPEG");
     this.name = 'UnsupportedOnThisBrowserError';
     this.format = format;
   }

@@ -150,7 +150,7 @@ export function CaptureFallbacks({ sessionId, categorization, template, outerDia
         onChange={(e) => pickFiles(e.currentTarget, 'import')}
       />
       <p className="text-center text-xs text-muted-foreground">
-        HEIC photos can only be opened in Safari on iPhone or Mac.
+        HEIC photos only open in Safari (iPhone or Mac). On other browsers, such as Chrome on Android, use JPEG photos.
       </p>
       {session && (
         <div className="fixed inset-0 z-50 bg-background pt-[env(safe-area-inset-top)]" data-testid="capture-review">

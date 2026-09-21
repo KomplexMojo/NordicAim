@@ -126,7 +126,7 @@ export const GLOSSARY: ReadonlyArray<GlossaryEntry> = [
   {
     term: 'HEIC',
     stands: 'high efficiency image container',
-    means: 'The photo format iPhones use by default. The app converts these so it can analyse them.',
+    means: 'The photo format iPhones (and some Android phones) can use. The app converts these so it can analyse them.',
     formula: null,
   },
   {
