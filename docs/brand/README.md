@@ -1,16 +1,16 @@
-# Nordic Aim brand kit
+# NordicAim brand kit
 
 <p align="center">
-  <img src="wordmark-light.svg" alt="Nordic Aim" height="72">
+  <img src="wordmark-light.svg" alt="NordicAim" height="72">
 </p>
 
-One page that says how Nordic Aim looks and sounds, so the app, the repository, the guide and anything shared outside them all read as the same thing.
+One page that says how NordicAim looks and sounds, so the app, the repository, the guide and anything shared outside them all read as the same thing.
 
 ## The idea
 
-Nordic Aim is a measuring tool for biathletes. It should feel calm, precise and honest: it shows what it measured, says what it is unsure about, and leaves the decision to the athlete. The mark says the same thing in one picture: the rings of a target, and a small group of shots with the ellipse the app draws around them.
+NordicAim is a measuring tool for biathletes. It should feel calm, precise and honest: it shows what it measured, says what it is unsure about, and leaves the decision to the athlete. The mark says the same thing in one picture: the rings of a target, and a small group of shots with the ellipse the app draws around them.
 
-**Name.** Nordic Aim. Two words, capital N and A. Never "NordicAim" or "Nordic AIM".
+**Name.** NordicAim. One word, capital N and A (REV-103). Never "Nordic Aim" or "Nordic AIM".
 
 **One line.** Shot analysis for biathletes.
 
@@ -31,7 +31,7 @@ Athlete to athlete. Plain words, short sentences, numbers when there are numbers
 - **Say what it measures.** "Extreme spread", "mean point of impact", "hits and misses". Use the range's own words: sight in, confirm, prone, standing, group.
 - **Give the athlete the last word.** "You can correct any shot." "Suggested holes score nothing until you confirm them."
 - **Be exact about privacy.** "Photos never leave your phone" is true and specific. Keep it that way.
-- **Do not oversell.** No claims of accuracy figures, no "AI-powered", no "revolutionary". Nordic Aim does not give coaching advice today, so do not imply it.
+- **Do not oversell.** No claims of accuracy figures, no "AI-powered", no "revolutionary". NordicAim does not give coaching advice today, so do not imply it.
 - **Do not promise team features that do not exist.** There is no shared roster or dashboard. Results move as summary images.
 
 ## Colour
@@ -60,10 +60,10 @@ Text inside the SVG files here is converted to outlines, so those files look the
 
 ## The mark
 
-Three rings and a solid bull, as on the printed target, with three shots in a group and the dashed ellipse the app draws around a group. The shots are the only warm colour.
+A biathlon target seen from the firing line: a slim white paper margin, a blue ring around the black aiming disc, one white scoring ring, and three red shots in a group. The shots are the only warm colour. The drawing lives in `src/lib/render/brand-mark.ts`; the files here are generated from it.
 
 - **Clear space.** Keep at least one quarter of the mark's width free on every side.
-- **Minimum size.** The mark: 24 px. The wordmark: 24 px tall. Below that, use the favicon, which drops the ellipse and one ring.
+- **Minimum size.** The mark: 24 px. The wordmark: 24 px tall. Below that, use the favicon.
 - **Backgrounds.** `mark-light` / `wordmark-light` on Page, Panel or white. `mark-dark` / `wordmark-dark` on Slate or any dark image.
 - **Do not** recolour it, stretch it, add effects, or put the shots anywhere else.
 
@@ -71,7 +71,7 @@ Three rings and a solid bull, as on the printed target, with three shots in a gr
 
 | File | Use |
 |---|---|
-| `banner.svg` | Top of the repository README. |
+| `banner.png` | Top of the repository README (the mark from `src/lib/render/brand-mark.ts` and the one-word name). |
 | `social-card.png` | GitHub social preview (1280 by 640). Upload it in **Settings, General, Social preview**. |
 | `wordmark-light.svg`, `wordmark-dark.svg` | Mark plus name, horizontal. |
 | `mark-light.svg`, `mark-dark.svg` | The mark alone, transparent background. |
@@ -91,4 +91,4 @@ The app still ships the default Vite favicon (a purple bolt) at `public/favicon.
 
 ## The credit line
 
-Every summary image ends with **Developed using Nordic Aim by KomplexMojo**, followed by the time it was generated. That line is part of the brand and is how your name travels with shared results. Keep it on every export and in any screenshot of a summary image.
+Every summary image ends with **Developed using NordicAim by KomplexMojo**, followed by the time it was generated. That line is part of the brand and is how your name travels with shared results. Keep it on every export and in any screenshot of a summary image.

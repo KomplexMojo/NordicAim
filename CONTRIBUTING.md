@@ -1,6 +1,6 @@
 # Contributing
 
-Nordic Aim is developed by its owner, and the source is published for transparency, not as an open source project.
+NordicAim is developed by its owner, and the source is published for transparency, not as an open source project.
 **Code pull requests are not accepted.** Under [LICENSE.md](LICENSE.md) you may read the code and run it for
 noncommercial use, but not modify or redistribute it.
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/brand/banner.svg" alt="Nordic Aim: shot analysis for biathletes" width="100%">
+  <img src="docs/brand/banner.png" alt="NordicAim: shot analysis for biathletes" width="100%">
 </p>
 
 <p align="center">
@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="https://komplexmojo.github.io/NordicAim/"><b>Open Nordic Aim</b></a>
+  <a href="https://komplexmojo.github.io/NordicAim/"><b>Open NordicAim</b></a>
   &nbsp;·&nbsp;
   <a href="#install-on-your-iphone">Install</a>
   &nbsp;·&nbsp;
@@ -18,12 +18,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/hero-screens.png" alt="Three phone screens: the capture overlay lined up on a target, the session summary with scores, and the shot adjustment screen" width="900">
+  <img src="docs/assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, the session summary with scores, the shot adjustment screen, and the patterns view" width="900">
 </p>
 
 ## What it does
 
-Nordic Aim reads the paper target you just shot at 50 m and tells you what happened.
+NordicAim reads the paper target you just shot at 50 m and tells you what happened.
 
 1. **Photograph the target.** Line up the live overlay with the black aiming mark, or import a photo you already took.
 2. **Say what you shot.** Sighting or precision, prone, standing or both, how many rounds, lighting. It takes a few seconds.
@@ -45,7 +45,7 @@ Two printed sheets are supported today: the **sighting sheet** and the **Olympic
 
 ## For athletes and teams
 
-Each athlete installs Nordic Aim on their own phone in about ten seconds. There is no account to create and nothing to set up for the squad.
+Each athlete installs NordicAim on their own phone in about ten seconds. There is no account to create and nothing to set up for the squad.
 
 Results move between athletes and coaches as summary images. Every image states which scoring rule was used and how many shots were found, so a coach reading it knows exactly what the numbers mean. If the squad compares scores, agree on one scoring rule in Settings first.
 
@@ -55,18 +55,18 @@ There is no shared team account or dashboard. Each phone keeps its own history.
 
 - **Everything happens on your phone.** No server, no login, no analytics, no ads.
 - **Your photos stay yours.** They are never uploaded. Only two things can leave the phone, and only when you ask: the summary image you share, and a backup file you create.
-- **Free to use.** Nordic Aim is served as plain static files from GitHub Pages, so there is nothing to pay for and nothing to sign up to.
+- **Free to use.** NordicAim is served as plain static files from GitHub Pages, so there is nothing to pay for and nothing to sign up to.
 - **Works at the range.** After the first load it runs offline, so no signal is no problem.
 
 ## Install on your iPhone
 
 1. Open **[komplexmojo.github.io/NordicAim](https://komplexmojo.github.io/NordicAim/)** in Safari.
 2. Tap **Share**, then **Add to Home Screen**.
-3. Open Nordic Aim from your Home Screen.
+3. Open NordicAim from your Home Screen.
 
 The first load downloads the image analysis engine, so do it on Wi-Fi before you head to the range. There is no App Store and no Apple account involved.
 
-Your sessions live on the phone. Deleting the Home Screen app deletes them, so use **Settings, Back up now** every so often. Nordic Aim reminds you when it has been a while.
+Your sessions live on the phone. Deleting the Home Screen app deletes them, so use **Settings, Back up now** every so often. NordicAim reminds you when it has been a while.
 
 ## Your first session
 
@@ -94,7 +94,7 @@ New to it? The **[guide](docs/guide/README.md)** covers getting good photos, rea
 
 ## Status and feedback
 
-Nordic Aim is an early release, built in the open with biathletes who shoot. If a score looks wrong, a screen is confusing, or you want something it does not do, [open an issue](https://github.com/KomplexMojo/NordicAim/issues). A photo of the target helps, but check it carries no location you would rather keep private.
+NordicAim is an early release, built in the open with biathletes who shoot. If a score looks wrong, a screen is confusing, or you want something it does not do, [open an issue](https://github.com/KomplexMojo/NordicAim/issues). A photo of the target helps, but check it carries no location you would rather keep private.
 
 <!-- Support: when there is a Patreon page or a project domain, add the link here in one place. -->
 
@@ -106,13 +106,13 @@ summary images.
 
 The source code is published so you can see how it works, under the [PolyForm Strict License 1.0.0](LICENSE.md): you may
 read and run it for noncommercial use, but not modify or redistribute it, and code contributions are not accepted
-([why](CONTRIBUTING.md)). It is source-available, not open source. The "Nordic Aim" name and logo are not licensed for
+([why](CONTRIBUTING.md)). It is source-available, not open source. The "NordicAim" name and logo are not licensed for
 reuse. Third-party components keep their own licences ([NOTICE.md](NOTICE.md)).
 
-Nordic Aim is built in response to what its users ask for. If it earns a place in your training, supporting its
+NordicAim is built in response to what its users ask for. If it earns a place in your training, supporting its
 development is the best way to shape what comes next.
 
-Developed using Nordic Aim by **KomplexMojo**. Every summary image carries that credit.
+Developed using NordicAim by **KomplexMojo**. Every summary image carries that credit.
 
 <br>
 
@@ -121,7 +121,7 @@ Developed using Nordic Aim by **KomplexMojo**. Every summary image carries that 
 
 ### About the project
 
-Nordic Aim is a Vite and React web app that runs entirely in the browser on the phone, with no backend. The analysis pipeline (OpenCV in a Web Worker), scoring and rendering are all client-side and covered by unit and end-to-end tests.
+NordicAim is a Vite and React web app that runs entirely in the browser on the phone, with no backend. The analysis pipeline (OpenCV in a Web Worker), scoring and rendering are all client-side and covered by unit and end-to-end tests.
 
 - Requires Node 22 and pnpm 10 (`corepack enable` picks up the pinned `packageManager` version).
 

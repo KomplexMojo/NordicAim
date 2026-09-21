@@ -1,4 +1,4 @@
-# Terms of use for the hosted Nordic Aim app
+# Terms of use for the hosted NordicAim app
 
 These terms cover using the published app (for example at komplexmojo.github.io/NordicAim). The source
 code is separately licensed under [PolyForm Strict 1.0.0](LICENSE.md).
@@ -15,7 +15,7 @@ code is separately licensed under [PolyForm Strict 1.0.0](LICENSE.md).
 - Sell, rent, sublicense or charge for the app, its code, or access to it, or bundle it into anything that is sold.
 - Copy, host or redistribute the app or its code elsewhere, or publish modified versions, without written permission.
 - Remove or alter the KomplexMojo credit on summary images, or present the app or its code as your own work.
-- Use the "Nordic Aim" name, logo or icons for another product, or in a way that suggests it is official.
+- Use the "NordicAim" name, logo or icons for another product, or in a way that suggests it is official.
 
 ## Support
 
