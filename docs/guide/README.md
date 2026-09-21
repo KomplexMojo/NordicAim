@@ -6,6 +6,8 @@
 
 Everything you need to go from a shot target to a result you trust. NordicAim runs on your iPhone, needs no account, and never uploads your photos.
 
+Short on time? The **[workflow, step by step](workflow.md)** is the eight-step version.
+
 **In this guide**
 
 1. [Install](#1-install)

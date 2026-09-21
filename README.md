@@ -90,6 +90,8 @@ Something look off? Tap **Adjust shots** on the results screen to add, move or r
   <br><sub>The summary image you share, made from the project's reference target photos.</sub>
 </p>
 
+Want the whole routine, from installing to comparing against your history? See the **[workflow, step by step](docs/guide/workflow.md)**.
+
 New to it? The **[guide](docs/guide/README.md)** covers getting good photos, reading the results, corrections, patterns and backup in more detail.
 
 ## Status and feedback
