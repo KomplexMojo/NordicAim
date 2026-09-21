@@ -1,7 +1,7 @@
 # The NordicAim workflow
 
 <p align="center">
-  <img src="../assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, the session summary with scores, the shot adjustment screen, and the patterns view" width="900">
+  <img src="../assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, a single target read out with its score, the shot correction screen, and the patterns view" width="900">
 </p>
 
 The whole thing in eight steps. Steps 1 to 3 you do once. Steps 4 to 8 you repeat every time you shoot.
@@ -78,7 +78,7 @@ Each target opens on its own screen with the holes NordicAim found drawn on the 
 To step through the whole session in order, tap **Review session**. Targets that need attention come first.
 
 <p align="center">
-  <img src="../assets/screens/adjust.jpg" width="300" alt="The target screen with the shots drawn on the photo, ready to check and adjust">
+  <img src="../assets/screens/adjust.jpg" width="300" alt="The shot correction screen with Shots and Alignment modes and the shots drawn on the photo">
 </p>
 
 Anything you place or move by hand is kept. NordicAim never overwrites your corrections.

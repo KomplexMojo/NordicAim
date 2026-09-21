@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, the session summary with scores, the shot adjustment screen, and the patterns view" width="900">
+  <img src="docs/assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, a single target read out with its score, the shot correction screen, and the patterns view" width="900">
 </p>
 
 ## What it does
