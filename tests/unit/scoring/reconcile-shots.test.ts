@@ -50,8 +50,12 @@ function autos(n: number, over: (i: number) => Partial<Shot> = () => ({})): Shot
   return Array.from({ length: n }, (_, i) => auto(i + 1, over(i + 1)));
 }
 
+// Comfortably above every fixture below (max 15) so the pre-existing per-subset reject/cap tests are
+// unaffected by the owner's separate maxPlausibleHoles safeguard, exercised explicitly further down.
+const TEST_MAX_PLAUSIBLE_HOLES = 20;
+
 function run(shots: Shot[], categorization = PRONE_10, method: DetectionMethod = 'colour') {
-  return reconcileShots({ shots, categorization, method });
+  return reconcileShots({ shots, categorization, method, maxPlausibleHoles: TEST_MAX_PLAUSIBLE_HOLES });
 }
 
 describe('reconcileShots: the three outcomes on stored shots', () => {
@@ -171,7 +175,7 @@ describe('reconcileShots: a both target is reconciled per subset (Pitfalls)', ()
     const r = run(autos(13), both);
     expect(r.rejected).toEqual([{ position: 'prone', holesFound: 8, declared: 5 }]);
     expect(r.warnings).toEqual(['too-many-holes']);
-    const ctx = reconcileReasonContext(autos(13), both, 'colour');
+    const ctx = reconcileReasonContext(autos(13), both, 'colour', TEST_MAX_PLAUSIBLE_HOLES);
     expect(ctx).toMatchObject({ holesFound: 8, rejectedDeclared: 5, rejectedPosition: 'prone' });
   });
 
@@ -217,6 +221,37 @@ describe('REV-43 (M20 Open question 1): a located hole outside the scoring area 
     expect(result.all.missing).toBe(1);
     expect(result.all.mpi).toEqual({ xMm: 2, yMm: 0 });
     expect(result.all.extremeSpreadMm).toBeNull();
+  });
+});
+
+describe('reconcileShots: maxPlausibleHoles safety net (owner instruction, 2026-09-26)', () => {
+  it('rejects outright when raw holes exceed the setting, independent of declared rounds', () => {
+    const shots = autos(6);
+    const r = reconcileShots({ shots, categorization: PRONE_10, method: 'colour', maxPlausibleHoles: 5 });
+    expect(r.rejected).toEqual([{ position: 'prone', holesFound: 6, declared: 10 }]);
+    expect(r.shots).toEqual(shots);
+    expect(r.warnings).toEqual(['too-many-holes']);
+  });
+
+  it('rejects outright when no holes are found at all, rather than scoring every round a miss', () => {
+    const r = reconcileShots({ shots: [], categorization: PRONE_10, method: 'colour', maxPlausibleHoles: 20 });
+    expect(r.rejected).toEqual([{ position: 'prone', holesFound: 0, declared: 10 }]);
+    expect(r.warnings).toEqual(['too-many-holes']);
+  });
+
+  it('never overrides a manual edit, even past the limit (analysis-pipeline §8)', () => {
+    const shots = [manual('m-1', 0), ...autos(6)];
+    const r = reconcileShots({ shots, categorization: PRONE_10, method: 'colour', maxPlausibleHoles: 5 });
+    expect(r.rejected).toEqual([]);
+  });
+
+  it('splits per subset on a both target, exactly like the ordinary reject path', () => {
+    const both: Categorization = { template: 'precision', position: 'both', roundsProne: 5, roundsStanding: 5 };
+    const r = reconcileShots({ shots: autos(13), categorization: both, method: 'colour', maxPlausibleHoles: 5 });
+    expect(r.rejected).toEqual([
+      { position: 'prone', holesFound: 8, declared: 5 },
+      { position: 'standing', holesFound: 5, declared: 5 },
+    ]);
   });
 });
 

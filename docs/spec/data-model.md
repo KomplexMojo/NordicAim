@@ -225,9 +225,11 @@ export const AppSettings = z.object({
   // REV-58: which diagram renderer last drew every stored diagram (`rendering-composite.md` §6). Behind the code's
   // DIAGRAM_RENDERER_VERSION at app start means every finished analysis goes back to Stage B once.
   diagramRendererVersion: z.number().int().min(0).default(0),
+  // Owner instruction, 2026-09-26: the raw-hole-count safety net (§8 below). Defaults for older rows so they read back.
+  maxPlausibleHoles: z.number().int().positive().default(10),
 });
 // default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null,
-//            backingMode 'auto', backing null, scoringRule 'gauge', visibleHoleDiameterMm 4.5 }
+//            backingMode 'auto', backing null, scoringRule 'gauge', visibleHoleDiameterMm 4.5, maxPlausibleHoles 10 }
 ```
 
 - **Hole size** (REV-47 Settings screen): `profileOverrides.holeDiameterMm` is editable in Settings, **2–12 mm**, reset to

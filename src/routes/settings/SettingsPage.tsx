@@ -9,6 +9,7 @@ import { BackupSettings } from '@/components/settings/BackupSettings';
 import { AthleteSettings } from '@/components/settings/AthleteSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
+import { MaxPlausibleHolesSettings } from '@/components/settings/MaxPlausibleHolesSettings';
 import { useServices } from '@/lib/app/services';
 import type { BackingMode } from '@/lib/domain/backing';
 import type { AppSettings } from '@/lib/domain/settings';
@@ -18,8 +19,10 @@ import {
   clearBacking,
   getAppSettings,
   resetHoleDiameterMm,
+  resetMaxPlausibleHoles,
   setBackingMode,
   setHoleDiameterMm,
+  setMaxPlausibleHoles,
   setAthlete,
   setHandedness,
   setScoringRule,
@@ -149,6 +152,11 @@ export function SettingsPage() {
             onChange={(mm) => void save(() => setHoleDiameterMm(ctx, mm))}
             onReset={() => void save(() => resetHoleDiameterMm(ctx))}
           />
+            <MaxPlausibleHolesSettings
+              maxPlausibleHoles={settings.maxPlausibleHoles}
+              onChange={(n) => void save(() => setMaxPlausibleHoles(ctx, n))}
+              onReset={() => void save(() => resetMaxPlausibleHoles(ctx))}
+            />
           </ScoringSettings>
           <BackingSettings
             key={`backing-${epoch}`}

@@ -15,6 +15,7 @@ import type { Shot } from '../domain/analysis';
 import { declaredRounds, isCategorizationComplete } from '../domain/categorization';
 import type { ShotPosition, Warning } from '../domain/enums';
 import type { Categorization } from '../domain/photo';
+import { DEFAULT_MAX_PLAUSIBLE_HOLES } from '../domain/settings';
 import { BACKING_OVERLAP_RATIO } from '../cv/constants';
 import {
   CONFIDENT_HOLE_MIN,
@@ -61,6 +62,8 @@ export interface ReconcileShotsInput {
   /** Must be complete (the declared rounds are needed). */
   categorization: Categorization;
   method: DetectionMethod;
+  /** Settings' raw-hole-count safety net (`AppSettings.maxPlausibleHoles`). */
+  maxPlausibleHoles: number;
 }
 
 /** Step 2: the colour path measured 0 false marks, so every hole it finds is confident. */
@@ -106,9 +109,29 @@ export function missingRounds(shots: Shot[], categorization: Categorization): nu
 
 /** REV-39 / M20: reconcile a photo's shots against its declared rounds, per subset. */
 export function reconcileShots(input: ReconcileShotsInput): ShotsReconciliation {
-  const { categorization, method } = input;
+  const { categorization, method, maxPlausibleHoles } = input;
   const ownerEdited = input.shots.some((shot) => shot.source === 'manual');
   const shots = ownerEdited ? [...input.shots] : input.shots.map(asDetected);
+
+  // Owner instruction, 2026-09-26: this many raw holes on one target (Settings' maxPlausibleHoles,
+  // default 10 — a precision target is always 10 shots) is a detector malfunction (a hole-size or
+  // calibration bug flooding a target with false candidates), not a shooting result — reject the whole
+  // target outright rather than let per-subset reconciliation try to make sense of it. Zero holes found
+  // is treated the same way — a detection failure (wrong target, a missed alignment) rather than a
+  // shooting result, so it is rejected rather than silently scored as every declared round missed. Note:
+  // a sighting target where every round truly missed the paper is indistinguishable from this at the
+  // detector level; flagged as-is per the owner's instruction rather than guessed around. Checked
+  // independently of any subset's declared rounds, and only while every shot is still `auto`: a manual
+  // edit is the owner's own confirmed count and is never overridden (analysis-pipeline §8).
+  if (!ownerEdited && (shots.length === 0 || shots.length > maxPlausibleHoles)) {
+    const positionedRaw = assignPositions(expandUnits(shots), categorization, shots);
+    const rejected: RejectedSubset[] = subsetKeys(categorization).map((key) => ({
+      position: key,
+      holesFound: positionedRaw.filter((u) => u.position === key).length,
+      declared: declaredFor(categorization, key),
+    }));
+    return { shots, rejected, dropped: [], doublePunches: 0, missesAssumed: 0, warnings: ['too-many-holes'] };
+  }
 
   // Which subset each unit falls in (§7), before anything is inferred.
   const positioned = assignPositions(expandUnits(shots), categorization, shots);
@@ -205,9 +228,10 @@ export function reconcileReasonContext(
   shots: Shot[],
   categorization: Categorization,
   method: DetectionMethod,
+  maxPlausibleHoles: number = DEFAULT_MAX_PLAUSIBLE_HOLES,
 ): ReconcileReasonContext | null {
   if (!isCategorizationComplete(categorization)) return null;
-  const reconciled = reconcileShots({ shots, categorization, method });
+  const reconciled = reconcileShots({ shots, categorization, method, maxPlausibleHoles });
   const rejected = reconciled.rejected[0];
   return {
     ...(rejected === undefined

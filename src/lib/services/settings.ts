@@ -10,9 +10,11 @@ import type { BackingMode, BackingSheet } from '@/lib/domain/backing';
 import {
   cleanIdentityText,
   DEFAULT_HOLE_DIAMETER_MM,
+  DEFAULT_MAX_PLAUSIBLE_HOLES,
   MAX_ATHLETE_CLUB,
   MAX_ATHLETE_NAME,
   isValidHoleDiameterMm,
+  isValidMaxPlausibleHoles,
   isValidVisibleHoleDiameterMm,
   type AppSettings,
   type Handedness,
@@ -68,6 +70,24 @@ export function setHoleDiameterMm(ctx: ServiceContext, mm: number): Promise<AppS
 /** data-model §5 **Reset to 5.6** (.22 LR). */
 export function resetHoleDiameterMm(ctx: ServiceContext): Promise<AppSettings> {
   return setHoleDiameterMm(ctx, DEFAULT_HOLE_DIAMETER_MM);
+}
+
+export class InvalidMaxPlausibleHolesError extends Error {
+  constructor(n: number) {
+    super(`Max plausible holes must be 5-50, got ${n}`);
+    this.name = 'InvalidMaxPlausibleHolesError';
+  }
+}
+
+/** data-model §5: the raw-hole-count safety net, 5-50. Out of range throws and stores nothing. */
+export function setMaxPlausibleHoles(ctx: ServiceContext, n: number): Promise<AppSettings> {
+  if (!isValidMaxPlausibleHoles(n)) return Promise.reject(new InvalidMaxPlausibleHolesError(n));
+  return updateSettings(ctx, (s) => ({ ...s, maxPlausibleHoles: n }));
+}
+
+/** data-model §5 **Reset to 10** (a precision target is always 10 shots). */
+export function resetMaxPlausibleHoles(ctx: ServiceContext): Promise<AppSettings> {
+  return setMaxPlausibleHoles(ctx, DEFAULT_MAX_PLAUSIBLE_HOLES);
 }
 
 export class InvalidVisibleHoleDiameterError extends Error {

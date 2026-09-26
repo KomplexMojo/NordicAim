@@ -81,6 +81,9 @@ export const AppSettings = z.object({
   lastBackupAt: z.string().nullable().default(null),
   lastBackupSessions: z.number().int().min(0).default(0),
   backupReminderDays: z.number().int().min(1).max(365).default(14),
+  // Owner instruction, 2026-09-26: the raw-hole-count safety net (`isValidMaxPlausibleHoles` below),
+  // editable so it isn't stuck at the precision default. Defaults for older rows so they read back.
+  maxPlausibleHoles: z.number().int().positive().default(10),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 
@@ -91,6 +94,20 @@ export const MAX_HOLE_DIAMETER_MM = 12;
 
 export function isValidHoleDiameterMm(mm: number): boolean {
   return Number.isFinite(mm) && mm >= MIN_HOLE_DIAMETER_MM && mm <= MAX_HOLE_DIAMETER_MM;
+}
+
+/**
+ * Owner instruction, 2026-09-26: a precision target is always 10 shots, so more raw holes than this on
+ * one target is a detector malfunction (a hole-size or calibration bug flooding it with false
+ * candidates), not a shooting result — reject the whole target outright rather than score it. Editable
+ * in Settings so a discipline whose round count differs isn't stuck with the precision default.
+ */
+export const DEFAULT_MAX_PLAUSIBLE_HOLES = 10;
+export const MIN_MAX_PLAUSIBLE_HOLES = 5;
+export const MAX_MAX_PLAUSIBLE_HOLES = 50;
+
+export function isValidMaxPlausibleHoles(n: number): boolean {
+  return Number.isInteger(n) && n >= MIN_MAX_PLAUSIBLE_HOLES && n <= MAX_MAX_PLAUSIBLE_HOLES;
 }
 
 export function defaultAppSettings(): AppSettings {
@@ -113,6 +130,7 @@ export function defaultAppSettings(): AppSettings {
     lastBackupAt: null,
     lastBackupSessions: 0,
     backupReminderDays: 14,
+    maxPlausibleHoles: DEFAULT_MAX_PLAUSIBLE_HOLES,
   };
 }
 

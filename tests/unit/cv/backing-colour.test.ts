@@ -303,6 +303,7 @@ describe('detectShotsWithBacking (analysis-pipeline §2 A5, backing-sheet.md §5
       shots: withoutArea(result.shots),
       categorization: { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null },
       method: result.detection.method,
+      maxPlausibleHoles: 20,
     });
     expect(reconciled.rejected).toEqual([]);
     expect(reconciled.doublePunches).toBe(1);

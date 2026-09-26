@@ -144,7 +144,12 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
     const reconciled =
       analysis.calibration === null
         ? null
-        : reconcileShots({ shots: analysis.shots, categorization, method: analysis.pipeline.detection.method });
+        : reconcileShots({
+            shots: analysis.shots,
+            categorization,
+            method: analysis.pipeline.detection.method,
+            maxPlausibleHoles: settings.maxPlausibleHoles,
+          });
     const shots = reconciled?.shots ?? analysis.shots;
     const rejected = reconciled !== null && reconciled.rejected.length > 0;
     const shotsChanged = !sameShots(shots, analysis.shots);
