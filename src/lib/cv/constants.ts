@@ -82,12 +82,21 @@ export const STROKE_MIN_FRACTION = 0.35;
 // --- R2 (REV-35): numerals -----------------------------------------------------------------------
 
 /**
- * R2: the numeral boxes. Measured on IMG_4540 at 10 px/mm: a printed numeral is about 4 mm tall
- * (radial) and 2.5-3 mm wide (tangential); each box adds 0.5 mm radially and 1 mm tangentially for
- * the rotation estimate's error.
+ * R2: the numeral boxes. Originally measured on IMG_4540 at 10 px/mm: a printed numeral about 4 mm tall
+ * (radial) and 2.5-3 mm wide (tangential), each box adding 0.5 mm radially and 1 mm tangentially for the
+ * rotation estimate's error.
+ *
+ * Re-measured 2026-09-26 (owner's T-series batch, `fixtures/private/backing/*`, 48 photos, reliable
+ * rotation on all 48): that print's numerals run bigger — real ink extends a median 3.75 mm radially and
+ * 1.75 mm tangentially past the modelled centre (walking outward from each of the 8 numeral centres on
+ * all 4 axes, stopping at the first gap so a nearby ring line isn't counted as the same glyph). The p90+
+ * tail pins at the 5 mm search ceiling this measurement used and could not be resolved further — some of
+ * that may be a numeral genuinely closer to the next ring band (only 8 mm away) rather than bigger ink;
+ * flagged rather than chased, per M16's own admission that these features are hand-tuned per print.
+ * Values below are the measured median plus the original margins, not the tail.
  */
-export const NUMERAL_BOX_HALF_RADIAL_MM = 2.5;
-export const NUMERAL_BOX_HALF_TANGENTIAL_MM = 2.5;
+export const NUMERAL_BOX_HALF_RADIAL_MM = 4.2;
+export const NUMERAL_BOX_HALF_TANGENTIAL_MM = 3;
 /** R2: a band-circle sample is numeral ink when it is this far from the circle's median, in gray levels... */
 export const NUMERAL_INK_MIN_DELTA = 30;
 /** ...or this many median deviations, whichever is larger. */

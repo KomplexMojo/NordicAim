@@ -350,8 +350,12 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     expect((await getAnalysisRecord(ctx.db, photoId))?.shots).toEqual([DETECTED]);
   });
 
-  it('caps the shots to the declared rounds and warns (REV-28)', async () => {
+  it('caps the shots to the declared rounds and warns, within the maxPlausibleHoles safety net (REV-28)', async () => {
     const { ctx, photoId } = await seed(); // categorization: prone, 10 rounds
+    // Owner instruction, 2026-09-26: maxPlausibleHoles defaults to 10, matching declared rounds here, so
+    // the cap step (a few low-confidence extras) needs its own headroom to be exercised at all — a raw
+    // count this far past declared is otherwise the maxPlausibleHoles reject case (see the test below).
+    await putSettings(ctx.db, { ...defaultAppSettings(), maxPlausibleHoles: 20 });
     const twelve: Shot[] = Array.from({ length: 12 }, (_, i) => ({
       ...DETECTED,
       id: `auto-${i + 1}`,
@@ -371,6 +375,24 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     // A capped photo is still for the owner to confirm (analysis-pipeline §4).
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.reasons).toEqual(['extra-candidates-dropped']);
+  });
+
+  it('rejects outright, ahead of the cap, when raw holes exceed maxPlausibleHoles (owner instruction, 2026-09-26)', async () => {
+    const { ctx, photoId } = await seed(); // categorization: prone, 10 rounds; maxPlausibleHoles defaults to 10
+    const twelve: Shot[] = Array.from({ length: 12 }, (_, i) => ({
+      ...DETECTED,
+      id: `auto-${i + 1}`,
+      xMm: i,
+      yMm: 0,
+      confidence: 1 - i * 0.05,
+    }));
+    const { api } = stubCv(review({ detection }), twelve);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(12);
+    expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
   });
 
   it('does not cap, or warn, when the shots already fit the declared rounds', async () => {

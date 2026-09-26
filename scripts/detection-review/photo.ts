@@ -109,7 +109,7 @@ export function reviewPhoto(
 
   // M19 (backing-sheet.md §5): when the session uses a backing — or `Auto` finds one — the page shows
   // what the colour path found, because that is what A5 would store.
-  const presence = detectBackingPresence(cv, img, cal, hint.template, HOLE_DIAMETER_MM);
+  const presence = detectBackingPresence(cv, img, cal, hint.template, HOLE_DIAMETER_MM, backing.colour);
   const useColour = backing.mode === 'coloured' || (backing.mode === 'auto' && presence.present);
   const colour = useColour ? detectByBackingColour(cv, img, cal, hint.template, HOLE_DIAMETER_MM, backing.colour) : null;
   const byColour = colour !== null && colour.blobs.length > 0;

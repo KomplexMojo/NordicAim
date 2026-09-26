@@ -53,6 +53,7 @@ describe('defaultAppSettings', () => {
       lastBackupAt: null,
       lastBackupSessions: 0,
       backupReminderDays: 14,
+      maxPlausibleHoles: 10,
     });
   });
 

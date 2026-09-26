@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { PipelineState, Shot } from '@/lib/domain/analysis';
 import type { TemplateId, Warning } from '@/lib/domain/enums';
 import type { Calibration, Categorization } from '@/lib/domain/photo';
+import { defaultAppSettings } from '@/lib/domain/settings';
 import { runStageB } from '@/lib/pipeline/stage-b';
 import type { ServiceContext } from '@/lib/services/context';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -13,6 +14,7 @@ import { diagramCellSvgKey, diagramFullPngKey, diagramFullSvgKey } from '@/lib/s
 import { getBlob, putBlob } from '@/lib/store/blobs-repo';
 import { getPhotoRecord, putPhotoRecord } from '@/lib/store/photos-repo';
 import { getSessionRecord, putSessionRecord } from '@/lib/store/sessions-repo';
+import { putSettings } from '@/lib/store/settings-repo';
 
 import { openTestDb } from '../../helpers/db';
 import { makeTestContext } from '../../helpers/fixtures';
@@ -183,15 +185,16 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     expect(photo?.reasons).toEqual(['target-not-found']);
   });
 
-  it('with no shots: `no-shots-found`', async () => {
+  it('with no shots: rejected outright, not scored as every round missed (owner instruction, 2026-09-26)', async () => {
     const { ctx, photoId } = await seed({ shots: [] });
 
     await runStageB(ctx, photoId, stubRenderTools());
 
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.status).toBe('needs-attention');
-    // REV-39: every declared round is scored as a miss, which is appended as a note.
-    expect(photo?.reasons).toEqual(['no-shots-found', 'rounds-scored-as-miss']);
+    // Zero holes found is a detection failure, not a shooting result: reject via the maxPlausibleHoles
+    // safety net rather than silently scoring every declared round a miss.
+    expect(photo?.reasons).toEqual(['too-many-holes']);
   });
 
   it('with an 11th shot: `too-many-shots`', async () => {
@@ -217,7 +220,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     expect(photo?.reasons).toEqual(['too-many-shots']);
   });
 
-  it('re-caps the shots to the declared rounds after metadata, and warns (REV-28)', async () => {
+  it('re-caps the shots to the declared rounds after metadata, within the maxPlausibleHoles safety net (REV-28)', async () => {
     // Eleven auto shots reach Stage B (Stage A could not cap: no categorization yet).
     const extras: Shot[] = Array.from({ length: 11 }, (_, i) => ({
       id: `auto-${i + 1}`,
@@ -231,6 +234,9 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
       possibleOverlap: false,
     }));
     const { ctx, photoId } = await seed({ shots: extras });
+    // Owner instruction, 2026-09-26: maxPlausibleHoles defaults to 10, matching declared rounds here, so
+    // the cap step (a few low-confidence extras) needs its own headroom to be exercised at all.
+    await putSettings(ctx.db, { ...defaultAppSettings(), maxPlausibleHoles: 20 });
 
     await runStageB(ctx, photoId, stubRenderTools());
 
@@ -245,6 +251,30 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.status).toBe('needs-attention');
     expect(photo?.reasons).toEqual(['extra-candidates-dropped']);
+  });
+
+  it('rejects outright, ahead of the cap, when raw holes exceed maxPlausibleHoles (owner instruction, 2026-09-26)', async () => {
+    const extras: Shot[] = Array.from({ length: 11 }, (_, i) => ({
+      id: `auto-${i + 1}`,
+      xMm: i * 2,
+      yMm: 0,
+      multiplicity: 1,
+      positionOverrides: null,
+      source: 'auto' as const,
+      confidence: 1 - i * 0.05,
+      cluster: false,
+      possibleOverlap: false,
+    }));
+    const { ctx, photoId } = await seed({ shots: extras }); // maxPlausibleHoles defaults to 10
+
+    await runStageB(ctx, photoId, stubRenderTools());
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.shots).toHaveLength(11);
+    expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.status).toBe('needs-attention');
+    expect(photo?.reasons).toEqual(['too-many-holes']);
   });
 
   it('keeps Stage A\'s cap warning without dropping anything more', async () => {

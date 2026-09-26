@@ -259,10 +259,12 @@ describe('R2 (REV-35): printed marks are removed by position', () => {
     expect(inNumeralBox(-49.2, 1.5, 0)).toBe(true);
     expect(inNumeralBox(0, -73.2, 0)).toBe(true);
     expect(inNumeralBox(17.2 * Math.cos(0.3), 17.2 * Math.sin(0.3), 17.2)).toBe(true);
-    // Between the axes, between the bands, and past the tangential half-width.
+    // Between the axes, inside the innermost band's inner edge, and past the tangential half-width.
+    // (The re-measured, wider box (2026-09-26) now spans more than half the ~8 mm gap between
+    // adjacent band centres, so there is no longer a safe on-axis point strictly between two bands.)
     expect(inNumeralBox(12, 12, 0)).toBe(false);
-    expect(inNumeralBox(0, 21.2, 0)).toBe(false);
-    expect(inNumeralBox(3, 33.2, 0)).toBe(false);
+    expect(inNumeralBox(0, 10, 0)).toBe(false);
+    expect(inNumeralBox(4, 33.2, 0)).toBe(false);
   });
 
   for (const deg of [0, 17, 45]) {

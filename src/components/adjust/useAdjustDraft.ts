@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { doublePunchProposal, measuredWidthMm } from '@/lib/cv/multiplicity';
+import { doublePunchProposal, measuredAreaMm2 } from '@/lib/cv/multiplicity';
 import { shotFromSuggestion, visibleSuggestions } from '@/lib/cv/suggestions';
 import { useServices } from '@/lib/app/services';
 import { BIATHLON_50M } from '@/lib/defaults/biathlon';
@@ -257,7 +257,7 @@ export function useAdjustDraft(pid: string) {
 
   /** M21 step 3: the "looks like N shots" prompt for one shot, if any. */
   function proposalFor(shot: Shot): number | null {
-    return doublePunchProposal(shot, measuredWidthMm(shot, onScreen.widths, sameHoleMm), holeDiameterMm, userSet.has(shot.id));
+    return doublePunchProposal(shot, measuredAreaMm2(shot, onScreen.widths, sameHoleMm), holeDiameterMm, userSet.has(shot.id));
   }
 
   /**
