@@ -75,6 +75,27 @@ if (existsSync(BACKING_DIR)) {
       backing: { mode: 'coloured', colour: cardFile === undefined ? null : (cardColours.get(cardFile) ?? null) },
     });
   }
+
+  // A dated batch exported from the app's own backup (issue #15's paired protocol) carries its own
+  // `pairs-manifest.json`: plain/lime pairs, reviewed exactly as the app analyzed them (Settings'
+  // `backingMode` and measured colour at capture time), not forced — so the page shows whether `Auto`
+  // actually caught the backing, which is the point of reviewing them.
+  for (const entry of readdirSync(BACKING_DIR, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const dir = resolve(BACKING_DIR, entry.name);
+    const manifestPath = resolve(dir, 'pairs-manifest.json');
+    if (!existsSync(manifestPath)) continue;
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as {
+      backingModeAtCaptureTime: 'auto' | 'none' | 'coloured';
+      backingSignatureAtCaptureTime: ColourSignature | null;
+      pairs: Array<{ plainFile: string; limeFile: string }>;
+    };
+    const backing: ReviewBacking = { mode: manifest.backingModeAtCaptureTime, colour: manifest.backingSignatureAtCaptureTime };
+    for (const pair of manifest.pairs) {
+      sources.push({ dir, name: pair.plainFile, backing });
+      sources.push({ dir, name: pair.limeFile, backing });
+    }
+  }
 }
 
 const photos: unknown[] = [];

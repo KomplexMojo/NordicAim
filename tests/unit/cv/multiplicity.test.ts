@@ -5,15 +5,19 @@ import { describe, expect, it } from 'vitest';
 import {
   doublePunchProposal,
   equivalentDiameterMm,
+  HOLE_AREA_TOLERANCE,
   HOLE_DIAMETER_TOLERANCE,
   MAX_SUGGESTED_MULTIPLICITY,
+  measuredAreaMm2,
   measuredWidthMm,
   suggestedMultiplicity,
+  suggestedMultiplicityFromArea,
 } from '@/lib/cv/multiplicity';
 
 const HOLE_MM = 5.6;
+const ONE_HOLE_AREA = Math.PI * (HOLE_MM / 2) ** 2;
 
-describe('suggestedMultiplicity (M21 step 3, REV-41)', () => {
+describe('suggestedMultiplicity (M21 step 3, REV-41): the linear-tear model', () => {
   it('is 5.6 mm ± 5% and capped at the Inspector 20', () => {
     expect(HOLE_DIAMETER_TOLERANCE).toBe(0.05);
     expect(MAX_SUGGESTED_MULTIPLICITY).toBe(20);
@@ -52,6 +56,41 @@ describe('suggestedMultiplicity (M21 step 3, REV-41)', () => {
   });
 });
 
+describe('suggestedMultiplicityFromArea (owner finding, 2026-09-26): the compact-cluster model', () => {
+  it('the area tolerance is the square of the linear one', () => {
+    expect(HOLE_AREA_TOLERANCE).toBeCloseTo((1.05) ** 2 - 1, 12);
+  });
+
+  it('one hole area -> 1', () => {
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA, HOLE_MM)).toBe(1);
+  });
+
+  it('exactly at the tolerance -> 1; just past it -> 2', () => {
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA * (1 + HOLE_AREA_TOLERANCE), HOLE_MM)).toBe(1);
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA * (1 + HOLE_AREA_TOLERANCE) + 0.01, HOLE_MM)).toBe(2);
+  });
+
+  it('reads the area ratio directly, not its square root: 2x area -> 2, not 1', () => {
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA * 2, HOLE_MM)).toBe(2);
+  });
+
+  it("the owner's T04-lime clusters: 1.81x -> 2, 4.44x -> 4, 7.43x -> 7 (suggestedMultiplicity gave 2/3/3)", () => {
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA * 1.81, HOLE_MM)).toBe(2);
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA * 4.44, HOLE_MM)).toBe(4);
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA * 7.43, HOLE_MM)).toBe(7);
+  });
+
+  it('is capped at 20', () => {
+    expect(suggestedMultiplicityFromArea(ONE_HOLE_AREA * 25, HOLE_MM)).toBe(20);
+  });
+
+  it('is 1 for a meaningless area', () => {
+    expect(suggestedMultiplicityFromArea(Number.NaN, HOLE_MM)).toBe(1);
+    expect(suggestedMultiplicityFromArea(0, HOLE_MM)).toBe(1);
+    expect(suggestedMultiplicityFromArea(50, 0)).toBe(1);
+  });
+});
+
 describe('equivalentDiameterMm', () => {
   it('is the diameter of the disc with that area', () => {
     expect(equivalentDiameterMm(Math.PI * 2.8 * 2.8)).toBeCloseTo(5.6, 12);
@@ -73,21 +112,35 @@ describe('measuredWidthMm', () => {
   });
 });
 
-describe('doublePunchProposal (M21 step 3)', () => {
-  const auto = { multiplicity: 1, source: 'auto' as const };
-  it('proposes N for a wide automatic hole', () => {
-    expect(doublePunchProposal(auto, 11, HOLE_MM, false)).toBe(2);
+describe('measuredAreaMm2', () => {
+  const holes = [
+    { xMm: 0, yMm: 0, areaMm2: 25 },
+    { xMm: 3, yMm: 0, areaMm2: 95 },
+  ];
+  it('takes the nearest measured hole within the distance', () => {
+    expect(measuredAreaMm2({ xMm: 2.5, yMm: 0 }, holes, 4.48)).toBe(95);
+    expect(measuredAreaMm2({ xMm: -1, yMm: 0 }, holes, 4.48)).toBe(25);
   });
-  it('proposes nothing for a hole of one shot, or one with no measured width', () => {
-    expect(doublePunchProposal(auto, 5.8, HOLE_MM, false)).toBeNull();
+  it('is null when no measured hole is close enough', () => {
+    expect(measuredAreaMm2({ xMm: 20, yMm: 0 }, holes, 4.48)).toBeNull();
+  });
+});
+
+describe('doublePunchProposal (M21 step 3): reads area, not width', () => {
+  const auto = { multiplicity: 1, source: 'auto' as const };
+  it('proposes N for a hole whose area reads as more than one shot', () => {
+    expect(doublePunchProposal(auto, ONE_HOLE_AREA * 2, HOLE_MM, false)).toBe(2);
+  });
+  it('proposes nothing for a hole of one shot, or one with no measured area', () => {
+    expect(doublePunchProposal(auto, ONE_HOLE_AREA * 1.05, HOLE_MM, false)).toBeNull();
     expect(doublePunchProposal(auto, null, HOLE_MM, false)).toBeNull();
   });
   it('never re-proposes a shot the user has set: saved manual, or changed on screen', () => {
-    expect(doublePunchProposal({ multiplicity: 1, source: 'manual' }, 11, HOLE_MM, false)).toBeNull();
-    expect(doublePunchProposal(auto, 11, HOLE_MM, true)).toBeNull();
+    expect(doublePunchProposal({ multiplicity: 1, source: 'manual' }, ONE_HOLE_AREA * 2, HOLE_MM, false)).toBeNull();
+    expect(doublePunchProposal(auto, ONE_HOLE_AREA * 2, HOLE_MM, true)).toBeNull();
   });
   it('only ever raises the count', () => {
-    expect(doublePunchProposal({ multiplicity: 2, source: 'auto' }, 11, HOLE_MM, false)).toBeNull();
-    expect(doublePunchProposal({ multiplicity: 2, source: 'auto' }, 16, HOLE_MM, false)).toBe(3);
+    expect(doublePunchProposal({ multiplicity: 2, source: 'auto' }, ONE_HOLE_AREA * 2, HOLE_MM, false)).toBeNull();
+    expect(doublePunchProposal({ multiplicity: 2, source: 'auto' }, ONE_HOLE_AREA * 3, HOLE_MM, false)).toBe(3);
   });
 });

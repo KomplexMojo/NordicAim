@@ -29,7 +29,8 @@ import {
 import { jpegFileToRgba } from '../tests/helpers/rgba.ts';
 
 const WORKING_LONGEST = 1200;
-const HOLE_DIAMETER_MM = 5.6;
+/** Owner's calliper measurement, 2026-09-26: 3.1-3.5 mm, not the app's `.22 LR` default of 5.6 mm. */
+const HOLE_DIAMETER_MM = 3.3;
 
 export interface LabelledEvaluation {
   lines: string[];

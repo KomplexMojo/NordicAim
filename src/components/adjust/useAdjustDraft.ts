@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { doublePunchProposal, measuredWidthMm } from '@/lib/cv/multiplicity';
+import { doublePunchProposal, measuredAreaMm2 } from '@/lib/cv/multiplicity';
 import { shotFromSuggestion, visibleSuggestions } from '@/lib/cv/suggestions';
 import { useServices } from '@/lib/app/services';
 import { BIATHLON_50M } from '@/lib/defaults/biathlon';
@@ -33,6 +33,8 @@ export interface AdjustData {
   holeDiameterMm: number;
   /** REV-56: what the score preview treats a hole as (the owner's scoring rule); detection uses `holeDiameterMm`. */
   scoringHoleDiameterMm: number;
+  /** Settings' raw-hole-count safety net, so the preview matches what Stage B would decide. */
+  maxPlausibleHoles: number;
 }
 
 type Ctx = ReturnType<typeof useServices>['ctx'];
@@ -48,6 +50,7 @@ export async function loadAdjust(ctx: Ctx, pid: string): Promise<AdjustData | nu
     analysis,
     holeDiameterMm: settings.profileOverrides.holeDiameterMm,
     scoringHoleDiameterMm: scoringDiameterFromSettings(settings),
+    maxPlausibleHoles: settings.maxPlausibleHoles,
   };
 }
 
@@ -164,7 +167,7 @@ export function useAdjustDraft(pid: string) {
   // M13 step 3: the score the edits on screen would produce, recomputed on every change.
   const preview = useMemo((): AdjustPreview | null => {
     if (!data || calibration === null) return null;
-    const { photo, analysis, scoringHoleDiameterMm } = data;
+    const { photo, analysis, scoringHoleDiameterMm, maxPlausibleHoles } = data;
     const categorization = photo.categorization;
     let result: AnalysisResult | null = null;
     // The preview shows what Save will produce, not what is stored: Save confirms the capped set (drops
@@ -176,7 +179,7 @@ export function useAdjustDraft(pid: string) {
     if (categorization.template !== null && isCategorizationComplete(categorization)) {
       const profile = { ...BIATHLON_50M, holeDiameterMm: scoringHoleDiameterMm } as typeof BIATHLON_50M;
       // REV-39 (M20): the same reconciliation Stage B runs after Save, so the preview matches it.
-      const reconciled = reconcileShots({ shots, categorization, method });
+      const reconciled = reconcileShots({ shots, categorization, method, maxPlausibleHoles });
       warnings = mergeReconcileWarnings(warnings, reconciled);
       try {
         result =
@@ -202,7 +205,7 @@ export function useAdjustDraft(pid: string) {
       },
     };
     const { status, reasons } = photoStatus({ categorization, analysis: draft, result });
-    const reconcile = reconcileReasonContext(shots, categorization, method);
+    const reconcile = reconcileReasonContext(shots, categorization, method, maxPlausibleHoles);
     return { result, status, reasons, reconcile };
   }, [data, calibration, shots]);
 
@@ -254,7 +257,7 @@ export function useAdjustDraft(pid: string) {
 
   /** M21 step 3: the "looks like N shots" prompt for one shot, if any. */
   function proposalFor(shot: Shot): number | null {
-    return doublePunchProposal(shot, measuredWidthMm(shot, onScreen.widths, sameHoleMm), holeDiameterMm, userSet.has(shot.id));
+    return doublePunchProposal(shot, measuredAreaMm2(shot, onScreen.widths, sameHoleMm), holeDiameterMm, userSet.has(shot.id));
   }
 
   /**

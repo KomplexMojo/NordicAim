@@ -561,11 +561,18 @@ function autoRefusal(probe: BackingColourReport, template: TemplateId): string |
 }
 
 /**
- * backing-sheet.md §4a (`Auto`). Present when there are at least {@link AUTO_MIN_SPOTS} coloured
- * blobs and none of them is more than {@link AUTO_MAX_BLOB_RATIO} times a hole's area — a coloured
- * area far bigger than a hole is scenery, a backing board or a sticker in frame, not a hole — and,
- * per M19 Open question 1, the colour is fluorescent ({@link AUTO_MIN_CHROMA}) and sits where holes
- * can be (the accepted pixels' radius p10 inside the template's outermost circle).
+ * backing-sheet.md §4a (`Auto`), matching {@link detectShotsWithBacking}'s own decision:
+ *
+ * - With a known signature (`colour` not null): present whenever that colour's own blobs are found at
+ *   all. Owner finding, 2026-09-26: the size/chroma/radius guards below exist to protect the colour-blind
+ *   probe from confusing other non-neutral printed content (e.g. red ring numerals) with backing; they
+ *   do not apply once a specific known hue is being matched, so a big or small blob of the right colour
+ *   is trusted rather than refused.
+ * - With no known signature (`colour` null): present when there are at least {@link AUTO_MIN_SPOTS}
+ *   coloured blobs and none is more than {@link AUTO_MAX_BLOB_RATIO} times a hole's area — a coloured
+ *   area far bigger than a hole is scenery, a backing board or a sticker in frame, not a hole — and, per
+ *   M19 Open question 1, the colour is fluorescent ({@link AUTO_MIN_CHROMA}) and sits where holes can be
+ *   (the accepted pixels' radius p10 inside the template's outermost circle).
  *
  * The spec writes this as `detectBackingPresence(img, calibration)`; the template and the calibre are
  * needed to rectify and to size a hole, exactly as A5 needs them (see the milestone's Open questions).
@@ -576,9 +583,10 @@ export function detectBackingPresence(
   calibration: CalibrationLike,
   template: TemplateId,
   holeDiameterMm: number,
+  colour: ColourSignature | null = null,
 ): BackingPresence {
-  const report = detectByBackingColour(cv, img, calibration, template, holeDiameterMm, null);
-  const reason = autoRefusal(report, template);
+  const report = detectByBackingColour(cv, img, calibration, template, holeDiameterMm, colour);
+  const reason = colour !== null ? (report.blobs.length > 0 ? null : AUTO_NO_SPOTS_REASON) : autoRefusal(report, template);
   return {
     present: reason === null,
     spots: report.spots,
@@ -653,11 +661,13 @@ export interface BackingShotsResult {
   holeWidths: HoleWidth[];
 }
 
-/** M21 step 3: one detected hole's position and measured width, in target mm. */
+/** M21 step 3: one detected hole's position, measured width, and measured area, in target mm. */
 export interface HoleWidth {
   xMm: number;
   yMm: number;
   widthMm: number;
+  /** Owner finding, 2026-09-26: the double-punch prompt reads this, not `widthMm` (see multiplicity.ts). */
+  areaMm2: number;
 }
 
 /**
@@ -695,18 +705,25 @@ export function detectShotsWithBacking(
   if (backing.mode === 'coloured') {
     state = 'forced';
     report = detectByBackingColour(cv, img, calibration, template, holeDiameterMm, backing.colour);
+  } else if (backing.colour !== null) {
+    // Owner finding, 2026-09-26: with a known signature on file, ask "does THIS colour show up" (the
+    // hue rule) rather than "does ANY colour show up" (the neutral-chroma probe below). The chroma
+    // probe cannot tell a lime backing from other non-neutral printed content on the sheet (this
+    // template's red ring numerals, measured to read as colourful as the backing itself), which was
+    // rejecting good detection outright on prints where those numerals are large or vivid. The
+    // AUTO_MAX_BLOB_RATIO/AUTO_MIN_CHROMA/AUTO_RADIUS_QUANTILE guards below exist to protect the
+    // colour-blind probe from exactly that confusion; they do not apply once we are matching a specific
+    // known hue, so a big blob of the right colour is trusted as a real (likely multi-shot) cluster
+    // rather than refused as "probably not backing." `report.blobs.length === 0` below still falls back
+    // to the standard path when the known colour genuinely does not show up in this photo.
+    state = 'detected';
+    report = detectByBackingColour(cv, img, calibration, template, holeDiameterMm, backing.colour);
   } else {
-    // §4a: the presence test always uses the neutral-chroma mask — and, when the session has a card,
-    // the hue detection that follows reuses the same rectified view rather than warping twice.
+    // §4a: with no known signature at all, the only option is the neutral-chroma probe.
     const decision = withBackingView(cv, img, calibration, template, (view) => {
       const probe = reportFromView(cv, view, holeDiameterMm, null);
       const reason = autoRefusal(probe, template);
-      if (reason !== null) return { present: false as const, reason };
-      // §4a: with `Auto`, a card photo is still used when the session has one.
-      return {
-        present: true as const,
-        report: backing.colour === null ? probe : reportFromView(cv, view, holeDiameterMm, backing.colour),
-      };
+      return reason !== null ? { present: false as const, reason } : { present: true as const, report: probe };
     });
     if (!decision.present) {
       return standard({ method: 'standard', backing: 'not-detected', fallbackReason: decision.reason });
@@ -724,6 +741,6 @@ export function detectShotsWithBacking(
     detection: { method: 'colour', backing: state, fallbackReason: null },
     suggestions: [],
     // M21 step 3: the coloured area is the opening itself (§5.4), so its equivalent disc is the width.
-    holeWidths: report.blobs.map((b) => ({ xMm: b.xMm, yMm: b.yMm, widthMm: equivalentDiameterMm(b.areaMm2) })),
+    holeWidths: report.blobs.map((b) => ({ xMm: b.xMm, yMm: b.yMm, widthMm: equivalentDiameterMm(b.areaMm2), areaMm2: b.areaMm2 })),
   };
 }

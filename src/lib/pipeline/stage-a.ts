@@ -197,7 +197,12 @@ export async function runStageA(
     // Stage B reconciles again once it is. A stored `Shot` carries no area, so the worker's is dropped.
     let shots: Shot[] | null = detected === null ? null : withoutArea(detected.shots);
     if (shots !== null && isCategorizationComplete(photo.categorization)) {
-      const reconciled = reconcileShots({ shots, categorization: photo.categorization, method: detection.method });
+      const reconciled = reconcileShots({
+        shots,
+        categorization: photo.categorization,
+        method: detection.method,
+        maxPlausibleHoles: settings.maxPlausibleHoles,
+      });
       shots = reconciled.shots;
       warnings.push(...reconciled.warnings);
     }

@@ -136,7 +136,7 @@ export async function evaluateBacking(cv: OpenCv, repoRoot: string): Promise<Bac
 
     const colour = detectByBackingColour(cv, img, calibration, template, HOLE_DIAMETER_MM, signature);
     const standard = detectShotCandidates(cv, img, calibration, template, HOLE_DIAMETER_MM);
-    const presence = detectBackingPresence(cv, img, calibration, template, HOLE_DIAMETER_MM);
+    const presence = detectBackingPresence(cv, img, calibration, template, HOLE_DIAMETER_MM, signature);
     const estimated = signature === null ? estimateBackingColour(cv, img, calibration, template) : null;
 
     const id = name.replace(/\.jpe?g$/i, '').replace(/\s+/g, '_');

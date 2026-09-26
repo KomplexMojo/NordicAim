@@ -249,6 +249,52 @@ describe('detectBackingPresence (backing-sheet.md §4a)', () => {
     expect(presence.acceptedRadiusP10Mm!).toBeLessThanOrEqual(outerRadiusMm('precision'));
     expect(presence.reason).toBeNull();
   }, 60_000);
+
+  it(
+    'owner finding, 2026-09-26: with a known signature, a coloured area far bigger than a hole is still ' +
+      "trusted (a real multi-shot cluster), not refused by the area rule meant for the colour-blind probe",
+    async () => {
+      const img = await syntheticTargetRgba({
+        ...PRECISION,
+        holesMm: [...backedHoles(), { xMm: 90, yMm: -90, diameterMm: 40, fill: PINK }],
+        numeralsDeg: 0,
+      });
+      // With no known signature, the same photo is refused (already covered above).
+      const withoutCard = detectBackingPresence(cv, img, CAL, 'precision', HOLE_MM);
+      expect(withoutCard.present).toBe(false);
+      // With the known signature, the area rule does not apply and it is trusted.
+      const withCard = detectBackingPresence(cv, img, CAL, 'precision', HOLE_MM, pinkCard);
+      expect(withCard.present).toBe(true);
+    },
+    60_000,
+  );
+
+  it(
+    "owner finding, 2026-09-26: a known signature isn't fooled by other non-neutral colour in frame " +
+      '(blue pen marks) the way the colour-blind probe can be',
+    async () => {
+      const img = await syntheticTargetRgba({
+        ...PRECISION,
+        holesMm: backedHoles(),
+        penMarksMm: PEN_MARKS,
+        numeralsDeg: 0,
+      });
+      const withCard = detectBackingPresence(cv, img, CAL, 'precision', HOLE_MM, pinkCard);
+      expect(withCard.present).toBe(true);
+      // The pen's own (blue) colour never becomes a blob under hue matching against the known pink.
+      const report = detectByBackingColour(cv, img, CAL, 'precision', HOLE_MM, pinkCard);
+      const nearPenMark = report.blobs.some((b) =>
+        PEN_MARKS.some(
+          (mark) =>
+            Math.hypot(b.xMm - mark.fromMm.xMm, b.yMm - mark.fromMm.yMm) < 5 ||
+            Math.hypot(b.xMm - mark.toMm.xMm, b.yMm - mark.toMm.yMm) < 5,
+        ),
+      );
+      expect(nearPenMark).toBe(false);
+      expect(hueDistance(PINK_HUE, rgbToHsv(0x1f, 0x44, 0xc8).hueDeg)).toBeGreaterThan(30);
+    },
+    60_000,
+  );
 });
 
 describe('estimateBackingColour (backing-sheet.md §4, no card)', () => {
@@ -303,6 +349,7 @@ describe('detectShotsWithBacking (analysis-pipeline §2 A5, backing-sheet.md §5
       shots: withoutArea(result.shots),
       categorization: { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null },
       method: result.detection.method,
+      maxPlausibleHoles: 20,
     });
     expect(reconciled.rejected).toEqual([]);
     expect(reconciled.doublePunches).toBe(1);

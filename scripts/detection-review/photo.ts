@@ -10,12 +10,19 @@ import { sharpness } from '../../src/lib/cv/sharpness.ts';
 import { hintTemplate } from '../../src/lib/cv/template-hint.ts';
 import { swatchCss, type ColourSignature } from '../../src/lib/domain/backing.ts';
 import type { TemplateId } from '../../src/lib/domain/enums.ts';
+import { DEFAULT_MAX_PLAUSIBLE_HOLES } from '../../src/lib/domain/settings.ts';
 import { mmToPx } from '../../src/lib/geometry/transform.ts';
 import type { RgbaImage } from '../../src/lib/media/format.ts';
 
 /** The app's working image size, which the owner's earlier labels are also in. */
 export const WORKING_LONGEST = 1200;
-const HOLE_DIAMETER_MM = 5.6;
+/**
+ * The owner's calliper measurement of a single-shot hole, 2026-09-26: 3.1-3.5 mm, not the app's
+ * `.22 LR` default of 5.6 mm (`src/lib/defaults/biathlon.ts`). Every hole-diameter-scaled parameter in
+ * `holes.ts`/`hole-signal.ts` (peak spacing, background window, cluster area ratio, surround ring) was
+ * being sized for a hole ~1.7x too large, which the review's own detection is investigating.
+ */
+const HOLE_DIAMETER_MM = 3.3;
 
 function round(value: number, digits = 1): number {
   const k = 10 ** digits;
@@ -34,6 +41,8 @@ export interface ReviewPhoto {
   holeRadiusPx: number | null;
   radii: number[];
   candidates: Array<Record<string, number | string | boolean | null>>;
+  /** Owner instruction, 2026-09-26: more candidates than this on one target is a detector malfunction. */
+  implausible: boolean;
   rejected: Array<Record<string, number | string>>;
   sheet: { method: string; seedCoverage: number } | null;
   numeralRotation: { deg: number; strength: number; reliable: boolean } | null;
@@ -84,6 +93,7 @@ export function reviewPhoto(
       holeRadiusPx: null,
       radii: [],
       candidates: [],
+      implausible: false,
       rejected: [],
       sheet: null,
       numeralRotation: null,
@@ -99,7 +109,7 @@ export function reviewPhoto(
 
   // M19 (backing-sheet.md §5): when the session uses a backing — or `Auto` finds one — the page shows
   // what the colour path found, because that is what A5 would store.
-  const presence = detectBackingPresence(cv, img, cal, hint.template, HOLE_DIAMETER_MM);
+  const presence = detectBackingPresence(cv, img, cal, hint.template, HOLE_DIAMETER_MM, backing.colour);
   const useColour = backing.mode === 'coloured' || (backing.mode === 'auto' && presence.present);
   const colour = useColour ? detectByBackingColour(cv, img, cal, hint.template, HOLE_DIAMETER_MM, backing.colour) : null;
   const byColour = colour !== null && colour.blobs.length > 0;
@@ -169,6 +179,7 @@ export function reviewPhoto(
     holeRadiusPx: round((HOLE_DIAMETER_MM / 2) * pxPerMm),
     radii: printedCircleRadiiMm(hint.template),
     candidates,
+    implausible: candidates.length === 0 || candidates.length > DEFAULT_MAX_PLAUSIBLE_HOLES,
     rejected,
     sheet: { method: report.sheet.method, seedCoverage: round(report.sheet.seedCoverage, 2) },
     detection: {

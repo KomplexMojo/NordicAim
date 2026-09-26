@@ -182,7 +182,7 @@ describe('suggestions stay derived (M21 steps 1-2, Pitfalls)', () => {
           shots: [shot('auto-9', 50, 50)],
           detection: { method: 'standard' as const, backing: 'off' as const, fallbackReason: null },
           suggestions: [suggestion],
-          holeWidths: [{ xMm: 1, yMm: 2, widthMm: 11 }],
+          holeWidths: [{ xMm: 1, yMm: 2, widthMm: 11, areaMm2: Math.PI * (11 / 2) ** 2 }],
         };
       },
     };
@@ -193,7 +193,7 @@ describe('suggestions stay derived (M21 steps 1-2, Pitfalls)', () => {
     const before = await getAnalysisRecord(ctx.db, OK);
     const aids = await loadDetectionAids(ctx, OK, stub());
     expect(aids?.suggestions).toEqual([suggestion]);
-    expect(aids?.holeWidths).toEqual([{ xMm: 1, yMm: 2, widthMm: 11 }]);
+    expect(aids?.holeWidths).toEqual([{ xMm: 1, yMm: 2, widthMm: 11, areaMm2: Math.PI * (11 / 2) ** 2 }]);
     expect(aids?.calibration).toEqual(CAL);
     // The detected shots it also returned are ignored: the stored record is byte-for-byte unchanged.
     expect(await getAnalysisRecord(ctx.db, OK)).toEqual(before);
