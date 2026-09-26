@@ -34,6 +34,13 @@ export function suggestedMultiplicity(widthMm: number, holeDiameterMm: number): 
  * a compact cluster of overlapping holes (area scales with N, not with N's square root the way a linear
  * width does — see {@link suggestedMultiplicity}'s note). Below `1 + HOLE_AREA_TOLERANCE` of one hole's
  * area, it is one shot; beyond it, the nearest whole number of hole-areas, at least 2, capped at 20.
+ *
+ * Owner note, 2026-09-26: this reads the opening's area as if it were N clean circular punctures, but a
+ * tight, high-energy cluster can tear away the paper "web" between adjacent holes, making the opening
+ * *larger* than N holes' worth of area — the opposite failure direction from the old width-based formula
+ * this replaced (which undercounted). So this is a better estimate, not an exact count: it can still run
+ * high on a very tight group, which is exactly why it stays a prompt for the owner to confirm (REV-28/41)
+ * rather than ever being applied automatically.
  */
 export function suggestedMultiplicityFromArea(areaMm2: number, holeDiameterMm: number): number {
   if (!(areaMm2 > 0) || !(holeDiameterMm > 0)) return 1;

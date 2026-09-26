@@ -37,6 +37,7 @@ as shown (`<model> · <effort>`).
 | [M24](M24-results-clarity.md) | Results that say what they count (issues #6, #4, #8) | receive analysis | M14, M20 | sonnet · high | opus · high | no | done |
 | [M25](M25-import-review.md) | An imported photo is shown on the overlay screen (issue #1) | take picture(s) | M07 | sonnet · medium | sonnet · high | no | done |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | done |
+| [M26](M26-template-reference-photos.md) | Template reference photos (blank-sheet differencing) | post-MVP · generate analysis | M16, M19 | opus · high | opus · high | yes | blocked: owner design decisions (see the milestone's *Decisions* section) |
 
 ```mermaid
 flowchart TD
@@ -110,6 +111,15 @@ precision untouched; it is an owner gate because it adds a route and may need a 
 half), #5, #6, #7 (spec edit) and #8 (one message) into **M22–M25**; M15 now depends on them. The rest of #3, #4, #7, #8 and #9
 are owner confirmations whose stated defaults stand unless overruled — and #4's scoring-rule question stays open for the owner.
 Run order from here: **M22 → M23 → M24 → M25 → M15**.
+
+**2026-09-26 M26 added (post-MVP, owner instruction).** A late-night debugging session on the owner's own photos (hole
+diameter was 3.1-3.5 mm, not the app's 5.6 mm `.22 LR` default) surfaced repeated per-print-run surprises — a numeral
+box measured on one print undershot badly on another, a backing-colour probe with no reference photo mismeasured a
+real blob's size by ~4x, and the standard-path detection gate is still failing after every geometric constant this
+session could find and fix. M26 records the case for photographing a blank reference of the actual template sheet to
+difference against, instead of continuing to hand-measure one geometric constant at a time. It is `blocked` on owner
+design decisions (capture UX, registration precision, what signal to difference) — deliberately not implementable as
+filed, per golden rule 2.
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.
