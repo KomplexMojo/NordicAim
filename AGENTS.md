@@ -128,7 +128,7 @@ iPhone testing: push to `main`, then open `https://komplexmojo.github.io/NordicA
 index.html                     CSP meta, root element
 src/main.tsx                   bootstrap, service worker registration, pipeline resume
 src/app/router.tsx             createHashRouter route table (routes: spec/analysis-pipeline.md §1)
-src/routes/                    home, patterns, capture, metadata, results, target, review, settings, diagnostics (sessions/ is only the redirect)
+src/routes/                    home, patterns, analysis, capture, metadata, results, target, review, settings, diagnostics (sessions/ is only the redirect)
 src/components/                UI components (shadcn primitives in components/ui)
 src/lib/domain/                zod schemas, types, categorization helpers, status.ts (photoStatus)
 src/lib/defaults/              biathlon profile + template geometry

@@ -3,32 +3,18 @@ import { Link } from 'react-router';
 
 import { ObservedPatterns } from '@/components/results/ObservedPatterns';
 import { PatternHeader } from '@/components/patterns/PatternHeader';
-import { Button } from '@/components/ui/button';
+import { ViewRangeControls } from '@/components/patterns/ViewRangeControls';
 import { Card, CardContent } from '@/components/ui/card';
 import { ZoomFrame } from '@/components/ui/zoom-frame';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import {
-  PATTERN_VIEWS,
-  PATTERN_VIEW_LABEL,
-  filterByRange,
-  type PatternRange,
-  type PatternView,
-} from '@/lib/patterns/collect';
+import { PATTERN_VIEWS, PATTERN_VIEW_LABEL, filterByRange, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 import { characterize } from '@/lib/scoring/characteristics';
 import { discRadiusMm } from '@/lib/scoring/characterize-result';
 import { summarizePatterns, THIN_SHOT_COUNT } from '@/lib/patterns/summarize';
 import { patternsSizeFactor, renderPatternsSvg } from '@/lib/render/patterns';
 import { loadPatterns } from '@/lib/services/patterns';
 import { formatMm } from '@/lib/scoring/format';
-
-const RANGES: ReadonlyArray<{ id: PatternRange; label: string }> = [
-  { id: 'last', label: 'Latest session' },
-  { id: 'week', label: 'This week' },
-  { id: '30', label: '30 days' },
-  { id: '90', label: '90 days' },
-  { id: 'all', label: 'All time' },
-];
 
 function percent(share: number): string {
   return `${Math.round(share * 100)}%`;
@@ -78,34 +64,7 @@ export function PatternsPage() {
         </Link>
       </header>
 
-      <div role="group" aria-label="Target type" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {PATTERN_VIEWS.map((id) => (
-          <Button
-            key={id}
-            variant={id === view ? 'default' : 'outline'}
-            className="h-11"
-            aria-pressed={id === view}
-            data-testid={`pattern-view-${id}`}
-            onClick={() => setView(id)}
-          >
-            {PATTERN_VIEW_LABEL[id]}
-          </Button>
-        ))}
-      </div>
-      <div role="group" aria-label="Date range" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {RANGES.map((r) => (
-          <Button
-            key={r.id}
-            variant={r.id === range ? 'default' : 'outline'}
-            className="h-11"
-            aria-pressed={r.id === range}
-            data-testid={`pattern-range-${r.id}`}
-            onClick={() => setRange(r.id)}
-          >
-            {r.label}
-          </Button>
-        ))}
-      </div>
+      <ViewRangeControls view={view} range={range} onView={setView} onRange={setRange} testIdPrefix="pattern" />
 
       {loading && value === undefined ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
