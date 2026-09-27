@@ -47,6 +47,39 @@ When milestones are run by the `run-milestones` workflow (`.claude/workflows/run
 To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the default; `mode: "step"` does one milestone;
 `only: "M03"` targets one milestone).
 
+## Owner working agreements
+
+- **Never edit tracked files while a `run-milestones` run is active.** Its finalizer runs `git add -A` and commits
+  everything under the milestone's name, so a concurrent edit lands in the wrong commit. Check `git status --short`
+  and whether the run's agent transcripts were touched in the last few minutes. If a run is live, write the decision
+  to `fixtures/private/drafts/<name>.md` (gitignored) with an APPLY section, then apply and commit it after the run stops.
+  A run that died from a usage limit ("implementer did not return") may leave a half-edited tree, so check before
+  relaunching. The finalizer can also leave a truncated `blocked: …` cell in `docs/milestones/README.md`. Fix that cell
+  when you resolve the block.
+- **New owner adjustments become GitHub issues, not mid-run edits.** File them on this repo with
+  `gh issue create --label owner-request` (plus `enhancement` or `bug`). Quote the owner's words and record the
+  decisions, storage consequences, defaults to confirm, and acceptance criteria, so a sweep can turn the issue straight
+  into a milestone. The repo is public, so issue text must never hold photo content, GPS, or anything from
+  `fixtures/private/`. Still answer the owner's question right away, and still act at once on anything that blocks the
+  current run. Sweep with `gh issue list --label owner-request`.
+
+## Project state (as of 2026-09-27)
+
+- **MVP milestones M01–M25 are done** and deployed to Pages. The app is named **Nordic Aim** (REV-45). The repo and the
+  Pages URL keep their old names on purpose.
+- **Never tag or push `v0.1.0` without the owner's explicit sign-off.** The remaining release steps belong to the owner:
+  device checks, a real range session end to end, the §9 timings, and the sign-off box. They are tracked in
+  `docs/RELEASE-v0.1.0.md` §5/§7 and `docs/milestones/OWNER-CHECKS.md`. Don't re-run finished milestones.
+- **M26** (template reference photos) is `blocked` on owner design decisions (see its *Decisions* section).
+- **Detection baseline:** the owner's 2026-09-17 re-rating of all 46 photos (`pnpm review:detection`, export in
+  `fixtures/private/review/`) measured **recall 76.9%** and **precision 94.7%**. These figures supersede the v1 labels
+  and the R4 gate's own numbers. Most false positives come from printed form fields and text, holes in the backing
+  board, and holes from neighbouring targets, not from thresholds. Relaxing REV-27 to recover misses was tested and
+  rejected (`docs/DESIGN-REVISIONS.md`). Sample-set corrections: pull IMG_5084 (it has several targets) and treat
+  IMG_5153 as a duplicate of IMG_5152.
+- **Cloud sessions have no `fixtures/private/`**, which holds the original HEICs, reviews and drafts. Tests that need it
+  skip themselves, so work that measures detection accuracy must run on the owner's Mac.
+
 ## Hard invariants (never violate)
 
 - **No backend, no runtime network calls** except the app's own same-origin static assets. No APIs, analytics, CDNs,
