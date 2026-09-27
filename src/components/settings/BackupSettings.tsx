@@ -36,6 +36,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [policy, setPolicy] = useState<ConflictPolicy>('keep');
   const [message, setMessage] = useState<string | null>(null);
+  const [chosenName, setChosenName] = useState<string | null>(null);
   const [days, setDays] = useState(String(settings.backupReminderDays));
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -67,6 +68,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
 
   async function onChooseFile(file: File | undefined) {
     if (file === undefined) return;
+    setChosenName(file.name);
     setBusy(true);
     setProblem(null);
     setLoaded(null);
@@ -103,6 +105,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
       );
       onRestored();
       setLoaded(null);
+      setChosenName(null);
     } catch (err) {
       setProblem(`Nothing was changed. ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -160,17 +163,30 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
       </div>
 
       <div className="flex flex-col gap-2 border-t pt-3">
-        <Label htmlFor="backup-file">Restore from a backup file</Label>
+        <h3 className="text-sm font-medium">Restore from a backup</h3>
+        <p className="text-xs text-muted-foreground">
+          Pick a NordicAim backup file (.json.gz or .json) from Files or iCloud Drive. Nothing changes until you check what is in it and
+          tap Restore.
+        </p>
+        <Button variant="outline" className="h-11" disabled={busy} onClick={() => fileInput.current?.click()} data-testid="restore-choose">
+          Choose backup file…
+        </Button>
+        {/* The native control is hidden: its "Choose File / no file selected" text did not read as a button (REV-127). */}
         <input
           ref={fileInput}
-          id="backup-file"
           data-testid="restore-file"
           type="file"
           accept="application/json,.json,application/gzip,.gz"
           disabled={busy}
           onChange={(e) => void onChooseFile(e.currentTarget.files?.[0])}
-          className="text-sm"
+          className="hidden"
         />
+        {chosenName !== null && (
+          <p className="truncate text-xs text-muted-foreground" data-testid="restore-chosen">
+            {busy && loaded === null ? 'Checking ' : 'Chosen: '}
+            {chosenName}
+          </p>
+        )}
         {problem !== null && (
           <p className="text-sm text-destructive" role="alert" data-testid="restore-problem">
             {problem}
@@ -213,7 +229,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
         )}
       </div>
       {message !== null && (
-        <p className="text-sm" role="status" data-testid="backup-message">
+        <p className="rounded-md bg-muted p-3 text-sm" role="status" data-testid="backup-message">
           {message}
         </p>
       )}
