@@ -62,3 +62,17 @@ export function summarizePatterns(points: PatternPoint[], kind: 'precision' | 's
     zoneHitShare,
   };
 }
+
+
+/**
+ * The star's score, 0..100: the same "how well" a target card's headline gives for one target's shots,
+ * worked out here over every shot currently shown. Precision reads the average ring (0..10) as a
+ * percentage of the top ring; sighting reads the share of shots that landed in the hit zone. Null with
+ * no shots.
+ */
+export function patternsScorePercent(summary: PatternSummary, kind: 'precision' | 'sighting'): number | null {
+  if (kind === 'precision') {
+    return summary.averageRing === null ? null : Math.round((summary.averageRing / 10) * 100);
+  }
+  return summary.zoneHitShare === null ? null : Math.round(summary.zoneHitShare * 100);
+}

@@ -7,13 +7,16 @@ interface ZoomFrameProps {
   children: ReactNode;
   /** Height limit of the scrolling box while zoomed. */
   maxHeight?: string;
+  /** Which corner the − level + Fit control sits in. Default top-right; bottom-right keeps it clear of
+   * content placed above the picture (Patterns' aggregate header, REV-121). */
+  controlsCorner?: 'top-right' | 'bottom-right';
 }
 
 /**
  * REV-97: the one zoom control for a picture that is not the photo editor (the target diagram, the Patterns drawing): − level +
  * Fit on the picture's corner, keyboard + − 0 when focused. Zooming widens the picture inside a scrolling box; a tap never zooms.
  */
-export function ZoomFrame({ children, maxHeight = '70vh' }: ZoomFrameProps) {
+export function ZoomFrame({ children, maxHeight = '70vh', controlsCorner = 'top-right' }: ZoomFrameProps) {
   const [level, setLevel] = useState(FRAME_MIN);
   const zoomed = level > FRAME_MIN;
   return (
@@ -34,7 +37,11 @@ export function ZoomFrame({ children, maxHeight = '70vh' }: ZoomFrameProps) {
       <div className={zoomed ? 'overflow-auto' : ''} style={zoomed ? { maxHeight } : undefined}>
         <div style={{ width: `${level * 100}%` }}>{children}</div>
       </div>
-      <div className="absolute right-2 top-2 flex items-center gap-1 rounded-lg bg-black/55 p-1 text-white">
+      <div
+        className={`absolute right-2 flex items-center gap-1 rounded-lg bg-black/55 p-1 text-white ${
+          controlsCorner === 'bottom-right' ? 'bottom-2' : 'top-2'
+        }`}
+      >
         <Button variant="ghost" className="size-11 text-lg text-white hover:bg-white/20 hover:text-white" data-testid="frame-zoom-out" aria-label="Zoom out" disabled={level <= FRAME_MIN} onClick={() => setLevel(stepFrameZoom(level, 'out'))}>
           −
         </Button>
