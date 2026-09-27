@@ -33,6 +33,7 @@ import { MATCH_TOLERANCE_MM, matchShots, type MatchResult } from '../tests/helpe
 import { evaluateAlignment } from './cv-eval-alignment.ts';
 import { evaluateBacking } from './cv-eval-backing.ts';
 import { evaluateLabelled } from './cv-eval-labelled.ts';
+import { evaluateProduction } from './cv-eval-production.ts';
 import { evaluateTemplateHint } from './cv-eval-template.ts';
 import {
   PRECISION_TEST_HOLES,
@@ -390,6 +391,7 @@ for (const ref of REFERENCE) {
   }
 }
 
+const production = await evaluateProduction(cv, REPO_ROOT);
 const labelled = await evaluateLabelled(cv, REPO_ROOT);
 const alignment = await evaluateAlignment(cv, REPO_ROOT);
 const backing = await evaluateBacking(cv, REPO_ROOT);
@@ -424,6 +426,7 @@ console.log(
     'A reference photo may never yield more detections than its declared rounds.\n',
 );
 console.log(table(['case', 'truth', 'detected', 'units', 'recall', 'precision', 'mean err (mm)', 'cap drops', 'result'], shotRows));
+for (const line of production.lines) console.log(line);
 for (const line of labelled.lines) console.log(line);
 for (const line of alignment.lines) console.log(line);
 for (const line of backing.lines) console.log(line);
@@ -443,7 +446,7 @@ if (
   shotFailures > 0 ||
   alignmentFailures > 0 ||
   capFailures > 0 ||
-  labelled.failed ||
+  production.failed ||
   alignment.failed ||
   backing.failed ||
   templateHint.failed
@@ -458,7 +461,7 @@ if (
   if (alignmentFailures > 0) console.error(`${alignmentFailures} photo(s) outside the alignment tolerance vs owner ground truth`);
   if (shotFailures > 0) console.error(`${shotFailures} synthetic shot-detection case(s) failed`);
   if (capFailures > 0) console.error(`${capFailures} reference photo(s) yielded more detections than the declared rounds`);
-  if (labelled.failed) console.error('detection is below the R4 recall/precision floors on the labelled holes (M16 Open questions)');
+  if (production.failed) console.error('detection is below the production benchmark floors (the owner\'s confirmed range targets)');
   if (alignment.failed) console.error('a synthetic perspective case failed (M18 Tests)');
   if (backing.failed) console.error('the colour path is below the backing-sheet §7 floors on the labelled backing photos');
   if (templateHint.failed) console.error('the template hint called a sheet the other template (M23)');

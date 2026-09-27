@@ -25,12 +25,13 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with the photo editor embedded (REV-73/78) | M21 |
 | `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |
 | `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
+| `#/settings/template-sheet/:template` | Capture in sheet mode: photograph a blank sheet as that template's reference (full screen, no tab bar; `template-reference.md` §2) | M26 |
 | `#/diagnostics` | Device capability checks | M01 |
 
 **Three main screens (REV-47).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has three tabs of at
 least 44 px, each an icon and a label, with the active one marked: **Shooting** (`#/` and every `#/sessions/...` and
 `#/review/...` route), **Settings** (`#/settings`) and **Diagnostics** (`#/diagnostics`). It is **hidden on the full-screen
-capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`). Scrolling content is padded by the bar's height plus
+capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`, `#/settings/template-sheet/:template`). Scrolling content is padded by the bar's height plus
 the safe-area inset so the bar never covers it.
 
 **Step 1: take picture(s)** (spec/capture-overlay.md): quick start → pick Sighting/Precision and position → overlay →
@@ -273,6 +274,9 @@ interface CvWorkerApi {
     backing: BackingInput):
     Promise<{ shots: Shot[]; detection: DetectionRecord;                                    // M11, M19
               suggestions: ShotCandidate[]; holeWidths: HoleWidth[] }>;                     // M21
+  makeReference(workingJpeg: ArrayBuffer, template: TemplateId, holeDiameterMm: number):   // M26, template-reference.md §3
+    Promise<{ status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration }
+          | { status: 'refused'; reason: 'no-disc' | 'wrong-template' | 'has-holes' }>;
 }
 ```
 

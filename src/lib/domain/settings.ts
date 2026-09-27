@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { BackingMode, BackingSheet, DEFAULT_BACKING_MODE, type ColourSignature } from './backing';
+import { DEFAULT_TEMPLATE_REFERENCES, TemplateReferences } from './template-reference';
 
 /**
  * REV-56: `gauge` = official gauge touch (the full hole), `centre` = centre in ring, `visible` = visible hole
@@ -84,6 +85,9 @@ export const AppSettings = z.object({
   // Owner instruction, 2026-09-26: the raw-hole-count safety net (`isValidMaxPlausibleHoles` below),
   // editable so it isn't stuck at the precision default. Defaults for older rows so they read back.
   maxPlausibleHoles: z.number().int().positive().default(10),
+  // REV-121 (template-reference.md §4): the user's own reference sheets; `null` per template means the shipped
+  // default. Defaults so older rows read back.
+  templateReferences: TemplateReferences.default(DEFAULT_TEMPLATE_REFERENCES),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 
@@ -131,6 +135,7 @@ export function defaultAppSettings(): AppSettings {
     lastBackupSessions: 0,
     backupReminderDays: 14,
     maxPlausibleHoles: DEFAULT_MAX_PLAUSIBLE_HOLES,
+    templateReferences: DEFAULT_TEMPLATE_REFERENCES,
   };
 }
 
