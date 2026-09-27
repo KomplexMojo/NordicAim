@@ -1,3 +1,4 @@
+import { Star } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -93,6 +94,8 @@ export function ResultsPage() {
     );
   }
 
+  const needsReview = data.photos.some((p) => p.status === 'needs-attention');
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-6xl">
       <header className="flex items-center justify-between gap-2">
@@ -110,6 +113,23 @@ export function ResultsPage() {
       </header>
 
       <h1 className="text-xl font-semibold">{data.name}</h1>
+
+      {/* REV-42: batch review is the primary way in — walk every target once, the ones needing
+          attention first, rather than opening each one from the grid below. Moved to the top of the
+          screen (owner, 2026-09-23) so it is seen before the per-target cards. The star only lights up
+          when something in the session actually needs a look (status `needs-attention`, the same group
+          the review pass walks first) — with nothing flagged, the button still opens the pass, but starts
+          bare. */}
+      {data.photos.length > 0 && (
+        <Link
+          to={`/review/${sid}`}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+          data-testid="review-session-link"
+        >
+          {needsReview && <Star className="size-4 shrink-0" aria-hidden="true" fill="currentColor" data-testid="review-session-star" />}
+          Review session
+        </Link>
+      )}
 
       {showDebug && <TimingDebugPanel />}
 
@@ -133,17 +153,6 @@ export function ResultsPage() {
             />
           ))}
         </div>
-      )}
-
-      {/* M21 step 4 (REV-42): walk every target once, the ones needing attention first. */}
-      {data.photos.length > 0 && (
-        <Link
-          to={`/review/${sid}`}
-          className="inline-flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium"
-          data-testid="review-session-link"
-        >
-          Review session
-        </Link>
       )}
 
       {/* Step 1 of the app: adding more targets was three taps away, behind the metadata screen. */}

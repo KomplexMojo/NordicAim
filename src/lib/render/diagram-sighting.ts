@@ -52,7 +52,10 @@ export function renderTarget(cx: number, cy: number, s: number): string {
     'stroke-dasharray': '18 14',
     fill: 'none',
   });
-  const proneDisc = el('circle', { cx, cy, r: (prone.solidDiameterMm / 2) * s, fill: '#FFFFFF', stroke: '#232A33', 'stroke-width': 2 });
+  // Owner reference, 2026-09-27: the printed sheet is one continuous black disc — the 45mm prone zone is
+  // marked by a thin printed line, not a colour change. Drawn as a ring on the dark disc, matching the
+  // precision sheet's own ring-on-dark convention, rather than punching out a white fill.
+  const proneRing = el('circle', { cx, cy, r: (prone.solidDiameterMm / 2) * s, stroke: PALETTE.ringOnDark, 'stroke-width': 2, fill: 'none' });
   const proneGuide = el('circle', {
     cx,
     cy,
@@ -64,7 +67,7 @@ export function renderTarget(cx: number, cy: number, s: number): string {
   });
   const centreDot = el('circle', { cx, cy, r: 0.6 * s, stroke: PALETTE.accent, 'stroke-width': 1, fill: 'none' });
 
-  return halo + disc + standingGuide + proneDisc + proneGuide + centreDot;
+  return halo + disc + standingGuide + proneRing + proneGuide + centreDot;
 }
 
 /** §3 item 5 (sighting, `full` only): "45 mm" just right of the prone disc, "115 mm" top-right outside the halo (REV-22). */
@@ -75,16 +78,17 @@ function renderZoneLabels(cx: number, cy: number, s: number): string {
   return prone + standing;
 }
 
-function renderLegendIcon(cx: number, cy: number, filled: boolean): string {
-  return filled
-    ? el('circle', { cx, cy, r: 9, fill: PALETTE.discSighting, stroke: '#232A33', 'stroke-width': 2 })
-    : el('circle', { cx, cy, r: 9, fill: '#FFFFFF', stroke: '#232A33', 'stroke-width': 2 });
+function renderLegendIcon(cx: number, cy: number, kind: 'prone' | 'standing'): string {
+  const disc = el('circle', { cx, cy, r: 9, fill: PALETTE.discSighting, stroke: '#232A33', 'stroke-width': 2 });
+  if (kind === 'standing') return disc;
+  // The prone zone is a ring on the same dark disc (see renderTarget), not a separate fill.
+  return disc + el('circle', { cx, cy, r: 5, stroke: PALETTE.ringOnDark, 'stroke-width': 1.5, fill: 'none' });
 }
 
 function renderLegend(isBoth: boolean): string {
-  const proneIcon = renderLegendIcon(83, 146, false);
+  const proneIcon = renderLegendIcon(83, 146, 'prone');
   const proneLabel = text(110, 152, 17, '45 mm prone zone', { color: PALETTE.textPrimary });
-  const standingIcon = renderLegendIcon(380, 146, true);
+  const standingIcon = renderLegendIcon(380, 146, 'standing');
   const standingLabel = text(416, 152, 17, '115 mm standing zone', { color: PALETTE.textPrimary });
   const guideLabel = text(760, 152, 17, 'Dotted: 40 mm / 110 mm guides', { color: PALETTE.textSecondary });
   const both = isBoth ? renderLegendBothDots() : '';

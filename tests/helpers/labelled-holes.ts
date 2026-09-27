@@ -26,6 +26,14 @@ export const MATCH_HOLE_DIAMETERS = 0.8;
  * **M21** (the ambiguous candidates are offered to the user, measured at 83.3% recall with precision
  * unchanged) and **M19** (a coloured backing, where hue separates what shape and brightness cannot).
  * This floor is therefore a "do not regress" line, not a target: it leaves ~4 points of headroom.
+ *
+ * **Currently FAILING** since the owner's calliper measurement corrected `HOLE_DIAMETER_MM` 5.6mm ->
+ * 3.3mm (2026-09-26): recall/precision moved to 80.6%/35.0%, because the diameter-scaled area gate
+ * (M11) shrank far enough to admit printed numeral ink as false holes. `MIN_AREA_MM2` (constants.ts)
+ * fixes the scaling bug and recovers to 77.1%/52.6% — real, but short of 85%. A follow-up measurement
+ * found no further hand-measured feature (score/elongation/stroke) separates what remains; this is the
+ * same ceiling this comment already documents at 5.6mm. Closing it needs M21 or M19, not another
+ * threshold, so the floor stays as a real target rather than being lowered to match.
  */
 export const GATE_RECALL_MIN = 0.72;
 export const GATE_PRECISION_MIN = 0.85;

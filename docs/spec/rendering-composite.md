@@ -81,8 +81,10 @@ diagram out until the farthest shot lands on the printed halo's edge, never belo
    - position `both`: prone and standing colour dots with labels at x 1200.
 5. **Target**:
    - **Sighting**: centre (750, 720), s = 8 px/mm; halo r 62.5 fill `haloFill` stroke `panelBorder` 1.5; disc r 57.5 fill `discSighting`
-     stroke `#232A33` 3; guide r 55 stroke `guideOnDark` 2 dash `18 14`; prone disc r 22.5 fill white stroke `#232A33` 2; guide r 20
-     stroke `accent` 2 dash `14 10`; centre dot r 0.6 mm.
+     stroke `#232A33` 3; guide r 55 stroke `guideOnDark` 2 dash `18 14`; prone ring r 22.5 stroke `ringOnDark` 2 fill none (owner
+     reference photo, 2026-09-27: the printed sheet marks the 45mm zone with a thin line on continuous black, not a colour
+     change — matches the precision disc's own ring-on-dark convention); guide r 20 stroke `accent` 2 dash `14 10`; centre dot
+     r 0.6 mm. Legend icon for "45 mm prone zone": the same dark disc with a small `ringOnDark` ring inside it, not a white fill.
      Zone labels (class `zone-label`, `full` only, 14 px): "45 mm" at (cx + 22.5·s + 10, cy − 8) `guideOnDark`; "115 mm" at
      (cx + 400, cy − 434) `accentText` (owner decision REV-22).
    - **Precision**: centre (790, 690), s = 6.35 px/mm; halo r 82.7 white stroke `panelBorder` 1.5; ring lines n = 1…3 stroke

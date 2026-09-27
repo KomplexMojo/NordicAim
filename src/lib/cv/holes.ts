@@ -19,6 +19,7 @@ import {
   HOLE_PAPER_CONTRAST_MIN,
   HOLE_PAPER_ELONGATION_MAX,
   HOLE_PAPER_SURROUND_MAX,
+  MIN_AREA_MM2,
   NUMERAL_KEEP_SCORE,
   SHEET_SEARCH_CAP_MM,
   STROKE_MIN_FRACTION,
@@ -106,7 +107,7 @@ function rejection(
   pxPerMm: number,
   rotation: NumeralRotation | null,
 ): RejectionReason | null {
-  if (features.blobAreaPx < MIN_AREA_FRACTION * a1) return 'area';
+  if (features.blobAreaPx < Math.max(MIN_AREA_FRACTION * a1, MIN_AREA_MM2 * pxPerMm ** 2)) return 'area';
   if (isPrintedGlyph(features, holeDiameterMm, pxPerMm)) return 'glyph';
   if (candidate.surface === 'mark') {
     if (candidate.score < HOLE_MARK_SCORE_MIN) return 'mark-score';
