@@ -77,8 +77,9 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
   board, and holes from neighbouring targets, not from thresholds. Relaxing REV-27 to recover misses was tested and
   rejected (`docs/DESIGN-REVISIONS.md`). Sample-set corrections: pull IMG_5084 (it has several targets) and treat
   IMG_5153 as a duplicate of IMG_5152.
-- **Cloud sessions have no `fixtures/private/`**, which holds the original HEICs, reviews and drafts. Tests that need it
-  skip themselves, so work that measures detection accuracy must run on the owner's Mac.
+- **Cloud sessions have no `fixtures/private/`** (the original HEICs, reviews and drafts) unless the private
+  `KomplexMojo/NordicAim-fixtures` repo is attached to the session; then the SessionStart hook clones it there. Without it,
+  tests that need it skip themselves, so work that measures detection accuracy must run on the owner's Mac.
 
 ## Hard invariants (never violate)
 

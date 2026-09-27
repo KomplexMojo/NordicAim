@@ -9,3 +9,5 @@
 - Cloud sessions: `.claude/hooks/session-start.sh` installs dependencies (in the background, so the first command
   can race it; re-run `pnpm install` if modules are missing) and sets `PLAYWRIGHT_CHROMIUM_PATH` to the
   container's Chromium. WebKit isn't available there, so run e2e with `pnpm test:e2e --project=mobile-chromium`.
+  If the private `KomplexMojo/NordicAim-fixtures` repo is attached to the session, the hook also clones it into
+  `fixtures/private/` (it may land a minute or two after the session starts). Never copy its contents into this repo.
