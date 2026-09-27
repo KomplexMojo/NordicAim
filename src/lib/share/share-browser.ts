@@ -1,6 +1,6 @@
-// rendering-composite.md §7. Browser-only: shares (or downloads) the session summary image PNG. The
-// share rule (AGENTS.md): this is the only image the app ever hands to the share sheet or a download, apart from
-// a backup the owner explicitly creates (`shareBackup`, backup.md).
+// rendering-composite.md §7. Browser-only: shares (or downloads) a stored image PNG. The share rule (AGENTS.md): the
+// session summary (`CompositeArtifact`) and the coach image (`TrendsArtifact`, REV-124) are the only images the app ever
+// hands to the share sheet or a download, apart from a backup the owner explicitly creates (`shareBackup`, backup.md).
 
 export type ShareOutcome = 'web-share' | 'download' | 'cancelled';
 

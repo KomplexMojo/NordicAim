@@ -56,3 +56,13 @@ describe('chartGeometry', () => {
     expect(empty.path).toBe('');
   });
 });
+
+describe('chartGeometry with a shared domain (analysis.md §5)', () => {
+  it('scales every series on one chart to the same axis', () => {
+    const all = [1, 2, 10, 20];
+    const a = chartGeometry([1, 2], BOX, false, 4, all);
+    const b = chartGeometry([10, 20], BOX, false, 4, all);
+    expect(a.domain).toEqual(b.domain);
+    expect(a.points[0]!.y).toBeGreaterThan(b.points[0]!.y);
+  });
+});

@@ -51,4 +51,4 @@ points the dots are drawn as one path per 500 (still SVG; a canvas fallback is n
 
 `#/patterns`, reached from Home (a **Patterns** link, not a fourth tab: REV-47 stands). A view switch (four buttons), a range
 switch (three), the drawing, the summary, and the left-out count. The drawing can be zoomed. Empty and thin states are
-plain sentences. Not shareable in v1 (share rule unchanged).
+plain sentences. Not shareable on its own; its four drawings are part of the coach image (`analysis.md` §5, REV-124).

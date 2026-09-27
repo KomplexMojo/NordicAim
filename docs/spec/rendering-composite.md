@@ -262,6 +262,9 @@ REV-39) is `needs-attention`, never `analyzed`, so it is never a candidate: it i
 
 ## 6. `CompositeArtifact` and the share rule
 
+> **REV-124:** the share rule now allows a second image, the coach image (`TrendsArtifact`, `analysis.md` §5). Everything
+> below about the session summary is unchanged.
+
 ```ts
 declare const artifactBrand: unique symbol;
 export interface CompositeArtifact { readonly [artifactBrand]: true; id: string; sessionId: string;

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 
 import { TrendChart } from '@/components/analysis/TrendChart';
+import { TrendsImageCard } from '@/components/analysis/TrendsImageCard';
 import { ViewRangeControls } from '@/components/patterns/ViewRangeControls';
 import { sessionTrend, trendMetrics } from '@/lib/analysis/trend';
 import { useLiveQuery } from '@/lib/app/use-live-query';
@@ -96,6 +97,8 @@ export function AnalysisPage() {
               </details>
             </>
           )}
+          {/* REV-124: a new card per range, so a preview never outlives the range it was made for. */}
+          {value !== undefined && Object.values(value.data.points).some((p) => p.length > 0) && <TrendsImageCard key={range} range={range} />}
           {value !== undefined && value.data.leftOut > 0 && (
             <p className="text-xs text-muted-foreground" data-testid="analysis-left-out">
               {value.data.leftOut} {value.data.leftOut === 1 ? 'target' : 'targets'} left out (not analysed, or alignment not

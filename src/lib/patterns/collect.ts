@@ -16,6 +16,15 @@ export const PATTERN_VIEW_LABEL: Record<PatternView, string> = {
 
 export type PatternRange = 'last' | 'week' | '30' | '90' | 'all';
 
+/** patterns.md §3: each range as its button reads, oldest-first order. Also the coach image's subtitle (analysis.md §5). */
+export const PATTERN_RANGE_LABEL: Record<PatternRange, string> = {
+  last: 'Latest session',
+  week: 'This week',
+  '30': '30 days',
+  '90': '90 days',
+  all: 'All time',
+};
+
 export interface PatternSource {
   sessionId: string;
   /** `YYYY-MM-DD`. */
