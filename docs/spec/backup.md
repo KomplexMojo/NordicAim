@@ -8,7 +8,7 @@ images base64, no password; the file holds photo GPS and the app says so.
 A backup the owner explicitly creates may contain photos. It is created only by a tap on **Back up now** (Settings, or the
 reminder). It goes only to the share sheet or a download. Nothing is sent anywhere automatically. No runtime network calls.
 
-## 2. File (`nordic-aim-backup`, formatVersion 1), file name `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD.json.gz`
+## 2. File (`nordic-aim-backup`, formatVersion 2; version 1 still restores), file name `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD.json.gz`
 
 REV-125: the name carries the athlete's name as a lower-case ASCII slug (Nordic letters spelled out: ø→o, æ→ae, å→a; at
 most 30 characters; left out when no name is set), the key fingerprint (8 hex digits, upper case; left out when no key was
@@ -17,12 +17,13 @@ Built by `backupFileName` (`backup/format.ts`).
 
 ```ts
 interface BackupFile {
-  format: 'nordic-aim-backup'; formatVersion: 1;
+  format: 'nordic-aim-backup'; formatVersion: 2;       // 1: every image is in the file (before REV-126)
   manifest: {
     appBuild: string; createdAt: string;               // ISO
     counts: { sessions; photos; analyses; settings; blobs: number };
     sessions: Array<{ id; name: string | null; sessionDate: string | null; photos: number }>;
     blobs: Array<{ key: string; sha256: string; sizeBytes: number }>;
+    rebuild?: Array<{ key: string; from: string }>;      // §2b; absent in version 1
   };
   records: { sessions: unknown[]; photos: unknown[]; analyses: unknown[]; settings: unknown[] };  // exactly as stored
   blobs: Array<{ key; contentType: string; sizeBytes: number; createdAt: string; base64: string }>;
@@ -35,12 +36,40 @@ Blob parts (records, then one part per image), never as one giant string.
 ## 2a. Compression (REV-125)
 
 The file on disk is the §2 JSON **gzip-compressed** (`CompressionStream('gzip')`, content type `application/gzip`); the JSON
-inside is unchanged, so the format version stays 1. The photos are already JPEG/HEIC and do not shrink, but gzip takes back
+inside is unchanged (compression alone did not change the format version; §2b did). The photos are already JPEG/HEIC and do not shrink, but gzip takes back
 almost all of base64's 4/3 overhead, and the records and diagram SVGs compress well: a backup is about 25% smaller, close to
 the images' own size. Restore reads either kind (`readBackupText`): a file starting with the gzip bytes `1F 8B` is
 decompressed, anything else is read as plain JSON, so older `.json` backups and a file the Files app expanded still restore.
 A compressed file that is cut short is refused as damaged, like a truncated JSON file. Settings reports the size before and
 after compression.
+
+## 2b. Images made again on restore (REV-126, formatVersion 2)
+
+Some stored images are made from another stored image, so a backup leaves them out and lists each in `manifest.rebuild`
+with the key it is made from (`backup/rebuild.ts`):
+
+| Left out | Made from | How |
+|---|---|---|
+| `photo:<pid>:working` | `photo:<pid>:original` | `makeWorkingImages` (3000 px long side, JPEG 0.9), as at import |
+| `photo:<pid>:thumb` | `photo:<pid>:original` | the same call (480 px, JPEG 0.8) |
+| `diagram:<pid>:full-png` | `diagram:<pid>:full-svg` | `svgToPng` at 1500 × 1700 |
+
+An image is left out only when its source is in the same file. The original photos, summary and coach images, reference
+sheets and SVGs are always kept. The working copy is the largest of these, so this makes a backup markedly smaller than
+§2a alone.
+
+- **Verify** refuses a file whose `rebuild` names a key that is not one of the kinds above, pairs it with the wrong source,
+  names a key that is also in `blobs`, or whose source is not in the file.
+- **Plan**: a left-out image follows its source: `new` with a new source, `different` with a different one, otherwise `new`
+  only when the phone has lost its own copy (else `same`). So restoring onto a phone that already has everything makes
+  nothing.
+- **Apply**: every wanted image is made **before** the transaction, each original decoded once. A working copy must come
+  out at the `working.widthPx × heightPx` its photo record holds, because alignment and hole positions are stored against
+  it. If a photo cannot be decoded (a HEIC in a browser without HEIC support) or the size differs, the restore stops,
+  says to restore in Safari on the iPhone, and writes nothing.
+- The rebuilt working copy is a fresh JPEG encoding of the same original, so its pixels can differ very slightly from the
+  one detection first ran on. Stored shots and alignment are not changed; only a later re-detection sees the new copy.
+- The restore report counts the images made again.
 
 ## 3. Verify (before anything is written)
 
@@ -72,7 +101,8 @@ shows the last backup's date and session count. `lastBackupAt` is set when the f
 
 ## 6. Tests
 
-Round trip (build → parse → restore into an empty DB gives equal stores and blobs); truncated and edited files are refused
+Round trip (build → parse → restore into an empty DB gives equal stores and blobs, the left-out images made again);
+a version 1 file still restores; a rebuild that fails or comes out at another size writes nothing; truncated and edited files are refused
 and write nothing; idempotent restore; `different` skip/replace; unreadable records survive the round trip; `backupDue`.
 Owner check: a backup of the real device (~43 MB) completes on the phone; note its time against `analysis-pipeline.md` §9.
 

@@ -26,7 +26,7 @@ interface Loaded {
  * file to restore, and restoring it. The file holds the photos, including their GPS location, and the dialog says so.
  */
 export function BackupSettings({ settings: initial, onRestored }: { settings: AppSettings; onRestored(): void }) {
-  const { ctx } = useServices();
+  const { ctx, imageTools, renderTools } = useServices();
   // Live, so the last-backup line updates the moment a backup is recorded.
   const { value: live } = useLiveQuery(() => getAppSettings(ctx), [ctx]);
   const settings = live ?? initial;
@@ -91,9 +91,14 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
     if (loaded === null) return;
     setBusy(true);
     try {
-      const report = await restoreBackup(ctx, loaded.backup, loaded.plan, policy);
+      const report = await restoreBackup(ctx, loaded.backup, loaded.plan, policy, {
+        makeWorkingImages: imageTools.makeWorkingImages,
+        svgToPng: renderTools.svgToPng,
+      });
       setMessage(
-        `Restored. ${report.written} items written, ${report.skipped} left as they were. Your settings and preferences came back too.` +
+        `Restored. ${report.written} items written, ${report.skipped} left as they were.` +
+          (report.rebuilt > 0 ? ` ${report.rebuilt} photo copies and drawings were made again from the originals.` : '') +
+          ' Your settings and preferences came back too.' +
           (report.needsUnlock ? ' Enter your passphrase in Settings → Athlete to keep stamping images.' : ''),
       );
       onRestored();

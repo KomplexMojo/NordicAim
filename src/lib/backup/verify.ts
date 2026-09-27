@@ -4,6 +4,7 @@ import {
   BACKUP_FORMAT,
   BACKUP_FORMAT_VERSION,
   BackupUnreadableError,
+  READABLE_FORMAT_VERSIONS,
   PREFERENCE_PREFIX,
   base64ToBytes,
   readBackupText,
@@ -11,6 +12,7 @@ import {
   type BackupFile,
   type BackupPreference,
 } from './format';
+import { rebuildSource } from './rebuild';
 
 export interface VerifiedBackup {
   file: BackupFile;
@@ -44,8 +46,8 @@ export async function verifyBackup(text: string): Promise<VerifyResult> {
     return { ok: false, problem: new BackupUnreadableError().message };
   }
   if (!isRecord(raw) || raw.format !== BACKUP_FORMAT) return { ok: false, problem: 'This is not a NordicAim backup file.' };
-  if (raw.formatVersion !== BACKUP_FORMAT_VERSION) {
-    return { ok: false, problem: `This backup is format version ${String(raw.formatVersion)}; this app reads version ${BACKUP_FORMAT_VERSION}.` };
+  if (typeof raw.formatVersion !== 'number' || !READABLE_FORMAT_VERSIONS.includes(raw.formatVersion)) {
+    return { ok: false, problem: `This backup is format version ${String(raw.formatVersion)}; this app reads versions up to ${BACKUP_FORMAT_VERSION}.` };
   }
   const { manifest, records, blobs } = raw as Record<string, unknown>;
   if (!isRecord(manifest) || !isRecord(records) || !Array.isArray(blobs)) return { ok: false, problem: 'The backup is missing its manifest, records or images.' };
@@ -80,6 +82,15 @@ export async function verifyBackup(text: string): Promise<VerifyResult> {
     if (decoded.byteLength !== want.sizeBytes) return { ok: false, problem: `Image ${key} is ${decoded.byteLength} bytes; the manifest says ${want.sizeBytes}.` };
     if ((await sha256Hex(decoded)) !== want.sha256) return { ok: false, problem: `Image ${key} does not match its checksum: the file was changed or damaged.` };
     bytes.set(key, decoded);
+  }
+  // §2b: every left-out image must be one a restore knows how to make, from an image that is in the file.
+  const rebuild = manifest.rebuild ?? [];
+  if (!Array.isArray(rebuild)) return { ok: false, problem: 'The backup manifest is unreadable.' };
+  for (const r of rebuild as unknown[]) {
+    if (!isRecord(r) || typeof r.key !== 'string' || typeof r.from !== 'string' || rebuildSource(r.key) !== r.from || expected.has(r.key)) {
+      return { ok: false, problem: 'The backup lists an image to rebuild that this app cannot make.' };
+    }
+    if (!bytes.has(r.from)) return { ok: false, problem: `Image ${r.from} is missing, so ${r.key} cannot be made again.` };
   }
   // REV-115: preferences are optional (older backups have none); only well-formed `asa.` entries are kept.
   const prefs: BackupPreference[] = Array.isArray(raw.preferences)

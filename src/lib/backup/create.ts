@@ -2,6 +2,7 @@
 
 import type { AppDb } from '@/lib/store/db';
 
+import { rebuildEntries } from './rebuild';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, bytesToBase64, gzipBlob, sha256Hex, type BackupBlob, type BackupManifest, type BackupPreference } from './format';
 
 function str(raw: unknown, key: string): string | null {
@@ -31,9 +32,14 @@ export async function createBackup(
     db.getAllKeys('blobs') as Promise<string[]>,
   ]);
 
+  // §2b: a photo's working copy and thumbnail, and a diagram's PNG, are made again on restore from the original and the SVG.
+  const rebuild = rebuildEntries(keys);
+  const leftOut = new Set(rebuild.map((r) => r.key));
+
   const blobs: BackupBlob[] = [];
   const blobManifest: BackupManifest['blobs'] = [];
   for (const key of keys) {
+    if (leftOut.has(key)) continue;
     const stored = await db.get('blobs', key);
     if (stored === undefined) continue;
     const bytes = new Uint8Array(stored.bytes);
@@ -62,6 +68,7 @@ export async function createBackup(
       return { id, name: str(s, 'name'), sessionDate: str(s, 'sessionDate'), photos: photosBySession.get(id) ?? 0 };
     }),
     blobs: blobManifest,
+    rebuild,
   };
 
   // Written as parts, so the images are never joined into one enormous string.

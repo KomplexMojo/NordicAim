@@ -12,6 +12,10 @@ import type { AppDb } from '@/lib/store/db';
 import { openTestDb } from '../../helpers/db';
 import { emptyCategorization, jpegBlob, makeTestContext } from '../../helpers/fixtures';
 import { stubImageTools } from '../../helpers/stub-image-tools';
+import { stubRenderTools } from '../../helpers/stub-render-tools';
+
+/** §2b: a restore makes the left-out working copy and thumbnail again; the stubs make the same bytes ingest stored. */
+const TOOLS = { makeWorkingImages: stubImageTools().makeWorkingImages, svgToPng: stubRenderTools().svgToPng };
 
 async function seeded() {
   const db = await openTestDb();
@@ -67,7 +71,7 @@ describe('backup (REV-63)', () => {
     const fresh = await openTestDb();
     const plan = await planRestore(fresh, verified.backup);
     expect(plan.sessions.new).toBe(1);
-    await applyRestore(fresh, verified.backup, plan, 'keep');
+    await applyRestore(fresh, verified.backup, plan, 'keep', TOOLS);
     expect(await dump(fresh)).toEqual(await dump(db));
     db.close();
     fresh.close();
@@ -108,7 +112,7 @@ describe('backup (REV-63)', () => {
     verified.backup.file.records.analyses.push({ photoId: 'poison', broken: () => 1 });
     plan.verdicts.set('analyses:poison', 'new');
     const before = await dump(fresh);
-    await expect(applyRestore(fresh, verified.backup, plan, 'keep')).rejects.toBeDefined();
+    await expect(applyRestore(fresh, verified.backup, plan, 'keep', TOOLS)).rejects.toBeDefined();
     expect(await dump(fresh)).toEqual(before);
     db.close();
     fresh.close();
@@ -122,7 +126,7 @@ describe('backup (REV-63)', () => {
     const plan = await planRestore(db, verified.backup);
     expect(plan.sessions).toEqual({ new: 0, same: 1, different: 0 });
     expect(plan.blobs.new + plan.blobs.different).toBe(0);
-    const report = await applyRestore(db, verified.backup, plan, 'replace');
+    const report = await applyRestore(db, verified.backup, plan, 'replace', TOOLS);
     expect(report.written).toBe(0);
     expect(await dump(db)).toEqual(before);
     db.close();
@@ -136,9 +140,9 @@ describe('backup (REV-63)', () => {
 
     const plan = await planRestore(db, verified.backup);
     expect(plan.sessions.different).toBe(1);
-    await applyRestore(db, verified.backup, plan, 'keep');
+    await applyRestore(db, verified.backup, plan, 'keep', TOOLS);
     expect((await db.get('sessions', session.id))!.name).toBe('Edited later');
-    await applyRestore(db, verified.backup, plan, 'replace');
+    await applyRestore(db, verified.backup, plan, 'replace', TOOLS);
     expect((await db.get('sessions', session.id))!.name).toBe('Range day');
     db.close();
   });
@@ -149,7 +153,7 @@ describe('backup (REV-63)', () => {
     const verified = await verifyBackup(await backupText(db));
     if (!verified.ok) throw new Error(verified.problem);
     const fresh = await openTestDb();
-    await applyRestore(fresh, verified.backup, await planRestore(fresh, verified.backup), 'keep');
+    await applyRestore(fresh, verified.backup, await planRestore(fresh, verified.backup), 'keep', TOOLS);
     expect((await fresh.get('sessions', session.id))!.name).toBe('');
     db.close();
     fresh.close();
@@ -206,7 +210,7 @@ describe('a complete restore (REV-115)', () => {
     await setAthlete(fresh, { name: 'Someone Else', club: 'Other Club' });
     const plan = await planRestore(fresh.db, verified.backup);
     expect(plan.settings.different).toBe(1);
-    await applyRestore(fresh.db, verified.backup, plan, 'keep');
+    await applyRestore(fresh.db, verified.backup, plan, 'keep', TOOLS);
     const { getSettings } = await import('@/lib/store/settings-repo');
     const restored = await getSettings(fresh.db);
     expect([restored.athleteName, restored.athleteClub, restored.handedness]).toEqual(['Jane Doe', 'Caledonia Nordic Ski Club', 'left']);

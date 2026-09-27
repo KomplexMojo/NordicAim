@@ -4,6 +4,7 @@ import { backupFileName } from '@/lib/backup/format';
 import { createBackup, type CreatedBackup } from '@/lib/backup/create';
 import { isValidReminderDays } from '@/lib/backup/due';
 import { applyRestore, planRestore, type ConflictPolicy, type RestorePlan, type RestoreReport } from '@/lib/backup/restore';
+import type { RebuildTools } from '@/lib/backup/rebuild';
 import type { VerifiedBackup } from '@/lib/backup/verify';
 import { applyPreferences, collectPreferences } from '@/lib/backup/preferences-browser';
 import { loadProvenanceKey } from '@/lib/services/provenance';
@@ -54,8 +55,9 @@ export async function restoreBackup(
   backup: VerifiedBackup,
   plan: RestorePlan,
   policy: ConflictPolicy,
+  tools: RebuildTools,
 ): Promise<RestoreReport & { preferences: number; needsUnlock: boolean }> {
-  const report = await applyRestore(ctx.db, backup, plan, policy);
+  const report = await applyRestore(ctx.db, backup, plan, policy, tools);
   const preferences = applyPreferences(backup.file.preferences ?? []);
   // The provenance key is never in a backup (docs/spec/provenance.md §1): after a restore the athlete enters the passphrase once more.
   const settings = await getSettings(ctx.db);

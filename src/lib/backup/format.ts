@@ -1,7 +1,9 @@
 // backup.md §2: the backup file's shape and the byte helpers it needs.
 
 export const BACKUP_FORMAT = 'nordic-aim-backup';
-export const BACKUP_FORMAT_VERSION = 1;
+/** REV-126: version 2 leaves out the images a restore can make again (`manifest.rebuild`, §2b). Version 1 files still restore. */
+export const BACKUP_FORMAT_VERSION = 2;
+export const READABLE_FORMAT_VERSIONS: readonly number[] = [1, 2];
 
 export interface BackupManifest {
   appBuild: string;
@@ -9,6 +11,8 @@ export interface BackupManifest {
   counts: { sessions: number; photos: number; analyses: number; settings: number; blobs: number };
   sessions: Array<{ id: string; name: string | null; sessionDate: string | null; photos: number }>;
   blobs: Array<{ key: string; sha256: string; sizeBytes: number }>;
+  /** §2b: images left out of the file and the image in it each is made from. Absent in version 1. */
+  rebuild?: Array<{ key: string; from: string }>;
 }
 
 export interface BackupBlob {
@@ -29,7 +33,7 @@ export interface BackupPreference {
 
 export interface BackupFile {
   format: typeof BACKUP_FORMAT;
-  formatVersion: typeof BACKUP_FORMAT_VERSION;
+  formatVersion: 1 | 2;
   manifest: BackupManifest;
   records: { sessions: unknown[]; photos: unknown[]; analyses: unknown[]; settings: unknown[] };
   blobs: BackupBlob[];
