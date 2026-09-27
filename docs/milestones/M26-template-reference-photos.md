@@ -36,14 +36,16 @@ to be, instead of needing its own investigation each time.
   measured feature separates them." Differencing against a real reference is the plausible way past that wall; nothing
   else tried this session got there.
 
-## Decisions this milestone needs before it is implementable (2, 5, 6 decided 2026-09-27; 1, 3, 4 open)
+## Decisions this milestone needs before it is implementable (1, 2, 5, 6 decided 2026-09-27; 3, 4 open)
 Per AGENTS.md golden rule 2 ("if the spec is silent or ambiguous about something you need, stop"): this feature has no
 spec at all yet. The six items below are the owner's to decide, not mine to guess. On 2026-09-27 the owner accepted the
-recommendations for Decisions 2, 5 and 6 as written below; 1, 3 and 4 remain open.
+recommendations for Decisions 2, 5 and 6 as written below, and answered Decision 1 in issue #52; 3 and 4 remain open.
+The spec is `docs/spec/template-reference.md` (REV-121).
 
-1. **Captured how often.** Once per template design, ever — or re-captured whenever a fresh batch is printed? Depends
-   on the owner's own printing practice (a professionally offset-printed batch likely varies less print-to-print than
-   a home/office-printed one), which I don't know.
+1. **Captured how often — DECIDED (owner, 2026-09-27, issue #52).** The app ships a default reference for each template,
+   made from the owner's blank sheets. The user replaces it from Settings whenever their print changes, and can restore
+   the default. One reference per template, not per backing colour. A reference keeps only the target circles and what
+   is printed inside them (template-reference.md §1, §3).
 2. **Where it fits the 3-step flow — DECIDED (owner, 2026-09-27).** Mirror the backing-card capture (M19): an
    optional, one-time capture reached from Settings, outside the three steps. The three-step flow (take picture(s) →
    add metadata → receive analysis) gains no new step, and nothing in it prompts for or requires a reference.
@@ -70,6 +72,7 @@ recommendations for Decisions 2, 5 and 6 as written below; 1, 3 and 4 remain ope
    combination only.
 
 ## Read first
+- `docs/spec/template-reference.md` (the spec for this milestone; §6 is pending Decisions 3 and 4)
 - `docs/spec/analysis-pipeline.md` §2 (A3 review image, A4 overlay/alignment, A5 shot detection), §3
 - `docs/spec/backing-sheet.md` (the closest existing precedent: a once-measured reference reused across a session,
   including its Open Questions section as a model for how unresolved measurement questions were tracked before)
@@ -80,13 +83,12 @@ recommendations for Decisions 2, 5 and 6 as written below; 1, 3 and 4 remain ope
   `src/lib/cv/constants.ts`, which are the evidence trail behind this milestone
 
 ## In scope (once the Decisions above are resolved)
-- A stored template reference per template id (and per backing colour, when used) — a new domain concept, likely
-  modelled on `BackingSheet`.
-- A capture flow for a blank sighting sheet and a blank precision sheet, optionally over the chosen backing colour,
-  shaped by Decision 2.
+- A stored template reference per template id (template-reference.md §4), with shipped defaults in
+  `public/templates/` (§5).
+- The Settings **Target sheets** section and the sheet capture flow (§2, §3).
 - A pure differencing module (pure/adapter split preserved, no DOM in `src/lib/cv/`) producing an additional signal
   `holes.ts`/`hole-signal.ts` can consume alongside — not instead of — the existing geometric masks.
-- Fallback to today's geometric masking when no reference exists for the active template/backing combination.
+- Fallback to today's geometric masking when no usable reference exists for the photo's template (§6).
 - `pnpm cv:eval` and `pnpm review:detection` support for reference-photo fixtures.
 
 ## Out of scope
@@ -95,12 +97,13 @@ recommendations for Decisions 2, 5 and 6 as written below; 1, 3 and 4 remain ope
 - Guaranteeing the T16/T21 colour recall gap is fixed; this milestone makes it diagnosable and calibratable
   per-session, which is a narrower claim than "fixed."
 
-## Files (anticipated — confirm once the Decisions above are resolved; this list is not authoritative yet)
+## Files (from template-reference.md; the detection files follow Decisions 3 and 4)
+- `public/templates/sighting-reference.jpg`, `public/templates/precision-reference.jpg` (shipped defaults, added with the spec)
+- `src/lib/defaults/template-references.ts` (new: the defaults' calibration, size and hash)
 - `src/lib/domain/template-reference.ts` (new, mirroring `backing.ts`)
 - `src/lib/cv/template-reference.ts` (new, pure differencing)
 - `src/lib/cv/holes.ts`, `hole-signal.ts`, `print-mask.ts` (consume the new signal; fallback preserved)
-- `src/components/settings/` (capture entry point, mirroring `BackingSettings`/`BackingCardPage`)
-- `docs/spec/template-reference.md` (new spec — nothing exists for this feature yet)
+- `src/components/settings/TemplateSheetSettings.tsx` and the `#/settings/template-sheet/:template` route (mirroring `BackingSettings`/`BackingCardPage`)
 - `scripts/cv-eval.ts`, `scripts/detection-review/`
 
 ## Steps
@@ -139,10 +142,10 @@ guess.
   real measurement before any detection logic is written against the assumption that alignment is good enough.
 
 ## Open questions
-Decisions 1, 3 and 4 above are open, as is whether backups include reference photos (Decision 5). Decisions 3 and 4
-need measurement and prototyping on the owner's photos in `fixtures/private/`, so they can only run on the owner's Mac.
-This milestone stays not implementable until those are answered and `docs/spec/template-reference.md` exists, per
-AGENTS.md golden rule 2 ("never guess on scoring, geometry, or storage").
+Decisions 3 and 4 above are open, as is whether backups include a custom reference (template-reference.md §8). Decisions
+3 and 4 need measurement and prototyping on the owner's photos in `fixtures/private/`; cloud sessions can do this when the
+private fixtures repo is attached. The spec exists (`docs/spec/template-reference.md`); its §6 method stays pending until
+those measurements are made, per AGENTS.md golden rule 2 ("never guess on scoring, geometry, or storage").
 
 ## Completion notes
 Not started.
