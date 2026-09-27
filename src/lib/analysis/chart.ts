@@ -41,8 +41,15 @@ export function niceStep(span: number, count: number): number {
  * §4: sessions are spaced evenly left to right in order (one per session, not to a time scale, so a burst of sessions
  * stays readable). The y domain covers every value, rounded out to nice ticks; a zero line pulls 0 into the domain.
  */
-export function chartGeometry(values: Array<number | null>, box: ChartBox, zeroLine: boolean, tickCount = 4): ChartGeometry {
-  const present = values.filter((v): v is number => v !== null);
+export function chartGeometry(
+  values: Array<number | null>,
+  box: ChartBox,
+  zeroLine: boolean,
+  tickCount = 4,
+  /** analysis.md §5: several series on one chart share one y axis, worked out from all of their values. */
+  domainFrom: Array<number | null> = values,
+): ChartGeometry {
+  const present = domainFrom.filter((v): v is number => v !== null);
   let lo = present.length > 0 ? Math.min(...present) : 0;
   let hi = present.length > 0 ? Math.max(...present) : 1;
   if (zeroLine) {

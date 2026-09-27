@@ -40,3 +40,15 @@ export function artifactPrefix(artifactId: string): string {
 export function referenceImageKey(template: 'sighting' | 'precision'): string {
   return `reference:${template}:image`;
 }
+
+/** analysis.md §5 (REV-124): a stored coach image (trends) and its JSON sidecar. */
+export function trendsPngKey(id: string): string {
+  return `trends:${id}:png`;
+}
+export function trendsJsonKey(id: string): string {
+  return `trends:${id}:json`;
+}
+export function trendsPrefix(id: string): string {
+  return `trends:${id}:`;
+}
+export const TRENDS_KEY_PREFIX = 'trends:';

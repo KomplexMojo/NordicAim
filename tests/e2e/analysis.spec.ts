@@ -67,3 +67,29 @@ test('two demo sessions give one point per session on each chart, the ranges fil
   await page.getByTestId('analysis-table').locator('summary').click();
   await expect(page.getByTestId('analysis-table').locator('tbody tr')).toHaveCount(2);
 });
+
+test('the coach image: made from the range, previewed, then shared as one PNG', async ({ page }) => {
+  // The download branch of shareArtifact, as in summary.spec.ts: no share sheet to dismiss in an automated run.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'canShare', { value: undefined, configurable: true });
+  });
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  await page.goto('/#/analysis');
+  await expect(page.getByTestId('share-trends-image')).toHaveCount(0);
+  await page.getByTestId('make-trends-image').click();
+  const preview = page.getByTestId('trends-image-preview');
+  await expect(preview).toBeVisible({ timeout: 60_000 });
+  // The preview is the stored PNG at the sheet's width.
+  expect(await preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1440);
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share-trends-image').click()]);
+  expect(download.suggestedFilename()).toMatch(/^nordicaim-trends-\d{4}-\d{2}-\d{2}\.png$/);
+
+  // A different range starts a fresh card: the old preview does not carry over.
+  await page.getByTestId('analysis-range-30').click();
+  await expect(page.getByTestId('trends-image-preview')).toHaveCount(0);
+});

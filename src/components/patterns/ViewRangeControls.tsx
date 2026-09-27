@@ -1,13 +1,7 @@
 import { Button } from '@/components/ui/button';
-import { PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternRange, type PatternView } from '@/lib/patterns/collect';
+import { PATTERN_RANGE_LABEL, PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 
-const PATTERN_RANGES: ReadonlyArray<{ id: PatternRange; label: string }> = [
-  { id: 'last', label: 'Latest session' },
-  { id: 'week', label: 'This week' },
-  { id: '30', label: '30 days' },
-  { id: '90', label: '90 days' },
-  { id: 'all', label: 'All time' },
-];
+const PATTERN_RANGES = (Object.keys(PATTERN_RANGE_LABEL) as PatternRange[]).map((id) => ({ id, label: PATTERN_RANGE_LABEL[id] }));
 
 interface ViewRangeControlsProps {
   view: PatternView;
