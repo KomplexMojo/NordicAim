@@ -36,18 +36,17 @@ to be, instead of needing its own investigation each time.
   measured feature separates them." Differencing against a real reference is the plausible way past that wall; nothing
   else tried this session got there.
 
-## Decisions this milestone needs before it is implementable (none made yet)
+## Decisions this milestone needs before it is implementable (2, 5, 6 decided 2026-09-27; 1, 3, 4 open)
 Per AGENTS.md golden rule 2 ("if the spec is silent or ambiguous about something you need, stop"): this feature has no
-spec at all yet. The six items below are the owner's to decide, not mine to guess — this milestone documents the
-question precisely rather than picking an answer.
+spec at all yet. The six items below are the owner's to decide, not mine to guess. On 2026-09-27 the owner accepted the
+recommendations for Decisions 2, 5 and 6 as written below; 1, 3 and 4 remain open.
 
 1. **Captured how often.** Once per template design, ever — or re-captured whenever a fresh batch is printed? Depends
    on the owner's own printing practice (a professionally offset-printed batch likely varies less print-to-print than
    a home/office-printed one), which I don't know.
-2. **Where it fits the 3-step flow.** A new explicit step would violate the "three steps: take picture(s) → add
-   metadata → receive analysis" invariant (AGENTS.md). The backing-card capture (M19) is the closest precedent: an
-   optional, one-time, Settings-level capture outside the three steps. Recommend mirroring that shape, but the owner
-   should confirm rather than have this milestone assume it.
+2. **Where it fits the 3-step flow — DECIDED (owner, 2026-09-27).** Mirror the backing-card capture (M19): an
+   optional, one-time capture reached from Settings, outside the three steps. The three-step flow (take picture(s) →
+   add metadata → receive analysis) gains no new step, and nothing in it prompts for or requires a reference.
 3. **Registration precision.** Differencing needs the blank and the real photo aligned to at least the precision hole
    detection itself needs, done for two photos instead of one. Whether today's `detectAnchor`/`calibrationWithPerspective`
    is good enough, or this needs its own refinement pass first, is **unmeasured** — needs a real investigation before
@@ -57,14 +56,18 @@ question precisely rather than picking an answer.
    background* signal `holeSignal` already computes (relative, not absolute, so less sensitive to overall exposure),
    read in the same calibrated target-mm space for both photos — but this needs prototyping against real reference +
    shot pairs before anyone trusts it, not a guess written straight into production code.
-5. **Privacy.** A blank reference photo isn't a photo of the shooter's targets, but it's still a photo leaving the
-   camera into IndexedDB. Almost certainly fine under the existing rules (same storage path as any other captured
-   image, `pnpm check:privacy` already covers stored images), but should be explicitly confirmed as part of this
-   milestone's spec, not assumed.
-6. **Replace or supplement today's geometric masking.** A user who captures a reference could, in principle, skip
-   `printedBandMap`/`inNumeralBox` entirely. A user who doesn't capture one still needs today's geometric fallback.
-   Recommend: additive — the reference sharpens/replaces masking only where one exists, geometric masking remains the
-   default. Owner should confirm this is the right default, not just implement it as taken for granted.
+5. **Privacy — DECIDED (owner, 2026-09-27).** A reference photo is treated like any other captured photo: stored
+   on the phone in IndexedDB only, never shared, downloaded or sent anywhere, and never part of a `CompositeArtifact`.
+   The share rule and the no-network invariant apply unchanged. Correction to the earlier wording: `pnpm check:privacy`
+   only scans images committed to the repo, not what the app stores, so it is not evidence here; the guarantee comes
+   from the share rule and the CSP. Reference-photo fixtures committed for `cv:eval` must still pass
+   `pnpm check:privacy` (no GPS EXIF). **Still open for the spec:** whether an owner-created backup
+   (`docs/spec/backup.md`, REV-63) includes reference photos — `backup.md` today covers sessions, photos, analyses and
+   settings only.
+6. **Replace or supplement today's geometric masking — DECIDED (owner, 2026-09-27).** Additive. Geometric masking
+   (`printedBandMap`/`inNumeralBox`) stays the default and is unchanged when no reference exists for the active
+   template/backing combination. Where one exists, the reference signal may sharpen or replace masking for that
+   combination only.
 
 ## Read first
 - `docs/spec/analysis-pipeline.md` §2 (A3 review image, A4 overlay/alignment, A5 shot detection), §3
@@ -136,9 +139,10 @@ guess.
   real measurement before any detection logic is written against the assumption that alignment is good enough.
 
 ## Open questions
-Every item in the Decisions section above is open. This milestone is intentionally not implementable as written — it
-exists to record the evidence and the exact questions precisely, per AGENTS.md golden rule 2 ("never guess on scoring,
-geometry, or storage"), rather than to guess at answers those decisions call for.
+Decisions 1, 3 and 4 above are open, as is whether backups include reference photos (Decision 5). Decisions 3 and 4
+need measurement and prototyping on the owner's photos in `fixtures/private/`, so they can only run on the owner's Mac.
+This milestone stays not implementable until those are answered and `docs/spec/template-reference.md` exists, per
+AGENTS.md golden rule 2 ("never guess on scoring, geometry, or storage").
 
 ## Completion notes
 Not started.
