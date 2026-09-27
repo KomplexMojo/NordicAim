@@ -78,6 +78,32 @@ export const HOLE_PAPER_ELONGATION_MAX = 3;
 export const ELONGATION_MAX = 4;
 /** REV-27: reject a component whose maximum inscribed radius is below this fraction of the hole radius. */
 export const STROKE_MIN_FRACTION = 0.35;
+/**
+ * M11's area gate (`MIN_AREA_FRACTION x a1` in holes.ts) is a FRACTION of the assumed hole's own area,
+ * so it shrank along with `HOLE_DIAMETER_MM` (5.6mm -> 3.3mm, owner calliper measurement 2026-09-26)
+ * from 8.6 mm^2 down to 2.99 mm^2 — well under real print ink's own blob size, which is fixed by the
+ * print, not by whatever hole diameter the app currently assumes. This let printed numerals on the
+ * precision sheet's black aiming mark (white ink, sitting at each ring band's centre on the four axes
+ * — `numeralCentresMm` in print-mask.ts) leak through as false "holes": `pnpm cv:eval`'s labelled-holes
+ * gate fell to 35.0% precision at 80.6% recall (floor: 85%/72%).
+ *
+ * Re-measured on the labelled photos (`fixtures/private/review/ground-truth-holes-v2.json`,
+ * mark-surface candidates inside a numeral box): real holes there measure 8.8-78.9 mm^2 (one 8.8
+ * exception already excluded by `HOLE_MARK_SCORE_MIN`, so the true floor is 11.3); the numeral ink
+ * falsely admitted at the shrunk fraction measures mostly 0.06-8.25 mm^2 (p75). 11 mm^2 keeps 27 of 28
+ * of those real holes while cutting the false ones from 389 to 32. On the full gated set this moves
+ * the labelled-holes gate to 77.1% recall / 52.6% precision — a real fix, not a full one: swept up to
+ * 13 mm^2, precision gains another point but precision-template recall alone drops under 72%, and a
+ * follow-up measurement (elongation/stroke/score, `mark-fp-probe` in session notes) found no further
+ * hand-measured feature separates what remains — the same ceiling `GATE_RECALL_MIN`'s own comment
+ * documents at 5.6mm ("hand-written features are at their ceiling on bare paper"). Closing the rest is
+ * M21 (Adjust suggestions) and M19 (coloured backing), not another threshold here.
+ *
+ * This absolute floor is the maximum of the two gates, so it only ever tightens the area gate, never
+ * loosens it — at 5.6mm the fraction alone is 8.62 mm^2, just under this floor, so it tightens there
+ * too; `pnpm test` on the existing 5.6mm fixtures (`tests/unit/cv/holes.test.ts`) still passes clean.
+ */
+export const MIN_AREA_MM2 = 11;
 
 // --- R2 (REV-35): numerals -----------------------------------------------------------------------
 

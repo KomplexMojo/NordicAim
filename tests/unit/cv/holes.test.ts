@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import { detectAnchor } from '@/lib/cv/anchor';
-import { SHEET_FALLBACK_RADIUS_MM, SHEET_SEARCH_CAP_MM, STROKE_MIN_FRACTION } from '@/lib/cv/constants';
-import { detectShotCandidates, detectShots, isPrintedGlyph, printedCircleRadiiMm } from '@/lib/cv/holes';
+import { MIN_AREA_MM2, SHEET_FALLBACK_RADIUS_MM, SHEET_SEARCH_CAP_MM, STROKE_MIN_FRACTION } from '@/lib/cv/constants';
+import { detectShotCandidates, detectShots, holeAreaPx, isPrintedGlyph, MIN_AREA_FRACTION, printedCircleRadiiMm } from '@/lib/cv/holes';
 import { inNumeralBox, numeralCentresMm } from '@/lib/cv/print-mask';
 import type { OpenCv } from '@/lib/cv/opencv';
 import { mmToRectified, outerRadiusMm, rectifiedSidePx, rectifiedToMm } from '@/lib/cv/rectify';
@@ -359,6 +359,21 @@ describe('REV-27: printed glyphs are rejected by shape (kept by measurement, M16
     );
     expect(onNumeralColumn).toEqual([]);
   }, 120_000);
+
+  it('holds an absolute area floor so a shrunk hole diameter cannot admit print-ink-sized blobs', () => {
+    // Owner finding, 2026-09-26: MIN_AREA_FRACTION * a1 is a fraction of the ASSUMED hole's own area, so
+    // it shrank along with the corrected HOLE_DIAMETER_MM (5.6 -> 3.3) far enough to admit printed
+    // numeral ink as false holes (pnpm cv:eval fell to 35.0% precision). Real holes measured on the
+    // labelled photos bottom out at 11.3 mm^2; MIN_AREA_MM2 holds the floor there regardless of diameter.
+    const pxPerMm = 8;
+    const fractionFloorMm2 = (MIN_AREA_FRACTION * holeAreaPx(3.3, pxPerMm)) / pxPerMm ** 2;
+    expect(fractionFloorMm2).toBeCloseTo(2.99, 1);
+    expect(Math.max(fractionFloorMm2, MIN_AREA_MM2)).toBe(MIN_AREA_MM2);
+    // At the original 5.6mm the fraction is closer, but the absolute floor still governs (8.62 < 11).
+    const fractionFloorAt56 = (MIN_AREA_FRACTION * holeAreaPx(5.6, pxPerMm)) / pxPerMm ** 2;
+    expect(fractionFloorAt56).toBeCloseTo(8.62, 1);
+    expect(Math.max(fractionFloorAt56, MIN_AREA_MM2)).toBe(MIN_AREA_MM2);
+  });
 });
 
 describe('fixtures', () => {
