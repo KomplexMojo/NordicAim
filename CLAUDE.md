@@ -6,5 +6,6 @@
 - When asked to "do the next milestone", follow AGENTS.md golden rules 1–7 exactly.
 - The original target HEICs are in gitignored `fixtures/private/`. To view one, convert it to a JPEG in your
   scratchpad (for example `sips -s format jpeg -Z 1600 in.HEIC --out /path/out.jpg`), never inside the repo.
-- Cloud sessions: `.claude/hooks/session-start.sh` installs dependencies and sets `PLAYWRIGHT_CHROMIUM_PATH` to the
+- Cloud sessions: `.claude/hooks/session-start.sh` installs dependencies (in the background, so the first command
+  can race it; re-run `pnpm install` if modules are missing) and sets `PLAYWRIGHT_CHROMIUM_PATH` to the
   container's Chromium. WebKit isn't available there, so run e2e with `pnpm test:e2e --project=mobile-chromium`.
