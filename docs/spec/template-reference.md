@@ -109,11 +109,32 @@ Fixed now:
 6. **Pure.** The comparison takes two `RgbaImage`s and two calibrations and lives in `src/lib/cv/template-reference.ts`,
    with no DOM access.
 
-**Pending (M26 Decisions 3 and 4):** the registration error the comparison must tolerate, and the signal that is compared
-(the working direction is the local-deviation-from-background signal `hole-signal.ts` already computes, not raw pixels,
-because the two photos are lit differently). Both are measured on the owner's photos with `pnpm cv:eval`. The method is
-adopted only if, on the gated set, **precision rises and recall does not fall**. The exact floors are recorded here once
-measured.
+**The benchmark (owner, 2026-09-27).** The owner's 12 confirmed targets from three range sessions
+(`fixtures/private/range-2026-09-26/`, 103 holes, coloured backing: orange on 21–22 Sept, lime on 26 Sept) are the
+**standard case** and what `pnpm cv:eval` gates on (`scripts/cv-eval-production.ts`). Today's A5 at 3.3 mm, with each
+session's backing colour: **recall 92.2%, precision 90.5%** (floors 92% / 90%). The 46 older photos in
+`additional references/` (straight off the backing board, bad angles, no backing) are the **worse case**: reported, not
+gated, and not to be optimised around.
+
+**Measured 2026-09-27 (scratch probes; the default references of §5):**
+
+| | production (12) | worse case (39) |
+|---|---|---|
+| reference vs photo, whole target, p90 | ≤ 0.05 mm | ≤ 0.18 mm |
+| region by region (textured cells), median | 0.35 mm | 0.5 mm |
+| per spot, best local shift within ±2 mm, median | — | 0.8 mm |
+
+- **Decision 3, answered:** today's A4 aligns a reference well enough. A per-spot local search of ±2 mm (§6.5) absorbs
+  the rest; no separate refinement pass is needed.
+- **Decision 4, measured:** the compared signal is *photo deviation minus the locally aligned reference deviation*
+  (both `|gray − median background|`, normalised by the surface's median). On the **standard detector's** candidates it
+  separates real holes from false marks well on production photos (AUC 0.90; 0.86 on candidates the detector
+  discarded), poorly on the worse case (0.58). On the **colour path**, which the standard case uses: as a filter it
+  would remove at most 5 of 8 false holes while losing about 20 of 90 real ones, so it is **not** used as a filter.
+  As a rescue it scored the colour path's misses above almost every non-hole candidate (AUC 0.97), but only 3 misses
+  fell inside the circles, which is too few to adopt it.
+- **Consequence:** there is no evidence yet that a reference improves the standard case. §6 stays unimplemented until a
+  larger production sample shows the rescue gains holes without adding false ones against the benchmark.
 
 ## 7. Changing a reference (issue #52 answer 2)
 

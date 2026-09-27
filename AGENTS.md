@@ -71,7 +71,11 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
   device checks, a real range session end to end, the §9 timings, and the sign-off box. They are tracked in
   `docs/RELEASE-v0.1.0.md` §5/§7 and `docs/milestones/OWNER-CHECKS.md`. Don't re-run finished milestones.
 - **M26** (template reference photos) is `blocked` on owner design decisions (see its *Decisions* section).
-- **Detection baseline:** the owner's 2026-09-17 re-rating of all 46 photos (`pnpm review:detection`, export in
+- **Detection benchmark (2026-09-27):** `pnpm cv:eval` gates on the owner's **production set**, 12 confirmed targets
+  from three range sessions on a coloured backing (`fixtures/private/range-2026-09-26/`): recall **92.2%**, precision
+  **90.5%** (floors 92% / 90%). That is the standard case. The 46 older photos below are the **worse case** (straight
+  off the backing board, bad angles, no backing): reported, not gated, and not to be optimised around.
+- **Worse-case baseline:** the owner's 2026-09-17 re-rating of all 46 photos (`pnpm review:detection`, export in
   `fixtures/private/review/`) measured **recall 76.9%** and **precision 94.7%**. These figures supersede the v1 labels
   and the R4 gate's own numbers. Most false positives come from printed form fields and text, holes in the backing
   board, and holes from neighbouring targets, not from thresholds. Relaxing REV-27 to recover misses was tested and

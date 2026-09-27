@@ -36,7 +36,7 @@ to be, instead of needing its own investigation each time.
   measured feature separates them." Differencing against a real reference is the plausible way past that wall; nothing
   else tried this session got there.
 
-## Decisions this milestone needs before it is implementable (1, 2, 5, 6 decided 2026-09-27; 3, 4 open)
+## Decisions this milestone needs before it is implementable (1, 2, 5, 6 decided; 3, 4 measured 2026-09-27)
 Per AGENTS.md golden rule 2 ("if the spec is silent or ambiguous about something you need, stop"): this feature has no
 spec at all yet. The six items below are the owner's to decide, not mine to guess. On 2026-09-27 the owner accepted the
 recommendations for Decisions 2, 5 and 6 as written below, and answered Decision 1 in issue #52; 3 and 4 remain open.
@@ -49,15 +49,13 @@ The spec is `docs/spec/template-reference.md` (REV-121).
 2. **Where it fits the 3-step flow — DECIDED (owner, 2026-09-27).** Mirror the backing-card capture (M19): an
    optional, one-time capture reached from Settings, outside the three steps. The three-step flow (take picture(s) →
    add metadata → receive analysis) gains no new step, and nothing in it prompts for or requires a reference.
-3. **Registration precision.** Differencing needs the blank and the real photo aligned to at least the precision hole
-   detection itself needs, done for two photos instead of one. Whether today's `detectAnchor`/`calibrationWithPerspective`
-   is good enough, or this needs its own refinement pass first, is **unmeasured** — needs a real investigation before
-   any differencing logic is written, not an assumption either way.
-4. **What gets differenced.** Raw pixel subtraction across two separately-lit photos will manufacture false
-   differences from lighting alone. The direction discussed this session: difference the same *local-deviation-from-
-   background* signal `holeSignal` already computes (relative, not absolute, so less sensitive to overall exposure),
-   read in the same calibrated target-mm space for both photos — but this needs prototyping against real reference +
-   shot pairs before anyone trusts it, not a guess written straight into production code.
+3. **Registration precision — MEASURED (2026-09-27).** Today's `detectAnchor`/`calibrationWithPerspective` is good
+   enough: on the production benchmark the reference sits within 0.05 mm of the photo overall (p90) and 0.35 mm region by
+   region (median). See template-reference.md §6.
+4. **What gets differenced — MEASURED, not adopted (2026-09-27).** Local deviation minus the locally aligned reference's
+   separates holes from print well for the standard detector on production photos, but the standard case uses the
+   colour path. There it fails as a filter, and its promise as a rescue rests on only 3 missed holes. Needs a larger
+   production sample before any detection code is written. See template-reference.md §6.
 5. **Privacy — DECIDED (owner, 2026-09-27).** A reference photo is treated like any other captured photo: stored
    on the phone in IndexedDB only, never shared, downloaded or sent anywhere, and never part of a `CompositeArtifact`.
    The share rule and the no-network invariant apply unchanged. Correction to the earlier wording: `pnpm check:privacy`
