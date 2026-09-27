@@ -1,6 +1,16 @@
 // backup.md §3: nothing is trusted until the whole file verifies.
 
-import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, PREFERENCE_PREFIX, base64ToBytes, sha256Hex, type BackupFile, type BackupPreference } from './format';
+import {
+  BACKUP_FORMAT,
+  BACKUP_FORMAT_VERSION,
+  BackupUnreadableError,
+  PREFERENCE_PREFIX,
+  base64ToBytes,
+  readBackupText,
+  sha256Hex,
+  type BackupFile,
+  type BackupPreference,
+} from './format';
 
 export interface VerifiedBackup {
   file: BackupFile;
@@ -14,12 +24,24 @@ function isRecord(x: unknown): x is Record<string, unknown> {
   return x !== null && typeof x === 'object' && !Array.isArray(x);
 }
 
+/** §2a: a chosen file, gzip-compressed or plain JSON, read and then verified. */
+export async function verifyBackupFile(file: Blob): Promise<VerifyResult> {
+  let text: string;
+  try {
+    text = await readBackupText(file);
+  } catch (err) {
+    if (err instanceof BackupUnreadableError) return { ok: false, problem: err.message };
+    throw err;
+  }
+  return verifyBackup(text);
+}
+
 export async function verifyBackup(text: string): Promise<VerifyResult> {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    return { ok: false, problem: 'This is not a complete NordicAim backup: the file is cut short or damaged.' };
+    return { ok: false, problem: new BackupUnreadableError().message };
   }
   if (!isRecord(raw) || raw.format !== BACKUP_FORMAT) return { ok: false, problem: 'This is not a NordicAim backup file.' };
   if (raw.formatVersion !== BACKUP_FORMAT_VERSION) {

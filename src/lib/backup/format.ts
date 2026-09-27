@@ -59,6 +59,63 @@ export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function backupFileName(nowIso: string): string {
-  return `nordic-aim-backup-${nowIso.slice(0, 10)}.json`;
+/** A lower-case ASCII slug of the athlete's name for a file name: diacritics dropped, Nordic letters spelled out, at most 30 characters. */
+export function fileNameSlug(text: string): string {
+  const spelled = text
+    .replace(/[øØ]/g, 'o')
+    .replace(/[æÆ]/g, 'ae')
+    .replace(/ß/g, 'ss')
+    .replace(/[þÞ]/g, 'th')
+    .replace(/[đĐðÐ]/g, 'd')
+    .replace(/[łŁ]/g, 'l');
+  return spelled
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 30)
+    .replace(/-+$/g, '');
+}
+
+/**
+ * backup.md §2: `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD.json.gz`. The athlete part is left out when no name is
+ * set, the fingerprint when no key was ever set up; `localDate` is the phone's own calendar date.
+ */
+export function backupFileName(opts: { localDate: string; athleteName: string; keyFingerprint: string | null }): string {
+  const parts = ['nordic-aim-backup'];
+  const slug = fileNameSlug(opts.athleteName);
+  if (slug !== '') parts.push(slug);
+  if (opts.keyFingerprint !== null && /^[0-9A-F]{8}$/i.test(opts.keyFingerprint)) parts.push(opts.keyFingerprint.toUpperCase());
+  parts.push(opts.localDate);
+  return `${parts.join('-')}.json.gz`;
+}
+
+/** backup.md §2a: the backup file is its JSON, gzip-compressed. */
+export const BACKUP_CONTENT_TYPE = 'application/gzip';
+
+export async function gzipBlob(blob: Blob): Promise<Blob> {
+  const packed = await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob();
+  return new Blob([packed], { type: BACKUP_CONTENT_TYPE });
+}
+
+export class BackupUnreadableError extends Error {
+  constructor() {
+    super('This is not a complete NordicAim backup: the file is cut short or damaged.');
+    this.name = 'BackupUnreadableError';
+  }
+}
+
+/**
+ * backup.md §2a: the text of a backup file, compressed or not. A gzip file (it starts with 1F 8B) is decompressed; anything else is
+ * read as it is, so a backup made before compression, or one the Files app expanded, still restores.
+ */
+export async function readBackupText(file: Blob): Promise<string> {
+  const head = new Uint8Array(await file.slice(0, 2).arrayBuffer());
+  if (head[0] !== 0x1f || head[1] !== 0x8b) return file.text();
+  try {
+    return await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  } catch {
+    throw new BackupUnreadableError();
+  }
 }

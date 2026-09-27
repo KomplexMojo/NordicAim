@@ -8,7 +8,12 @@ images base64, no password; the file holds photo GPS and the app says so.
 A backup the owner explicitly creates may contain photos. It is created only by a tap on **Back up now** (Settings, or the
 reminder). It goes only to the share sheet or a download. Nothing is sent anywhere automatically. No runtime network calls.
 
-## 2. File (`nordic-aim-backup`, formatVersion 1), file name `nordic-aim-backup-YYYY-MM-DD.json`
+## 2. File (`nordic-aim-backup`, formatVersion 1), file name `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD.json.gz`
+
+REV-125: the name carries the athlete's name as a lower-case ASCII slug (Nordic letters spelled out: ø→o, æ→ae, å→a; at
+most 30 characters; left out when no name is set), the key fingerprint (8 hex digits, upper case; left out when no key was
+ever set up), and the phone's local calendar date. Example: `nordic-aim-backup-jane-doe-3FA91C07-2026-09-27.json.gz`.
+Built by `backupFileName` (`backup/format.ts`).
 
 ```ts
 interface BackupFile {
@@ -26,6 +31,16 @@ interface BackupFile {
 
 Records are copied **as stored, unvalidated**, so a record the schema rejects is still preserved. The file is written as
 Blob parts (records, then one part per image), never as one giant string.
+
+## 2a. Compression (REV-125)
+
+The file on disk is the §2 JSON **gzip-compressed** (`CompressionStream('gzip')`, content type `application/gzip`); the JSON
+inside is unchanged, so the format version stays 1. The photos are already JPEG/HEIC and do not shrink, but gzip takes back
+almost all of base64's 4/3 overhead, and the records and diagram SVGs compress well: a backup is about 25% smaller, close to
+the images' own size. Restore reads either kind (`readBackupText`): a file starting with the gzip bytes `1F 8B` is
+decompressed, anything else is read as plain JSON, so older `.json` backups and a file the Files app expanded still restore.
+A compressed file that is cut short is refused as damaged, like a truncated JSON file. Settings reports the size before and
+after compression.
 
 ## 3. Verify (before anything is written)
 

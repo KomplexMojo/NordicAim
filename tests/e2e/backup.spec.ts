@@ -27,8 +27,8 @@ test('back up, wipe the database, restore: the session and its scores come back;
   await page.getByTestId('backup-now').click();
   await expect(page.getByTestId('backup-confirm-dialog')).toContainText('GPS');
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
-  expect(download.suggestedFilename()).toMatch(/^nordic-aim-backup-\d{4}-\d{2}-\d{2}\.json$/);
-  const backupPath = testInfo.outputPath('backup.json');
+  expect(download.suggestedFilename()).toMatch(/^nordic-aim-backup-\d{4}-\d{2}-\d{2}\.json\.gz$/);
+  const backupPath = testInfo.outputPath('backup.json.gz');
   await download.saveAs(backupPath);
   await expect(page.getByTestId('backup-message')).toContainText(/Backup made: 1 sessions?, \d+ photos/);
   await expect(page.getByTestId('last-backup')).toContainText('1 sessions');
@@ -60,9 +60,9 @@ test('back up, wipe the database, restore: the session and its scores come back;
   await expect(page.getByTestId('session-list')).toHaveCount(0);
 
   // A cut-off copy is refused and writes nothing.
-  const text = readFileSync(backupPath, 'utf-8');
-  const cutPath = testInfo.outputPath('cut.json');
-  writeFileSync(cutPath, text.slice(0, text.length - 100));
+  const bytes = readFileSync(backupPath);
+  const cutPath = testInfo.outputPath('cut.json.gz');
+  writeFileSync(cutPath, bytes.subarray(0, bytes.length - 100));
   await page.goto('/#/settings');
   await page.getByTestId('restore-file').setInputFiles(cutPath);
   await expect(page.getByTestId('restore-problem')).toContainText(/cut short|damaged/);
@@ -104,7 +104,10 @@ test('a restore brings the settings and preferences back too, and asks for the p
   });
   await page.getByTestId('backup-now').click();
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
-  const backupPath = testInfo.outputPath('backup.json');
+  // REV-125: the name carries the athlete and the key fingerprint.
+  const fp = fingerprint.match(/[0-9A-F]{8}/)![0];
+  expect(download.suggestedFilename()).toMatch(new RegExp(`^nordic-aim-backup-jane-doe-${fp}-\\d{4}-\\d{2}-\\d{2}\\.json\\.gz$`));
+  const backupPath = testInfo.outputPath('backup.json.gz');
   await download.saveAs(backupPath);
   await expect(page.getByTestId('backup-message')).toContainText('Backup made');
 

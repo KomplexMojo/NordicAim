@@ -11,7 +11,7 @@ import { getAppSettings } from '@/lib/services/settings';
 import { BUILD_SHA } from '@/lib/app/build-info';
 import { MAX_BACKUP_REMINDER_DAYS, MIN_BACKUP_REMINDER_DAYS } from '@/lib/backup/due';
 import type { ConflictPolicy, RestorePlan } from '@/lib/backup/restore';
-import { verifyBackup, type VerifiedBackup } from '@/lib/backup/verify';
+import { verifyBackupFile, type VerifiedBackup } from '@/lib/backup/verify';
 import type { AppSettings } from '@/lib/domain/settings';
 import { buildBackupFile, planBackupRestore, recordBackupMade, restoreBackup, setBackupReminderDays } from '@/lib/services/backup';
 import { shareBackup } from '@/lib/share/share-browser';
@@ -52,8 +52,11 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
       } else {
         await recordBackupMade(ctx, made);
         const mb = (made.blob.size / 1_048_576).toFixed(1);
+        const rawMb = (made.uncompressedBytes / 1_048_576).toFixed(1);
         const secs = ((performance.now() - started) / 1000).toFixed(1);
-        setMessage(`Backup made: ${made.manifest.counts.sessions} sessions, ${made.manifest.counts.photos} photos, ${mb} MB in ${secs} s.`);
+        setMessage(
+          `Backup made: ${made.manifest.counts.sessions} sessions, ${made.manifest.counts.photos} photos, ${mb} MB (${rawMb} MB before compression) in ${secs} s.`,
+        );
       }
     } catch (err) {
       toast.error(`Could not make the backup: ${err instanceof Error ? err.message : String(err)}`);
@@ -69,7 +72,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
     setLoaded(null);
     setMessage(null);
     try {
-      const result = await verifyBackup(await file.text());
+      const result = await verifyBackupFile(file);
       if (!result.ok) {
         setProblem(result.problem);
         return;
@@ -158,7 +161,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
           id="backup-file"
           data-testid="restore-file"
           type="file"
-          accept="application/json,.json"
+          accept="application/json,.json,application/gzip,.gz"
           disabled={busy}
           onChange={(e) => void onChooseFile(e.currentTarget.files?.[0])}
           className="text-sm"

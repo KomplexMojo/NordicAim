@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createBackup } from '@/lib/backup/create';
 import { backupDue } from '@/lib/backup/due';
+import { readBackupText } from '@/lib/backup/format';
 import { applyRestore, planRestore } from '@/lib/backup/restore';
 import { verifyBackup } from '@/lib/backup/verify';
 import { createSession } from '@/lib/services/sessions';
@@ -51,7 +52,7 @@ async function dump(db: AppDb) {
 const NOW = '2026-09-19T12:00:00.000Z';
 
 async function backupText(db: AppDb): Promise<string> {
-  return (await createBackup(db, { appBuild: 'test', nowIso: NOW })).blob.text();
+  return readBackupText((await createBackup(db, { appBuild: 'test', nowIso: NOW })).blob);
 }
 
 describe('backup (REV-63)', () => {
@@ -176,7 +177,7 @@ describe('provenance key and backup (REV-100)', () => {
     const { setPassphrase, loadProvenanceKey, unlockPassphrase } = await import('@/lib/services/provenance');
     const settings = await setPassphrase(ctx, 'correct horse battery', 1000);
     const key = await loadProvenanceKey(ctx);
-    const text = await (await createBackup(db, { appBuild: 'test', nowIso: '2026-09-05T12:00:00.000Z' })).blob.text();
+    const text = await readBackupText((await createBackup(db, { appBuild: 'test', nowIso: '2026-09-05T12:00:00.000Z' })).blob);
     expect(text).toContain(settings.athleteSalt!);
     expect(text).toContain(settings.keyFingerprint!);
     expect(text).not.toContain('correct horse');
@@ -217,7 +218,7 @@ describe('a complete restore (REV-115)', () => {
       { key: 'asa.panel.glossary', value: 'open' },
       { key: 'asa.capture.abc', value: '{"kind":"confirm"}' },
     ];
-    const text = await (await createBackup(db, { appBuild: 'test', nowIso: NOW, preferences: prefs })).blob.text();
+    const text = await readBackupText((await createBackup(db, { appBuild: 'test', nowIso: NOW, preferences: prefs })).blob);
     const verified = await verifyBackup(text);
     if (!verified.ok) throw new Error(verified.problem);
     expect(verified.backup.file.preferences).toEqual(prefs);

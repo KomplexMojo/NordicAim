@@ -18,9 +18,12 @@ export interface BackupFileToShare extends CreatedBackup {
 }
 
 export async function buildBackupFile(ctx: ServiceContext, appBuild: string): Promise<BackupFileToShare> {
-  const nowIso = ctx.now().toISOString();
+  const now = ctx.now();
+  const nowIso = now.toISOString();
+  const settings = await getSettings(ctx.db);
   const created = await createBackup(ctx.db, { appBuild, nowIso, preferences: collectPreferences() });
-  return { ...created, fileName: backupFileName(nowIso) };
+  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return { ...created, fileName: backupFileName({ localDate, athleteName: settings.athleteName, keyFingerprint: settings.keyFingerprint }) };
 }
 
 /** Called once the file has been handed to the share sheet or a download, so Settings can say when. */

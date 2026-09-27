@@ -2,7 +2,7 @@
 
 import type { AppDb } from '@/lib/store/db';
 
-import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, bytesToBase64, sha256Hex, type BackupBlob, type BackupManifest, type BackupPreference } from './format';
+import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, bytesToBase64, gzipBlob, sha256Hex, type BackupBlob, type BackupManifest, type BackupPreference } from './format';
 
 function str(raw: unknown, key: string): string | null {
   return raw !== null && typeof raw === 'object' && key in raw && typeof (raw as Record<string, unknown>)[key] === 'string'
@@ -11,7 +11,10 @@ function str(raw: unknown, key: string): string | null {
 }
 
 export interface CreatedBackup {
+  /** The file as written: the JSON, gzip-compressed (§2a). */
   blob: Blob;
+  /** The size of the JSON before compression, so Settings can say what compression saved. */
+  uncompressedBytes: number;
   manifest: BackupManifest;
 }
 
@@ -70,5 +73,6 @@ export async function createBackup(
   ];
   blobs.forEach((b, i) => parts.push((i === 0 ? '' : ',') + JSON.stringify(b)));
   parts.push(`],"preferences":${JSON.stringify(opts.preferences ?? [])}}`);
-  return { blob: new Blob(parts, { type: 'application/json' }), manifest };
+  const json = new Blob(parts, { type: 'application/json' });
+  return { blob: await gzipBlob(json), uncompressedBytes: json.size, manifest };
 }
