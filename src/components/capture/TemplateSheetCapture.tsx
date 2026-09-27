@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ReferenceHolesWarning } from '@/components/settings/ReferenceHolesWarning';
 import { useReferenceMaker } from '@/components/settings/useReferenceMaker';
 import { Button } from '@/components/ui/button';
 import { useServices } from '@/lib/app/services';
@@ -26,7 +25,7 @@ const TITLE: Record<TemplateId, string> = { sighting: 'Blank sighting sheet', pr
 /**
  * template-reference.md §2, §3 (M26, REV-121): the capture screen in **sheet mode**
  * (`#/settings/template-sheet/:template`), with that template's overlay to line the blank sheet up with. *Use photo*
- * makes the reference (§3); a refused photo stores nothing, and a sheet with holes asks first.
+ * makes the reference (§3); a refused photo (no rings, the other template, or holes in it) stores nothing.
  */
 export function TemplateSheetCapture({ template, fakeCamera, onDone }: TemplateSheetCaptureProps) {
   const { ctx } = useServices();
@@ -93,7 +92,7 @@ export function TemplateSheetCapture({ template, fakeCamera, onDone }: TemplateS
           </div>
         ) : (
           <div className="absolute inset-x-4 bottom-4 rounded-lg bg-black/70 p-3 text-center text-sm text-white">
-            Line the rings up with a blank sheet, flat and in good light. Only the circles are kept.
+            Line the rings up with a blank, unused sheet, flat and in good light. Only the circles are kept.
           </div>
         )}
       </div>
@@ -104,13 +103,6 @@ export function TemplateSheetCapture({ template, fakeCamera, onDone }: TemplateS
           <p className="text-center text-sm text-amber-400" role="alert" data-testid="sheet-refused">
             {maker.refused}
           </p>
-        )}
-        {maker.pending !== null && (
-          <ReferenceHolesWarning
-            onUse={() => void maker.useAnyway().then((stored) => stored && onDone())}
-            onCancel={maker.discard}
-            cancelLabel="Retake"
-          />
         )}
         <div className="flex justify-center">
           <button

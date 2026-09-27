@@ -79,23 +79,25 @@ async function seed() {
 }
 
 const PREPARED: PreparedReference = {
-  template: 'sighting', bytes: JPEG_BYTES, sha256: 'b'.repeat(64), widthPx: 1516, heightPx: 1516, calibration: CAL, holesFound: 0,
+  template: 'sighting', bytes: JPEG_BYTES, sha256: 'b'.repeat(64), widthPx: 1516, heightPx: 1516, calibration: CAL,
 };
 
 describe('prepareTemplateReference (§3)', () => {
   it('makes the working image, asks the worker for the row\'s template, and hashes the result', async () => {
-    const t = tools({ status: 'ok', jpeg: JPEG_BYTES, widthPx: 1516, heightPx: 1516, calibration: CAL, holesFound: 2 });
+    const t = tools({ status: 'ok', jpeg: JPEG_BYTES, widthPx: 1516, heightPx: 1516, calibration: CAL });
     const result = await prepareTemplateReference(new Blob([JPEG_MAGIC]), 'sighting', 3.3, t);
     expect(t.calls[0]?.slice(1)).toEqual(['sighting', 3.3]);
     expect(result.status).toBe('ok');
     if (result.status !== 'ok') return;
-    expect(result.prepared).toMatchObject({ template: 'sighting', widthPx: 1516, heightPx: 1516, calibration: CAL, holesFound: 2 });
+    expect(result.prepared).toMatchObject({ template: 'sighting', widthPx: 1516, heightPx: 1516, calibration: CAL });
     expect(result.prepared.sha256).toBe(createHash('sha256').update(new Uint8Array(JPEG_BYTES)).digest('hex'));
   });
 
-  it('passes a refusal straight back', async () => {
-    const t = tools({ status: 'refused', reason: 'wrong-template' });
-    expect(await prepareTemplateReference(new Blob([JPEG_MAGIC]), 'precision', 5.6, t)).toEqual({ status: 'refused', reason: 'wrong-template' });
+  it('passes a refusal straight back, including a sheet with holes in it', async () => {
+    for (const reason of ['no-disc', 'wrong-template', 'has-holes'] as const) {
+      const t = tools({ status: 'refused', reason });
+      expect(await prepareTemplateReference(new Blob([JPEG_MAGIC]), 'precision', 5.6, t)).toEqual({ status: 'refused', reason });
+    }
   });
 
   it('rejects a file that is not an image', async () => {

@@ -24,10 +24,14 @@ import type { CvWorkerApi } from '@/workers/cv-client';
 import type { ServiceContext } from './context';
 import type { ImageTools } from './ingest';
 
-/** §3 step 2 and step 4: the message shown when a photo is refused. Nothing is stored. */
-export const REFERENCE_REFUSED_MESSAGE = "The rings weren't found. Photograph the whole target, flat and in good light.";
-/** §3 step 5: the warning when A5 finds holes on the result. */
-export const REFERENCE_HOLES_MESSAGE = 'This sheet seems to have holes in it. A reference should be a blank sheet.';
+/** §3: why a photo was refused, as the user reads it. Nothing is stored. */
+export const REFERENCE_REFUSED_MESSAGE: Record<ReferenceRefusalReason, string> = {
+  'no-disc': "The rings weren't found. Photograph the whole target, flat and in good light.",
+  'wrong-template': "The rings weren't found. Photograph the whole target, flat and in good light.",
+  'has-holes': 'This sheet has holes in it. Photograph a blank, unused sheet.',
+};
+
+export type ReferenceRefusalReason = 'no-disc' | 'wrong-template' | 'has-holes';
 
 export class UnsupportedReferenceImageError extends Error {
   constructor() {
@@ -49,13 +53,11 @@ export interface PreparedReference {
   widthPx: number;
   heightPx: number;
   calibration: Calibration;
-  /** §3 step 5: > 0 means the user must confirm *Use anyway*. */
-  holesFound: number;
 }
 
 export type PrepareReferenceResult =
   | { status: 'ok'; prepared: PreparedReference }
-  | { status: 'refused'; reason: 'no-disc' | 'wrong-template' };
+  | { status: 'refused'; reason: ReferenceRefusalReason };
 
 async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -86,7 +88,6 @@ export async function prepareTemplateReference(
       widthPx: made.widthPx,
       heightPx: made.heightPx,
       calibration: made.calibration,
-      holesFound: made.holesFound,
     },
   };
 }

@@ -275,8 +275,8 @@ interface CvWorkerApi {
     Promise<{ shots: Shot[]; detection: DetectionRecord;                                    // M11, M19
               suggestions: ShotCandidate[]; holeWidths: HoleWidth[] }>;                     // M21
   makeReference(workingJpeg: ArrayBuffer, template: TemplateId, holeDiameterMm: number):   // M26, template-reference.md §3
-    Promise<{ status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration;
-              holesFound: number } | { status: 'refused'; reason: 'no-disc' | 'wrong-template' }>;
+    Promise<{ status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration }
+          | { status: 'refused'; reason: 'no-disc' | 'wrong-template' | 'has-holes' }>;
 }
 ```
 

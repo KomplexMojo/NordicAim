@@ -10,7 +10,6 @@ import type { AppSettings } from '@/lib/domain/settings';
 import type { TemplateReferences } from '@/lib/domain/template-reference';
 import { getCustomReferenceImage, restoreDefaultReference } from '@/lib/services/template-reference';
 
-import { ReferenceHolesWarning } from './ReferenceHolesWarning';
 import { useReferenceMaker } from './useReferenceMaker';
 
 const ROWS: Array<{ template: TemplateId; label: string }> = [
@@ -36,8 +35,8 @@ export function TemplateSheetSettings({ templateReferences, holeDiameterMm, onCh
         Target sheets
       </h2>
       <p className="text-xs text-muted-foreground">
-        A photo of a blank sheet, cut down to its target circles. The app ships with a default for each; replace it when
-        your printed sheets change. Only the circles are kept.
+        A photo of a blank, unused sheet, cut down to its target circles. The app ships with a default for each; replace it
+        when your printed sheets change. Only the circles are kept.
       </p>
       {ROWS.map((row) => (
         <TemplateSheetRow
@@ -156,7 +155,6 @@ function TemplateSheetRow({ template, label, custom, holeDiameterMm, onChanged }
           {maker.refused}
         </p>
       )}
-      {maker.pending !== null && <ReferenceHolesWarning onUse={() => void maker.useAnyway()} onCancel={maker.discard} cancelLabel="Cancel" />}
     </div>
   );
 }

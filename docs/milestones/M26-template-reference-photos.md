@@ -114,8 +114,8 @@ M26 is built in two parts (owner, 2026-09-27: "Build what you can of M26").
 3. `DEFAULT_TEMPLATE_REFERENCE`: the shipped defaults' asset path, size, hash and calibration (§5).
 4. Worker `makeReference` (§3 steps 2–5) and the service: `prepareTemplateReference`, `saveTemplateReference`,
    `restoreDefaultReference`, each change re-running that template's photos with nothing manual (`canRerunStageA`, §7).
-5. Settings **Target sheets** section and `#/settings/template-sheet/:template` sheet capture, with the refusal message
-   and the holes warning (§2, §3).
+5. Settings **Target sheets** section and `#/settings/template-sheet/:template` sheet capture, with the refusal messages
+   (no rings, the other template, holes in the sheet) (§2, §3).
 
 **Part 2: detection uses the reference (§6). Blocked.** Not started: the §6 measurements show no gain on the production
 benchmark yet (see *Open questions*).
@@ -130,9 +130,9 @@ Part 1:
   entry together), the §7 re-run (only that template's finished photos with nothing manual; shots and calibration
   untouched), and Restore default.
 - `tests/unit/domain/settings.test.ts`, `tests/unit/app/nav.test.ts`: the new default and field, and the hidden tab bar.
-- `tests/e2e/template-sheets.spec.ts`: both defaults shown and loading; a used sheet → holes warning → *Use anyway* →
-  *Your sheet*, kept across a reload → *Restore default*; the other template's photo refused; sheet mode opens full
-  screen and Cancel returns.
+- `tests/e2e/template-sheets.spec.ts`: both defaults shown and loading; a used sheet refused for its holes; a blank sheet
+  stored as *Your sheet*, kept across a reload, then *Restore default*; the other template's photo refused; sheet mode
+  opens full screen and Cancel returns.
 
 ## Acceptance
 ```bash
@@ -171,10 +171,11 @@ those measurements are made, per AGENTS.md golden rule 2 ("never guess on scorin
 **Part 1, 2026-09-27 (cloud session, private fixtures attached).**
 - `pnpm check`: typecheck and lint pass (the 4 existing warnings), 1080/1080 unit tests pass (110 files), and the
   privacy check passes (37 images). `pnpm build` passes; the precache is unchanged at 23 entries.
-- Chromium e2e: `template-sheets.spec.ts` 4/4; the full Chromium suite 87 passed, 1 skipped. WebKit is not available in
+- Chromium e2e: `template-sheets.spec.ts` 5/5; the full Chromium suite passed (87 + 1 skipped before the refusal change added one test). WebKit is not available in
   the cloud container; the owner runs that project on the Mac.
-- Checked by hand in the dev build: choosing `docs/reference/IMG_5132-precision.jpg` for the precision row stores an
-  822 × 822 JPEG with nothing outside the circles and no EXIF, and shows *Your sheet*.
+- Checked by hand in the dev build: the stored reference is a JPEG of the circles only, with no EXIF.
+- Owner, same day: a sheet with holes must never become a reference. §3 step 5 changed from a warning (*Use anyway*) to a
+  refusal, after measuring 0 detected holes on both blank defaults and 7–11 on used sheets.
 - **Deviations:** none from the spec. §7's re-run is implemented as specified, although nothing reads a reference until
   part 2, so a re-run currently reproduces the same results.
 - **Owner checks:** photograph a blank sheet with *Photograph sheet* on the iPhone (camera and HEIC path), and confirm

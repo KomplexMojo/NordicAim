@@ -49,9 +49,11 @@ On **Use photo**, all of this runs before anything is stored (the IndexedDB rule
    beyond that radius. The image is then cropped to a square of half-side `outerRadiusMm + 10` mm around the centre.
    `REFERENCE_MARGIN_MM = 3`.
 4. A4 runs again on the result, and its calibration is what gets stored. A result without a disc is refused as in step 2.
-5. A5 runs on the result, on the standard path (a blank sheet has no backing behind it). If it reports any shot, the user is warned: *This sheet seems to have holes in it. A reference
-   should be a blank sheet.* The choices are **Use anyway** and **Retake**. (Detection's own false marks are why this is a
-   warning and not a refusal.)
+5. A5 runs on the result, on the standard path (a blank sheet has no backing behind it). If it reports any shot, the photo
+   is **refused**: *This sheet has holes in it. Photograph a blank, unused sheet.* Nothing is stored. (Owner, 2026-09-27:
+   "The sheets shown in settings should be the templates." Measured the same day: A5 finds 0 holes on both blank
+   defaults at 3.3 and 5.6 mm, and 7–11 on the two used reference photos, so a blank sheet is not refused by detection's
+   own false marks.)
 
 The source photo is **not kept**, only the result of step 3 (as with the backing card, REV-48).
 

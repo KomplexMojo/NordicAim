@@ -120,13 +120,12 @@ const api: CvWorkerApi = {
     if (again === null) return { status: 'refused', reason: 'no-disc' };
     const keptCalibration = calibrationWithPerspective(kept, again.calibration, template) ?? again.calibration;
 
-    // §3 step 5: holes on a reference are a warning. A blank sheet has no backing behind it, so the standard path.
+    // §3 step 5 (owner, 2026-09-27): a reference must be a blank sheet, so any hole refuses it. A blank sheet has no
+    // backing behind it, so the standard path.
     const holes = detectShotsWithBacking(cv, kept, keptCalibration, template, holeDiameterMm, { mode: 'none', colour: null });
+    if (holes.shots.length > 0) return { status: 'refused', reason: 'has-holes' };
     const jpeg = await encodeJpeg(kept);
-    return Comlink.transfer(
-      { status: 'ok', jpeg, widthPx: kept.width, heightPx: kept.height, calibration: keptCalibration, holesFound: holes.shots.length },
-      [jpeg],
-    );
+    return Comlink.transfer({ status: 'ok', jpeg, widthPx: kept.width, heightPx: kept.height, calibration: keptCalibration }, [jpeg]);
   },
 };
 

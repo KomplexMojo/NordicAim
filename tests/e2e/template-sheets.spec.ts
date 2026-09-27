@@ -1,6 +1,6 @@
 // M26 (REV-121, template-reference.md §2–§4): the Settings screen's Target sheets — the shipped default for each
-// template, a user's own sheet from a photo (only its circles are kept), the holes warning, a refused photo, and
-// Restore default.
+// template, a user's own sheet from a photo of a blank sheet (only its circles are kept), refused photos (a used sheet,
+// the other template), and Restore default.
 
 import { expect, test } from '@playwright/test';
 
@@ -17,13 +17,17 @@ test('target sheets: both templates start on the shipped default', async ({ page
   expect(loaded).toBe(true);
 });
 
-test('target sheets: a used sheet warns about its holes, Use anyway stores it, Restore default removes it', async ({ page }) => {
+test('target sheets: a used sheet is refused because it has holes, and stores nothing', async ({ page }) => {
   await page.goto('/#/settings');
   await page.getByTestId('sheet-photo-input-precision').setInputFiles('docs/reference/IMG_5132-precision.jpg');
-  // §3 step 5: this reference photo has shots in it, so the user is asked first.
-  await expect(page.getByTestId('sheet-holes-warning')).toBeVisible({ timeout: 60000 });
+  await expect(page.getByTestId('sheet-refused-precision')).toHaveText(/has holes in it/, { timeout: 60000 });
   await expect(page.getByTestId('sheet-source-precision')).toHaveText('Default');
-  await page.getByTestId('sheet-use-anyway').click();
+});
+
+test('target sheets: a blank sheet is stored as your sheet, kept across a reload, and Restore default removes it', async ({ page }) => {
+  await page.goto('/#/settings');
+  // A blank precision sheet: the shipped default image itself.
+  await page.getByTestId('sheet-photo-input-precision').setInputFiles('public/templates/precision-reference.jpg');
   await expect(page.getByTestId('sheet-source-precision')).toHaveText(/^Your sheet · \d{4}-\d{2}-\d{2}$/, { timeout: 15000 });
   await expect(page.getByTestId('sheet-source-sighting')).toHaveText('Default');
 

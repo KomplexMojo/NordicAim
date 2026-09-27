@@ -40,12 +40,12 @@ export interface DetectShotsResult {
 }
 
 /**
- * template-reference.md §3 (REV-121): a blank sheet made into a reference — its target circles as a JPEG, the
- * calibration measured on that JPEG, and how many holes A5 found on it (a warning, never a refusal).
+ * template-reference.md §3 (REV-121): a blank sheet made into a reference — its target circles as a JPEG and the
+ * calibration measured on that JPEG — or why the photo was refused (no disc, the other template, or holes in it).
  */
 export type MakeReferenceResult =
-  | { status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration; holesFound: number }
-  | { status: 'refused'; reason: 'no-disc' | 'wrong-template' };
+  | { status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration }
+  | { status: 'refused'; reason: 'no-disc' | 'wrong-template' | 'has-holes' };
 
 export interface CvWorkerApi {
   ping(): Promise<{ loadedMs: number; hasMat: boolean }>;
