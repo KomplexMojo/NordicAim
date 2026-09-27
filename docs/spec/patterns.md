@@ -15,6 +15,10 @@ analyses; reads no photo; nothing leaves the phone.
 A `both` precision target contributes its prone units to one view and its standing units to the other. The role is the owner's choice (`categorization.sightingRole`, REV-67) or, when not chosen, inferred by
 `sightingRoles`: the oldest unset target is Sight in (unless one is explicitly Sight in), every other unset one is Confirm.
 
+Each view's drawing is headed by the results cards' own mark for it (REV-122, issue #58): the sight-in scatter, the
+confirm scope sight, or the prone / standing bar (`renderPatternViewMark`, `render/diagram-marks.ts`), then the view's
+label and the score star.
+
 ## 2. Which targets count
 
 Included: `photo.status === 'analyzed'`, `analysis.computed !== null`, and `analysis.pipeline.alignment.method` is `cv` or

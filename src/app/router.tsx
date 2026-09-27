@@ -12,6 +12,7 @@ import { MetadataPage } from '@/routes/metadata/MetadataPage';
 import { ResultsPage } from '@/routes/results/ResultsPage';
 import { ReviewPage } from '@/routes/review/ReviewPage';
 import { PatternsPage } from '@/routes/patterns/PatternsPage';
+import { AnalysisPage } from '@/routes/analysis/AnalysisPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
 import { TemplateSheetPage } from '@/routes/settings/TemplateSheetPage';
@@ -65,6 +66,8 @@ const router = createHashRouter([
           // REV-72: the session list is Home; an old link to the removed Sessions screen goes there.
           { path: '/sessions', element: <Navigate to="/" replace /> },
           { path: '/patterns', element: <PatternsPage /> },
+          // REV-123 (issue #57): trends over time, one point per session.
+          { path: '/analysis', element: <AnalysisPage /> },
           { path: '/sessions/:sid', element: <SessionRedirect /> },
           { path: '/sessions/:sid/capture', element: <CapturePage /> },
           { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
