@@ -1,12 +1,15 @@
 # Spec: template reference sheets (M26)
 
-Implements REV-121 (owner decisions 2026-09-27, issue #52). **Status: draft.** §1–§5 and §7 are decided and implementable.
-§6, how detection uses a reference, is fixed in its constraints but not its method: that waits on M26 Decisions 3 and 4,
-which are measurements, not choices (§8).
+Implements REV-121 (owner decisions 2026-09-27, issue #52). **Status:** §1–§5, §7 and §8 are **implemented** (M26 part 1,
+2026-09-27). §6, how detection uses a reference, is fixed in its constraints but not its method, and is **not implemented**:
+the measurements in §6 have not shown a gain yet.
 
-Code (planned): `src/lib/domain/template-reference.ts`, `src/lib/defaults/template-references.ts`,
-`src/lib/cv/template-reference.ts` (pure), the **Target sheets** section of the Settings screen
-(`src/components/settings/TemplateSheetSettings.tsx`), the sheet capture route, and step A5.
+Code: `src/lib/domain/template-reference.ts` (schemas), `src/lib/defaults/template-references.ts` (shipped defaults),
+`src/lib/cv/template-reference.ts` (pure: `keepTargetCircles`, `referenceRefusal`), the worker's `makeReference`,
+`src/lib/services/template-reference.ts` (`prepareTemplateReference`, `saveTemplateReference`, `restoreDefaultReference`),
+the **Target sheets** section (`src/components/settings/TemplateSheetSettings.tsx`, `useReferenceMaker.ts`,
+`ReferenceHolesWarning.tsx`) and the sheet capture route (`src/routes/settings/TemplateSheetPage.tsx`,
+`src/components/capture/TemplateSheetCapture.tsx`).
 
 ## 1. What it is
 
@@ -46,7 +49,7 @@ On **Use photo**, all of this runs before anything is stored (the IndexedDB rule
    beyond that radius. The image is then cropped to a square of half-side `outerRadiusMm + 10` mm around the centre.
    `REFERENCE_MARGIN_MM = 3`.
 4. A4 runs again on the result, and its calibration is what gets stored. A result without a disc is refused as in step 2.
-5. A5 runs on the result. If it reports any shot, the user is warned: *This sheet seems to have holes in it. A reference
+5. A5 runs on the result, on the standard path (a blank sheet has no backing behind it). If it reports any shot, the user is warned: *This sheet seems to have holes in it. A reference
    should be a blank sheet.* The choices are **Use anyway** and **Retake**. (Detection's own false marks are why this is a
    warning and not a refusal.)
 
@@ -74,7 +77,8 @@ export const TemplateReference = z.object({
 - **Shipped defaults** (§5) are app assets, not records: `public/templates/sighting-reference.jpg` and
   `public/templates/precision-reference.jpg`, with their calibration, size and hash in `src/lib/defaults/template-references.ts`.
 - **Each analysis records the reference it used:** `pipeline.detection.reference: { template, source: 'default' | 'custom',
-  sha256 } | null`. It is `null` when none was usable and detection used the geometric masks alone (§6).
+  sha256 } | null` (optional, so older analyses parse). It is `null` or absent when detection used the geometric masks
+  alone (§6), which is every analysis until §6 is implemented.
 
 ## 5. Shipped defaults (issue #52 answers 3 and 5)
 

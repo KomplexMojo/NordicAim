@@ -99,25 +99,46 @@ The spec is `docs/spec/template-reference.md` (REV-121).
 - `public/templates/sighting-reference.jpg`, `public/templates/precision-reference.jpg` (shipped defaults, added with the spec)
 - `src/lib/defaults/template-references.ts` (new: the defaults' calibration, size and hash)
 - `src/lib/domain/template-reference.ts` (new, mirroring `backing.ts`)
-- `src/lib/cv/template-reference.ts` (new, pure differencing)
+- `src/lib/cv/template-reference.ts` (new, pure: keeping the circles and the refusal rule; §6's comparison would go here)
 - `src/lib/cv/holes.ts`, `hole-signal.ts`, `print-mask.ts` (consume the new signal; fallback preserved)
 - `src/components/settings/TemplateSheetSettings.tsx` and the `#/settings/template-sheet/:template` route (mirroring `BackingSettings`/`BackingCardPage`)
 - `scripts/cv-eval.ts`, `scripts/detection-review/`
 
 ## Steps
-Not written. Per golden rule 1 ("read the milestone file completely, then only the spec sections it lists"), there is
-no spec for this feature yet — Steps cannot be written responsibly before the Decisions above have owner answers and a
-real spec document exists. The next work on this milestone is the owner resolving the Decisions section and a spec
-draft, not code.
+M26 is built in two parts (owner, 2026-09-27: "Build what you can of M26").
+
+**Part 1: reference sheets in Settings (template-reference.md §1–§5, §7, §8). Done 2026-09-27.**
+1. Pure `keepTargetCircles` and `referenceRefusal` (`src/lib/cv/template-reference.ts`, §3 steps 2–3).
+2. `TemplateReference` / `TemplateReferences` / `ReferenceUsed` schemas; `AppSettings.templateReferences` (default both
+   `null`, older rows read back); blob key `reference:<template>:image`; optional `pipeline.detection.reference` (§4).
+3. `DEFAULT_TEMPLATE_REFERENCE`: the shipped defaults' asset path, size, hash and calibration (§5).
+4. Worker `makeReference` (§3 steps 2–5) and the service: `prepareTemplateReference`, `saveTemplateReference`,
+   `restoreDefaultReference`, each change re-running that template's photos with nothing manual (`canRerunStageA`, §7).
+5. Settings **Target sheets** section and `#/settings/template-sheet/:template` sheet capture, with the refusal message
+   and the holes warning (§2, §3).
+
+**Part 2: detection uses the reference (§6). Blocked.** Not started: the §6 measurements show no gain on the production
+benchmark yet (see *Open questions*).
 
 ## Tests
-Not written, for the same reason as Steps.
+Part 1:
+- `tests/unit/cv/template-reference.test.ts`: the kept radius, the crop, painting beyond the radius, removing a mark
+  outside the circles, input untouched, the crop clamped at an edge; the refusal rule's three cases.
+- `tests/unit/defaults/template-references.test.ts`: each default's record parses, its hash matches the file, and the
+  app's A4 finds the recorded disc (within 0.5% of R) and names the template.
+- `tests/unit/services/template-reference.test.ts`: prepare (worker call, hash, refusal, non-image), save (blob and
+  entry together), the §7 re-run (only that template's finished photos with nothing manual; shots and calibration
+  untouched), and Restore default.
+- `tests/unit/domain/settings.test.ts`, `tests/unit/app/nav.test.ts`: the new default and field, and the hidden tab bar.
+- `tests/e2e/template-sheets.spec.ts`: both defaults shown and loading; a used sheet → holes warning → *Use anyway* →
+  *Your sheet*, kept across a reload → *Restore default*; the other template's photo refused; sheet mode opens full
+  screen and Cancel returns.
 
-## Acceptance (draft — will change once the Decisions above are resolved)
+## Acceptance
 ```bash
 pnpm check
-pnpm cv:eval
-pnpm review:detection
+pnpm test:e2e --project=mobile-chromium tests/e2e/template-sheets.spec.ts   # and the WebKit project on the owner's Mac
+pnpm cv:eval                                                                # part 2 only; needs the private fixtures
 ```
 **Human (owner):** photograph a blank sighting sheet and a blank precision sheet — with and without your backing
 colour — in the same conditions you actually shoot in, plus a few real sessions shot under matching conditions, so the
@@ -140,10 +161,21 @@ guess.
   real measurement before any detection logic is written against the assumption that alignment is good enough.
 
 ## Open questions
-Decisions 3 and 4 above are open, as is whether backups include a custom reference (template-reference.md §8). Decisions
+Part 2 (§6) waits on a larger production sample (issue #56 would supply one). Still open: whether backups include a
+custom reference (template-reference.md §8). Decisions
 3 and 4 need measurement and prototyping on the owner's photos in `fixtures/private/`; cloud sessions can do this when the
 private fixtures repo is attached. The spec exists (`docs/spec/template-reference.md`); its §6 method stays pending until
 those measurements are made, per AGENTS.md golden rule 2 ("never guess on scoring, geometry, or storage").
 
 ## Completion notes
-Not started.
+**Part 1, 2026-09-27 (cloud session, private fixtures attached).**
+- `pnpm check`: typecheck and lint pass (the 4 existing warnings), 1080/1080 unit tests pass (110 files), and the
+  privacy check passes (37 images). `pnpm build` passes; the precache is unchanged at 23 entries.
+- Chromium e2e: `template-sheets.spec.ts` 4/4; the full Chromium suite 87 passed, 1 skipped. WebKit is not available in
+  the cloud container; the owner runs that project on the Mac.
+- Checked by hand in the dev build: choosing `docs/reference/IMG_5132-precision.jpg` for the precision row stores an
+  822 × 822 JPEG with nothing outside the circles and no EXIF, and shows *Your sheet*.
+- **Deviations:** none from the spec. §7's re-run is implemented as specified, although nothing reads a reference until
+  part 2, so a re-run currently reproduces the same results.
+- **Owner checks:** photograph a blank sheet with *Photograph sheet* on the iPhone (camera and HEIC path), and confirm
+  whether backups should include a custom sheet (§8; today they do, as backups copy every blob).

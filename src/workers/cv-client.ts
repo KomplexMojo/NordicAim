@@ -39,6 +39,14 @@ export interface DetectShotsResult {
   holeWidths: HoleWidth[];
 }
 
+/**
+ * template-reference.md §3 (REV-121): a blank sheet made into a reference — its target circles as a JPEG, the
+ * calibration measured on that JPEG, and how many holes A5 found on it (a warning, never a refusal).
+ */
+export type MakeReferenceResult =
+  | { status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration; holesFound: number }
+  | { status: 'refused'; reason: 'no-disc' | 'wrong-template' };
+
 export interface CvWorkerApi {
   ping(): Promise<{ loadedMs: number; hasMat: boolean }>;
   /** `templateHint` is `capture.overlayTemplate`; null (an import) searches for both anchor sizes. */
@@ -63,6 +71,8 @@ export interface CvWorkerApi {
    * analysis-pipeline §6 (see the M11 Open questions); the milestone's Files section asks for it here.
    */
   splitCluster(pointsMm: PointMm[], k: number): Promise<PointMm[]>;
+  /** template-reference.md §3 steps 2–5: `workingJpeg` is the photo's working image (§3 step 1). */
+  makeReference(workingJpeg: ArrayBuffer, template: TemplateId, holeDiameterMm: number): Promise<MakeReferenceResult>;
 }
 
 let client: Comlink.Remote<CvWorkerApi> | undefined;

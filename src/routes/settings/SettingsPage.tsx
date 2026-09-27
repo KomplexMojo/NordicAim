@@ -10,6 +10,7 @@ import { AthleteSettings } from '@/components/settings/AthleteSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
 import { MaxPlausibleHolesSettings } from '@/components/settings/MaxPlausibleHolesSettings';
+import { TemplateSheetSettings } from '@/components/settings/TemplateSheetSettings';
 import { useServices } from '@/lib/app/services';
 import type { BackingMode } from '@/lib/domain/backing';
 import type { AppSettings } from '@/lib/domain/settings';
@@ -174,6 +175,12 @@ export function SettingsPage() {
               setCardError(false);
               void save(() => clearBacking(ctx));
             }}
+          />
+          <TemplateSheetSettings
+            key={`sheets-${epoch}`}
+            templateReferences={settings.templateReferences}
+            holeDiameterMm={settings.profileOverrides.holeDiameterMm}
+            onChanged={setSettings}
           />
           <BackupSettings
             settings={settings}

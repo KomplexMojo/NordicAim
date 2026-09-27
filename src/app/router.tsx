@@ -14,6 +14,7 @@ import { ReviewPage } from '@/routes/review/ReviewPage';
 import { PatternsPage } from '@/routes/patterns/PatternsPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
+import { TemplateSheetPage } from '@/routes/settings/TemplateSheetPage';
 import { VerifyPage } from '@/routes/verify/VerifyPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
 import { TargetPage } from '@/routes/target/TargetPage';
@@ -77,6 +78,8 @@ const router = createHashRouter([
           { path: '/settings', element: <SettingsPage /> },
           { path: '/verify', element: <VerifyPage /> },
           { path: '/settings/backing-card', element: <BackingCardPage /> },
+          // M26 (REV-121, template-reference.md §2): the full-screen blank-sheet capture.
+          { path: '/settings/template-sheet/:template', element: <TemplateSheetPage /> },
         ],
       },
       { path: '/diagnostics', element: <DiagnosticsPage /> },

@@ -15,9 +15,13 @@ export function activeTab(pathname: string): MainTab {
   return 'shooting';
 }
 
-/** The full-screen capture screens have no tab bar: `/sessions/:sid/capture` and `/settings/backing-card`. */
+/**
+ * The full-screen capture screens have no tab bar: `/sessions/:sid/capture`, `/settings/backing-card` and
+ * `/settings/template-sheet/:template` (REV-121).
+ */
 export function showsTabBar(pathname: string): boolean {
   if (/^\/sessions\/[^/]+\/capture\/?$/.test(pathname)) return false;
   if (/^\/settings\/backing-card\/?$/.test(pathname)) return false;
+  if (/^\/settings\/template-sheet\/[^/]+\/?$/.test(pathname)) return false;
   return true;
 }

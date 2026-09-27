@@ -37,7 +37,7 @@ as shown (`<model> · <effort>`).
 | [M24](M24-results-clarity.md) | Results that say what they count (issues #6, #4, #8) | receive analysis | M14, M20 | sonnet · high | opus · high | no | done |
 | [M25](M25-import-review.md) | An imported photo is shown on the overlay screen (issue #1) | take picture(s) | M07 | sonnet · medium | sonnet · high | no | done |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | done |
-| [M26](M26-template-reference-photos.md) | Template reference photos (blank-sheet differencing) | post-MVP · generate analysis | M16, M19 | opus · high | opus · high | yes | blocked: detection gain unproven on the production benchmark (Decisions 3, 4 measured 2026-09-27; see template-reference.md §6) |
+| [M26](M26-template-reference-photos.md) | Template reference photos (blank-sheet differencing) | post-MVP · generate analysis | M16, M19 | opus · high | opus · high | yes | blocked: part 2 (detection uses the reference) — gain unproven on the production benchmark; part 1 (Settings, storage, defaults) done 2026-09-27 |
 
 ```mermaid
 flowchart TD

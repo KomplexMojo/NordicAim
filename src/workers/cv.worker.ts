@@ -7,11 +7,12 @@ import { loadOpenCv } from '@/lib/cv/opencv';
 import { sharpness } from '@/lib/cv/sharpness';
 import { splitCluster, type PointMm } from '@/lib/cv/split-cluster';
 import { hintTemplate } from '@/lib/cv/template-hint';
+import { keepTargetCircles, referenceRefusal } from '@/lib/cv/template-reference';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
 import type { RgbaImage } from '@/lib/media/format';
 
-import type { BackingInput, CvWorkerApi, DetectShotsResult, ReviewAndAlignResult } from './cv-client';
+import type { BackingInput, CvWorkerApi, DetectShotsResult, MakeReferenceResult, ReviewAndAlignResult } from './cv-client';
 
 /** analysis-pipeline §6: JPEG bytes -> RgbaImage, via createImageBitmap + OffscreenCanvas. */
 async function decodeToRgba(bytes: ArrayBuffer): Promise<RgbaImage> {
@@ -26,6 +27,16 @@ async function decodeToRgba(bytes: ArrayBuffer): Promise<RgbaImage> {
   } finally {
     bitmap.close();
   }
+}
+
+/** template-reference.md §3: RgbaImage -> JPEG bytes (no metadata is ever written by a canvas). */
+async function encodeJpeg(img: RgbaImage): Promise<ArrayBuffer> {
+  const canvas = new OffscreenCanvas(img.width, img.height);
+  const ctx = canvas.getContext('2d');
+  if (ctx === null) throw new Error('OffscreenCanvas 2D context unavailable');
+  ctx.putImageData(new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0);
+  const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
+  return blob.arrayBuffer();
 }
 
 const api: CvWorkerApi = {
@@ -90,6 +101,32 @@ const api: CvWorkerApi = {
   async splitCluster(pointsMm: PointMm[], k: number): Promise<PointMm[]> {
     const cv = await loadOpenCv();
     return splitCluster(cv, pointsMm, k);
+  },
+
+  async makeReference(workingJpeg: ArrayBuffer, template: TemplateId, holeDiameterMm: number): Promise<MakeReferenceResult> {
+    const cv = await loadOpenCv();
+    const img = await decodeToRgba(workingJpeg);
+
+    // §3 step 2: A3's hint and A4 against the row's template.
+    const detection = detectAnchor(cv, img, null, ANCHOR_DIAMETER_MM[template]);
+    const hint = detection === null ? null : hintTemplate(cv, img, detection.calibration);
+    const refusal = referenceRefusal(detection !== null, hint, template);
+    if (refusal !== null || detection === null) return { status: 'refused', reason: refusal ?? 'no-disc' };
+    const calibration = calibrationWithPerspective(img, detection.calibration, template) ?? detection.calibration;
+
+    // §3 step 3: keep only the circles; step 4: A4 again on the result, whose calibration is what gets stored.
+    const kept = keepTargetCircles(img, calibration, template).image;
+    const again = detectAnchor(cv, kept, null, ANCHOR_DIAMETER_MM[template]);
+    if (again === null) return { status: 'refused', reason: 'no-disc' };
+    const keptCalibration = calibrationWithPerspective(kept, again.calibration, template) ?? again.calibration;
+
+    // §3 step 5: holes on a reference are a warning. A blank sheet has no backing behind it, so the standard path.
+    const holes = detectShotsWithBacking(cv, kept, keptCalibration, template, holeDiameterMm, { mode: 'none', colour: null });
+    const jpeg = await encodeJpeg(kept);
+    return Comlink.transfer(
+      { status: 'ok', jpeg, widthPx: kept.width, heightPx: kept.height, calibration: keptCalibration, holesFound: holes.shots.length },
+      [jpeg],
+    );
   },
 };
 

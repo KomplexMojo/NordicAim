@@ -5,6 +5,7 @@ import type { Characteristics } from '../scoring/characteristics';
 import { ShotPosition, StageState, TemplateId, Warning } from './enums';
 import { Id, ShotId, UtcIso } from './primitives';
 import { Calibration } from './photo';
+import { ReferenceUsed } from './template-reference';
 
 export const Shot = z
   .object({
@@ -56,6 +57,9 @@ export const DetectionRecord = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .nullable()
     .optional(),
+  // REV-121 (template-reference.md §4): the reference sheet detection used; null or absent when it used the
+  // geometric masks alone, which is always the case until §6 is implemented.
+  reference: ReferenceUsed.nullable().optional(),
 });
 export type DetectionRecord = z.infer<typeof DetectionRecord>;
 

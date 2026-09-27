@@ -41,6 +41,7 @@ describe('showsTabBar', () => {
   it('is hidden on the full-screen capture screens only', () => {
     expect(showsTabBar('/sessions/abc/capture')).toBe(false);
     expect(showsTabBar('/settings/backing-card')).toBe(false);
+    expect(showsTabBar('/settings/template-sheet/precision')).toBe(false);
     expect(showsTabBar('/')).toBe(true);
     expect(showsTabBar('/sessions/abc/metadata')).toBe(true);
     expect(showsTabBar('/settings')).toBe(true);

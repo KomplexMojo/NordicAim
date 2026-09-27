@@ -54,6 +54,8 @@ describe('defaultAppSettings', () => {
       lastBackupSessions: 0,
       backupReminderDays: 14,
       maxPlausibleHoles: 10,
+      // REV-121 (template-reference.md §4): both templates use the shipped default reference.
+      templateReferences: { sighting: null, precision: null },
     });
   });
 
@@ -123,5 +125,31 @@ describe('athlete identity (REV-99)', () => {
     void [athleteName, athleteClub, athleteSalt, keyFingerprint];
     const parsed = AppSettings.parse(older);
     expect([parsed.athleteName, parsed.athleteClub]).toEqual(['', '']);
+  });
+});
+
+describe('templateReferences (template-reference.md §4, REV-121)', () => {
+  it('defaults to the shipped defaults for both templates', () => {
+    expect(defaultAppSettings().templateReferences).toEqual({ sighting: null, precision: null });
+  });
+
+  it('reads an older row without the field back with both defaults', () => {
+    const older: Record<string, unknown> = { ...defaultAppSettings() };
+    delete older.templateReferences;
+    const parsed = AppSettings.parse(older);
+    expect(parsed.templateReferences).toEqual({ sighting: null, precision: null });
+  });
+
+  it('keeps a custom reference', () => {
+    const custom = {
+      template: 'precision' as const,
+      capturedAt: '2026-09-27T17:00:00.000Z',
+      sha256: 'a'.repeat(64),
+      widthPx: 1936,
+      heightPx: 1936,
+      calibration: { cx: 968, cy: 968, radiusPx: 625, axisRatio: 1, angleDeg: 0, anchorDiameterMm: 112.4, source: 'auto' as const, confidence: 0.9, perspective: null },
+    };
+    const parsed = AppSettings.parse({ ...defaultAppSettings(), templateReferences: { sighting: null, precision: custom } });
+    expect(parsed.templateReferences.precision).toEqual(custom);
   });
 });

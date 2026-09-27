@@ -227,6 +227,8 @@ export const AppSettings = z.object({
   diagramRendererVersion: z.number().int().min(0).default(0),
   // Owner instruction, 2026-09-26: the raw-hole-count safety net (§8 below). Defaults for older rows so they read back.
   maxPlausibleHoles: z.number().int().positive().default(10),
+  // REV-121: the user's own reference sheets (`template-reference.md` §4); null per template = the shipped default.
+  templateReferences: TemplateReferences.default({ sighting: null, precision: null }),
 });
 // default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null,
 //            backingMode 'auto', backing null, scoringRule 'gauge', visibleHoleDiameterMm 4.5, maxPlausibleHoles 10 }
@@ -258,6 +260,7 @@ Blob keys (`src/lib/store/blob-keys.ts`):
 - `photo:<pid>:original`, `photo:<pid>:working` (JPEG ≤ 3000 px, oriented, no metadata), `photo:<pid>:thumb` (≤ 480 px)
 - `diagram:<pid>:full-svg`, `diagram:<pid>:full-png`, `diagram:<pid>:cell-svg`
 - `artifact:<aid>:png`, `artifact:<aid>:json`
+- `reference:<template>:image` (JPEG): the user's own reference sheet for a template (REV-121, `template-reference.md` §4)
 
 Rules:
 - Store bytes as `ArrayBuffer` and rebuild `Blob` on read.
