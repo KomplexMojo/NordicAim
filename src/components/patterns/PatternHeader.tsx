@@ -1,8 +1,9 @@
-import { Crosshair, PersonStanding, Star, Target as TargetIcon } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 import { CardAction, CardHeader, CardTitle } from '@/components/ui/card';
 import { PATTERN_VIEW_LABEL, type PatternView } from '@/lib/patterns/collect';
 import { patternsScorePercent, type PatternSummary } from '@/lib/patterns/summarize';
+import { renderPatternViewMark, VIEW_MARK_VIEWBOX } from '@/lib/render/diagram-marks';
 
 /** One star, partly filled to `percent` by clipping a solid copy over a faint outline copy. */
 function ScoreStar({ percent }: { percent: number | null }) {
@@ -28,32 +29,24 @@ interface PatternHeaderProps {
 }
 
 /**
- * REV-121: the Patterns drawing's own header, styled like one target card's (an icon for how it is
- * scored, an icon for the position, a star) — an aggregate of every shot shown, not one target's ten.
- * Sight in and confirm mix prone and standing across sessions, so they show no position icon; the two
- * precision views are each a fixed position, so they do.
+ * REV-122: the Patterns drawing's own header, styled like one target card's — the view's mark and a star — an aggregate
+ * of every shot shown, not one target's ten. The mark is the one a results card of that kind carries (issue #58): the
+ * sight-in scatter, the confirm scope sight, or the prone / standing bar (REV-79, REV-86).
  */
 export function PatternHeader({ view, kind, summary }: PatternHeaderProps) {
-  const TypeIcon = kind === 'precision' ? TargetIcon : Crosshair;
-  const position = view === 'precision-prone' ? 'prone' : view === 'precision-standing' ? 'standing' : null;
   const percent = patternsScorePercent(summary, kind);
 
   return (
     <CardHeader data-testid="patterns-header">
       <CardTitle className="flex items-center gap-2">
-        <TypeIcon
-          className="size-4 shrink-0 text-muted-foreground"
+        <svg
+          viewBox={VIEW_MARK_VIEWBOX}
+          className="size-5 shrink-0"
           aria-hidden="true"
-          data-testid="patterns-type-icon"
+          data-testid="patterns-view-mark"
+          data-view={view}
+          dangerouslySetInnerHTML={{ __html: renderPatternViewMark(view) }}
         />
-        {position !== null && (
-          <PersonStanding
-            className={`size-4 shrink-0 text-muted-foreground ${position === 'prone' ? '-rotate-90' : ''}`}
-            aria-hidden="true"
-            data-testid="patterns-position-icon"
-            data-position={position}
-          />
-        )}
         <span>{PATTERN_VIEW_LABEL[view]}</span>
       </CardTitle>
       <CardAction>

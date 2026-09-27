@@ -28,6 +28,9 @@ test('two demo sessions overlay on the right views, the range filter and the dra
   // One sighting target per demo session: both are each session's first, so Sight in holds both and Confirm none.
   await page.getByTestId('pattern-view-sight-in').click();
   await expect(page.getByTestId('patterns-counts')).toContainText('2 targets · 2 sessions');
+  // Issue #58: the header carries the results cards' own mark for the view.
+  await expect(page.getByTestId('patterns-view-mark')).toHaveAttribute('data-view', 'sight-in');
+  await expect(page.getByTestId('patterns-view-mark').locator('.sighting-role-symbol[data-role="sight-in"]')).toHaveCount(1);
   const sightShots = Number(await page.getByTestId('patterns-drawing').getAttribute('data-shots'));
   expect(sightShots).toBeGreaterThan(0);
   await expect(page.getByTestId('patterns-drawing').locator('.pattern-dot')).toHaveCount(sightShots);
@@ -39,6 +42,10 @@ test('two demo sessions overlay on the right views, the range filter and the dra
   let precision = 0;
   for (const id of ['precision-prone', 'precision-standing']) {
     await page.getByTestId(`pattern-view-${id}`).click();
+    await expect(page.getByTestId('patterns-view-mark')).toHaveAttribute('data-view', id);
+    await expect(
+      page.getByTestId('patterns-view-mark').locator(`.position-silhouette[data-position="${id.replace('precision-', '')}"]`),
+    ).toHaveCount(1);
     const shots = Number(await page.getByTestId('patterns-drawing').getAttribute('data-shots'));
     await expect(page.getByTestId('patterns-drawing').locator('.pattern-dot')).toHaveCount(shots);
     precision += shots;

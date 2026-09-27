@@ -85,3 +85,16 @@ export function renderPositionSilhouette(position: 'prone' | 'standing'): string
   const title = `<title>${position === 'standing' ? 'Standing' : 'Prone'}</title>`;
   return el('g', { class: 'position-silhouette', 'data-position': position }, title + disc + bar);
 }
+
+/** The box the role and position marks above are drawn in: their disc is centred on (48, 46) with radius 24. */
+export const VIEW_MARK_VIEWBOX = '24 22 48 48';
+
+/**
+ * REV-122 (issue #58): a Patterns view's mark is the same drawing a results card of that kind carries (REV-79, REV-86),
+ * so the two can never drift apart.
+ */
+export function renderPatternViewMark(view: 'sight-in' | 'confirm' | 'precision-prone' | 'precision-standing'): string {
+  if (view === 'precision-prone') return renderPositionSilhouette('prone');
+  if (view === 'precision-standing') return renderPositionSilhouette('standing');
+  return renderSightingRoleSymbol(view);
+}
