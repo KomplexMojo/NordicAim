@@ -10,7 +10,7 @@ import { BackupReminder } from '@/components/settings/BackupReminder';
 import { Button } from '@/components/ui/button';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import { listSessionsWithProblems } from '@/lib/services/sessions';
+import { listSessionKinds, listSessionsWithProblems } from '@/lib/services/sessions';
 
 /**
  * Route `#/` (analysis-pipeline §1). REV-72: the one screen that lists every session, and the one place a session is
@@ -19,6 +19,7 @@ import { listSessionsWithProblems } from '@/lib/services/sessions';
 export function HomePage() {
   const { ctx } = useServices();
   const { value, loading } = useLiveQuery(() => listSessionsWithProblems(ctx), [ctx]);
+  const { value: kinds } = useLiveQuery(() => listSessionKinds(ctx), [ctx]);
   const [deleting, setDeleting] = useState<string | null>(null);
   const sessions = value?.sessions;
   const unreadable = value?.unreadable ?? [];
@@ -41,6 +42,7 @@ export function HomePage() {
         ) : (
           <SessionList
             sessions={sessions ?? []}
+            kinds={kinds}
             emptyMessage="No sessions yet. Quick start to take your first photo."
             onDelete={(session) => setDeleting(session.id)}
           />

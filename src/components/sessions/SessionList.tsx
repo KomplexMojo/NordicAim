@@ -5,7 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { BiathlonSession } from '@/lib/domain/session';
+import type { SessionKinds } from '@/lib/sessions/kinds';
 import { sessionTimeLabel, SEARCH_FROM, matchesSession } from '@/lib/sessions/list-view';
+
+import { SessionKindMarks } from './SessionKindMarks';
 
 interface SessionListProps {
   sessions: BiathlonSession[];
@@ -15,10 +18,15 @@ interface SessionListProps {
    * recent list does not, so deleting is never one careless tap from the first screen.
    */
   onDelete?: (session: BiathlonSession) => void;
+  /** Issue #73: each session's target kinds; until they load (or for a session with none read), the row shows its count. */
+  kinds?: Map<string, SessionKinds>;
 }
 
-/** Sessions §1: name, date and time, target count. REV-93: a search box appears once there are many. */
-export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDelete }: SessionListProps) {
+/**
+ * Sessions §1: name, date and time, and its targets: their kinds as marks (issue #73), else the count. REV-93: a search box
+ * appears once there are many.
+ */
+export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDelete, kinds }: SessionListProps) {
   const [query, setQuery] = useState('');
   if (sessions.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
@@ -51,9 +59,7 @@ export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDel
                   {session.sessionDate} · {sessionTimeLabel(session)}
                 </span>
               </span>
-              <Badge variant="secondary">
-                {session.photoIds.length} {session.photoIds.length === 1 ? 'target' : 'targets'}
-              </Badge>
+              <RowTargets session={session} kinds={kinds?.get(session.id)} loaded={kinds !== undefined} />
             </Link>
             {onDelete !== undefined && (
               <Button
@@ -74,4 +80,18 @@ export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDel
       </ul>
     </>
   );
+}
+
+function RowTargets({ session, kinds, loaded }: { session: BiathlonSession; kinds: SessionKinds | undefined; loaded: boolean }) {
+  const count = session.photoIds.length;
+  // A session with no photo records read has no kinds entry: once loaded, that is simply no targets.
+  const shown = kinds ?? (loaded && count === 0 ? { counts: { 'sight-in': 0, confirm: 0, 'precision-prone': 0, 'precision-standing': 0 }, unknown: 0 } : undefined);
+  if (shown === undefined) {
+    return (
+      <Badge variant="secondary">
+        {count} {count === 1 ? 'target' : 'targets'}
+      </Badge>
+    );
+  }
+  return <SessionKindMarks kinds={shown} targets={count} />;
 }
