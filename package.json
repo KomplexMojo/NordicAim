@@ -24,6 +24,7 @@
     "render:samples": "tsx scripts/render-samples.ts",
     "make:icons": "tsx scripts/make-icons.ts",
     "docs:screens": "node scripts/docs-screens.mjs",
+    "make:test-sheets": "node scripts/make-test-sheets.mjs",
     "cv:eval": "tsx --tsconfig tsconfig.test.json scripts/cv-eval.ts",
     "review:detection": "tsx --tsconfig tsconfig.test.json scripts/detection-review/build.ts"
   },

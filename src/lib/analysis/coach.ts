@@ -155,8 +155,14 @@ export function coachAverages(trends: CoachTrends): { views: CoachAverages[]; mp
 }
 
 /** The MPI boxes' half-width: the first of these at least 15% past the largest offset, so no icon sits on the edge. */
-export const MPI_SCALES_MM = [5, 10, 20, 50, 100, 200, 500] as const;
+export const MPI_SCALES_MM = [5, 10, 15, 20, 25] as const;
+
+/**
+ * REV-134 (owner 2026-09-28): the scale stops at ±25 mm. An average drift of 25 mm is already a large one, and a wider box
+ * only crowds everything that matters near the centre; an MPI past it is pinned to the edge (the words still give its value).
+ */
+export const MPI_SCALE_MAX_MM = 25;
 
 export function mpiScale(largestMm: number): number {
-  return MPI_SCALES_MM.find((s) => s >= largestMm * 1.15) ?? 500;
+  return MPI_SCALES_MM.find((s) => s >= largestMm * 1.15) ?? MPI_SCALE_MAX_MM;
 }

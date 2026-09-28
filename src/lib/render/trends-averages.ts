@@ -88,6 +88,19 @@ function numberBox(avg: CoachAverages, id: 'score' | 'group' | 'rms', x: number,
  * The MPI box: a simulated bullseye (rings at half and all of the scale) on +x right / +y up axes, the view's mark at the average
  * MPI, and the offset in words. Target mm are +y up; the drawing's y is down, so y is flipped here.
  */
+/**
+ * REV-134: where an MPI sits in the box, in drawing px from the centre. One past the scale is pinned inside the rim, `inset` px in,
+ * and flagged, so the box keeps its scale and an off-scale MPI still shows which way it lies.
+ */
+export function placeMpi(xMm: number, yMm: number, scaleMm: number, inset: number): { dx: number; dy: number; offScale: boolean } {
+  const dx = (xMm / scaleMm) * MPI_HALF;
+  const dy = -(yMm / scaleMm) * MPI_HALF;
+  const r = Math.hypot(dx, dy);
+  const max = MPI_HALF - inset;
+  if (r <= MPI_HALF) return { dx, dy, offScale: false };
+  return { dx: (dx / r) * max, dy: (dy / r) * max, offScale: true };
+}
+
 function mpiBox(avg: CoachAverages, scaleMm: number, x: number, y: number): string {
   const mpiX = avg.values.mpiX;
   const mpiY = avg.values.mpiY;
@@ -111,10 +124,11 @@ function mpiBox(avg: CoachAverages, scaleMm: number, x: number, y: number): stri
 
   // REV-133: each session's MPI as a faint dot under the mark, so sessions on alternate sides show even when they average to 0.
   for (const p of avg.mpiSessions) {
+    const at = placeMpi(p.xMm, p.yMm, scaleMm, 4);
     out += el('circle', {
       class: 'mpi-session',
-      cx: cx + (p.xMm / scaleMm) * MPI_HALF,
-      cy: cy - (p.yMm / scaleMm) * MPI_HALF,
+      cx: cx + at.dx,
+      cy: cy + at.dy,
       r: 4,
       fill: PALETTE.textSecondary,
       'fill-opacity': 0.55,
@@ -122,8 +136,18 @@ function mpiBox(avg: CoachAverages, scaleMm: number, x: number, y: number): stri
   }
 
   if (mpiX !== null && mpiY !== null) {
-    const px = cx + (mpiX / scaleMm) * MPI_HALF;
-    const py = cy - (mpiY / scaleMm) * MPI_HALF;
+    // Past the scale, the mark sits just inside the rim with an arrowhead between it and the rim, pointing out.
+    const at = placeMpi(mpiX, mpiY, scaleMm, MPI_MARK / 2 + 9);
+    const px = cx + at.dx;
+    const py = cy + at.dy;
+    if (at.offScale) {
+      const deg = (Math.atan2(at.dy, at.dx) * 180) / Math.PI;
+      out += el(
+        'g',
+        { class: 'mpi-off-scale', transform: `translate(${num(cx)} ${num(cy)}) rotate(${num(deg)})` },
+        el('path', { d: `M${num(MPI_HALF - 1)} 0 L${num(MPI_HALF - 9)} -5 L${num(MPI_HALF - 9)} 5 Z`, fill: PALETTE.textPrimary }),
+      );
+    }
     const s = MPI_MARK / 48;
     // The mark's own box is 48 × 48 at (24, 22), centred on (48, 46).
     out += el('g', { class: 'mpi-mark', transform: `translate(${num(px - 48 * s)} ${num(py - 46 * s)}) scale(${num(s)})` }, renderPatternViewMark(avg.view));

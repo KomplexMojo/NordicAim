@@ -106,9 +106,12 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
       average to about 0 and would look centred. So each session's MPI is also drawn as a **faint dot** under the mark
       (`mpiSessions`), and from 2 sessions a second line gives how far off a session **typically** sits, whichever way:
       the mean of each session's MPI distance from the centre (`mpiTypicalMm`), `sessions typically 6.0 mm off`;
-    - every MPI box shares **one scale** (`mpiScale`): the first of 5, 10, 20, 50, 100, 200, 500 mm that is at least 15%
-      past the largest offset of any session's MPI in any view, so no dot or mark sits on the edge and positions compare
-      across boxes;
+    - every MPI box shares **one scale** (`mpiScale`): the first of 5, 10, 15, 20, 25 mm that is at least 15% past the
+      largest offset of any session's MPI in any view, so positions compare across boxes. REV-134 (owner 2026-09-28): the
+      scale is **never wider than ±25 mm** (`MPI_SCALE_MAX_MM`): an average drift of 25 mm is already large, and a wider box
+      crowds everything near the centre. An MPI past the scale is **pinned just inside the rim** in its own direction
+      (`placeMpi`): a session dot 4 px in, the view's mark far enough in to leave room for a small **arrowhead** between it
+      and the rim, pointing out. The words under the box always give the exact offset;
     - **trend arrows** (REV-132, owner 2026-09-28): each box, from **3 sessions** with a value (as §4a), carries a small
       arrow at its top right that shows only the direction of the least-squares trend over the range (`trendOf`, the same
       fit as §4a): tilted **up** 30°, **level**, or tilted **down** 30°. The MPI box's arrow is the trend of the MPI's
