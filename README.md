@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, a single target read out with its score, the shot correction screen, and the patterns view" width="900">
+  <img src="docs/assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, a single target read out with its score, the shot correction screen, and the Analysis screen's trend charts" width="900">
 </p>
 
 ## What it does
@@ -26,20 +26,22 @@
 NordicAim reads the paper target you just shot at 50 m and tells you what happened.
 
 1. **Photograph the target.** Line up the live overlay with the black aiming mark, or import a photo you already took.
-2. **Say what you shot.** Sighting or precision, prone, standing or both, how many rounds, lighting. It takes a few seconds.
+2. **Say what you shot.** Sight in, confirm, precision prone or precision standing, how many rounds, lighting. It takes a few seconds.
 3. **Read the analysis.** Your phone finds the holes, lays the target over your photo, scores it, measures the group and builds one summary image you can share.
 
 You always have the last word. Every hole and the alignment can be corrected by hand, and the score updates.
 
 ## What you get
 
-- **Scores you can check.** Precision targets score out of 100 with the X count and a ring tally. Sighting targets show hits and misses. When you shoot both positions, prone and standing are scored separately.
+- **Scores you can check.** Precision targets score out of 100 with the X count and a ring tally. Sighting targets show hits and misses.
 - **Group size and point of impact.** Extreme spread in millimetres and MOA, and the mean point of impact: how far, and which way, your group sits from centre. That is the number your sight adjustment starts from.
 - **One summary image.** Sight in, confirm and the precision targets side by side, each drawn at the same scale so you can compare them by eye. Share it from the iPhone share sheet.
 - **Your rule, your call.** Choose official gauge touch, centre in ring, or visible hole touch. Changing it re-scores every session you have stored, so old and new results stay comparable.
-- **Patterns over time.** Every shot from every session, laid over the printed target for sight in, confirm, precision prone and precision standing. Filter to 30 days, 90 days or all time and see whether your misses have a habit.
+- **Patterns over time.** Every shot from every session, laid over the printed target for sight in, confirm, precision prone and precision standing. Filter to the latest session, this week, 30 days, 90 days or all time and see whether your misses have a habit.
+- **Trends, session by session.** The Analysis screen charts your score or hit rate, group size, accuracy (RMS distance from the centre) and point of impact with one point per session, and from three sessions draws a trend line that says how much you are changing per session.
+- **A coach image.** One picture of any date range: the pattern drawings, then your averages in small boxes, each with an arrow showing which way it is trending, and a small bullseye showing where your average shot lands. Share it with your coach.
 - **A review pass.** Step through a session photo by photo, targets that need attention first.
-- **Backup and restore.** One file holds all your sessions. Restore it on a new phone.
+- **Backup and restore.** One compressed file, named with your name and the date, holds all your sessions. Restore it on a new phone.
 
 Two printed sheets are supported today: the **sighting sheet** and the **Olympic 50 m rifle target** used for precision work, shot with a .22 at 50 m.
 
@@ -61,14 +63,14 @@ It is not perfect, and it does not pretend to be. Suggested holes score nothing 
 
 Each athlete installs NordicAim on their own phone in about ten seconds. There is no account to create and nothing to set up for the squad.
 
-Results move between athletes and coaches as summary images. Every image states which scoring rule was used and how many shots were found, so a coach reading it knows exactly what the numbers mean. If the squad compares scores, agree on one scoring rule in Settings first.
+Results move between athletes and coaches as summary images, and as coach images that sum up a whole date range. Every image states which scoring rule was used and how many shots were found, so a coach reading it knows exactly what the numbers mean. If the squad compares scores, agree on one scoring rule in Settings first.
 
 There is no shared team account or dashboard. Each phone keeps its own history.
 
 ## Private, free, and light
 
 - **Everything happens on your phone.** No server, no login, no analytics, no ads.
-- **Your photos stay yours.** They are never uploaded. Only two things can leave the phone, and only when you ask: the summary image you share, and a backup file you create.
+- **Your photos stay yours.** They are never uploaded. Only three things can leave the phone, and only when you ask: the summary image or coach image you share, and a backup file you create.
 - **Free to use.** NordicAim is served as plain static files from GitHub Pages, so there is nothing to pay for and nothing to sign up to.
 - **Works at the range.** After the first load it runs offline, so no signal is no problem.
 
@@ -80,27 +82,27 @@ There is no shared team account or dashboard. Each phone keeps its own history.
 
 The first load downloads the image analysis engine, so do it on Wi-Fi before you head to the range. There is no App Store and no Apple account involved.
 
-Your sessions live on the phone. Deleting the Home Screen app deletes them, so use **Settings, Back up now** every so often. NordicAim reminds you when it has been a while.
+Your sessions live on the phone. Deleting the Home Screen app deletes them, so use **Settings, Back up now** every so often and keep the file in Files or iCloud Drive. NordicAim reminds you when it has been a while.
 
 ## Your first session
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/assets/screens/capture.jpg" alt="The capture screen with the target overlay lined up on a Precision target"></td>
-    <td align="center" width="33%"><img src="docs/assets/screens/metadata.png" alt="The Add metadata screen with session name, template, position, rounds and lighting"></td>
+    <td align="center" width="33%"><img src="docs/assets/screens/capture.jpg" alt="The capture screen with the target overlay lined up on a Precision target and Precision prone selected"></td>
+    <td align="center" width="33%"><img src="docs/assets/screens/metadata.png" alt="The Add metadata screen with the session name, a photo's target type buttons, rounds, lighting and season"></td>
     <td align="center" width="33%"><img src="docs/assets/screens/results.png" alt="The results screen with the session summary image"></td>
   </tr>
   <tr>
-    <td valign="top"><b>1. Photograph the target.</b> Pick <i>Sighting</i> or <i>Precision</i> and a position. Use the <b>Size</b> slider until the overlay matches the sheet, and line up the black aiming mark with the thick circle. Tap the shutter, then <b>Use photo</b>. Already have a photo? Tap <b>Import from Photos</b>.</td>
-    <td valign="top"><b>2. Add the details.</b> Name the session and say what you shot: template, prone, standing or both, rounds fired and lighting. Anything you leave out gets a sensible default.</td>
+    <td valign="top"><b>1. Photograph the target.</b> Pick what you shot: <i>Sight in</i>, <i>Confirm</i>, <i>Precision prone</i> or <i>Precision standing</i>. Use the <b>Size</b> slider until the overlay matches the sheet, and line up the black aiming mark with the thick circle. Tap the shutter, then <b>Use photo</b>. Already have a photo? Tap <b>Import from Photos</b>.</td>
+    <td valign="top"><b>2. Add the details.</b> Name the session and check each photo: target type, rounds fired and lighting. Anything you leave out gets a sensible default. Then tap <b>Analyze</b>.</td>
     <td valign="top"><b>3. Read the results.</b> Score, group size and point of impact appear with one summary image. Tap <b>Share</b> to send it, or <b>Update summary</b> after an edit.</td>
   </tr>
 </table>
 
-Something look off? Tap **Adjust shots** on the results screen to add, move or remove a hole, or nudge the alignment. The score updates as you go.
+Something look off? Tap a target's picture on the results screen to add, move or remove a hole, or nudge the alignment. The score updates as you go.
 
 <p align="center">
-  <img src="docs/assets/screens/adjust.jpg" alt="The shot correction screen with Shots and Alignment modes and the detected shots drawn on the photo" width="300">
+  <img src="docs/assets/screens/adjust.jpg" alt="A target's screen with Shots and Alignment modes and the detected shots drawn on the photo" width="300">
   <br><sub>Correcting shots: tap to add a hole, drag to move one, or switch to Alignment to line the rings up.</sub>
 </p>
 
@@ -110,10 +112,25 @@ When the session is done, NordicAim builds **one summary image**: your name and 
 
 <p align="center">
   <img src="docs/assets/summary-image.png" alt="A brag sheet: the NordicAim summary image with sight in and confirm above, two precision positions below, then the session analysis" width="460">
-  <br><sub>An example brag sheet, made from the project's reference target photos.</sub>
+  <br><sub>An example brag sheet, made from the app's demo targets (a sight in and a precision prone target).</sub>
 </p>
 
-You choose what to share and when. NordicAim does not connect to Strava or Garmin, and nothing is posted for you. The image is the only thing that leaves your phone, and your photos never do.
+You choose what to share and when. NordicAim does not connect to Strava or Garmin, and nothing is posted for you. The image leaves your phone only when you share it, and your photos never do.
+
+### Your trends, and one image for your coach
+
+The **Analysis** screen, at the top beside **Patterns**, shows how you are moving with one point per session: score or hit rate, group size, accuracy and point of impact, each with a dashed trend line from three sessions.
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/assets/screens/analysis-trends.png" alt="The Analysis screen's Score and Group size charts, each with a dashed trend line" width="300"></td>
+    <td align="center" width="50%"><img src="docs/assets/coach-image.png" alt="A coach image: the four pattern drawings, then a row of averages boxes for each kind of target, with trend arrows and a small bullseye for the mean point of impact" width="300"></td>
+  </tr>
+  <tr>
+    <td valign="top"><b>Trends.</b> Tap a point to read that session. The trend says how much you change per session.</td>
+    <td valign="top"><b>The coach image.</b> Tap <b>Make coach image</b>, then <b>Share</b>: your patterns and averages for the range, with an arrow on each for its trend (green improving, red worsening).</td>
+  </tr>
+</table>
 
 Want the whole routine, from installing to comparing against your history? See the **[workflow, step by step](docs/guide/workflow.md)**.
 
@@ -171,6 +188,7 @@ pnpm test:e2e     # Playwright, mobile Chromium + mobile WebKit
 pnpm test:e2e:offline  # Playwright against the production build, offline after the first load
 pnpm check:privacy
 pnpm make:icons   # regenerate public/icons/* (sharp; concentric-ring motif)
+pnpm docs:screens # regenerate the README and guide screenshots in docs/assets/ from the demo data
 ```
 
 Pushing to `main` deploys to GitHub Pages (`.github/workflows/pages.yml`). To run the capability checks on an iPhone, open
@@ -187,7 +205,7 @@ since some checks (storage persistence, share) behave differently as a standalon
 | [`docs/DESIGN-REVISIONS.md`](docs/DESIGN-REVISIONS.md) | Owner decisions that define the MVP and supersede parts of the design |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | Post-MVP items (not to be built without go-ahead) |
 | [`docs/PLAN.md`](docs/PLAN.md) | Plan: verified facts, decisions, corrections, risks, open questions |
-| [`docs/spec/`](docs/spec/) | Source-of-truth specs: analysis pipeline, geometry and scoring, data model and storage, capture overlay, metadata and lighting, diagrams and summary image, privacy, storage and hosting |
+| [`docs/spec/`](docs/spec/) | Source-of-truth specs: analysis pipeline, geometry and scoring, data model and storage, capture overlay, metadata and lighting, diagrams and summary image, patterns, analysis and the coach image, backup and restore, provenance, privacy, storage and hosting |
 | [`docs/milestones/`](docs/milestones/README.md) | MVP milestones sized for lower-reasoning agents |
 | [`AGENTS.md`](AGENTS.md) | Rules for any agent implementing a milestone |
 | [`docs/reference/`](docs/reference/) | Reference target photos (metadata stripped) and the owner's example diagrams |

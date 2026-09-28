@@ -1,6 +1,7 @@
 // analysis.md §5 (REV-124, issue #57): the coach image. A header like the session summary's, the four Patterns drawings
-// (Sight in, Confirm, Precision prone, Precision standing) in a 2 × 2 grid, the trends band across the full width below,
-// and the athlete line and credit at the foot. Pure SVG.
+// (Sight in, Confirm, Precision prone, Precision standing) in a 2 × 2 grid, the averages band across the full width below
+// (REV-131: each view's averages in small boxes, in place of the trend charts), and the athlete line and credit at the foot.
+// Pure SVG.
 
 import type { CoachTrends } from '../analysis/coach';
 import { PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternPoint, type PatternView } from '../patterns/collect';
@@ -12,10 +13,10 @@ import { renderPatternViewMark } from './diagram-marks';
 import { PALETTE } from './palette';
 import { PATTERNS_SIZE, renderPatternsSvg } from './patterns';
 import { el, num, text } from './svg';
-import { renderTrendsBand, TRENDS_WIDTH } from './trends-band';
+import { renderAveragesBand, TRENDS_WIDTH } from './trends-averages';
 
 /** Bump whenever this renderer's output changes. */
-export const TRENDS_RENDERER_VERSION = 1;
+export const TRENDS_RENDERER_VERSION = 2;
 
 const HEADER_HEIGHT = 120;
 const CELL = 720;
@@ -76,7 +77,7 @@ function cell(view: PatternView, input: TrendsSheetInput, x: number, y: number):
 
 /** §5: the whole coach image, and its size, so the build rasterises exactly what was drawn. */
 export function renderTrendsSheet(input: TrendsSheetInput): { svg: string; width: number; height: number } {
-  const band = renderTrendsBand(input.trends, HEADER_HEIGHT + GRID_HEIGHT);
+  const band = renderAveragesBand(input.trends, HEADER_HEIGHT + GRID_HEIGHT);
   const footerY = HEADER_HEIGHT + GRID_HEIGHT + band.height;
   const height = footerY + FOOTER_HEIGHT;
 

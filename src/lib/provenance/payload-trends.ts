@@ -1,5 +1,5 @@
-// REV-124 (analysis.md §5): the canonical payload a coach image's stamp covers — the athlete, the range and every number the
-// trends band draws. Pure and deterministic, like `payload.ts`: changing any single value changes the string.
+// REV-124 (analysis.md §5): the canonical payload a coach image's stamp covers — the athlete, the range and every session
+// value per view and metric (REV-131: the image draws their averages, which follow from them). Pure and deterministic, like `payload.ts`: changing any single value changes the string.
 
 import type { CoachTrends } from '../analysis/coach';
 

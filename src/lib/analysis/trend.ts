@@ -3,7 +3,7 @@
 
 import type { PatternPoint } from '../patterns/collect';
 import { patternsScorePercent, summarizePatterns } from '../patterns/summarize';
-import { angular, extremeSpread, mpi } from '../scoring/groups';
+import { accuracyRmse, angular, extremeSpread, mpi } from '../scoring/groups';
 
 /** geometry-scoring.md: biathlon is shot at 50 m, the distance every angular size in the app is read at. */
 const DISTANCE_MM = 50_000;
@@ -19,6 +19,8 @@ export interface TrendPoint {
   scorePercent: number | null;
   /** §3: the mean of each target's extreme spread, in MOA; null when no target has two distinct shots. */
   groupMoa: number | null;
+  /** §3 (REV-128): accuracy, the root-mean-square distance of every shot in the session from the bullseye, mm (REV-60). */
+  rmsMm: number | null;
   /** §3: the session's mean point of impact, mm from the centre (+x right, +y up). */
   mpiXMm: number | null;
   mpiYMm: number | null;
@@ -55,6 +57,7 @@ export function sessionTrend(points: PatternPoint[], kind: 'precision' | 'sighti
       shots: shots.length,
       scorePercent: patternsScorePercent(summarizePatterns(shots, kind), kind),
       groupMoa: mean(spreads),
+      rmsMm: accuracyRmse(shots),
       mpiXMm: centre?.xMm ?? null,
       mpiYMm: centre?.yMm ?? null,
     });
@@ -64,7 +67,7 @@ export function sessionTrend(points: PatternPoint[], kind: 'precision' | 'sighti
   );
 }
 
-export type TrendMetricId = 'score' | 'group' | 'mpiX' | 'mpiY';
+export type TrendMetricId = 'score' | 'group' | 'rms' | 'mpiX' | 'mpiY';
 
 export interface TrendMetric {
   id: TrendMetricId;
@@ -76,6 +79,16 @@ export interface TrendMetric {
   zeroLine: boolean;
   value(point: TrendPoint): number | null;
   format(value: number): string;
+  /** §4a (REV-129): the trend line's change per session, signed, with its unit. */
+  formatChange(slope: number): string;
+}
+
+function change(decimals: number, unit: string): (slope: number) => string {
+  return (slope) => {
+    const r = Number(slope.toFixed(decimals));
+    const sign = r > 0 ? '+' : r < 0 ? '−' : '±';
+    return `${sign}${Math.abs(r).toFixed(decimals)}${unit === '%' ? '%' : ` ${unit}`} per session`;
+  };
 }
 
 /** §3: the charts, in order. The score's meaning depends on the target kind. */
@@ -90,6 +103,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: false,
       value: (p) => p.scorePercent,
       format: (v) => `${Math.round(v)}%`,
+      formatChange: change(1, '%'),
     },
     {
       id: 'group',
@@ -99,6 +113,17 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: false,
       value: (p) => p.groupMoa,
       format: (v) => `${v.toFixed(2)} MOA`,
+      formatChange: change(2, 'MOA'),
+    },
+    {
+      id: 'rms',
+      title: 'Accuracy (RMS)',
+      note: 'Root-mean-square distance of every shot from the centre, in mm; lower is closer',
+      unit: 'mm',
+      zeroLine: false,
+      value: (p) => p.rmsMm,
+      format: (v) => `${v.toFixed(1)} mm`,
+      formatChange: change(1, 'mm'),
     },
     {
       id: 'mpiX',
@@ -108,6 +133,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: true,
       value: (p) => p.mpiXMm,
       format: (v) => signed(v, 'right', 'left'),
+      formatChange: change(1, 'mm'),
     },
     {
       id: 'mpiY',
@@ -117,6 +143,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: true,
       value: (p) => p.mpiYMm,
       format: (v) => signed(v, 'high', 'low'),
+      formatChange: change(1, 'mm'),
     },
   ];
 }

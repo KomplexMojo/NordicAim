@@ -51,6 +51,16 @@ describe('sessionTrend', () => {
     expect(b!.mpiYMm).toBeCloseTo(25 / 3, 12);
   });
 
+  it('takes accuracy as the RMS distance of every shot in the session from the bullseye, in mm (REV-128)', () => {
+    const [a, b] = sessionTrend(points, 'precision');
+    expect(a!.rmsMm).toBeCloseTo(Math.sqrt((0 + 100) / 2), 12); // (0,0), (10,0)
+    expect(b!.rmsMm).toBeCloseTo(Math.sqrt((0 + 400 + 50) / 3), 12); // (0,0), (0,20), (5,5): pooled over targets
+    const rms = trendMetrics('precision').find((m) => m.id === 'rms')!;
+    expect(rms.value(a!)).toBe(a!.rmsMm);
+    expect(rms.format(7.071)).toBe('7.1 mm');
+    expect(rms.zeroLine).toBe(false);
+  });
+
   it('orders two sessions on one day by when they were created', () => {
     const early = pt({ sessionId: 'E', sessionStamp: '2026-09-01T08:00:00.000Z' });
     const late = pt({ sessionId: 'L', sessionStamp: '2026-09-01T18:00:00.000Z' });
@@ -70,13 +80,21 @@ describe('sessionTrend', () => {
 
 describe('trendMetrics', () => {
   it('names the score by the target kind, and marks only the MPI charts as signed around 0', () => {
-    expect(trendMetrics('precision').map((m) => m.title)).toEqual(['Score', 'Group size', 'MPI left / right', 'MPI up / down']);
+    expect(trendMetrics('precision').map((m) => m.title)).toEqual(['Score', 'Group size', 'Accuracy (RMS)', 'MPI left / right', 'MPI up / down']);
     expect(trendMetrics('sighting')[0]!.title).toBe('Hit rate');
-    expect(trendMetrics('precision').map((m) => m.zeroLine)).toEqual([false, false, true, true]);
+    expect(trendMetrics('precision').map((m) => m.zeroLine)).toEqual([false, false, false, true, true]);
+  });
+
+  it('writes the trend as a signed change per session in the metric unit (REV-129)', () => {
+    const [score, group, rms, x] = trendMetrics('precision');
+    expect(score!.formatChange(1.26)).toBe('+1.3% per session');
+    expect(group!.formatChange(-0.123)).toBe('−0.12 MOA per session');
+    expect(rms!.formatChange(-0.04)).toBe('±0.0 mm per session');
+    expect(x!.formatChange(0.45)).toBe('+0.5 mm per session');
   });
 
   it('formats the MPI with its direction', () => {
-    const [, , x, y] = trendMetrics('precision');
+    const [, , , x, y] = trendMetrics('precision');
     expect(x!.format(-3.14)).toBe('3.1 mm left');
     expect(x!.format(2)).toBe('2.0 mm right');
     expect(y!.format(-0.5)).toBe('0.5 mm low');

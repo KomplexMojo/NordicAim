@@ -1,9 +1,10 @@
-// analysis.md §5 (REV-124, issue #57): the trends on the coach image. Every metric shares one session axis — every session
-// that has shots in any view, oldest first — and carries one series per view, so the charts line up session for session.
-// Pure: no clock, no storage.
+// analysis.md §5 (REV-124, issue #57): the numbers behind the coach image. Every metric shares one session axis — every session
+// that has shots in any view, oldest first — and carries one series per view; the stamp covers these, and the image draws each
+// view's averages over them (`coachAverages`, REV-131). Pure: no clock, no storage.
 
 import { PATTERN_VIEWS, type PatternPoint, type PatternView } from '../patterns/collect';
 
+import { leastSquares } from './chart';
 import { sessionTrend, trendMetrics, type TrendMetricId, type TrendPoint } from './trend';
 
 export interface CoachSession {
@@ -30,6 +31,7 @@ export interface CoachTrends {
 const COACH_TITLE: Record<TrendMetricId, string> = {
   score: 'Score (precision: average ring %, sighting: hit rate %)',
   group: 'Group size (MOA at 50 m, mean per target)',
+  rms: 'Accuracy (RMS distance from the centre, mm)',
   mpiX: 'MPI left / right (mm, above 0 is right)',
   mpiY: 'MPI up / down (mm, above 0 is high)',
 };
@@ -68,4 +70,80 @@ export function coachTrends(pointsByView: Record<PatternView, PatternPoint[]>): 
     })),
   }));
   return { sessions: axis, metrics };
+}
+
+/** §5 (REV-131): one view's averages over the range, each session counted once (the mean of its session values). */
+export interface CoachAverages {
+  view: PatternView;
+  /** Sessions in the range with shots in this view. */
+  sessions: number;
+  values: Record<TrendMetricId, number | null>;
+  /** REV-132: each box's trend over the range; null below `MIN_TREND_SESSIONS` sessions with a value. */
+  trends: Record<AverageBox, CoachTrend | null>;
+}
+
+/** The boxes on the coach image: three numbers and the MPI (whose trend is its distance from the centre). */
+export type AverageBox = 'score' | 'group' | 'rms' | 'mpi';
+
+export interface CoachTrend {
+  direction: 'up' | 'flat' | 'down';
+  /** Whether the direction is an improvement: up for the score, down for the others; null when flat. */
+  improving: boolean | null;
+}
+
+/**
+ * REV-132: a change smaller than this is flat. The fitted change across the range (slope × sessions spanned) must reach 5% of
+ * the average, and at least a floor in the box's unit, so a wobble never shows as a trend.
+ */
+export const FLAT_SHARE = 0.05;
+export const FLAT_FLOOR: Record<AverageBox, number> = { score: 1, group: 0.02, rms: 0.5, mpi: 0.5 };
+
+export function trendOf(box: AverageBox, values: Array<number | null>): CoachTrend | null {
+  const fit = leastSquares(values);
+  if (fit === null) return null;
+  const present = values.filter((v): v is number => v !== null);
+  const average = present.reduce((a, b) => a + b, 0) / present.length;
+  const change = fit.slope * (fit.last - fit.first);
+  if (Math.abs(change) < Math.max(FLAT_SHARE * Math.abs(average), FLAT_FLOOR[box])) return { direction: 'flat', improving: null };
+  const direction = change > 0 ? 'up' : 'down';
+  return { direction, improving: box === 'score' ? direction === 'up' : direction === 'down' };
+}
+
+/**
+ * §5 (REV-131): what the coach image shows instead of the charts: per view, the average of every metric over the sessions
+ * that have a value, and one MPI scale for every MPI box, so an icon's place means the same in each.
+ */
+export function coachAverages(trends: CoachTrends): { views: CoachAverages[]; mpiScaleMm: number } {
+  const views = PATTERN_VIEWS.map((view) => {
+    const values = {} as Record<TrendMetricId, number | null>;
+    const series = {} as Record<TrendMetricId, Array<number | null>>;
+    let sessions = 0;
+    for (const m of trends.metrics) {
+      series[m.id] = m.series.find((s) => s.view === view)?.values ?? [];
+      const present = series[m.id].filter((v): v is number => v !== null);
+      values[m.id] = present.length === 0 ? null : present.reduce((a, b) => a + b, 0) / present.length;
+      if (m.id === 'mpiX') sessions = present.length;
+    }
+    // The MPI's trend is its distance from the centre, session by session: up is drifting away, down is closing in.
+    const distance = series.mpiX.map((x, i) => {
+      const y = series.mpiY[i];
+      return x === null || y === null || y === undefined ? null : Math.hypot(x, y);
+    });
+    const boxTrends: Record<AverageBox, CoachTrend | null> = {
+      score: trendOf('score', series.score),
+      group: trendOf('group', series.group),
+      rms: trendOf('rms', series.rms),
+      mpi: trendOf('mpi', distance),
+    };
+    return { view, sessions, values, trends: boxTrends };
+  });
+  const offsets = views.flatMap((v) => [v.values.mpiX, v.values.mpiY]).filter((v): v is number => v !== null);
+  return { views, mpiScaleMm: mpiScale(offsets.length === 0 ? 0 : Math.max(...offsets.map(Math.abs))) };
+}
+
+/** The MPI boxes' half-width: the first of these at least 15% past the largest offset, so no icon sits on the edge. */
+export const MPI_SCALES_MM = [5, 10, 20, 50, 100, 200, 500] as const;
+
+export function mpiScale(largestMm: number): number {
+  return MPI_SCALES_MM.find((s) => s >= largestMm * 1.15) ?? 500;
 }

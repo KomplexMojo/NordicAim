@@ -1,3 +1,4 @@
+import { ViewMark } from '@/components/patterns/ViewMark';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,11 +58,12 @@ function OverrideRow({
             key={option.label}
             type="button"
             variant={option.value === value ? 'default' : 'outline'}
-            className="h-11 flex-1 px-2 text-xs"
+            className="h-11 flex-1 gap-1 px-2 text-xs"
             aria-pressed={option.value === value}
             data-testid={`override-${option.label.toLowerCase()}`}
             onClick={() => onChange(option.value)}
           >
+            {option.value !== null && <ViewMark kind={option.value} className="size-4" />}
             {option.label}
           </Button>
         ))}

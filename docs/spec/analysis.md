@@ -28,11 +28,18 @@ in the view has no point.
 | **Score** (precision) | the average ring over the session's shots, as a percentage of 10: the Patterns score star (`patternsScorePercent`) |
 | **Hit rate** (sighting) | the share of the session's shots in the hit zone (`hit` or `clean`): the Patterns score star |
 | **Group size** | the **mean of each target's extreme spread**, in MOA at 50 m. A target with fewer than two distinct shots has no spread and is skipped; with none left, the session has no value |
+| **Accuracy (RMS)** (REV-128) | the **root-mean-square distance of every shot in the session from the bullseye**, `sqrt(mean(x² + y²))` in mm: the target screen's accuracy (`accuracyRmse`, REV-60), pooled over the session's shots. Lower is closer |
 | **MPI left / right** | the mean point of impact of every shot in the session, x in mm (+ right) |
 | **MPI up / down** | the same, y in mm (+ high) |
 
 The group size averages each target's spread rather than spreading the whole session: shots from different targets would
-otherwise add the drift between them to the group.
+otherwise add the drift between them to the group. Accuracy needs no such care: every shot is measured from the same fixed
+point, the bullseye, so pooling the session's shots is exact.
+
+Accuracy (RMS) is one number for "how far from the centre", combining how big the group is and how far off centre it sits
+(RMS² = MPI offset² + the shots' mean squared distance from their own centre). Unlike the score it is not rounded to rings or
+zones, so it keeps moving when most shots already score 10 or hit; unlike the two MPI charts it has no sign, and lower is
+always better. It uses every shot, not just the widest two, so it is steadier from session to session than the group size.
 
 ## 4. Charts
 
@@ -48,6 +55,19 @@ otherwise add the drift between them to the group.
 - **Show data** opens a table of every session and value as text: the accessible view of the same numbers.
 - With one session in the range, the charts still draw that point, and the screen says a trend needs at least two.
 
+## 4a. Trend lines (REV-129, owner 2026-09-28)
+
+- Every chart with **at least 3 sessions** that have a value (`MIN_TREND_SESSIONS`) gets a **trend line**: the ordinary
+  least-squares fit of the value on the session's **index**, the same evenly spaced x the chart uses (§4), over the
+  sessions that have a value (`leastSquares`, `chart.ts`). Two points would only restate the line between them.
+- It runs from the first to the last session with a value, **dashed** (1.5 px, `5 3`) in the text colour so it never
+  reads as another series, drawn over the data line. A fitted end that falls past the chart's domain is **clipped** to it;
+  the domain is not widened, because several series can share one (§5).
+- Under the chart's note it is written out as a signed change per session in the metric's unit (`formatChange`):
+  `Trend: +1.3% per session`, `−0.12 MOA per session`, `−0.3 mm per session`; `±` when it rounds to zero. The slope
+  is per session, not per day, because sessions are spaced evenly. The words stay neutral: for Score and Hit rate up is
+  better, for Group size and Accuracy down is better, and for the MPI charts better is towards 0.
+
 ## 5. The coach image (REV-124, owner 2026-09-27)
 
 > "Create an aggregate image like we have on the brag sheet, but … the trending analysis charts on the same image down below
@@ -61,32 +81,45 @@ otherwise add the drift between them to the group.
   until Share. The card is shown when any view has shots, and it resets when the range changes.
 - **Covers:** the screen's **date range** (§1), for every view. The Patterns drawings use every recorded shot's size
   factor, so they match the Patterns screen.
-- **Layout** (`render/trends-sheet.ts`, `render/trends-band.ts`), 1440 wide, drawn at exactly the size it is rasterised:
+- **Layout** (`render/trends-sheet.ts`, `render/trends-averages.ts`), 1440 wide, drawn at exactly the size it is rasterised:
   - **Header** (120): `Shooting trends`, the range and generation time, and the NordicAim wordmark and mark.
   - **Grid** (1440): the four Patterns drawings in the order Sight in, Confirm (top), Precision prone, Precision standing
     (bottom). Each has its view mark (REV-122), name and totals (score or hit rate, shots, sessions), or `No shots in
     this range`.
-  - **Trends band** (170 + 300 per chart + 10):
-    - a title, the session count and span, and a legend showing each view's mark and line colour;
-    - one **full-width chart per metric** (§3), each with **one line per view**, all on **one shared session axis**: a
-      session sits at the same x in every chart, evenly spaced, with up to 8 dates (always the first and the last);
-    - all four lines of a chart share one y axis (`chartGeometry`'s `domainFrom`), with a zero line on the MPI charts;
-    - a column at the right gives each view's latest value;
-    - points are marked while there are ≤ 40 sessions. Past that the line alone reads better, but a lone point between
-      gaps is always marked.
+  - **Averages band** (150 + 270 per view + 10; REV-131, owner 2026-09-28, in place of the trend charts, which stay on the
+    Analysis screen):
+    - the title `Averages in this range`, the session count and span, `each session counted once` and `charts over time are
+      on the Analysis screen`, then the arrows' key (REV-132);
+    - **one row per view**, in the grid's order: the view's mark, its name (two lines when it is two words and long) and
+      its session count, or `No shots in this range`;
+    - three small **number boxes** (270 × 245): **Score** (precision) or **Hit rate** (sighting), **Group size** and
+      **Accuracy (RMS)**, each the view's **average** over the range (`coachAverages`: the mean of its session values,
+      each session counted once), formatted as on the Analysis screen, with a one-line note; `—` with no value;
+    - an **MPI box**: a simulated bullseye (two rings, at half and all of the scale, and a centre dot) on axes, **+x right
+      and +y up**, with the ends labelled in mm; the **view's own mark** sits at the view's average MPI (x = mean of the
+      session MPI x, y likewise), and under it the offset in words (`10.0 mm right · 2.0 mm low`);
+    - every MPI box shares **one scale** (`mpiScale`): the first of 5, 10, 20, 50, 100, 200, 500 mm that is at least 15%
+      past the largest average offset of any view, so a mark never sits on the edge and positions compare across boxes;
+    - **trend arrows** (REV-132, owner 2026-09-28): each box, from **3 sessions** with a value (as §4a), carries a small
+      arrow at its top right that shows only the direction of the least-squares trend over the range (`trendOf`, the same
+      fit as §4a): tilted **up** 30°, **level**, or tilted **down** 30°. The MPI box's arrow is the trend of the MPI's
+      **distance from the centre** (per session `hypot(x, y)`): up is drifting away, down is closing in.
+      - **Flat** when the fitted change across the range (slope × sessions spanned) is under **5% of the average** or
+        under a floor in the box's unit (`FLAT_FLOOR`: score 1 %, group 0.02 MOA, accuracy and MPI 0.5 mm), whichever
+        is larger, so a wobble never reads as a trend.
+      - **Colour** says whether it is an improvement (`TREND_COLOUR`): green `#1E8E4E` improving (a score going up;
+        a group, accuracy or MPI distance going down), red `#C8452F` worsening, grey `#5B6775` steady. The direction always
+        carries the trend too, and each arrow has a `<title>` in words.
   - **Footer** (110): the athlete line `Athlete: <name> · <club> · Stamp: <stamp>` (REV-100, when set) and the credit
     `Generated by NordicAim created by KomplexMojo release <sha>`.
-- **Colours:** the reference categorical palette's first four slots (Sight in blue `#2a78d6`, Confirm orange `#eb6834`,
-  Prone aqua `#1baf7a`, Standing yellow `#eda100`), validated on the panel `#EAF2F8` with the dataviz validator.
-  Lightness, chroma, CVD (worst adjacent ΔE 9.1) and normal-vision separation all pass. Three are below 3:1 contrast, so
-  every series is also named, with its view mark, in the legend and in the latest-value column: colour is never the
-  only key.
+- **Colour:** each row is keyed by the view's mark and name, so the image needs no series colours.
 - **Stored** as blobs `trends:<id>:png` and `trends:<id>:json`. The sidecar holds the range, session count, renderer
   version, sha256 and the stamped payload; it has no image data and no GPS. The newest **3** are kept
   (`KEEP_TRENDS_IMAGES`), and backups copy them like every blob. `TrendsArtifact` is branded only in
   `composite/trends-build.ts`.
 - **Stamp:** with a key set, the image is stamped over `buildTrendsPayload` (`provenance/payload-trends.ts`): the
-  athlete, the range, the release, the time, and every number the trends band draws. `#/verify` does not yet recognise
+  athlete, the range, the release, the time, and every session value per view and metric (REV-131: the image draws their
+  averages, which follow from them). `#/verify` does not yet recognise
   trends stamps (it looks up session summaries).
 
 ## 6. Not in this version

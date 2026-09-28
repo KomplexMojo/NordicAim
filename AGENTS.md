@@ -120,6 +120,7 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
 | `pnpm check` | typecheck + lint + unit tests + privacy check (every milestone's gate) |
 | `pnpm test` | Vitest unit tests |
 | `pnpm test:e2e` | Playwright (mobile Chromium + mobile WebKit) |
+| `pnpm docs:screens` | Regenerate the README and guide screenshots (`docs/assets/`) from the fake-camera demo data |
 
 iPhone testing: push to `main`, then open `https://komplexmojo.github.io/NordicAim/` (use `#/diagnostics` for checks).
 
@@ -135,7 +136,8 @@ src/lib/domain/                zod schemas, types, categorization helpers, statu
 src/lib/defaults/              biathlon profile + template geometry
 src/lib/geometry/              mm<->px transforms, calibration scaling
 src/lib/scoring/               pure scoring, groups, splits, missing-round modes, characteristics (observed patterns)
-src/lib/backup/  src/lib/patterns/   backup create/restore/verify (REV-63); cross-session Patterns collect/summarize
+src/lib/backup/  src/lib/patterns/   backup create/restore/verify/rebuild (REV-63, REV-125/126); cross-session Patterns collect/summarize
+src/lib/analysis/              Analysis trends (trend, chart incl. least-squares), coach image data and averages (REV-123/124, REV-128–132)
 src/lib/capture/               overlay.ts (pure), camera.ts, fake-camera.ts, wake-lock-browser.ts
 src/lib/media/                 format, capture-time, image-stats, lighting (pure); exif.ts; image-browser.ts
 src/lib/store/                 db.ts + repositories (idb) + persistence-browser.ts
