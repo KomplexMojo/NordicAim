@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { coachAverages, coachTrends, mpiScale, trendOf } from '@/lib/analysis/coach';
 import { PATTERN_VIEWS, type PatternPoint, type PatternView } from '@/lib/patterns/collect';
 import { summarizePatterns } from '@/lib/patterns/summarize';
-import { shortDate, TREND_COLOUR } from '@/lib/render/trends-averages';
+import { placeMpi, shortDate, TREND_COLOUR } from '@/lib/render/trends-averages';
 import { renderTrendsSheet, type TrendsSheetInput } from '@/lib/render/trends-sheet';
 
 // analysis.md §5 (REV-124, REV-131): the coach image: the four Patterns drawings, then each view's averages in small boxes.
@@ -77,21 +77,25 @@ describe('renderTrendsSheet', () => {
 });
 
 describe('the MPI boxes (REV-131)', () => {
-  it('share one scale: the first of 5, 10, 20, 50 … mm at least 15% past the largest offset', () => {
+  it('share one scale: the first of 5, 10, 15, 20, 25 mm at least 15% past the largest offset, never wider than 25', () => {
     expect(mpiScale(0)).toBe(5);
     expect(mpiScale(4.3)).toBe(5);
     expect(mpiScale(4.4)).toBe(10);
-    expect(mpiScale(12)).toBe(20);
-    expect(mpiScale(600)).toBe(500);
+    expect(mpiScale(12)).toBe(15);
+    expect(mpiScale(17)).toBe(20);
+    expect(mpiScale(18)).toBe(25);
+    // REV-134: never wider than ±25 mm.
+    expect(mpiScale(22)).toBe(25);
+    expect(mpiScale(600)).toBe(25);
     expect(coachAverages(input(3).trends).mpiScaleMm).toBe(5);
   });
 
   it('place the view\'s mark at its average MPI, +x right and +y up on the drawing', () => {
-    // An offset of (+10, −2) mm on a ±20 mm box: the mark's centre is 10/20 of the half-size right and 2/20 below the centre.
+    // An offset of (+10, −2) mm on a ±15 mm box.
     const byView = sessions(1);
     for (const view of PATTERN_VIEWS) byView[view] = byView[view].map((p) => ({ ...p, xMm: 10, yMm: -2 }));
     const trends = coachTrends(byView);
-    expect(coachAverages(trends).mpiScaleMm).toBe(20);
+    expect(coachAverages(trends).mpiScaleMm).toBe(15);
     const { svg } = renderTrendsSheet({ ...input(1), trends });
     const start = svg.indexOf('data-view="confirm" data-metric="mpi"');
     const box = svg.slice(start, svg.indexOf('class="averages-row"', start));
@@ -99,8 +103,10 @@ describe('the MPI boxes (REV-131)', () => {
     const cx = Number(box.match(/<circle cx="([\d.]+)" cy="([\d.]+)" r="75"/)![1]);
     const cy = Number(box.match(/<circle cx="([\d.]+)" cy="([\d.]+)" r="75"/)![2]);
     const s = 30 / 48;
-    expect(Number(tx) + 48 * s).toBeCloseTo(cx + 37.5, 1);
-    expect(Number(ty) + 46 * s).toBeCloseTo(cy + 7.5, 1);
+    // On ±15 mm: 10/15 of the 75 px half-size right, 2/15 of it down.
+    expect(Number(tx) + 48 * s).toBeCloseTo(cx + 50, 1);
+    expect(Number(ty) + 46 * s).toBeCloseTo(cy + 10, 1);
+    expect(box).not.toContain('mpi-off-scale');
     expect(box).toContain('10.0 mm right · 2.0 mm low');
     expect(box).toContain('data-role="confirm"');
   });
@@ -143,14 +149,44 @@ describe('the MPI box shows each session, not only the average (REV-133)', () =>
     const byView = sessions(2);
     const side = [-30, 30];
     byView['precision-standing'] = byView['precision-standing'].map((p) => ({ ...p, xMm: side[Number(p.sessionId.slice(1))]!, yMm: 0 }));
-    // The average is 0, but the sessions sit 30 mm out: the scale is 50, not 5.
-    expect(coachAverages(coachTrends(byView)).mpiScaleMm).toBe(50);
+    // The average is 0, but the sessions sit 30 mm out: the scale is the widest, 25 mm, not 5.
+    expect(coachAverages(coachTrends(byView)).mpiScaleMm).toBe(25);
   });
 
   it('gives no typical distance for a single session', () => {
     const { svg } = renderTrendsSheet(input(1));
     expect(svg).not.toContain('sessions typically');
     expect(svg.match(/class="mpi-session"/g)).toHaveLength(4);
+  });
+});
+
+describe('an MPI past the ±25 mm scale (REV-134)', () => {
+  it('is pinned just inside the rim, in its own direction, and flagged', () => {
+    expect(placeMpi(10, 0, 25, 0)).toEqual({ dx: 30, dy: -0, offScale: false });
+    // 34.4 mm low on ±25: pinned straight down, 24 px in from the 75 px rim.
+    const low = placeMpi(0, -34.4, 25, 24);
+    expect(low.offScale).toBe(true);
+    expect(low.dx).toBeCloseTo(0, 9);
+    expect(low.dy).toBeCloseTo(51, 9);
+    // Diagonal: the direction is kept.
+    const diag = placeMpi(30, 30, 25, 4);
+    expect(diag.dx).toBeCloseTo(71 / Math.SQRT2, 9);
+    expect(diag.dy).toBeCloseTo(-71 / Math.SQRT2, 9);
+  });
+
+  it('draws an outward arrowhead for the mark, and keeps the exact offset in words', () => {
+    const byView = sessions(3);
+    byView['precision-standing'] = byView['precision-standing'].map((p) => ({ ...p, xMm: 0, yMm: -34.4 }));
+    const { svg } = renderTrendsSheet({ ...input(3), trends: coachTrends(byView) });
+    const start = svg.indexOf('data-view="precision-standing" data-metric="mpi"');
+    const box = svg.slice(start);
+    expect(box).toContain('class="mpi-off-scale"');
+    expect(box).toContain('rotate(90)'); // straight down in the drawing
+    expect(box).toContain('>avg centred · 34.4 mm low<');
+    expect(box).toContain('+25 mm');
+    // Views inside the scale have no arrowhead.
+    const prone = svg.slice(svg.indexOf('data-view="precision-prone" data-metric="mpi"'), start);
+    expect(prone).not.toContain('mpi-off-scale');
   });
 });
 
