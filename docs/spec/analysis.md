@@ -9,7 +9,7 @@ Code: `src/lib/analysis/trend.ts` and `chart.ts` (pure), `src/routes/analysis/An
 
 ## 1. Where it lives, views and ranges (owner, 2026-09-27)
 
-- Route **`#/analysis`**, reached from an **Analysis** icon in the app header, beside **Patterns** (a small line chart).
+- Route **`#/analysis`**, reached from the **Analysis** tab (a small line chart) on the bottom tab bar, beside **Patterns** (REV-136; it was a header icon until then).
 - The same four views as Patterns (`patterns.md` §1): **Sight in**, **Confirm**, **Precision prone**, **Precision
   standing**. They use the same buttons (`ViewRangeControls`).
 - The same date ranges and buttons as Patterns (`patterns.md` §3): latest session, this week, 30 days, 90 days, all time.

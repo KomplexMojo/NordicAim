@@ -29,9 +29,11 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/analysis` | Analysis: trends over time, one data point per session, with the Patterns views and date ranges (`analysis.md`, REV-123) | — |
 | `#/diagnostics` | Device capability checks | M01 |
 
-**Three main screens (REV-47).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has three tabs of at
-least 44 px, each an icon and a label, with the active one marked: **Shooting** (`#/` and every `#/sessions/...` and
-`#/review/...` route), **Settings** (`#/settings`) and **Diagnostics** (`#/diagnostics`). It is **hidden on the full-screen
+**Three main screens (REV-47, REV-136).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has three tabs of at
+least 44 px, each an icon and a label, with the active one marked: **Sessions** (`#/` and every `#/sessions/...` and
+`#/review/...` route), **Analysis** (`#/analysis`) and **Patterns** (`#/patterns`). **Settings** is a gear with its label at the
+right of the header, marked on `#/settings` and `#/diagnostics`, where no tab is marked. **Diagnostics** is opened from Settings
+(About) and links back to it. The bar is **hidden on the full-screen
 capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`, `#/settings/template-sheet/:template`). Scrolling content is padded by the bar's height plus
 the safe-area inset so the bar never covers it.
 

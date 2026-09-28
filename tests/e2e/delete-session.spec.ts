@@ -123,7 +123,7 @@ test('there is no separate Sessions screen: the old address lands on Home, which
   await expect(page).toHaveURL(/#\/$/);
   // All seven, not just the most recent few, each with Delete.
   await expect(page.getByTestId('session-delete')).toHaveCount(7);
-  await expect(page.getByTestId('open-patterns')).toBeVisible();
+  await expect(page.getByTestId('tab-patterns')).toBeVisible();
 });
 
 test('the slide can be done from the keyboard: a tap of Enter does nothing, holding it deletes (#27)', async ({ page }) => {

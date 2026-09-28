@@ -134,21 +134,29 @@ function shotRadius(shot: Shot, radiusPx: number): number {
   return shot.multiplicity > 1 ? radiusPx * 1.25 : radiusPx;
 }
 
-/** §3 item 6: the group ellipse, drawn at its own centre (== the subset's MPI). */
+/** Group ellipse line widths (REV-137): wide enough to survive the coach image's and the cells' downscaling. */
+export const ELLIPSE_STROKE = { line: 4, halo: 8, haloOpacity: 0.55 } as const;
+
+/**
+ * §3 item 6: the group ellipse, drawn at its own centre (== the subset's MPI). REV-137 (issue #70): a bright blue line over a
+ * wider, translucent dark halo, so it stands out on the black disc (the blue) and on white paper (the halo's edges).
+ */
 export function renderGroupEllipse(ellipse: GroupEllipse | null, cx: number, cy: number, s: number): string {
   if (ellipse === null) return '';
   const { x, y } = projectMm(cx, cy, s, ellipse.cxMm, ellipse.cyMm);
-  return el('ellipse', {
+  const shape = {
     cx: x,
     cy: y,
     rx: ellipse.rxMm * s,
     ry: ellipse.ryMm * s,
-    stroke: PALETTE.ellipse,
-    'stroke-width': 2,
     fill: 'none',
     // negative: CCW target angle → clockwise SVG rotation (rendering-composite.md §3 item 6).
     transform: `rotate(${num(-ellipse.angleDeg)} ${num(x)} ${num(y)})`,
-  });
+  };
+  return (
+    el('ellipse', { ...shape, stroke: PALETTE.ellipseHalo, 'stroke-opacity': ELLIPSE_STROKE.haloOpacity, 'stroke-width': ELLIPSE_STROKE.halo }) +
+    el('ellipse', { ...shape, stroke: PALETTE.ellipse, 'stroke-width': ELLIPSE_STROKE.line, class: 'group-ellipse' })
+  );
 }
 
 /** §3 item 8: the `all`-subset MPI marker (a ±14px cross and a dot). Its label is drawn by `renderMarkerLabels`. */

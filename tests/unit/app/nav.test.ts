@@ -1,15 +1,15 @@
-// REV-47 (analysis-pipeline §1): which main tab a route belongs to, and where the tab bar is hidden.
+// REV-47 (analysis-pipeline §1), REV-136: which main tab a route belongs to, and where the tab bar is hidden.
 
 import { describe, expect, it } from 'vitest';
 
-import { MAIN_TABS, activeTab, showsTabBar } from '@/lib/app/nav';
+import { MAIN_TABS, activeTab, inSettings, showsTabBar } from '@/lib/app/nav';
 
 describe('MAIN_TABS', () => {
-  it('is Sessions, Settings, Diagnostics in that order', () => {
+  it('is Sessions, Analysis, Patterns in that order', () => {
     expect(MAIN_TABS.map((t) => [t.label, t.to])).toEqual([
       ['Sessions', '/'],
-      ['Settings', '/settings'],
-      ['Diagnostics', '/diagnostics'],
+      ['Analysis', '/analysis'],
+      ['Patterns', '/patterns'],
     ]);
   });
 });
@@ -30,10 +30,17 @@ describe('activeTab', () => {
     }
   });
 
-  it('marks Settings and Diagnostics', () => {
-    expect(activeTab('/settings')).toBe('settings');
-    expect(activeTab('/settings/backing-card')).toBe('settings');
-    expect(activeTab('/diagnostics')).toBe('diagnostics');
+  it('marks Analysis and Patterns', () => {
+    expect(activeTab('/analysis')).toBe('analysis');
+    expect(activeTab('/patterns')).toBe('patterns');
+  });
+
+  it('marks no tab on Settings and Diagnostics, which belong to the header gear', () => {
+    for (const path of ['/settings', '/settings/backing-card', '/diagnostics']) {
+      expect(activeTab(path)).toBeNull();
+      expect(inSettings(path)).toBe(true);
+    }
+    for (const path of ['/', '/analysis', '/patterns', '/sessions/abc', '/settingsx']) expect(inSettings(path)).toBe(false);
   });
 });
 

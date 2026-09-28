@@ -34,7 +34,7 @@ function ServicesLayout() {
 }
 
 /**
- * REV-47 (analysis-pipeline §1): every screen sits above the three-tab bar, except the full-screen capture
+ * REV-47 (analysis-pipeline §1), REV-136: every screen sits above the three-tab bar, except the full-screen capture
  * screens. The page is padded by the bar's height plus the safe-area inset so the bar never covers content.
  */
 function AppShell() {

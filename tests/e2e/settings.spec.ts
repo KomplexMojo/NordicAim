@@ -28,35 +28,53 @@ async function createSessionViaHome(page: Page): Promise<string> {
   return match[1];
 }
 
-async function expectActive(page: Page, tab: 'shooting' | 'settings' | 'diagnostics') {
-  for (const id of ['shooting', 'settings', 'diagnostics']) {
+async function expectActive(page: Page, tab: 'shooting' | 'analysis' | 'patterns' | null) {
+  for (const id of ['shooting', 'analysis', 'patterns']) {
     const link = page.getByTestId(`tab-${id}`);
     if (id === tab) await expect(link).toHaveAttribute('aria-current', 'page');
     else await expect(link).not.toHaveAttribute('aria-current', 'page');
   }
+  // REV-136: the header's gear is marked on Settings and Diagnostics, where no tab is.
+  const gear = page.getByTestId('open-settings');
+  if (tab === null) await expect(gear).toHaveAttribute('aria-current', 'page');
+  else await expect(gear).not.toHaveAttribute('aria-current', 'page');
 }
 
-test('the three tabs navigate and mark the active one', async ({ page }) => {
+test('the three tabs navigate and mark the active one; the header gear opens Settings, and Settings opens Diagnostics (REV-136)', async ({ page }) => {
   await page.goto('/#/');
   const bar = page.getByTestId('tab-bar');
   await expect(bar).toBeVisible();
   await expectActive(page, 'shooting');
 
   // Each target is at least 44 px (AGENTS.md style).
-  for (const id of ['shooting', 'settings', 'diagnostics']) {
-    const box = await page.getByTestId(`tab-${id}`).boundingBox();
+  for (const target of ['tab-shooting', 'tab-analysis', 'tab-patterns', 'open-settings']) {
+    const box = await page.getByTestId(target).boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
   }
+  // Settings and Diagnostics are no longer tabs.
+  await expect(bar.getByRole('link', { name: 'Settings' })).toHaveCount(0);
+  await expect(bar.getByRole('link', { name: 'Diagnostics' })).toHaveCount(0);
 
-  await bar.getByRole('link', { name: 'Settings' }).click();
+  await bar.getByRole('link', { name: 'Analysis' }).click();
+  await page.waitForURL(/#\/analysis$/);
+  await expectActive(page, 'analysis');
+
+  await bar.getByRole('link', { name: 'Patterns' }).click();
+  await page.waitForURL(/#\/patterns$/);
+  await expectActive(page, 'patterns');
+
+  await page.getByTestId('open-settings').click();
   await page.waitForURL(/#\/settings$/);
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-  await expectActive(page, 'settings');
+  await expectActive(page, null);
 
-  await bar.getByRole('link', { name: 'Diagnostics' }).click();
+  await page.getByTestId('open-diagnostics').click();
   await page.waitForURL(/#\/diagnostics$/);
-  await expectActive(page, 'diagnostics');
+  await expect(page.getByRole('heading', { name: 'Diagnostics', level: 1 })).toBeVisible();
+  await expectActive(page, null);
+  await page.getByTestId('diagnostics-back').click();
+  await page.waitForURL(/#\/settings$/);
 
   await bar.getByRole('link', { name: 'Sessions' }).click();
   await page.waitForURL(/#\/$/);
@@ -158,8 +176,8 @@ test('hole size: a new value is kept, and Reset returns 5.6', async ({ page }) =
 
 test('About shows the app name and the build', async ({ page }) => {
   await page.goto('/#/settings');
-  // M15's AppHeader also shows "NordicAim", so scope this to the page's own About section.
-  await expect(page.getByRole('main').getByText('NordicAim')).toBeVisible();
+  // M15's AppHeader and other Settings text also say "NordicAim", so scope this to the About section itself.
+  await expect(page.locator('[aria-labelledby="settings-about-title"]').getByText('NordicAim', { exact: true })).toBeVisible();
   await expect(page.getByTestId('build-version')).not.toHaveText('');
 });
 

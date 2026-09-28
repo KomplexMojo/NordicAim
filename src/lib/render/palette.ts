@@ -18,6 +18,8 @@ export const PALETTE = {
   shotProne: '#E8604C',
   shotStanding: '#8A5CF6',
   mpi: '#C8452F',
-  ellipse: '#2F7FB0',
+  // REV-137 (issue #70): a brighter blue, drawn over `ellipseHalo`, so the group ellipse reads on the black disc and white paper alike.
+  ellipse: '#3AA8F8',
+  ellipseHalo: '#0E2A40',
   header: '#1F2630',
 } as const;

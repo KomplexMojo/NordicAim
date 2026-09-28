@@ -1,4 +1,3 @@
-import { Settings, Stethoscope } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Link } from 'react-router';
 
@@ -15,19 +14,42 @@ function SessionsIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** REV-123: Analysis, a rising line on axes (moved from the header by REV-136). */
+function AnalysisIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 4v16h16" />
+      <path d="M7 15l4-4 3 3 5-6" />
+    </svg>
+  );
+}
+
+/** REV-109: Patterns, a scatter of shots in a ring (moved from the header by REV-136). */
+function PatternsIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="9" cy="10" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="14" cy="9" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="14" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="14.5" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 const ICONS: Record<MainTab, ComponentType<SVGProps<SVGSVGElement>>> = {
   shooting: SessionsIcon,
-  settings: Settings,
-  diagnostics: Stethoscope,
+  analysis: AnalysisIcon,
+  patterns: PatternsIcon,
 };
 
 /**
- * REV-47 (analysis-pipeline §1): the three main screens, one tap apart. Fixed to the bottom, clear of
+ * REV-47 (analysis-pipeline §1), REV-136: the three main screens (Sessions, Analysis, Patterns), one tap apart. Fixed to the bottom, clear of
  * the home indicator (`env(safe-area-inset-bottom)`), three targets of at least 44 px, each an icon
- * and a label, the active one marked. The layout (`AppShell` in `src/app/router.tsx`) pads the page so the bar
+ * and a label, the active one marked (none on Settings and Diagnostics, which the header's gear opens). The layout (`AppShell` in `src/app/router.tsx`) pads the page so the bar
  * never covers content.
  */
-export function TabBar({ active }: { active: MainTab }) {
+export function TabBar({ active }: { active: MainTab | null }) {
   return (
     <nav
       aria-label="Main"

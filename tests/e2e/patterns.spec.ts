@@ -22,7 +22,7 @@ test('two demo sessions overlay on the right views, the range filter and the dra
   }
 
   await page.goto('/#/');
-  await page.getByTestId('open-patterns').click();
+  await page.getByTestId('tab-patterns').click();
   await expect(page).toHaveURL(/#\/patterns$/);
 
   // One sighting target per demo session: both are each session's first, so Sight in holds both and Confirm none.
