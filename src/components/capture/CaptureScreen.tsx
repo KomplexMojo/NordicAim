@@ -152,7 +152,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
       </header>
 
       <div className="px-2 pb-2">
-        <TargetKindPicker kind={kind} onChange={(k) => updatePrefs({ kind: k })} className="flex-wrap justify-center" />
+        <TargetKindPicker kind={kind} onChange={(k) => updatePrefs({ kind: k })} />
       </div>
 
       <div className="relative min-h-0 flex-1">

@@ -32,6 +32,8 @@ test('two demo sessions give one point per session on each chart, the ranges fil
   await expect(page.getByTestId('open-analysis')).toHaveAttribute('aria-current', 'page');
 
   // Sight in: each demo session's first sighting target, so two sessions.
+  // REV-130: each view button carries its kind's mark.
+  await expect(page.getByTestId('analysis-view-confirm').getByTestId('view-mark')).toHaveAttribute('data-kind', 'confirm');
   await page.getByTestId('analysis-view-sight-in').click();
   await expect(page.getByTestId('analysis-counts')).toHaveText('Sight in: 2 sessions · 2 targets');
   for (const id of ['score', 'group', 'rms', 'mpiX', 'mpiY']) {

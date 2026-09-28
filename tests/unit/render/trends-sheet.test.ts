@@ -67,6 +67,18 @@ describe('renderTrendsSheet', () => {
     expect(renderTrendsSheet(input(2)).svg).not.toContain('dashed: the trend');
   });
 
+  it('gives each view its average over the range beside each chart, and its trend from three sessions (REV-130)', () => {
+    const three = renderTrendsSheet(input(3)).svg;
+    expect(three.match(/Average and trend in this range/g)).toHaveLength(5);
+    // Every session has the same three shots (ring 9, in the hit zone): each view's score is flat, 100% for sighting and 90%.
+    expect(three.match(/Sight in: avg 100%/g)).toHaveLength(1);
+    expect(three.match(/Prone: avg 90%/g)).toHaveLength(1);
+    expect(three.match(/: avg /g)).toHaveLength(5 * 4);
+    expect(three.match(/>trend /g)).toHaveLength(5 * 4);
+    expect(three).toContain('trend ±0.0% per session');
+    expect(renderTrendsSheet(input(2)).svg.match(/>trend /g)).toBeNull();
+  });
+
   it('still renders with no sessions in the range', () => {
     const out = renderTrendsSheet(input(0));
     expect(out.svg).toContain('No sessions in this range');

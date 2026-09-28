@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+
+import { ViewMark } from './ViewMark';
 import { PATTERN_RANGE_LABEL, PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 
 const PATTERN_RANGES = (Object.keys(PATTERN_RANGE_LABEL) as PatternRange[]).map((id) => ({ id, label: PATTERN_RANGE_LABEL[id] }));
@@ -29,6 +31,7 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
             data-testid={`${testIdPrefix}-view-${id}`}
             onClick={() => onView(id)}
           >
+            <ViewMark kind={id} />
             {PATTERN_VIEW_LABEL[id]}
           </Button>
         ))}

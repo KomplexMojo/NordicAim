@@ -1,7 +1,7 @@
 // analysis.md §5 (REV-124): the trends band of the coach image — a legend, then one full-width chart per metric, every
 // chart on the same session axis so a session sits at the same x in all of them. Pure SVG.
 
-import { chartGeometry, MIN_TREND_SESSIONS, type ChartBox } from '../analysis/chart';
+import { chartGeometry, leastSquares, MIN_TREND_SESSIONS, type ChartBox } from '../analysis/chart';
 import type { CoachMetric, CoachTrends } from '../analysis/coach';
 import type { PatternView } from '../patterns/collect';
 
@@ -15,7 +15,7 @@ export const TRENDS_WIDTH = 1440;
  * The four views' line colours: the reference categorical palette's first four slots, in order. Validated on the image
  * panel (#EAF2F8) with the dataviz validator: lightness, chroma, CVD (worst adjacent ΔE 9.1) and normal-vision checks
  * pass. Three sit below 3:1 contrast, so every series is also named in the legend (with its view mark) and in the
- * latest-value column: colour is never the only key.
+ * value column: colour is never the only key.
  */
 export const SERIES_COLOUR: Record<PatternView, string> = {
   'sight-in': '#2a78d6',
@@ -79,6 +79,7 @@ function chart(metric: CoachMetric, sessions: CoachTrends['sessions'], top: numb
   const everything = metric.series.flatMap((s) => s.values);
   const marked = sessions.length <= MAX_MARKED_SESSIONS;
   let out = text(MARGIN, 28, 22, metric.title, { bold: true, color: PALETTE.textPrimary });
+  out += text(TRENDS_WIDTH - MARGIN - VALUE_COLUMN + 24, 40, 14, 'Average and trend in this range', { color: PALETTE.textSecondary });
 
   const base = chartGeometry(sessions.map(() => null), box, metric.zeroLine, 4, everything);
   for (const t of base.yTicks) {
@@ -114,14 +115,18 @@ function chart(metric: CoachMetric, sessions: CoachTrends['sessions'], top: numb
       const alone = series.values[p.index - 1] == null && series.values[p.index + 1] == null;
       if (marked || alone) out += el('circle', { cx: p.x, cy: p.y, r: 6, fill: colour, stroke: PALETTE.panel, 'stroke-width': 2 });
     }
-    // The latest value, in text ink, keyed by a dot of the series colour.
-    const latest = g.points.at(-1);
-    const rowY = 70 + row * 42;
+    // REV-130: the view's average over the range (the centre its trend line passes through) and, from three sessions, the
+    // trend's change per session, in text ink, keyed by a dot of the series colour.
+    const present = series.values.filter((v): v is number => v !== null);
+    const average = present.length === 0 ? null : present.reduce((a, b) => a + b, 0) / present.length;
+    const fit = leastSquares(series.values);
+    const rowY = 74 + row * 54;
     const x = TRENDS_WIDTH - MARGIN - VALUE_COLUMN + 24;
     out += el('circle', { cx: x + 7, cy: rowY - 6, r: 7, fill: colour });
-    out += text(x + 22, rowY, 16, `${SERIES_LABEL[series.view]}: ${latest === undefined ? '—' : metric.format(latest.value)}`, {
+    out += text(x + 22, rowY, 16, `${SERIES_LABEL[series.view]}: ${average === null ? '—' : `avg ${metric.format(average)}`}`, {
       color: PALETTE.textPrimary,
     });
+    if (fit !== null) out += text(x + 22, rowY + 20, 14, `trend ${metric.formatChange(fit.slope)}`, { color: PALETTE.textSecondary });
   });
   return el('g', { class: `trend-chart`, 'data-metric': metric.id, transform: `translate(0 ${num(top)})` }, out);
 }

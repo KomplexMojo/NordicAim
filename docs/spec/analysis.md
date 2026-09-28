@@ -93,7 +93,9 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
     - all four lines of a chart share one y axis (`chartGeometry`'s `domainFrom`), with a zero line on the MPI charts;
     - from 3 sessions, each view's **trend line** (§4a), dashed (2.5 px, `12 8`) in the view's own colour; the subtitle
       adds `dashed: the trend`;
-    - a column at the right gives each view's latest value;
+    - a column at the right, headed `Average and trend in this range`, gives each view's **average** over the range (the
+      mean of its session values, each session counted once: the centre its trend line passes through) and, from 3
+      sessions, its trend per session (§4a) (REV-130; it showed the latest value before);
     - points are marked while there are ≤ 40 sessions. Past that the line alone reads better, but a lone point between
       gaps is always marked.
   - **Footer** (110): the athlete line `Athlete: <name> · <club> · Stamp: <stamp>` (REV-100, when set) and the credit
@@ -101,7 +103,7 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
 - **Colours:** the reference categorical palette's first four slots (Sight in blue `#2a78d6`, Confirm orange `#eb6834`,
   Prone aqua `#1baf7a`, Standing yellow `#eda100`), validated on the panel `#EAF2F8` with the dataviz validator.
   Lightness, chroma, CVD (worst adjacent ΔE 9.1) and normal-vision separation all pass. Three are below 3:1 contrast, so
-  every series is also named, with its view mark, in the legend and in the latest-value column: colour is never the
+  every series is also named, with its view mark, in the legend and in the value column: colour is never the
   only key.
 - **Stored** as blobs `trends:<id>:png` and `trends:<id>:json`. The sidecar holds the range, session count, renderer
   version, sha256 and the stamped payload; it has no image data and no GPS. The newest **3** are kept

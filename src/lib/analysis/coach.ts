@@ -18,6 +18,8 @@ export interface CoachMetric {
   unit: string;
   zeroLine: boolean;
   format(value: number): string;
+  /** §4a: a trend's change per session, signed, with its unit. */
+  formatChange(slope: number): string;
   /** One series per view, each aligned to `sessions` (null where the view has no value that session). */
   series: Array<{ view: PatternView; values: Array<number | null> }>;
 }
@@ -60,6 +62,7 @@ export function coachTrends(pointsByView: Record<PatternView, PatternPoint[]>): 
     unit: m.unit,
     zeroLine: m.zeroLine,
     format: m.format,
+    formatChange: m.formatChange,
     series: PATTERN_VIEWS.map((view) => ({
       view,
       values: axis.map((s) => {
