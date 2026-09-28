@@ -2,6 +2,8 @@
 // template, a user's own sheet from a photo of a blank sheet (only its circles are kept), refused photos (a used sheet,
 // the other template), and Restore default.
 
+import { readFileSync } from 'node:fs';
+
 import { expect, test } from '@playwright/test';
 
 test('target sheets: both templates start on the shipped default', async ({ page }) => {
@@ -56,4 +58,16 @@ test('target sheets: Photograph sheet opens the full-screen sheet mode, and Canc
   await page.getByRole('button', { name: 'Cancel' }).click();
   await page.waitForURL(/#\/settings$/);
   await expect(page.getByTestId('tab-bar')).toBeVisible();
+});
+
+test('target sheets: each template row downloads its printable US Letter PDF (issue #67)', async ({ page }) => {
+  await page.goto('/#/settings');
+  for (const template of ['sighting', 'precision'] as const) {
+    const link = page.getByTestId(`download-sheet-${template}`);
+    await expect(link).toHaveText('Download printable sheet (PDF)');
+    const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
+    expect(download.suggestedFilename()).toBe(`nordicaim-${template}-letter.pdf`);
+    const path = await download.path();
+    expect(readFileSync(path).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  }
 });

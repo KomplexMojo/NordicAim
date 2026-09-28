@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { useServices } from '@/lib/app/services';
+import { PRINTABLE_SHEET } from '@/lib/defaults/printable-sheets';
 import { DEFAULT_TEMPLATE_REFERENCE } from '@/lib/defaults/template-references';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { AppSettings } from '@/lib/domain/settings';
@@ -26,7 +27,8 @@ interface TemplateSheetSettingsProps {
 /**
  * template-reference.md §2 (M26, REV-121): the Settings screen's **Target sheets** section. One row per template,
  * showing the reference in use (the shipped default or the user's own), with Photograph sheet, Choose photo, and
- * Restore default for a custom one.
+ * Restore default for a custom one. §10 (issue #67, REV-135): each row also downloads the printable NordicAim sheet for its
+ * template, a static PDF the service worker keeps on the phone.
  */
 export function TemplateSheetSettings({ templateReferences, holeDiameterMm, onChanged }: TemplateSheetSettingsProps) {
   return (
@@ -37,6 +39,10 @@ export function TemplateSheetSettings({ templateReferences, holeDiameterMm, onCh
       <p className="text-xs text-muted-foreground">
         A photo of a blank, unused sheet, cut down to its target circles. The app ships with a default for each; replace it
         when your printed sheets change. Only the circles are kept.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Or print NordicAim&apos;s own training sheets: US Letter, printed at 100% / Actual size. Their corner markers leave the
+        top centre free for a clipboard clamp.
       </p>
       {ROWS.map((row) => (
         <TemplateSheetRow
@@ -85,6 +91,7 @@ function TemplateSheetRow({ template, label, custom, holeDiameterMm, onChanged }
   }, [ctx, template, custom]);
 
   const defaultUrl = `${import.meta.env.BASE_URL}${DEFAULT_TEMPLATE_REFERENCE[template].assetPath}`;
+  const printable = PRINTABLE_SHEET[template];
   const thumbnail = custom === null ? defaultUrl : customUrl;
 
   async function onRestore() {
@@ -132,6 +139,16 @@ function TemplateSheetRow({ template, label, custom, holeDiameterMm, onChanged }
           Choose photo
         </Button>
       </div>
+      <Button asChild variant="secondary" className="h-11">
+        <a
+          href={`${import.meta.env.BASE_URL}${printable.assetPath}`}
+          download={printable.fileName}
+          data-testid={`download-sheet-${template}`}
+          aria-label={`Download the printable ${label.toLowerCase()} (PDF, US Letter: ${printable.pages})`}
+        >
+          Download printable sheet (PDF)
+        </a>
+      </Button>
       <input
         ref={fileRef}
         type="file"

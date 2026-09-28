@@ -1,36 +1,63 @@
 #!/usr/bin/env node
-// Issue #65: a printable NordicAim training sheet for testing, one US Letter page per target kind (sight in, confirm, precision
-// prone, precision standing). Each page has the app's own template geometry, four corner registration marks (the top-left one has
-// a white centre, so orientation is never ambiguous), a bit-strip sheet code, a 100 mm scale bar, and no text near the rings.
+// Issue #65 / #67 (REV-135): the printable NordicAim training sheets, one US Letter PDF per template, two pages each (sighting:
+// sight in, confirm; precision: prone, standing). Each page has the app's own template geometry, four AprilTag 36h11 corner
+// markers whose ids encode the sheet version, target kind and corner, a 100 mm scale bar, write-in lines, and no print between
+// the outer ring and the markers. The top centre is left blank: a clipboard clamp covers it.
 //
-//   node scripts/make-test-sheets.mjs [out.pdf]     # default docs/print/nordicaim-test-sheets-letter.pdf
+//   node scripts/make-test-sheets.mjs [outDir]     # default public/sheets/
 //
-// Print at 100% / Actual size. Chromium writes the PDF, so every length below is exact millimetres on paper.
+// Print at 100% / Actual size. Chromium writes the PDFs, so every length below is exact millimetres on paper.
 
 import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { chromium } from '@playwright/test';
-
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const OUT = process.argv[2] ?? `${ROOT}docs/print/nordicaim-test-sheets-letter.pdf`;
 
 // US Letter, mm. The target's centre is the page centre.
-const PAGE = { w: 215.9, h: 279.4 };
+export const PAGE = { w: 215.9, h: 279.4 };
 const CX = PAGE.w / 2;
 const CY = PAGE.h / 2;
 
-// Registration marks: 15 mm squares, centres 170 × 210 mm apart around the target centre.
-export const MARK = { size: 15, hole: 5, dx: 85, dy: 105 };
-// Sheet code: start bit, 2 kind bits, 3 version bits, even parity, stop bit; 5 mm cells on a 6 mm pitch.
-export const CODE = { cell: 5, pitch: 6, version: 1 };
+// AprilTag 36h11 markers: 8 × 8 cells (6 × 6 data inside a 1-cell black border), 20 mm wide, centres 170 × 210 mm apart.
+export const MARK = { size: 20, cells: 8, dx: 85, dy: 105, quiet: 4 };
+export const SHEET_VERSION = 1;
+export const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 export const KINDS = [
   { id: 'sight-in', label: 'Sight in', code: 0, template: 'sighting' },
   { id: 'confirm', label: 'Confirm', code: 1, template: 'sighting' },
   { id: 'precision-prone', label: 'Precision prone', code: 2, template: 'precision' },
   { id: 'precision-standing', label: 'Precision standing', code: 3, template: 'precision' },
 ];
+export const SHEETS = [
+  { template: 'sighting', file: 'nordicaim-sighting-letter.pdf', title: 'Sighting sheet' },
+  { template: 'precision', file: 'nordicaim-precision-letter.pdf', title: 'Precision sheet' },
+];
+/** The clipboard clamp's zone at the top centre: nothing is printed in it. */
+export const CLAMP = { halfWidth: 70, depth: 22 };
+
+/** The marker id for a corner (0..3, CORNERS order) of a kind: version << 4 | kind << 2 | corner. */
+export function markerId(kindCode, corner, version = SHEET_VERSION) {
+  return (version << 4) | (kindCode << 2) | corner;
+}
+
+/** The marker's cells, row by row, 1 = black, from OpenCV's own AprilTag 36h11 dictionary. */
+export function markerCells(cv, id) {
+  const dict = cv.getPredefinedDictionary(cv.DICT_APRILTAG_36h11);
+  const img = new cv.Mat();
+  try {
+    cv.generateImageMarker(dict, id, MARK.cells, img, 1);
+    const rows = [];
+    for (let r = 0; r < MARK.cells; r += 1) {
+      const row = [];
+      for (let c = 0; c < MARK.cells; c += 1) row.push(img.ucharAt(r, c) < 128 ? 1 : 0);
+      rows.push(row);
+    }
+    return rows;
+  } finally {
+    img.delete();
+  }
+}
 
 // src/lib/defaults/templates.ts, copied here so the script needs no build step. Keep in step with it.
 const PRECISION = {
@@ -46,7 +73,7 @@ const LINE = 0.25;
 
 function precisionTarget() {
   let s = circle(PRECISION.black / 2, 'fill="#000"');
-  // Rings 4 to 10 lie on the black aiming mark, so they are white; 1 to 3 are black on the paper.
+  // Rings 4 to 10 lie on the black aiming mark, so they are white; 1 to 3 are black on the paper. No ring numbers.
   for (const d of Object.values(PRECISION.rings)) {
     s += circle(d / 2, `fill="none" stroke="${d < PRECISION.black ? '#fff' : '#000'}" stroke-width="${LINE}"`);
   }
@@ -65,94 +92,102 @@ function sightingTarget() {
   return s;
 }
 
-function marks() {
-  let s = '';
-  for (const [sx, sy] of [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ]) {
-    const x = CX + sx * MARK.dx - MARK.size / 2;
-    const y = CY + sy * MARK.dy - MARK.size / 2;
-    s += `<rect x="${f(x)}" y="${f(y)}" width="${MARK.size}" height="${MARK.size}" fill="#000"/>`;
-    // Top left: a white centre, so the sheet's orientation (and left from right) is fixed.
-    if (sx === -1 && sy === -1) {
-      const h = MARK.hole;
-      s += `<rect x="${f(x + (MARK.size - h) / 2)}" y="${f(y + (MARK.size - h) / 2)}" width="${h}" height="${h}" fill="#fff"/>`;
-    }
-  }
-  return s;
+/** A marker's top-left corner on the page, mm. */
+export function markerOrigin(corner) {
+  const sx = corner % 2 === 0 ? -1 : 1;
+  const sy = corner < 2 ? -1 : 1;
+  return { x: CX + sx * MARK.dx - MARK.size / 2, y: CY + sy * MARK.dy - MARK.size / 2 };
 }
 
-/** The code's bits, left to right: 1, kind (2 bits), version (3 bits), even parity over kind and version, 1. */
-export function codeBits(kindCode, version) {
-  const data = [(kindCode >> 1) & 1, kindCode & 1, (version >> 2) & 1, (version >> 1) & 1, version & 1];
-  const parity = data.reduce((a, b) => a + b, 0) % 2;
-  return [1, ...data, parity, 1];
-}
-
-function codeStrip(kindCode) {
-  const bits = codeBits(kindCode, CODE.version);
-  const width = (bits.length - 1) * CODE.pitch + CODE.cell;
-  const x0 = CX - width / 2;
-  const y = CY + MARK.dy - CODE.cell / 2;
-  // A thin frame shows where the strip is, even when most bits are 0.
-  let s = `<rect x="${f(x0 - 1.5)}" y="${f(y - 1.5)}" width="${f(width + 3)}" height="${CODE.cell + 3}" fill="none" stroke="#000" stroke-width="0.2"/>`;
-  bits.forEach((b, i) => {
-    if (b === 1) s += `<rect x="${f(x0 + i * CODE.pitch)}" y="${f(y)}" width="${CODE.cell}" height="${CODE.cell}" fill="#000"/>`;
-  });
-  return s;
-}
-
-function scaleBar() {
-  const x0 = CX - 50;
-  const y = 22;
-  let s = `<line x1="${f(x0)}" y1="${y}" x2="${f(x0 + 100)}" y2="${y}" stroke="#000" stroke-width="0.3"/>`;
-  for (let i = 0; i <= 10; i += 1) {
-    const h = i % 5 === 0 ? 3 : 1.5;
-    s += `<line x1="${f(x0 + i * 10)}" y1="${y - h}" x2="${f(x0 + i * 10)}" y2="${y}" stroke="#000" stroke-width="0.3"/>`;
-  }
-  return s;
+function marker(cells, corner) {
+  const { x, y } = markerOrigin(corner);
+  const cell = MARK.size / MARK.cells;
+  // One path for the whole marker, so no hairline seams appear between neighbouring black cells.
+  let d = '';
+  cells.forEach((row, r) =>
+    row.forEach((b, c) => {
+      if (b === 1) d += `M${f(x + c * cell)} ${f(y + r * cell)}h${f(cell)}v${f(cell)}h${f(-cell)}z`;
+    }),
+  );
+  return `<path d="${d}" fill="#000" shape-rendering="crispEdges"/>`;
 }
 
 function text(x, y, size, body, anchor = 'middle') {
   return `<text x="${f(x)}" y="${f(y)}" font-size="${size}" text-anchor="${anchor}" font-family="Helvetica, Arial, sans-serif" fill="#000">${body}</text>`;
 }
 
-function page(kind) {
+/** The bottom band, between the bottom markers and below their inner edge: scale bar and write-in lines. */
+export const BAND = { x0: CX - MARK.dx + MARK.size / 2 + MARK.quiet + 1, x1: CX + MARK.dx - MARK.size / 2 - MARK.quiet - 1 };
+
+function scaleBar(y) {
+  const x0 = CX - 50;
+  let s = `<line x1="${f(x0)}" y1="${f(y)}" x2="${f(x0 + 100)}" y2="${f(y)}" stroke="#000" stroke-width="0.3"/>`;
+  for (let i = 0; i <= 10; i += 1) {
+    const h = i % 5 === 0 ? 3 : 1.5;
+    s += `<line x1="${f(x0 + i * 10)}" y1="${f(y - h)}" x2="${f(x0 + i * 10)}" y2="${f(y)}" stroke="#000" stroke-width="0.3"/>`;
+  }
+  return s + text(CX, y + 3.2, 2.4, '100 mm');
+}
+
+function writeIns(y) {
+  const fields = [
+    { label: 'Name', w: 58 },
+    { label: 'Date', w: 34 },
+    { label: 'String', w: 24 },
+  ];
+  const gap = (BAND.x1 - BAND.x0 - fields.reduce((a, b) => a + b.w, 0)) / (fields.length - 1);
+  let x = BAND.x0;
+  let s = '';
+  for (const fl of fields) {
+    s += text(x, y - 1, 2.6, fl.label, 'start');
+    s += `<line x1="${f(x + 10)}" y1="${f(y)}" x2="${f(x + fl.w)}" y2="${f(y)}" stroke="#000" stroke-width="0.2"/>`;
+    x += fl.w + gap;
+  }
+  return s;
+}
+
+function page(cv, kind) {
   const target = kind.template === 'precision' ? precisionTarget() : sightingTarget();
+  const markers = CORNERS.map((_, corner) => marker(markerCells(cv, markerId(kind.code, corner)), corner)).join('');
+  const bottomMarkerTop = CY + MARK.dy - MARK.size / 2;
   const body = [
-    text(CX, 10, 3.6, `NordicAim test sheet · ${kind.label} · code ${kind.code} · v${CODE.version} · training only`),
-    text(CX, 15.5, 2.8, 'Print at 100% / Actual size. The bar below must measure exactly 100 mm.'),
-    scaleBar(),
-    marks(),
     target,
-    codeStrip(kind.code),
-    text(CX, PAGE.h - 8, 2.6, 'github.com/KomplexMojo/NordicAim · issue #65 · shoot on the coloured backing, photograph all four corner squares'),
+    markers,
+    scaleBar(bottomMarkerTop + 5),
+    writeIns(bottomMarkerTop + 17),
+    text(CX, PAGE.h - 15, 3.4, `NordicAim · ${kind.label} · sheet v${SHEET_VERSION} · training sheet`),
+    text(CX, PAGE.h - 10.5, 2.6, 'Print at 100% / Actual size on US Letter: the bar above must measure exactly 100 mm.'),
+    text(CX, PAGE.h - 6.5, 2.4, 'github.com/KomplexMojo/NordicAim · shoot on the coloured backing · photograph all four corner markers'),
   ].join('');
   return `<section><svg xmlns="http://www.w3.org/2000/svg" width="${PAGE.w}mm" height="${PAGE.h}mm" viewBox="0 0 ${PAGE.w} ${PAGE.h}">${body}</svg></section>`;
 }
 
-/** The four pages as one printable HTML document. */
-export function sheetsHtml() {
+/** One template's pages (its two kinds) as a printable HTML document. */
+export function sheetHtml(cv, template) {
+  const pages = KINDS.filter((k) => k.template === template).map((k) => page(cv, k));
   return `<!doctype html><html><head><style>
       @page { size: ${PAGE.w}mm ${PAGE.h}mm; margin: 0; }
       html, body { margin: 0; padding: 0; }
       section { width: ${PAGE.w}mm; height: ${PAGE.h}mm; page-break-after: always; overflow: hidden; }
       section:last-child { page-break-after: auto; }
       svg { display: block; }
-    </style></head><body>${KINDS.map(page).join('')}</body></html>`;
+    </style></head><body>${pages.join('')}</body></html>`;
 }
 
 async function main() {
-  mkdirSync(dirname(OUT), { recursive: true });
+  const outDir = process.argv[2] ?? join(ROOT, 'public/sheets');
+  mkdirSync(outDir, { recursive: true });
+  const cv = await (await import('@techstark/opencv-js')).default;
+  const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined });
   try {
     const p = await browser.newPage();
-    await p.setContent(sheetsHtml());
-    await p.pdf({ path: OUT, preferCSSPageSize: true, printBackground: true });
-    console.log(`wrote ${OUT}`);
+    for (const sheet of SHEETS) {
+      await p.setContent(sheetHtml(cv, sheet.template));
+      const path = join(outDir, sheet.file);
+      await p.pdf({ path, preferCSSPageSize: true, printBackground: true });
+      console.log(`wrote ${path}`);
+    }
   } finally {
     await browser.close();
   }

@@ -5,9 +5,9 @@ The MVP runs entirely on the phone (REV-10). There is no server and no login.
 ## 1. Privacy invariants
 
 1. **No runtime network requests** except the app's own same-origin assets (HTML, JS, CSS, wasm, icons, `demo/`,
-   `dev-fixtures/`, `diagnostics/`). No APIs, analytics, CDNs, external fonts, or error reporting.
+   `dev-fixtures/`, `diagnostics/`, `sheets/`). No APIs, analytics, CDNs, external fonts, or error reporting.
 2. **Photos never leave the phone** — except in a backup file the owner explicitly creates (`backup.md`, REV-63).
-3. **The only image shared** is a stored `CompositeArtifact` (rendering-composite §6–§7); the one other file that may be handed to the share sheet or a download is an owner-created backup.
+3. **The only image shared** is a stored `CompositeArtifact` (rendering-composite §6–§7); the one other file that may be handed to the share sheet or a download is an owner-created backup, apart from the static printable sheets (`public/sheets/*.pdf`, template-reference §10, REV-135), which are generated artwork with no user data.
 4. **Repo privacy**: the public repo never contains `fixtures/private/` or images with GPS; `pnpm check:privacy` (M01) enforces this in CI.
 5. Nothing logs EXIF GPS values.
 6. **Athlete identity (REV-100, `provenance.md`)**: the summary image, the one thing that is shared, may carry the athlete's name, club and stamp, which the athlete set in Settings. The passphrase is never stored; the derived key stays on the phone and out of backups.
