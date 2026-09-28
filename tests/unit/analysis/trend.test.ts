@@ -30,6 +30,8 @@ describe('sessionTrend', () => {
     const trend = sessionTrend(points, 'precision');
     expect(trend.map((t) => t.sessionId)).toEqual(['A', 'B']);
     expect(trend.map((t) => [t.targets, t.shots])).toEqual([[1, 2], [2, 3]]);
+    // Issue #72: each point knows its session's targets, so it can open them.
+    expect(trend.map((t) => t.photoIds)).toEqual([['t1'], ['t2', 't3']]);
   });
 
   it('scores a precision session as its average ring over 10', () => {

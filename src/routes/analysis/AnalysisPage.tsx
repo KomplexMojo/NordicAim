@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { TrendChart } from '@/components/analysis/TrendChart';
 import { TrendsImageCard } from '@/components/analysis/TrendsImageCard';
@@ -8,6 +9,7 @@ import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { PATTERN_VIEW_LABEL, filterByRange, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 import { loadPatterns } from '@/lib/services/patterns';
+import { parseViewRange, viewRangeSearch } from '@/lib/patterns/url';
 
 /**
  * Route `#/analysis` (analysis.md, REV-123, issue #57): how each kind of target trends over time — the same shots, views and
@@ -16,8 +18,12 @@ import { loadPatterns } from '@/lib/services/patterns';
 export function AnalysisPage() {
   const { ctx } = useServices();
   const { value, loading } = useLiveQuery(() => loadPatterns(ctx), [ctx]);
-  const [view, setView] = useState<PatternView>('sight-in');
-  const [range, setRange] = useState<PatternRange>('all');
+  // Issue #72: the view and range live in the address, so Back from a target opened here returns to them.
+  const [params, setParams] = useSearchParams();
+  const { view, range } = parseViewRange(params);
+  const setView = (v: PatternView) => setParams(viewRangeSearch(v, range), { replace: true });
+  const setRange = (r: PatternRange) => setParams(viewRangeSearch(view, r), { replace: true });
+  const from = { path: `/analysis?${viewRangeSearch(view, range)}`, label: 'Back to Analysis' };
 
   const kind = view.startsWith('precision') ? 'precision' : 'sighting';
   const trend = useMemo(
@@ -53,7 +59,7 @@ export function AnalysisPage() {
               )}
               <div className="grid gap-4 lg:grid-cols-2">
                 {metrics.map((m) => (
-                  <TrendChart key={m.id} metric={m} trend={trend} />
+                  <TrendChart key={`${view}-${range}-${m.id}`} metric={m} trend={trend} from={from} />
                 ))}
               </div>
               <details className="text-sm" data-testid="analysis-table">

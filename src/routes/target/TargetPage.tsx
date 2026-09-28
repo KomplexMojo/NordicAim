@@ -1,6 +1,7 @@
 
 import { suggestSeason } from '@/lib/domain/season';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
+import { backToFrom } from '@/lib/app/nav';
 
 import { CollapsiblePanel } from '@/components/ui/collapsible-panel';
 import { tallyRows } from '@/lib/scoring/tally';
@@ -160,6 +161,9 @@ function SubsetSection({ subset }: { subset: SubsetResult }) {
  * `AnalysisResult`, the photo's own metadata, and the working photo. */
 export function TargetPage() {
   const { sid = '', pid = '' } = useParams();
+  const location = useLocation();
+  // Issue #72: opened from Patterns or Analysis, the back link returns to that view; otherwise to the session's results.
+  const back = backToFrom(location.state, sid);
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadTarget(ctx, pid), [ctx, pid]);
 
@@ -187,11 +191,8 @@ export function TargetPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <Link
-          to={`/sessions/${sid}/results`}
-          className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
-        >
-          Back to results
+        <Link to={back.path} className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4" data-testid="target-back">
+          {back.label}
         </Link>
         <Link
           to={`/sessions/${sid}/metadata`}

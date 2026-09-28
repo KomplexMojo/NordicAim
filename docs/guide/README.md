@@ -162,9 +162,11 @@ Under the drawing you get the number of shots, targets and sessions, your mean p
 
 Only analysed targets with a measured or confirmed alignment are counted, and the screen tells you how many were left out. With fewer than ten shots you see the numbers but no ellipse, and it says so. NordicAim shows you the pattern and leaves the conclusions to you and your coach.
 
+Tap a dot to see which target it came from: a list opens under the drawing with each target under your finger and **Open target**. From that target, **Back to Patterns** returns you to the same view and range.
+
 ## 10. Trends and the coach image
 
-Tap **Analysis** on the bottom bar. It uses the same kinds of target and the same date ranges as Patterns, but where Patterns shows *where* your shots land, Analysis shows *how your numbers move*, with **one point per session**.
+Tap **Analysis** on the bottom bar. It uses the same kinds of target and the same date ranges as Patterns, but where Patterns shows *where* your shots land, Analysis shows *how your numbers move*, with **one point per session**. Tap a point to read its value; under the chart you can then open that session's target, and **Back to Analysis** brings you back to the same view.
 
 <p align="center">
   <img src="../assets/screens/analysis.png" width="300" alt="The Analysis screen with Precision prone and All time chosen, and the Score chart below">

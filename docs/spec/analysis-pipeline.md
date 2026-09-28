@@ -26,7 +26,7 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |
 | `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
 | `#/settings/template-sheet/:template` | Capture in sheet mode: photograph a blank sheet as that template's reference (full screen, no tab bar; `template-reference.md` §2) | M26 |
-| `#/analysis` | Analysis: trends over time, one data point per session, with the Patterns views and date ranges (`analysis.md`, REV-123) | — |
+| `#/analysis` | Analysis: trends over time, one data point per session, with the Patterns views and date ranges (`analysis.md`, REV-123). The view and range are in the query, `?view=<view>&range=<range>` (REV-140; `#/patterns` too), so Back from a target opened there returns to them | — |
 | `#/diagnostics` | Device capability checks | M01 |
 
 **Three main screens (REV-47, REV-136).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has three tabs of at

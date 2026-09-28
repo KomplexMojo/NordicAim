@@ -14,6 +14,8 @@ export interface TrendPoint {
   sessionDate: string;
   sessionStamp: string;
   targets: number;
+  /** Issue #72: the session's targets of this view, in the order their shots came, so a point can open them. */
+  photoIds: string[];
   shots: number;
   /** §3: the Patterns score star over this session's shots, 0..100. */
   scorePercent: number | null;
@@ -54,6 +56,7 @@ export function sessionTrend(points: PatternPoint[], kind: 'precision' | 'sighti
       sessionDate: first.sessionDate,
       sessionStamp: first.sessionStamp,
       targets: byTarget.size,
+      photoIds: [...byTarget.keys()],
       shots: shots.length,
       scorePercent: patternsScorePercent(summarizePatterns(shots, kind), kind),
       groupMoa: mean(spreads),

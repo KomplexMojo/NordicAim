@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 
+import { TargetLinks } from '@/components/patterns/TargetLinks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { BackTo } from '@/lib/app/nav';
 import { chartGeometry, type ChartBox } from '@/lib/analysis/chart';
 import type { TrendMetric, TrendPoint } from '@/lib/analysis/trend';
 
@@ -19,14 +21,17 @@ function tickLabel(value: number): string {
 interface TrendChartProps {
   metric: TrendMetric;
   trend: TrendPoint[];
+  /** Issue #72: where a target opened from this chart returns to. */
+  from: BackTo;
 }
 
 /**
  * analysis.md §4 (REV-123): one metric over the sessions shown, one data point per session. A single series, so no
  * legend: the title names it. A 2 px line, 8 px points ringed in the card colour, hairline gridlines, a zero line for the
- * signed MPI charts, and the latest value written out. Tapping a point reads it out above the chart.
+ * signed MPI charts, and the latest value written out. Tapping a point reads it out above the chart and, under it, offers
+ * that session's targets of this view to open (issue #72).
  */
-export function TrendChart({ metric, trend }: TrendChartProps) {
+export function TrendChart({ metric, trend, from }: TrendChartProps) {
   const values = useMemo(() => trend.map((p) => metric.value(p)), [trend, metric]);
   const g = useMemo(() => chartGeometry(values, BOX, metric.zeroLine), [values, metric.zeroLine]);
   // REV-133: the MPI charts plot a signed position, so they draw no trend line.
@@ -119,6 +124,21 @@ export function TrendChart({ metric, trend }: TrendChartProps) {
               </g>
             ))}
           </svg>
+        )}
+        {selected !== null && trend[selected] !== undefined && (
+          <div className="mt-3">
+            <TargetLinks
+              refs={trend[selected]!.photoIds.map((photoId) => ({
+                sessionId: trend[selected]!.sessionId,
+                photoId,
+                sessionDate: trend[selected]!.sessionDate,
+                sessionStamp: trend[selected]!.sessionStamp,
+              }))}
+              from={from}
+              onClose={() => setSelected(null)}
+              testId={`trend-${metric.id}-targets`}
+            />
+          </div>
         )}
       </CardContent>
     </Card>
