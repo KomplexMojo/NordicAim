@@ -28,11 +28,18 @@ in the view has no point.
 | **Score** (precision) | the average ring over the session's shots, as a percentage of 10: the Patterns score star (`patternsScorePercent`) |
 | **Hit rate** (sighting) | the share of the session's shots in the hit zone (`hit` or `clean`): the Patterns score star |
 | **Group size** | the **mean of each target's extreme spread**, in MOA at 50 m. A target with fewer than two distinct shots has no spread and is skipped; with none left, the session has no value |
+| **Accuracy (RMS)** (REV-128) | the **root-mean-square distance of every shot in the session from the bullseye**, `sqrt(mean(x² + y²))` in mm: the target screen's accuracy (`accuracyRmse`, REV-60), pooled over the session's shots. Lower is closer |
 | **MPI left / right** | the mean point of impact of every shot in the session, x in mm (+ right) |
 | **MPI up / down** | the same, y in mm (+ high) |
 
 The group size averages each target's spread rather than spreading the whole session: shots from different targets would
-otherwise add the drift between them to the group.
+otherwise add the drift between them to the group. Accuracy needs no such care: every shot is measured from the same fixed
+point, the bullseye, so pooling the session's shots is exact.
+
+Accuracy (RMS) is one number for "how far from the centre", combining how big the group is and how far off centre it sits
+(RMS² = MPI offset² + the shots' mean squared distance from their own centre). Unlike the score it is not rounded to rings or
+zones, so it keeps moving when most shots already score 10 or hit; unlike the two MPI charts it has no sign, and lower is
+always better. It uses every shot, not just the widest two, so it is steadier from session to session than the group size.
 
 ## 4. Charts
 
@@ -68,7 +75,7 @@ otherwise add the drift between them to the group.
     this range`.
   - **Trends band** (170 + 300 per chart + 10):
     - a title, the session count and span, and a legend showing each view's mark and line colour;
-    - one **full-width chart per metric** (§3), each with **one line per view**, all on **one shared session axis**: a
+    - one **full-width chart per metric** (§3, five since REV-128), each with **one line per view**, all on **one shared session axis**: a
       session sits at the same x in every chart, evenly spaced, with up to 8 dates (always the first and the last);
     - all four lines of a chart share one y axis (`chartGeometry`'s `domainFrom`), with a zero line on the MPI charts;
     - a column at the right gives each view's latest value;

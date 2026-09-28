@@ -30,17 +30,17 @@ function input(n: number, over: Partial<TrendsSheetInput> = {}): TrendsSheetInpu
 }
 
 describe('renderTrendsSheet', () => {
-  it('is 1440 wide and a fixed height: header, the 2 × 2 grid, four charts, footer', () => {
+  it('is 1440 wide and a fixed height: header, the 2 × 2 grid, five charts, footer', () => {
     const out = renderTrendsSheet(input(5));
     expect(out.width).toBe(1440);
-    expect(out.height).toBe(120 + 1440 + (170 + 4 * 300 + 10) + 110);
+    expect(out.height).toBe(120 + 1440 + (170 + 5 * 300 + 10) + 110);
     expect(out.svg).toContain(`height="${out.height}"`);
   });
 
-  it('draws the four views, a legend and four charts, with no NaN anywhere', () => {
+  it('draws the four views, a legend and five charts, with no NaN anywhere', () => {
     const { svg } = renderTrendsSheet(input(5));
     for (const view of PATTERN_VIEWS) expect(svg).toContain(`data-view="${view}"`);
-    for (const id of ['score', 'group', 'mpiX', 'mpiY']) expect(svg).toContain(`data-metric="${id}"`);
+    for (const id of ['score', 'group', 'rms', 'mpiX', 'mpiY']) expect(svg).toContain(`data-metric="${id}"`);
     for (const colour of Object.values(SERIES_COLOUR)) expect(svg).toContain(colour);
     expect(svg).not.toContain('NaN');
   });
@@ -55,7 +55,7 @@ describe('renderTrendsSheet', () => {
   it('marks points while sessions are few, and draws the line alone past the limit', () => {
     const few = renderTrendsSheet(input(MAX_MARKED_SESSIONS)).svg.match(/<circle[^>]*r="6"[^>]*stroke="#EAF2F8"/g) ?? [];
     const many = renderTrendsSheet(input(MAX_MARKED_SESSIONS + 1)).svg.match(/<circle[^>]*r="6"[^>]*stroke="#EAF2F8"/g) ?? [];
-    expect(few.length).toBe(4 * 4 * MAX_MARKED_SESSIONS);
+    expect(few.length).toBe(5 * 4 * MAX_MARKED_SESSIONS); // five charts × four views
     expect(many.length).toBe(0);
   });
 

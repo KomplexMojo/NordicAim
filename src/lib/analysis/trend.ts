@@ -3,7 +3,7 @@
 
 import type { PatternPoint } from '../patterns/collect';
 import { patternsScorePercent, summarizePatterns } from '../patterns/summarize';
-import { angular, extremeSpread, mpi } from '../scoring/groups';
+import { accuracyRmse, angular, extremeSpread, mpi } from '../scoring/groups';
 
 /** geometry-scoring.md: biathlon is shot at 50 m, the distance every angular size in the app is read at. */
 const DISTANCE_MM = 50_000;
@@ -19,6 +19,8 @@ export interface TrendPoint {
   scorePercent: number | null;
   /** §3: the mean of each target's extreme spread, in MOA; null when no target has two distinct shots. */
   groupMoa: number | null;
+  /** §3 (REV-128): accuracy, the root-mean-square distance of every shot in the session from the bullseye, mm (REV-60). */
+  rmsMm: number | null;
   /** §3: the session's mean point of impact, mm from the centre (+x right, +y up). */
   mpiXMm: number | null;
   mpiYMm: number | null;
@@ -55,6 +57,7 @@ export function sessionTrend(points: PatternPoint[], kind: 'precision' | 'sighti
       shots: shots.length,
       scorePercent: patternsScorePercent(summarizePatterns(shots, kind), kind),
       groupMoa: mean(spreads),
+      rmsMm: accuracyRmse(shots),
       mpiXMm: centre?.xMm ?? null,
       mpiYMm: centre?.yMm ?? null,
     });
@@ -64,7 +67,7 @@ export function sessionTrend(points: PatternPoint[], kind: 'precision' | 'sighti
   );
 }
 
-export type TrendMetricId = 'score' | 'group' | 'mpiX' | 'mpiY';
+export type TrendMetricId = 'score' | 'group' | 'rms' | 'mpiX' | 'mpiY';
 
 export interface TrendMetric {
   id: TrendMetricId;
@@ -99,6 +102,15 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: false,
       value: (p) => p.groupMoa,
       format: (v) => `${v.toFixed(2)} MOA`,
+    },
+    {
+      id: 'rms',
+      title: 'Accuracy (RMS)',
+      note: 'Root-mean-square distance of every shot from the centre, in mm; lower is closer',
+      unit: 'mm',
+      zeroLine: false,
+      value: (p) => p.rmsMm,
+      format: (v) => `${v.toFixed(1)} mm`,
     },
     {
       id: 'mpiX',

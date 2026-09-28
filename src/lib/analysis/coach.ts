@@ -30,6 +30,7 @@ export interface CoachTrends {
 const COACH_TITLE: Record<TrendMetricId, string> = {
   score: 'Score (precision: average ring %, sighting: hit rate %)',
   group: 'Group size (MOA at 50 m, mean per target)',
+  rms: 'Accuracy (RMS distance from the centre, mm)',
   mpiX: 'MPI left / right (mm, above 0 is right)',
   mpiY: 'MPI up / down (mm, above 0 is high)',
 };

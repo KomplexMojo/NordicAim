@@ -33,10 +33,10 @@ describe('coachTrends', () => {
     expect(byView['precision-standing']).toEqual([null, null, null]);
   });
 
-  it('keeps the four metrics in order, with zero lines on the MPI charts only', () => {
+  it('keeps the five metrics in order, with zero lines on the MPI charts only', () => {
     const metrics = coachTrends(data).metrics;
-    expect(metrics.map((m) => m.id)).toEqual(['score', 'group', 'mpiX', 'mpiY']);
-    expect(metrics.map((m) => m.zeroLine)).toEqual([false, false, true, true]);
+    expect(metrics.map((m) => m.id)).toEqual(['score', 'group', 'rms', 'mpiX', 'mpiY']);
+    expect(metrics.map((m) => m.zeroLine)).toEqual([false, false, false, true, true]);
     for (const m of metrics) expect(m.series.every((s) => s.values.length === 3)).toBe(true);
   });
 

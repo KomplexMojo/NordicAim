@@ -15,7 +15,7 @@ import { el, num, text } from './svg';
 import { renderTrendsBand, TRENDS_WIDTH } from './trends-band';
 
 /** Bump whenever this renderer's output changes. */
-export const TRENDS_RENDERER_VERSION = 1;
+export const TRENDS_RENDERER_VERSION = 2;
 
 const HEADER_HEIGHT = 120;
 const CELL = 720;
