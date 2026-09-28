@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { coachTrends } from '@/lib/analysis/coach';
+import { coachAverages, coachTrends, mpiScale } from '@/lib/analysis/coach';
 import { PATTERN_VIEWS, type PatternPoint, type PatternView } from '@/lib/patterns/collect';
 import { summarizePatterns } from '@/lib/patterns/summarize';
-import { dateLabelIndices, MAX_MARKED_SESSIONS, SERIES_COLOUR, shortDate } from '@/lib/render/trends-band';
+import { shortDate } from '@/lib/render/trends-averages';
 import { renderTrendsSheet, type TrendsSheetInput } from '@/lib/render/trends-sheet';
 
-// analysis.md §5 (REV-124): the coach image.
+// analysis.md §5 (REV-124, REV-131): the coach image: the four Patterns drawings, then each view's averages in small boxes.
 
 function sessions(n: number): Record<PatternView, PatternPoint[]> {
   const out: Record<PatternView, PatternPoint[]> = { 'sight-in': [], confirm: [], 'precision-prone': [], 'precision-standing': [] };
@@ -30,19 +30,34 @@ function input(n: number, over: Partial<TrendsSheetInput> = {}): TrendsSheetInpu
 }
 
 describe('renderTrendsSheet', () => {
-  it('is 1440 wide and a fixed height: header, the 2 × 2 grid, five charts, footer', () => {
+  it('is 1440 wide and a fixed height: header, the 2 × 2 grid, the averages band (four rows), footer', () => {
     const out = renderTrendsSheet(input(5));
     expect(out.width).toBe(1440);
-    expect(out.height).toBe(120 + 1440 + (170 + 5 * 300 + 10) + 110);
+    expect(out.height).toBe(120 + 1440 + (120 + 4 * 270 + 10) + 110);
     expect(out.svg).toContain(`height="${out.height}"`);
   });
 
-  it('draws the four views, a legend and five charts, with no NaN anywhere', () => {
+  it('draws the four views, and per view four boxes and no trend chart, with no NaN anywhere', () => {
     const { svg } = renderTrendsSheet(input(5));
-    for (const view of PATTERN_VIEWS) expect(svg).toContain(`data-view="${view}"`);
-    for (const id of ['score', 'group', 'rms', 'mpiX', 'mpiY']) expect(svg).toContain(`data-metric="${id}"`);
-    for (const colour of Object.values(SERIES_COLOUR)) expect(svg).toContain(colour);
+    for (const view of PATTERN_VIEWS) {
+      expect(svg).toContain(`class="averages-row" data-view="${view}"`);
+      for (const id of ['score', 'group', 'rms', 'mpi']) expect(svg).toContain(`data-view="${view}" data-metric="${id}"`);
+    }
+    expect(svg).not.toContain('trend-chart');
+    expect(svg).not.toContain('trend-line');
+    expect(svg).toContain('Averages in this range');
     expect(svg).not.toContain('NaN');
+  });
+
+  it('prints each view\'s averages: hit rate for sighting, score for precision, group, accuracy and the MPI in words', () => {
+    // Every session has the same three shots (ring 9, in the hit zone) at (0,0), (1,−1), (2,−2).
+    const { svg } = renderTrendsSheet(input(3));
+    expect(svg.match(/>100%</g)).toHaveLength(2); // sight in and confirm
+    expect(svg.match(/>90%</g)).toHaveLength(2); // prone and standing
+    expect(svg.match(/>Hit rate</g)).toHaveLength(2);
+    expect(svg.match(/>Score</g)).toHaveLength(2);
+    expect(svg.match(/>1\.0 mm right · 1\.0 mm low</g)).toHaveLength(4);
+    expect(svg.match(/>3 sessions</g)).toHaveLength(4);
   });
 
   it('prints the athlete line and the credit with the release', () => {
@@ -52,50 +67,54 @@ describe('renderTrendsSheet', () => {
     expect(renderTrendsSheet(input(3)).svg).not.toContain('Athlete:');
   });
 
-  it('marks points while sessions are few, and draws the line alone past the limit', () => {
-    const few = renderTrendsSheet(input(MAX_MARKED_SESSIONS)).svg.match(/<circle[^>]*r="6"[^>]*stroke="#EAF2F8"/g) ?? [];
-    const many = renderTrendsSheet(input(MAX_MARKED_SESSIONS + 1)).svg.match(/<circle[^>]*r="6"[^>]*stroke="#EAF2F8"/g) ?? [];
-    expect(few.length).toBe(5 * 4 * MAX_MARKED_SESSIONS); // five charts × four views
-    expect(many.length).toBe(0);
-  });
-
-  it('draws a dashed trend per view and chart from three sessions, and none below (REV-129)', () => {
-    const lines = (n: number) => renderTrendsSheet(input(n)).svg.match(/<line[^>]*class="trend-line"/g) ?? [];
-    expect(lines(2)).toHaveLength(0);
-    expect(lines(3)).toHaveLength(5 * 4); // five charts × four views
-    expect(renderTrendsSheet(input(3)).svg).toContain('dashed: the trend');
-    expect(renderTrendsSheet(input(2)).svg).not.toContain('dashed: the trend');
-  });
-
-  it('gives each view its average over the range beside each chart, and its trend from three sessions (REV-130)', () => {
-    const three = renderTrendsSheet(input(3)).svg;
-    expect(three.match(/Average and trend in this range/g)).toHaveLength(5);
-    // Every session has the same three shots (ring 9, in the hit zone): each view's score is flat, 100% for sighting and 90%.
-    expect(three.match(/Sight in: avg 100%/g)).toHaveLength(1);
-    expect(three.match(/Prone: avg 90%/g)).toHaveLength(1);
-    expect(three.match(/: avg /g)).toHaveLength(5 * 4);
-    expect(three.match(/>trend /g)).toHaveLength(5 * 4);
-    expect(three).toContain('trend ±0.0% per session');
-    expect(renderTrendsSheet(input(2)).svg.match(/>trend /g)).toBeNull();
-  });
-
   it('still renders with no sessions in the range', () => {
     const out = renderTrendsSheet(input(0));
     expect(out.svg).toContain('No sessions in this range');
     expect(out.svg).toContain('No shots in this range');
+    expect(out.svg).not.toContain('mpi-mark');
     expect(out.svg).not.toContain('NaN');
   });
 });
 
-describe('session axis labels', () => {
-  it('labels every session up to 8, else 8 spread evenly including the first and last', () => {
-    expect(dateLabelIndices(3)).toEqual([0, 1, 2]);
-    const many = dateLabelIndices(100);
-    expect(many).toHaveLength(8);
-    expect(many[0]).toBe(0);
-    expect(many.at(-1)).toBe(99);
+describe('the MPI boxes (REV-131)', () => {
+  it('share one scale: the first of 5, 10, 20, 50 … mm at least 15% past the largest offset', () => {
+    expect(mpiScale(0)).toBe(5);
+    expect(mpiScale(4.3)).toBe(5);
+    expect(mpiScale(4.4)).toBe(10);
+    expect(mpiScale(12)).toBe(20);
+    expect(mpiScale(600)).toBe(500);
+    expect(coachAverages(input(3).trends).mpiScaleMm).toBe(5);
   });
 
+  it('place the view\'s mark at its average MPI, +x right and +y up on the drawing', () => {
+    // An offset of (+10, −2) mm on a ±20 mm box: the mark's centre is 10/20 of the half-size right and 2/20 below the centre.
+    const byView = sessions(1);
+    for (const view of PATTERN_VIEWS) byView[view] = byView[view].map((p) => ({ ...p, xMm: 10, yMm: -2 }));
+    const trends = coachTrends(byView);
+    expect(coachAverages(trends).mpiScaleMm).toBe(20);
+    const { svg } = renderTrendsSheet({ ...input(1), trends });
+    const start = svg.indexOf('data-view="confirm" data-metric="mpi"');
+    const box = svg.slice(start, svg.indexOf('class="averages-row"', start));
+    const [, tx, ty] = box.match(/class="mpi-mark" transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)"/)!;
+    const cx = Number(box.match(/<circle cx="([\d.]+)" cy="([\d.]+)" r="75"/)![1]);
+    const cy = Number(box.match(/<circle cx="([\d.]+)" cy="([\d.]+)" r="75"/)![2]);
+    const s = 30 / 48;
+    expect(Number(tx) + 48 * s).toBeCloseTo(cx + 37.5, 1);
+    expect(Number(ty) + 46 * s).toBeCloseTo(cy + 7.5, 1);
+    expect(box).toContain('10.0 mm right · 2.0 mm low');
+    expect(box).toContain('data-role="confirm"');
+  });
+
+  it('averages each view over its sessions, each session counted once', () => {
+    const byView = sessions(2);
+    byView['precision-prone'] = byView['precision-prone'].map((p) => (p.sessionId === 's1' ? { ...p, ring: 7 } : p));
+    const prone = coachAverages(coachTrends(byView)).views.find((v) => v.view === 'precision-prone')!;
+    expect(prone.sessions).toBe(2);
+    expect(prone.values.score).toBeCloseTo(80, 9); // (90 + 70) / 2
+  });
+});
+
+describe('dates', () => {
   it('writes dates without the locale', () => {
     expect(shortDate('2026-09-21')).toBe('Sep 21');
     expect(shortDate('2026-01-05')).toBe('Jan 5');

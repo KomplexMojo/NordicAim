@@ -1,6 +1,6 @@
-// analysis.md §5 (REV-124, issue #57): the trends on the coach image. Every metric shares one session axis — every session
-// that has shots in any view, oldest first — and carries one series per view, so the charts line up session for session.
-// Pure: no clock, no storage.
+// analysis.md §5 (REV-124, issue #57): the numbers behind the coach image. Every metric shares one session axis — every session
+// that has shots in any view, oldest first — and carries one series per view; the stamp covers these, and the image draws each
+// view's averages over them (`coachAverages`, REV-131). Pure: no clock, no storage.
 
 import { PATTERN_VIEWS, type PatternPoint, type PatternView } from '../patterns/collect';
 
@@ -18,8 +18,6 @@ export interface CoachMetric {
   unit: string;
   zeroLine: boolean;
   format(value: number): string;
-  /** §4a: a trend's change per session, signed, with its unit. */
-  formatChange(slope: number): string;
   /** One series per view, each aligned to `sessions` (null where the view has no value that session). */
   series: Array<{ view: PatternView; values: Array<number | null> }>;
 }
@@ -62,7 +60,6 @@ export function coachTrends(pointsByView: Record<PatternView, PatternPoint[]>): 
     unit: m.unit,
     zeroLine: m.zeroLine,
     format: m.format,
-    formatChange: m.formatChange,
     series: PATTERN_VIEWS.map((view) => ({
       view,
       values: axis.map((s) => {
@@ -72,4 +69,38 @@ export function coachTrends(pointsByView: Record<PatternView, PatternPoint[]>): 
     })),
   }));
   return { sessions: axis, metrics };
+}
+
+/** §5 (REV-131): one view's averages over the range, each session counted once (the mean of its session values). */
+export interface CoachAverages {
+  view: PatternView;
+  /** Sessions in the range with shots in this view. */
+  sessions: number;
+  values: Record<TrendMetricId, number | null>;
+}
+
+/**
+ * §5 (REV-131): what the coach image shows instead of the charts: per view, the average of every metric over the sessions
+ * that have a value, and one MPI scale for every MPI box, so an icon's place means the same in each.
+ */
+export function coachAverages(trends: CoachTrends): { views: CoachAverages[]; mpiScaleMm: number } {
+  const views = PATTERN_VIEWS.map((view) => {
+    const values = {} as Record<TrendMetricId, number | null>;
+    let sessions = 0;
+    for (const m of trends.metrics) {
+      const present = (m.series.find((s) => s.view === view)?.values ?? []).filter((v): v is number => v !== null);
+      values[m.id] = present.length === 0 ? null : present.reduce((a, b) => a + b, 0) / present.length;
+      if (m.id === 'mpiX') sessions = present.length;
+    }
+    return { view, sessions, values };
+  });
+  const offsets = views.flatMap((v) => [v.values.mpiX, v.values.mpiY]).filter((v): v is number => v !== null);
+  return { views, mpiScaleMm: mpiScale(offsets.length === 0 ? 0 : Math.max(...offsets.map(Math.abs))) };
+}
+
+/** The MPI boxes' half-width: the first of these at least 15% past the largest offset, so no icon sits on the edge. */
+export const MPI_SCALES_MM = [5, 10, 20, 50, 100, 200, 500] as const;
+
+export function mpiScale(largestMm: number): number {
+  return MPI_SCALES_MM.find((s) => s >= largestMm * 1.15) ?? 500;
 }
