@@ -3,6 +3,7 @@
 import type { AppDb, StoredBlob } from '@/lib/store/db';
 
 import { sha256Hex } from './format';
+import { rebuildBlobs, type RebuildEntry, type RebuildTools } from './rebuild';
 import type { VerifiedBackup } from './verify';
 
 export type Status = 'new' | 'same' | 'different';
@@ -70,16 +71,34 @@ export async function planRestore(db: AppDb, backup: VerifiedBackup): Promise<Re
     verdicts.set(`blobs:${key}`, status);
     plan.blobs[status] += 1;
   }
+
+  // §2b: a left-out image follows its source. It is new with a new source, different with a different one, and otherwise
+  // new only when the phone has lost its own copy.
+  for (const { key, from } of backup.file.manifest.rebuild ?? []) {
+    const source = verdicts.get(`blobs:${from}`);
+    const status: Status =
+      source === 'new' ? 'new' : source === 'different' ? 'different' : (await db.getKey('blobs', key)) === undefined ? 'new' : 'same';
+    verdicts.set(`blobs:${key}`, status);
+    plan.blobs[status] += 1;
+  }
   return plan;
 }
 
 export interface RestoreReport {
   written: number;
   skipped: number;
+  /** §2b: images made again from their source (working copies, thumbnails, diagram PNGs). */
+  rebuilt: number;
 }
 
 /** Everything is decoded first; the one transaction only awaits IndexedDB calls, and any failure aborts all of it. */
-export async function applyRestore(db: AppDb, backup: VerifiedBackup, plan: RestorePlan, policy: ConflictPolicy): Promise<RestoreReport> {
+export async function applyRestore(
+  db: AppDb,
+  backup: VerifiedBackup,
+  plan: RestorePlan,
+  policy: ConflictPolicy,
+  tools?: RebuildTools,
+): Promise<RestoreReport> {
   const wanted = (id: string): boolean => {
     const status = plan.verdicts.get(id);
     // REV-115: settings are the phone's one configuration, not a collection: a restore brings back the backup's, whichever policy was
@@ -105,6 +124,15 @@ export async function applyRestore(db: AppDb, backup: VerifiedBackup, plan: Rest
   }
   skipped += backup.file.blobs.length - blobs.length;
 
+  // §2b: made again before the transaction; a failure throws here and nothing is written.
+  const rebuild = backup.file.manifest.rebuild ?? [];
+  const wantedRebuild: RebuildEntry[] = rebuild.filter((r) => wanted(`blobs:${r.key}`));
+  skipped += rebuild.length - wantedRebuild.length;
+  if (wantedRebuild.length > 0) {
+    if (tools === undefined) throw new Error('This backup needs its photo copies made again, and no image tools were given.');
+    for (const entry of await rebuildBlobs(backup, wantedRebuild, tools)) blobs.push(entry);
+  }
+
   const tx = db.transaction(['sessions', 'photos', 'analyses', 'settings', 'blobs'], 'readwrite');
   try {
     for (const [store, rec] of records) await (tx.objectStore(store) as unknown as { put(v: unknown): Promise<unknown> }).put(rec);
@@ -119,5 +147,5 @@ export async function applyRestore(db: AppDb, backup: VerifiedBackup, plan: Rest
     }
     throw err;
   }
-  return { written: records.length + blobs.length, skipped };
+  return { written: records.length + blobs.length, skipped, rebuilt: wantedRebuild.length };
 }

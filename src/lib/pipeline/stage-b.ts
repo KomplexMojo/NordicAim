@@ -27,7 +27,7 @@ import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { getSettings } from '@/lib/store/settings-repo';
 
 /** rendering-composite §3: the `full` diagram variant is 1500 × 1700 for both templates. */
-const FULL_SIZE = { widthPx: 1500, heightPx: 1700 } as const;
+export const DIAGRAM_FULL_SIZE = { widthPx: 1500, heightPx: 1700 } as const;
 
 /** rendering-composite §3 item 3 / `DiagramInput.positionLabel`. */
 export function positionLabel(position: Position): string {
@@ -91,7 +91,7 @@ interface Diagrams {
 async function renderDiagrams(input: DiagramInput, renderTools: RenderTools): Promise<Diagrams> {
   const fullSvg = renderDiagramSvg(input, 'full');
   const cellSvg = renderDiagramSvg(input, 'cell');
-  const png = await renderTools.svgToPng(fullSvg, FULL_SIZE.widthPx, FULL_SIZE.heightPx);
+  const png = await renderTools.svgToPng(fullSvg, DIAGRAM_FULL_SIZE.widthPx, DIAGRAM_FULL_SIZE.heightPx);
   const fullPng = await png.arrayBuffer();
   return { fullSvg, cellSvg, fullPng, fullPngType: png.type === '' ? 'image/png' : png.type };
 }

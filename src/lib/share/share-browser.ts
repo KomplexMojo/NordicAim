@@ -49,7 +49,7 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
  * to a download rather than failing.
  */
 export async function shareBackup(file: Blob, fileName: string): Promise<ShareOutcome> {
-  const asFile = new File([file], fileName, { type: 'application/json' });
+  const asFile = new File([file], fileName, { type: file.type || 'application/json' });
   const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean };
   if (typeof nav.canShare === 'function' && nav.canShare({ files: [asFile] })) {
     try {

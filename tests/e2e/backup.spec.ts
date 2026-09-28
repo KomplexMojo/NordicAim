@@ -27,8 +27,8 @@ test('back up, wipe the database, restore: the session and its scores come back;
   await page.getByTestId('backup-now').click();
   await expect(page.getByTestId('backup-confirm-dialog')).toContainText('GPS');
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
-  expect(download.suggestedFilename()).toMatch(/^nordic-aim-backup-\d{4}-\d{2}-\d{2}\.json$/);
-  const backupPath = testInfo.outputPath('backup.json');
+  expect(download.suggestedFilename()).toMatch(/^nordic-aim-backup-\d{4}-\d{2}-\d{2}\.json\.gz$/);
+  const backupPath = testInfo.outputPath('backup.json.gz');
   await download.saveAs(backupPath);
   await expect(page.getByTestId('backup-message')).toContainText(/Backup made: 1 sessions?, \d+ photos/);
   await expect(page.getByTestId('last-backup')).toContainText('1 sessions');
@@ -60,9 +60,9 @@ test('back up, wipe the database, restore: the session and its scores come back;
   await expect(page.getByTestId('session-list')).toHaveCount(0);
 
   // A cut-off copy is refused and writes nothing.
-  const text = readFileSync(backupPath, 'utf-8');
-  const cutPath = testInfo.outputPath('cut.json');
-  writeFileSync(cutPath, text.slice(0, text.length - 100));
+  const bytes = readFileSync(backupPath);
+  const cutPath = testInfo.outputPath('cut.json.gz');
+  writeFileSync(cutPath, bytes.subarray(0, bytes.length - 100));
   await page.goto('/#/settings');
   await page.getByTestId('restore-file').setInputFiles(cutPath);
   await expect(page.getByTestId('restore-problem')).toContainText(/cut short|damaged/);
@@ -74,6 +74,33 @@ test('back up, wipe the database, restore: the session and its scores come back;
   await expect(page.getByTestId('restore-counts')).toContainText('New: 1');
   await page.getByTestId('restore-go').click();
   await expect(page.getByTestId('backup-message')).toContainText('Restored');
+  // REV-126: the working copies and thumbnails were not in the file; the restore made them again, at their recorded size.
+  await expect(page.getByTestId('backup-message')).toContainText('made again from the originals');
+  const rebuilt = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('asa');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    const get = <T,>(store: string, query?: IDBValidKey): Promise<T> =>
+      new Promise((resolve, reject) => {
+        const req = query === undefined ? db.transaction(store).objectStore(store).getAll() : db.transaction(store).objectStore(store).get(query);
+        req.onsuccess = () => resolve(req.result as T);
+        req.onerror = () => reject(req.error);
+      });
+    const photos = await get<Array<{ id: string; working: { widthPx: number; heightPx: number } }>>('photos');
+    const out: Array<{ want: string; got: string; thumb: boolean }> = [];
+    for (const p of photos) {
+      const working = await get<{ bytes: ArrayBuffer } | undefined>('blobs', `photo:${p.id}:working`);
+      const thumb = await get<{ bytes: ArrayBuffer } | undefined>('blobs', `photo:${p.id}:thumb`);
+      const bitmap = working === undefined ? null : await createImageBitmap(new Blob([working.bytes]));
+      out.push({ want: `${p.working.widthPx}x${p.working.heightPx}`, got: bitmap === null ? 'missing' : `${bitmap.width}x${bitmap.height}`, thumb: thumb !== undefined });
+    }
+    db.close();
+    return out;
+  });
+  expect(rebuilt.length).toBeGreaterThan(0);
+  for (const r of rebuilt) expect(r).toEqual({ want: r.want, got: r.want, thumb: true });
 
   await page.goto(`/#/sessions/${sid}/results`);
   await expect(page.getByTestId('target-card').first()).toBeVisible({ timeout: 30_000 });
@@ -104,7 +131,10 @@ test('a restore brings the settings and preferences back too, and asks for the p
   });
   await page.getByTestId('backup-now').click();
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
-  const backupPath = testInfo.outputPath('backup.json');
+  // REV-125: the name carries the athlete and the key fingerprint.
+  const fp = fingerprint.match(/[0-9A-F]{8}/)![0];
+  expect(download.suggestedFilename()).toMatch(new RegExp(`^nordic-aim-backup-jane-doe-${fp}-\\d{4}-\\d{2}-\\d{2}\\.json\\.gz$`));
+  const backupPath = testInfo.outputPath('backup.json.gz');
   await download.saveAs(backupPath);
   await expect(page.getByTestId('backup-message')).toContainText('Backup made');
 
