@@ -39,6 +39,9 @@ test('two demo sessions give one point per session on each chart, the ranges fil
   }
   await expect(page.getByTestId('trend-score')).toContainText('Hit rate');
   await expect(page.getByTestId('trend-mpiX-zero')).toHaveCount(1);
+  // REV-129: two sessions are not a trend.
+  await expect(page.getByTestId('trend-score-line')).toHaveCount(0);
+  await expect(page.getByTestId('trend-score-slope')).toHaveCount(0);
 
   // Tapping a point reads it out.
   const readout = page.getByTestId('trend-group-readout');

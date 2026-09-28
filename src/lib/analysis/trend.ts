@@ -79,6 +79,16 @@ export interface TrendMetric {
   zeroLine: boolean;
   value(point: TrendPoint): number | null;
   format(value: number): string;
+  /** §4a (REV-129): the trend line's change per session, signed, with its unit. */
+  formatChange(slope: number): string;
+}
+
+function change(decimals: number, unit: string): (slope: number) => string {
+  return (slope) => {
+    const r = Number(slope.toFixed(decimals));
+    const sign = r > 0 ? '+' : r < 0 ? '−' : '±';
+    return `${sign}${Math.abs(r).toFixed(decimals)}${unit === '%' ? '%' : ` ${unit}`} per session`;
+  };
 }
 
 /** §3: the charts, in order. The score's meaning depends on the target kind. */
@@ -93,6 +103,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: false,
       value: (p) => p.scorePercent,
       format: (v) => `${Math.round(v)}%`,
+      formatChange: change(1, '%'),
     },
     {
       id: 'group',
@@ -102,6 +113,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: false,
       value: (p) => p.groupMoa,
       format: (v) => `${v.toFixed(2)} MOA`,
+      formatChange: change(2, 'MOA'),
     },
     {
       id: 'rms',
@@ -111,6 +123,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: false,
       value: (p) => p.rmsMm,
       format: (v) => `${v.toFixed(1)} mm`,
+      formatChange: change(1, 'mm'),
     },
     {
       id: 'mpiX',
@@ -120,6 +133,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: true,
       value: (p) => p.mpiXMm,
       format: (v) => signed(v, 'right', 'left'),
+      formatChange: change(1, 'mm'),
     },
     {
       id: 'mpiY',
@@ -129,6 +143,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       zeroLine: true,
       value: (p) => p.mpiYMm,
       format: (v) => signed(v, 'high', 'low'),
+      formatChange: change(1, 'mm'),
     },
   ];
 }

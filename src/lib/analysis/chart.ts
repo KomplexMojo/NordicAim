@@ -26,6 +26,40 @@ export interface ChartGeometry {
   /** Y of the zero line, when asked for and in range. */
   zeroY: number | null;
   domain: [number, number];
+  /** §4a (REV-129): the least-squares trend line, clipped to the plot; null below {@link MIN_TREND_SESSIONS} values. */
+  trend: TrendSegment | null;
+}
+
+export interface TrendSegment {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** Change per session, in the metric's own unit. */
+  slope: number;
+}
+
+/** §4a: two points only restate the line between them, so a trend needs three sessions with a value. */
+export const MIN_TREND_SESSIONS = 3;
+
+/**
+ * §4a: ordinary least squares of value on session index (the chart's own evenly spaced x), over the sessions that have a
+ * value. Null with fewer than {@link MIN_TREND_SESSIONS}.
+ */
+export function leastSquares(values: Array<number | null>): { slope: number; intercept: number; first: number; last: number } | null {
+  const pts = values.flatMap((v, i) => (v === null ? [] : [{ i, v }]));
+  if (pts.length < MIN_TREND_SESSIONS) return null;
+  const n = pts.length;
+  const mi = pts.reduce((s, p) => s + p.i, 0) / n;
+  const mv = pts.reduce((s, p) => s + p.v, 0) / n;
+  let sxy = 0;
+  let sxx = 0;
+  for (const p of pts) {
+    sxy += (p.i - mi) * (p.v - mv);
+    sxx += (p.i - mi) ** 2;
+  }
+  const slope = sxx === 0 ? 0 : sxy / sxx;
+  return { slope, intercept: mv - slope * mi, first: pts[0]!.i, last: pts.at(-1)!.i };
 }
 
 /** A "nice" step (1, 2 or 5 × 10^n) giving about `count` intervals over `span`. */
@@ -89,5 +123,23 @@ export function chartGeometry(
     yTicks.push({ y: yAt(value), value });
   }
   const zeroY = zeroLine && domain[0] <= 0 && domain[1] >= 0 ? yAt(0) : null;
-  return { points, path, yTicks, zeroY, domain };
+
+  // The fitted line runs from the first to the last session with a value. Its ends can fall past the values' own range, so it
+  // is clipped to the domain rather than widening it (several series share one domain, analysis.md §5).
+  let trend: TrendSegment | null = null;
+  const fit = leastSquares(values);
+  if (fit !== null) {
+    const at = (i: number) => fit.intercept + fit.slope * i;
+    let i1 = fit.first;
+    let i2 = fit.last;
+    for (const bound of domain) {
+      if (fit.slope === 0) break;
+      const iAt = (bound - fit.intercept) / fit.slope;
+      const outside = (i: number) => (bound === domain[0] ? at(i) < bound : at(i) > bound);
+      if (outside(i1)) i1 = Math.max(i1, Math.min(i2, iAt));
+      if (outside(i2)) i2 = Math.min(i2, Math.max(i1, iAt));
+    }
+    trend = { x1: xAt(i1), y1: yAt(at(i1)), x2: xAt(i2), y2: yAt(at(i2)), slope: fit.slope };
+  }
+  return { points, path, yTicks, zeroY, domain, trend };
 }

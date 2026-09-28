@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chartGeometry, niceStep } from '@/lib/analysis/chart';
+import { chartGeometry, leastSquares, MIN_TREND_SESSIONS, niceStep } from '@/lib/analysis/chart';
 
 // analysis.md §4 (REV-123).
 const BOX = { width: 300, height: 160, left: 40, right: 10, top: 10, bottom: 30 };
@@ -64,5 +64,51 @@ describe('chartGeometry with a shared domain (analysis.md §5)', () => {
     const b = chartGeometry([10, 20], BOX, false, 4, all);
     expect(a.domain).toEqual(b.domain);
     expect(a.points[0]!.y).toBeGreaterThan(b.points[0]!.y);
+  });
+});
+
+describe('trend line (analysis.md §4a, REV-129)', () => {
+  const box = { width: 320, height: 170, left: 44, right: 12, top: 12, bottom: 28 };
+
+  it('fits value on session index by least squares, skipping sessions with no value', () => {
+    // v = 2i + 1 exactly, with a gap at index 2.
+    expect(leastSquares([1, 3, null, 7, 9])).toEqual({ slope: 2, intercept: 1, first: 0, last: 4 });
+    // 1, 2, 6 at 0, 1, 2: slope = Σ(i−1)(v−3) / Σ(i−1)² = (2 + 0 + 3) / 2 = 2.5, intercept = 3 − 2.5 = 0.5.
+    const fit = leastSquares([1, 2, 6])!;
+    expect(fit.slope).toBeCloseTo(2.5, 12);
+    expect(fit.intercept).toBeCloseTo(0.5, 12);
+  });
+
+  it(`needs ${MIN_TREND_SESSIONS} sessions with a value`, () => {
+    expect(MIN_TREND_SESSIONS).toBe(3);
+    expect(leastSquares([4, null, 6])).toBeNull();
+    expect(chartGeometry([4, null, 6], box, false).trend).toBeNull();
+    expect(chartGeometry([4, 5, 6], box, false).trend).not.toBeNull();
+  });
+
+  it('runs from the first to the last session with a value, through the fitted values', () => {
+    const g = chartGeometry([null, 2, 4, 6], box, false);
+    const [first, , last] = g.points;
+    expect(g.trend!.slope).toBeCloseTo(2, 12);
+    expect(g.trend!.x1).toBeCloseTo(first!.x, 9);
+    expect(g.trend!.y1).toBeCloseTo(first!.y, 9);
+    expect(g.trend!.x2).toBeCloseTo(last!.x, 9);
+    expect(g.trend!.y2).toBeCloseTo(last!.y, 9);
+  });
+
+  it('is clipped to the plot when a fitted end falls outside the domain', () => {
+    // 0, 0, 0, 10: slope 3, intercept −1.5, so the fit starts at −1.5, below the domain [0, 10].
+    const g = chartGeometry([0, 0, 0, 10], box, false);
+    expect(g.domain).toEqual([0, 10]);
+    const bottom = box.height - box.bottom;
+    expect(g.trend!.y1).toBeCloseTo(bottom, 9); // clipped to 0 …
+    expect(g.trend!.x1).toBeGreaterThan(g.points[0]!.x); // … where the fitted line crosses it (i = 0.5)
+    expect(g.trend!.y2).toBeGreaterThanOrEqual(box.top - 1e-9);
+  });
+
+  it('is flat for a flat series', () => {
+    const g = chartGeometry([5, 5, 5], box, false);
+    expect(g.trend!.slope).toBe(0);
+    expect(g.trend!.y1).toBeCloseTo(g.trend!.y2, 12);
   });
 });

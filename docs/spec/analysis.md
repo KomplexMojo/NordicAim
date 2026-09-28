@@ -55,6 +55,19 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
 - **Show data** opens a table of every session and value as text: the accessible view of the same numbers.
 - With one session in the range, the charts still draw that point, and the screen says a trend needs at least two.
 
+## 4a. Trend lines (REV-129, owner 2026-09-28)
+
+- Every chart with **at least 3 sessions** that have a value (`MIN_TREND_SESSIONS`) gets a **trend line**: the ordinary
+  least-squares fit of the value on the session's **index**, the same evenly spaced x the chart uses (§4), over the
+  sessions that have a value (`leastSquares`, `chart.ts`). Two points would only restate the line between them.
+- It runs from the first to the last session with a value, **dashed** (1.5 px, `5 3`) in the text colour so it never
+  reads as another series, drawn over the data line. A fitted end that falls past the chart's domain is **clipped** to it;
+  the domain is not widened, because several series can share one (§5).
+- Under the chart's note it is written out as a signed change per session in the metric's unit (`formatChange`):
+  `Trend: +1.3% per session`, `−0.12 MOA per session`, `−0.3 mm per session`; `±` when it rounds to zero. The slope
+  is per session, not per day, because sessions are spaced evenly. The words stay neutral: for Score and Hit rate up is
+  better, for Group size and Accuracy down is better, and for the MPI charts better is towards 0.
+
 ## 5. The coach image (REV-124, owner 2026-09-27)
 
 > "Create an aggregate image like we have on the brag sheet, but … the trending analysis charts on the same image down below
@@ -78,6 +91,8 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
     - one **full-width chart per metric** (§3, five since REV-128), each with **one line per view**, all on **one shared session axis**: a
       session sits at the same x in every chart, evenly spaced, with up to 8 dates (always the first and the last);
     - all four lines of a chart share one y axis (`chartGeometry`'s `domainFrom`), with a zero line on the MPI charts;
+    - from 3 sessions, each view's **trend line** (§4a), dashed (2.5 px, `12 8`) in the view's own colour; the subtitle
+      adds `dashed: the trend`;
     - a column at the right gives each view's latest value;
     - points are marked while there are ≤ 40 sessions. Past that the line alone reads better, but a lone point between
       gaps is always marked.

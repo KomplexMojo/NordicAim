@@ -47,6 +47,14 @@ export function TrendChart({ metric, trend }: TrendChartProps) {
           {metric.note}
           {readout !== null && ` · ${selected !== null ? '' : 'latest, '}${shortDate(trend[readout.index]!.sessionDate)}`}
         </p>
+        {g.trend !== null && (
+          <p className="text-xs text-muted-foreground" data-testid={`trend-${metric.id}-slope`}>
+            <svg viewBox="0 0 20 6" className="mr-1 inline-block h-1.5 w-5 align-middle" aria-hidden="true">
+              <line x1={0} y1={3} x2={20} y2={3} className="stroke-foreground" strokeWidth={2} strokeDasharray="5 3" />
+            </svg>
+            Trend: {metric.formatChange(g.trend.slope)}
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         {g.points.length === 0 ? (
@@ -73,6 +81,19 @@ export function TrendChart({ metric, trend }: TrendChartProps) {
               </text>
             )}
             <path d={g.path} fill="none" className="stroke-primary" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            {g.trend !== null && (
+              <line
+                x1={g.trend.x1}
+                y1={g.trend.y1}
+                x2={g.trend.x2}
+                y2={g.trend.y2}
+                className="stroke-foreground"
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                strokeLinecap="round"
+                data-testid={`trend-${metric.id}-line`}
+              />
+            )}
             {g.points.map((p) => (
               <g key={p.index}>
                 <circle cx={p.x} cy={p.y} r={p.index === selected ? 6 : 4} className="fill-primary stroke-card" strokeWidth={2} />

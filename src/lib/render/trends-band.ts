@@ -1,7 +1,7 @@
 // analysis.md §5 (REV-124): the trends band of the coach image — a legend, then one full-width chart per metric, every
 // chart on the same session axis so a session sits at the same x in all of them. Pure SVG.
 
-import { chartGeometry, type ChartBox } from '../analysis/chart';
+import { chartGeometry, MIN_TREND_SESSIONS, type ChartBox } from '../analysis/chart';
 import type { CoachMetric, CoachTrends } from '../analysis/coach';
 import type { PatternView } from '../patterns/collect';
 
@@ -104,6 +104,11 @@ function chart(metric: CoachMetric, sessions: CoachTrends['sessions'], top: numb
     if (g.path !== '') {
       out += el('path', { d: g.path, fill: 'none', stroke: colour, 'stroke-width': 4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
     }
+    // §4a (REV-129): the view's least-squares trend, dashed in its own colour.
+    if (g.trend !== null) {
+      const t = g.trend;
+      out += el('line', { x1: t.x1, y1: t.y1, x2: t.x2, y2: t.y2, stroke: colour, 'stroke-width': 2.5, 'stroke-dasharray': '12 8', 'stroke-linecap': 'round', class: 'trend-line' });
+    }
     // A lone point between gaps has no segment, so it is always marked.
     for (const p of g.points) {
       const alone = series.values[p.index - 1] == null && series.values[p.index + 1] == null;
@@ -130,7 +135,7 @@ export function renderTrendsBand(trends: CoachTrends, y: number): { svg: string;
   const last = trends.sessions.at(-1);
   out += text(MARGIN, y + 56, 28, 'Trends over time', { bold: true, color: PALETTE.textPrimary });
   const span = first === undefined || last === undefined ? 'No sessions in this range' : `${shortDate(first.sessionDate)} – ${shortDate(last.sessionDate)}`;
-  out += text(MARGIN, y + 88, 18, `${trends.sessions.length} ${trends.sessions.length === 1 ? 'session' : 'sessions'} · ${span} · one point per session`, {
+  out += text(MARGIN, y + 88, 18, `${trends.sessions.length} ${trends.sessions.length === 1 ? 'session' : 'sessions'} · ${span} · one point per session${trends.sessions.length >= MIN_TREND_SESSIONS ? ' · dashed: the trend' : ''}`, {
     color: PALETTE.textSecondary,
   });
   out += legend(y + LEGEND_TOP + 24);

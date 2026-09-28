@@ -85,6 +85,14 @@ describe('trendMetrics', () => {
     expect(trendMetrics('precision').map((m) => m.zeroLine)).toEqual([false, false, false, true, true]);
   });
 
+  it('writes the trend as a signed change per session in the metric unit (REV-129)', () => {
+    const [score, group, rms, x] = trendMetrics('precision');
+    expect(score!.formatChange(1.26)).toBe('+1.3% per session');
+    expect(group!.formatChange(-0.123)).toBe('−0.12 MOA per session');
+    expect(rms!.formatChange(-0.04)).toBe('±0.0 mm per session');
+    expect(x!.formatChange(0.45)).toBe('+0.5 mm per session');
+  });
+
   it('formats the MPI with its direction', () => {
     const [, , , x, y] = trendMetrics('precision');
     expect(x!.format(-3.14)).toBe('3.1 mm left');

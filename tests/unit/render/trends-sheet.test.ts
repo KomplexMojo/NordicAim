@@ -59,6 +59,14 @@ describe('renderTrendsSheet', () => {
     expect(many.length).toBe(0);
   });
 
+  it('draws a dashed trend per view and chart from three sessions, and none below (REV-129)', () => {
+    const lines = (n: number) => renderTrendsSheet(input(n)).svg.match(/<line[^>]*class="trend-line"/g) ?? [];
+    expect(lines(2)).toHaveLength(0);
+    expect(lines(3)).toHaveLength(5 * 4); // five charts × four views
+    expect(renderTrendsSheet(input(3)).svg).toContain('dashed: the trend');
+    expect(renderTrendsSheet(input(2)).svg).not.toContain('dashed: the trend');
+  });
+
   it('still renders with no sessions in the range', () => {
     const out = renderTrendsSheet(input(0));
     expect(out.svg).toContain('No sessions in this range');
