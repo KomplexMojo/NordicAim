@@ -80,6 +80,13 @@ export interface CoachAverages {
   values: Record<TrendMetricId, number | null>;
   /** REV-132: each box's trend over the range; null below `MIN_TREND_SESSIONS` sessions with a value. */
   trends: Record<AverageBox, CoachTrend | null>;
+  /**
+   * REV-133: each session's MPI, oldest first. The average MPI is the bias to dial out, but sessions that sit on alternate sides
+   * average to about 0, so the box also shows where each one sat.
+   */
+  mpiSessions: Array<{ xMm: number; yMm: number }>;
+  /** REV-133: the mean of each session's MPI distance from the centre, whichever way: how far off a session typically sits. */
+  mpiTypicalMm: number | null;
 }
 
 /** The boxes on the coach image: three numbers and the MPI (whose trend is its distance from the centre). */
@@ -129,15 +136,21 @@ export function coachAverages(trends: CoachTrends): { views: CoachAverages[]; mp
       const y = series.mpiY[i];
       return x === null || y === null || y === undefined ? null : Math.hypot(x, y);
     });
+    const mpiSessions = series.mpiX.flatMap((x, i) => {
+      const y = series.mpiY[i];
+      return x === null || y === null || y === undefined ? [] : [{ xMm: x, yMm: y }];
+    });
+    const mpiTypicalMm = mpiSessions.length === 0 ? null : mpiSessions.reduce((t, p) => t + Math.hypot(p.xMm, p.yMm), 0) / mpiSessions.length;
     const boxTrends: Record<AverageBox, CoachTrend | null> = {
       score: trendOf('score', series.score),
       group: trendOf('group', series.group),
       rms: trendOf('rms', series.rms),
       mpi: trendOf('mpi', distance),
     };
-    return { view, sessions, values, trends: boxTrends };
+    return { view, sessions, values, trends: boxTrends, mpiSessions, mpiTypicalMm };
   });
-  const offsets = views.flatMap((v) => [v.values.mpiX, v.values.mpiY]).filter((v): v is number => v !== null);
+  // The scale fits every session's MPI as well as the averages, so no session's dot falls off the box.
+  const offsets = views.flatMap((v) => v.mpiSessions.flatMap((p) => [p.xMm, p.yMm]));
   return { views, mpiScaleMm: mpiScale(offsets.length === 0 ? 0 : Math.max(...offsets.map(Math.abs))) };
 }
 

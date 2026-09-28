@@ -15,10 +15,10 @@ export const TRENDS_WIDTH = 1440;
 
 const MARGIN = 40;
 const TITLE_HEIGHT = 150;
-const ROW_HEIGHT = 270;
+const ROW_HEIGHT = 295;
 const LABEL_WIDTH = 230;
 const BOX_WIDTH = 270;
-const BOX_HEIGHT = 245;
+const BOX_HEIGHT = 270;
 const BOX_GAP = 20;
 const MPI_WIDTH = TRENDS_WIDTH - MARGIN - (MARGIN + LABEL_WIDTH + 3 * (BOX_WIDTH + BOX_GAP));
 /** The MPI plot's half-size in px: the scale's ± end sits this far from the centre. */
@@ -78,8 +78,8 @@ function numberBox(avg: CoachAverages, id: 'score' | 'group' | 'rms', x: number,
   const cx = x + BOX_WIDTH / 2;
   let out = el('rect', { x, y, width: BOX_WIDTH, height: BOX_HEIGHT, rx: 12, fill: '#FFFFFF', stroke: PALETTE.panelBorder, 'stroke-width': 1 });
   out += text(cx, y + 36, 19, metric.title, { anchor: 'middle', bold: true, color: PALETTE.textSecondary });
-  out += text(cx, y + 140, 50, value === null ? '—' : metric.format(value), { anchor: 'middle', bold: true, color: PALETTE.textPrimary });
-  out += text(cx, y + 200, 15, NOTE[id](kind), { anchor: 'middle', color: PALETTE.textSecondary });
+  out += text(cx, y + 152, 50, value === null ? '—' : metric.format(value), { anchor: 'middle', bold: true, color: PALETTE.textPrimary });
+  out += text(cx, y + 222, 15, NOTE[id](kind), { anchor: 'middle', color: PALETTE.textSecondary });
   out += trendArrow(avg, id, x + BOX_WIDTH - 26, y + 30);
   return el('g', { class: 'average-box', 'data-view': avg.view, 'data-metric': id }, out);
 }
@@ -109,6 +109,18 @@ function mpiBox(avg: CoachAverages, scaleMm: number, x: number, y: number): stri
   out += text(cx, cy - MPI_HALF - 5, 13, `+${scaleMm} mm`, { ...label, anchor: 'middle' });
   out += text(cx, cy + MPI_HALF + 16, 13, `−${scaleMm}`, { ...label, anchor: 'middle' });
 
+  // REV-133: each session's MPI as a faint dot under the mark, so sessions on alternate sides show even when they average to 0.
+  for (const p of avg.mpiSessions) {
+    out += el('circle', {
+      class: 'mpi-session',
+      cx: cx + (p.xMm / scaleMm) * MPI_HALF,
+      cy: cy - (p.yMm / scaleMm) * MPI_HALF,
+      r: 4,
+      fill: PALETTE.textSecondary,
+      'fill-opacity': 0.55,
+    });
+  }
+
   if (mpiX !== null && mpiY !== null) {
     const px = cx + (mpiX / scaleMm) * MPI_HALF;
     const py = cy - (mpiY / scaleMm) * MPI_HALF;
@@ -117,9 +129,12 @@ function mpiBox(avg: CoachAverages, scaleMm: number, x: number, y: number): stri
     out += el('g', { class: 'mpi-mark', transform: `translate(${num(px - 48 * s)} ${num(py - 46 * s)}) scale(${num(s)})` }, renderPatternViewMark(avg.view));
     const metrics = trendMetrics(kindOf(avg.view));
     const words = `${metrics.find((m) => m.id === 'mpiX')!.format(mpiX)} · ${metrics.find((m) => m.id === 'mpiY')!.format(mpiY)}`;
-    out += text(cx, y + BOX_HEIGHT - 12, 15, words, { anchor: 'middle', bold: true, color: PALETTE.textPrimary });
+    out += text(cx, y + BOX_HEIGHT - 26, 15, `avg ${words}`, { anchor: 'middle', bold: true, color: PALETTE.textPrimary });
+    if (avg.mpiTypicalMm !== null && avg.mpiSessions.length >= 2) {
+      out += text(cx, y + BOX_HEIGHT - 8, 13, `sessions typically ${avg.mpiTypicalMm.toFixed(1)} mm off`, { anchor: 'middle', color: PALETTE.textSecondary });
+    }
   } else {
-    out += text(cx, y + BOX_HEIGHT - 12, 15, '—', { anchor: 'middle', color: PALETTE.textSecondary });
+    out += text(cx, y + BOX_HEIGHT - 26, 15, '—', { anchor: 'middle', color: PALETTE.textSecondary });
   }
   return el('g', { class: 'average-box', 'data-view': avg.view, 'data-metric': 'mpi' }, out);
 }

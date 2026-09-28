@@ -120,7 +120,7 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
 | `pnpm check` | typecheck + lint + unit tests + privacy check (every milestone's gate) |
 | `pnpm test` | Vitest unit tests |
 | `pnpm test:e2e` | Playwright (mobile Chromium + mobile WebKit) |
-| `pnpm docs:screens` | Regenerate the README and guide screenshots (`docs/assets/`) from the fake-camera demo data |
+| `pnpm docs:screens -- --hero-only` | Rebuild the README's four-phone strip from the screenshots in `docs/assets/screens/`. Those are the owner's own iPhone screenshots of real sessions (status bar cropped, metadata stripped); a full `pnpm docs:screens` replaces them with fake-camera demo ones, so use it only to preview |
 
 iPhone testing: push to `main`, then open `https://komplexmojo.github.io/NordicAim/` (use `#/diagnostics` for checks).
 

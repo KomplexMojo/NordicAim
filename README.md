@@ -38,7 +38,7 @@ You always have the last word. Every hole and the alignment can be corrected by 
 - **One summary image.** Sight in, confirm and the precision targets side by side, each drawn at the same scale so you can compare them by eye. Share it from the iPhone share sheet.
 - **Your rule, your call.** Choose official gauge touch, centre in ring, or visible hole touch. Changing it re-scores every session you have stored, so old and new results stay comparable.
 - **Patterns over time.** Every shot from every session, laid over the printed target for sight in, confirm, precision prone and precision standing. Filter to the latest session, this week, 30 days, 90 days or all time and see whether your misses have a habit.
-- **Trends, session by session.** The Analysis screen charts your score or hit rate, group size, accuracy (RMS distance from the centre) and point of impact with one point per session, and from three sessions draws a trend line that says how much you are changing per session.
+- **Trends, session by session.** The Analysis screen charts your score or hit rate, group size, accuracy (RMS distance from the centre) and point of impact with one point per session, and from three sessions draws a trend line on the score, group size and accuracy that says how much you are changing per session.
 - **A coach image.** One picture of any date range: the pattern drawings, then your averages in small boxes, each with an arrow showing which way it is trending, and a small bullseye showing where your average shot lands. Share it with your coach.
 - **A review pass.** Step through a session photo by photo, targets that need attention first.
 - **Backup and restore.** One compressed file, named with your name and the date, holds all your sessions. Restore it on a new phone.
@@ -112,14 +112,14 @@ When the session is done, NordicAim builds **one summary image**: your name and 
 
 <p align="center">
   <img src="docs/assets/summary-image.png" alt="A brag sheet: the NordicAim summary image with sight in and confirm above, two precision positions below, then the session analysis" width="460">
-  <br><sub>An example brag sheet, made from the app's demo targets (a sight in and a precision prone target).</sub>
+  <br><sub>A real brag sheet from a range session: sight in and confirm above, precision prone and standing below.</sub>
 </p>
 
 You choose what to share and when. NordicAim does not connect to Strava or Garmin, and nothing is posted for you. The image leaves your phone only when you share it, and your photos never do.
 
 ### Your trends, and one image for your coach
 
-The **Analysis** screen, at the top beside **Patterns**, shows how you are moving with one point per session: score or hit rate, group size, accuracy and point of impact, each with a dashed trend line from three sessions.
+The **Analysis** screen, at the top beside **Patterns**, shows how you are moving with one point per session: score or hit rate, group size, accuracy and point of impact, with a dashed trend line from three sessions on the score, group size and accuracy.
 
 <table>
   <tr>
@@ -188,7 +188,8 @@ pnpm test:e2e     # Playwright, mobile Chromium + mobile WebKit
 pnpm test:e2e:offline  # Playwright against the production build, offline after the first load
 pnpm check:privacy
 pnpm make:icons   # regenerate public/icons/* (sharp; concentric-ring motif)
-pnpm docs:screens # regenerate the README and guide screenshots in docs/assets/ from the demo data
+pnpm docs:screens -- --hero-only  # rebuild docs/assets/hero-screens.png from the phone screenshots in docs/assets/screens/
+pnpm docs:screens # preview only: replaces those real screenshots with demo-data ones from the fake-camera build
 ```
 
 Pushing to `main` deploys to GitHub Pages (`.github/workflows/pages.yml`). To run the capability checks on an iPhone, open

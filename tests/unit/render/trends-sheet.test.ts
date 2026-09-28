@@ -33,7 +33,7 @@ describe('renderTrendsSheet', () => {
   it('is 1440 wide and a fixed height: header, the 2 × 2 grid, the averages band (four rows), footer', () => {
     const out = renderTrendsSheet(input(5));
     expect(out.width).toBe(1440);
-    expect(out.height).toBe(120 + 1440 + (150 + 4 * 270 + 10) + 110);
+    expect(out.height).toBe(120 + 1440 + (150 + 4 * 295 + 10) + 110);
     expect(out.svg).toContain(`height="${out.height}"`);
   });
 
@@ -56,7 +56,7 @@ describe('renderTrendsSheet', () => {
     expect(svg.match(/>90%</g)).toHaveLength(2); // prone and standing
     expect(svg.match(/>Hit rate</g)).toHaveLength(2);
     expect(svg.match(/>Score</g)).toHaveLength(2);
-    expect(svg.match(/>1\.0 mm right · 1\.0 mm low</g)).toHaveLength(4);
+    expect(svg.match(/>avg 1\.0 mm right · 1\.0 mm low</g)).toHaveLength(4);
     expect(svg.match(/>3 sessions</g)).toHaveLength(4);
   });
 
@@ -111,6 +111,46 @@ describe('the MPI boxes (REV-131)', () => {
     const prone = coachAverages(coachTrends(byView)).views.find((v) => v.view === 'precision-prone')!;
     expect(prone.sessions).toBe(2);
     expect(prone.values.score).toBeCloseTo(80, 9); // (90 + 70) / 2
+  });
+});
+
+describe('the MPI box shows each session, not only the average (REV-133)', () => {
+  it('sessions on alternate sides average to centred, and the box says how far off they typically sat', () => {
+    // Prone: 5 mm left, 5 mm right, 5 mm left then right again by the same: the average left/right is 0.
+    const byView = sessions(4);
+    const side = [-5, 5, -5, 5];
+    byView['precision-prone'] = byView['precision-prone'].map((p) => ({ ...p, xMm: side[Number(p.sessionId.slice(1))]!, yMm: 0 }));
+    const trends = coachTrends(byView);
+    const prone = coachAverages(trends).views.find((v) => v.view === 'precision-prone')!;
+    expect(prone.values.mpiX).toBeCloseTo(0, 12);
+    expect(prone.mpiSessions).toEqual([
+      { xMm: -5, yMm: 0 },
+      { xMm: 5, yMm: 0 },
+      { xMm: -5, yMm: 0 },
+      { xMm: 5, yMm: 0 },
+    ]);
+    expect(prone.mpiTypicalMm).toBeCloseTo(5, 12);
+
+    const { svg } = renderTrendsSheet({ ...input(4), trends });
+    const start = svg.indexOf('data-view="precision-prone" data-metric="mpi"');
+    const box = svg.slice(start, svg.indexOf('class="averages-row"', start));
+    expect(box.match(/class="mpi-session"/g)).toHaveLength(4);
+    expect(box).toContain('>avg centred · centred<');
+    expect(box).toContain('>sessions typically 5.0 mm off<');
+  });
+
+  it('fits the shared scale to every session, not only the averages', () => {
+    const byView = sessions(2);
+    const side = [-30, 30];
+    byView['precision-standing'] = byView['precision-standing'].map((p) => ({ ...p, xMm: side[Number(p.sessionId.slice(1))]!, yMm: 0 }));
+    // The average is 0, but the sessions sit 30 mm out: the scale is 50, not 5.
+    expect(coachAverages(coachTrends(byView)).mpiScaleMm).toBe(50);
+  });
+
+  it('gives no typical distance for a single session', () => {
+    const { svg } = renderTrendsSheet(input(1));
+    expect(svg).not.toContain('sessions typically');
+    expect(svg.match(/class="mpi-session"/g)).toHaveLength(4);
   });
 });
 

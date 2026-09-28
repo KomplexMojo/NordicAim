@@ -77,6 +77,11 @@ export interface TrendMetric {
   unit: string;
   /** Draw a zero line: the metric is signed around a target of 0. */
   zeroLine: boolean;
+  /**
+   * REV-133: whether the chart draws a trend line (§4a). Not for the MPI charts: they plot a signed position, so a line through 0
+   * cannot tell swapping sides from closing in; closeness is the Accuracy chart's.
+   */
+  trendLine: boolean;
   value(point: TrendPoint): number | null;
   format(value: number): string;
   /** §4a (REV-129): the trend line's change per session, signed, with its unit. */
@@ -93,7 +98,9 @@ function change(decimals: number, unit: string): (slope: number) => string {
 
 /** §3: the charts, in order. The score's meaning depends on the target kind. */
 export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
-  const signed = (v: number, pos: string, neg: string) => `${Math.abs(v).toFixed(1)} mm ${v >= 0 ? pos : neg}`;
+  // An offset that rounds to 0.0 mm has no side: it reads "centred", not "0.0 mm right".
+  const signed = (v: number, pos: string, neg: string) =>
+    Math.abs(v) < 0.05 ? 'centred' : `${Math.abs(v).toFixed(1)} mm ${v >= 0 ? pos : neg}`;
   return [
     {
       id: 'score',
@@ -101,6 +108,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       note: kind === 'precision' ? 'Average ring, as a percentage of 10' : 'Share of shots in the hit zone',
       unit: '%',
       zeroLine: false,
+      trendLine: true,
       value: (p) => p.scorePercent,
       format: (v) => `${Math.round(v)}%`,
       formatChange: change(1, '%'),
@@ -111,6 +119,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       note: 'Widest spread per target, in MOA at 50 m; lower is tighter',
       unit: 'MOA',
       zeroLine: false,
+      trendLine: true,
       value: (p) => p.groupMoa,
       format: (v) => `${v.toFixed(2)} MOA`,
       formatChange: change(2, 'MOA'),
@@ -121,6 +130,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       note: 'Root-mean-square distance of every shot from the centre, in mm; lower is closer',
       unit: 'mm',
       zeroLine: false,
+      trendLine: true,
       value: (p) => p.rmsMm,
       format: (v) => `${v.toFixed(1)} mm`,
       formatChange: change(1, 'mm'),
@@ -131,6 +141,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       note: 'Mean point of impact; 0 is centred, above 0 is right',
       unit: 'mm',
       zeroLine: true,
+      trendLine: false,
       value: (p) => p.mpiXMm,
       format: (v) => signed(v, 'right', 'left'),
       formatChange: change(1, 'mm'),
@@ -141,6 +152,7 @@ export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
       note: 'Mean point of impact; 0 is centred, above 0 is high',
       unit: 'mm',
       zeroLine: true,
+      trendLine: false,
       value: (p) => p.mpiYMm,
       format: (v) => signed(v, 'high', 'low'),
       formatChange: change(1, 'mm'),

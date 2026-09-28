@@ -4,6 +4,11 @@
 // athlete data, and no photo carries GPS (`pnpm check:privacy`).
 //
 //   pnpm docs:screens            # starts `pnpm dev:test` on 127.0.0.1:3874 if it is not already running
+//   pnpm docs:screens --hero-only  # only rebuilds hero-screens.png from the screens already in docs/assets/screens/
+//
+// The committed screenshots are the owner's own, taken on the iPhone from real sessions (status bar cropped, metadata
+// stripped); a full run replaces them with demo-data ones, so use it only to preview a change, and `--hero-only` after
+// swapping in new phone screenshots.
 //
 // Uses Playwright's Chromium (PLAYWRIGHT_CHROMIUM_PATH when set). Phone screens are 393 × 852 CSS px at 2× scale.
 
@@ -18,6 +23,12 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const OUT = `${ROOT}docs/assets/`;
 const BASE = 'http://127.0.0.1:3874';
 const PHONE = { width: 393, height: 852 };
+const HERO_PANELS = [
+  ['capture.jpg', '1 Photograph the target'],
+  ['target.png', '2 Read each target'],
+  ['adjust.jpg', '3 Correct any shot'],
+  ['analysis-trends.png', '4 Track your trends'],
+];
 
 async function serverUp() {
   try {
@@ -177,6 +188,15 @@ async function hero(browser, panels) {
 
 async function main() {
   mkdirSync(`${OUT}screens`, { recursive: true });
+  if (process.argv.includes('--hero-only')) {
+    const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined });
+    try {
+      await hero(browser, HERO_PANELS);
+    } finally {
+      await browser.close();
+    }
+    return;
+  }
   const server = await ensureServer();
   const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined });
   try {
@@ -270,12 +290,7 @@ async function main() {
     await page.evaluate(() => window.scrollBy(0, -90));
     await shot(page, 'screens/scoring.png', { settle: 600 });
 
-    await hero(browser, [
-      ['capture.jpg', '1 Photograph the target'],
-      ['target.png', '2 Read each target'],
-      ['adjust.jpg', '3 Correct any shot'],
-      ['analysis-trends.png', '4 Track your trends'],
-    ]);
+    await hero(browser, HERO_PANELS);
     await context.close();
   } finally {
     await browser.close();

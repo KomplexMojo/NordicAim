@@ -118,7 +118,7 @@ The summary image puts your session on one page: the sight in and the confirm ac
 
 <p align="center">
   <img src="../assets/summary-image.png" width="460" alt="A session summary image: sight in and confirm above, two precision positions below, then the session analysis">
-  <br><sub>A summary image made from the project's reference target photos.</sub>
+  <br><sub>A summary image from a real range session.</sub>
 </p>
 
 Tap **Share** to send the image with the iPhone share sheet: save it to Photos, message it to a coach or teammate, or post it to your team's chat. If you have changed anything since, tap **Update summary** first.
@@ -179,13 +179,13 @@ There is one chart for each measure:
 - **Accuracy (RMS)**: the root-mean-square distance of every shot from the centre, in millimetres. It is one number for how close to the centre your shots land, combining how big the group is and how far off centre it sits. Lower is closer.
 - **MPI left / right** and **MPI up / down**: where the centre of your group sits, in millimetres. 0 is centred.
 
-From three sessions, each chart draws a dashed **trend line**, the straight line that best fits your sessions, and says how much it changes per session, for example *Trend: −0.3 mm per session*. Tap a point to read that session's value.
+From three sessions, the Score (or Hit rate), Group size and Accuracy charts draw a dashed **trend line**, the straight line that best fits your sessions, and say how much it changes per session, for example *Trend: −0.3 mm per session*. The MPI charts have no trend line: they show which side of centre each session sat, and a line through the middle cannot tell swapping sides from getting closer. Whether you are getting closer to the centre shows in Accuracy. Tap a point to read that session's value.
 
-**The coach image.** Tap **Make coach image**, then **Share**, to send a coach one picture of the range you chose: the four Patterns drawings, then for each kind of target a row of small boxes with its **average** over the range: score or hit rate, group size, accuracy, and a small bullseye with the target's mark placed where its average shot lands. A tiny arrow on each box shows which way the trend is going: tilted up, level or down, green when it is improving and red when it is getting worse. The charts themselves stay on the Analysis screen, where a coach can look at them with you.
+**The coach image.** Tap **Make coach image**, then **Share**, to send a coach one picture of the range you chose: the four Patterns drawings, then for each kind of target a row of small boxes with its **average** over the range: score or hit rate, group size, accuracy, and a small bullseye with the target's mark placed where its average shot lands, each session's own average as a faint dot, and how far off a session typically sits. That matters when sessions land on different sides: they can average to *centred* when none of them was. A tiny arrow on each box shows which way the trend is going: tilted up, level or down, green when it is improving and red when it is getting worse. The charts themselves stay on the Analysis screen, where a coach can look at them with you.
 
 <p align="center">
   <img src="../assets/coach-image.png" width="460" alt="A coach image: the four Patterns drawings, then a row of averages boxes for each kind of target, with trend arrows and a small bullseye showing the mean point of impact">
-  <br><sub>A coach image made from the app's demo targets. Confirm and precision standing are empty because the demo has none.</sub>
+  <br><sub>A coach image of three range sessions.</sub>
 </p>
 
 ## 11. Settings
