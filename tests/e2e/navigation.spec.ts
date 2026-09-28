@@ -60,7 +60,7 @@ test('adding more photos is one tap from results, and the session parent is one 
 
 test('the tab bar is the only Home link on screens that have it', async ({ page }) => {
   const { sessionId } = await demoSession(page);
-  for (const path of [`#/sessions`, `#/diagnostics`, `#/sessions/${sessionId}/results`]) {
+  for (const path of [`#/sessions`, `#/diagnostics`, `#/analysis`, `#/patterns`, `#/sessions/${sessionId}/results`]) {
     await page.goto(`/${path}`);
     await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
     await expect(page.getByTestId('tab-shooting')).toBeVisible();
@@ -73,7 +73,7 @@ test('a tab opens its screen at the top, not at the scroll position of the last 
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
 
-  for (const tab of ['tab-shooting', 'tab-diagnostics', 'tab-settings']) {
+  for (const tab of ['tab-shooting', 'tab-analysis', 'tab-patterns', 'open-settings']) {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.getByTestId(tab).click();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);

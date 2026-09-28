@@ -1,17 +1,27 @@
-// REV-47 (analysis-pipeline §1): the three main screens and which one a route belongs to. Pure.
+// REV-47 (analysis-pipeline §1), REV-136: the three main screens on the tab bar, which one a route belongs to, and the header's
+// Settings control. Pure.
 
-export type MainTab = 'shooting' | 'settings' | 'diagnostics';
+export type MainTab = 'shooting' | 'analysis' | 'patterns';
 
 export const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string; to: string }> = [
   { id: 'shooting', label: 'Sessions', to: '/' },
-  { id: 'settings', label: 'Settings', to: '/settings' },
-  { id: 'diagnostics', label: 'Diagnostics', to: '/diagnostics' },
+  { id: 'analysis', label: 'Analysis', to: '/analysis' },
+  { id: 'patterns', label: 'Patterns', to: '/patterns' },
 ];
 
-/** The tab a hash-router pathname belongs to: Settings, Diagnostics, else Shooting (`/`, `/sessions/...`, `/review/...`). */
-export function activeTab(pathname: string): MainTab {
-  if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
-  if (pathname === '/diagnostics' || pathname.startsWith('/diagnostics/')) return 'diagnostics';
+/** Settings and the Diagnostics screen reached from it (REV-136): the header's gear is marked there, and no tab is. */
+export function inSettings(pathname: string): boolean {
+  return /^\/(settings|diagnostics)(\/|$)/.test(pathname);
+}
+
+/**
+ * The tab a hash-router pathname belongs to: Analysis, Patterns, none on Settings and Diagnostics, else Sessions
+ * (`/`, `/sessions/...`, `/review/...`).
+ */
+export function activeTab(pathname: string): MainTab | null {
+  if (inSettings(pathname)) return null;
+  if (pathname === '/analysis' || pathname.startsWith('/analysis/')) return 'analysis';
+  if (pathname === '/patterns' || pathname.startsWith('/patterns/')) return 'patterns';
   return 'shooting';
 }
 

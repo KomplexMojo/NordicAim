@@ -35,7 +35,7 @@ Short on time? The **[workflow, step by step](workflow.md)** is the eight-step v
 
 Do this on Wi-Fi. The first load downloads the image analysis engine. After that, NordicAim works offline, so you can use it at a range with no signal.
 
-The bar at the bottom has three screens, always one tap apart: **Sessions** (your sessions, photos and results), **Settings**, and **Diagnostics**. The header at the top has **Analysis** (your trends over time) and **Patterns** (every shot, every session).
+The bar at the bottom has three screens, always one tap apart: **Sessions** (your sessions, photos and results), **Analysis** (your trends over time) and **Patterns** (every shot, every session). **Settings** is the gear at the top right, and **Diagnostics** is at the bottom of Settings.
 
 ## 2. Your first session
 
@@ -150,7 +150,7 @@ Tap **Review session** on the results screen to step through the session's photo
 
 ## 9. Patterns over time
 
-Tap **Patterns** in the header.
+Tap **Patterns** on the bottom bar.
 
 Patterns lays every shot you have recorded over the printed target, one view for each kind of target: **Sight in**, **Confirm**, **Precision prone** and **Precision standing**. Dots are translucent, so where they pile up they darken. Choose **Latest session**, **This week**, **30 days**, **90 days** or **All time**.
 
@@ -164,7 +164,7 @@ Only analysed targets with a measured or confirmed alignment are counted, and th
 
 ## 10. Trends and the coach image
 
-Tap **Analysis** in the header. It uses the same kinds of target and the same date ranges as Patterns, but where Patterns shows *where* your shots land, Analysis shows *how your numbers move*, with **one point per session**.
+Tap **Analysis** on the bottom bar. It uses the same kinds of target and the same date ranges as Patterns, but where Patterns shows *where* your shots land, Analysis shows *how your numbers move*, with **one point per session**.
 
 <p align="center">
   <img src="../assets/screens/analysis.png" width="300" alt="The Analysis screen with Precision prone and All time chosen, and the Score chart below">
@@ -243,7 +243,7 @@ A backup file contains your photos, and those hold their location. NordicAim tel
 - **You fired two shots through one hole.** In **Shots**, select the hole and tap **Looks like 2 shots**. If you entered fewer rounds than holes, NordicAim may assume a double punch for you. Set the hole back to 1 shot to score the extra round as a miss instead.
 - **A shot scores lower than you expect on the paper.** Check the scoring rule in **Settings**. Official gauge touch and centre in ring can differ by a ring on a line.
 - **Fewer shots than rounds.** A declared round with no hole found is counted as an assumed miss. Add any hole you can see, or correct the round count in the metadata.
-- **Something failed to open or save.** Open **Diagnostics** on the bottom bar. It runs checks on your phone (storage, camera, sharing, the analysis engine) and shows which pass and which fail, and lets you export your data.
+- **Something failed to open or save.** Open **Settings** (the gear at the top right), then **Diagnostics** at the bottom. It runs checks on your phone (storage, camera, sharing, the analysis engine) and shows which pass and which fail, and lets you export your data.
 
 Found a bug or a score that looks wrong? [Open an issue](https://github.com/KomplexMojo/NordicAim/issues) and say what you shot and what you expected.
 

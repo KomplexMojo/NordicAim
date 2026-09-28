@@ -18,10 +18,13 @@ const CHECK_IDS = [
   'user-agent',
 ];
 
-test('home page shows the heading and the Diagnostics tab (REV-47)', async ({ page }) => {
+test('home page shows the heading, the Sessions / Analysis / Patterns tabs and the Settings gear (REV-47, REV-136)', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
-  await expect(page.getByTestId('tab-bar').getByRole('link', { name: 'Diagnostics' })).toBeVisible();
+  for (const name of ['Sessions', 'Analysis', 'Patterns']) {
+    await expect(page.getByTestId('tab-bar').getByRole('link', { name })).toBeVisible();
+  }
+  await expect(page.getByTestId('app-header').getByRole('link', { name: 'Settings' })).toBeVisible();
 });
 
 test('diagnostics page runs every check', async ({ page }) => {

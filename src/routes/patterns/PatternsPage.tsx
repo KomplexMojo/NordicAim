@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
 
 import { ObservedPatterns } from '@/components/results/ObservedPatterns';
 import { PatternHeader } from '@/components/patterns/PatternHeader';
@@ -57,12 +56,8 @@ export function PatternsPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 lg:max-w-6xl">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Patterns</h1>
-        <Link to="/" className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">
-          Home
-        </Link>
-      </header>
+      {/* REV-136: a tab now, so no Home link of its own: Sessions is the tab beside it. */}
+      <h1 className="text-xl font-semibold">Patterns</h1>
 
       <ViewRangeControls view={view} range={range} onView={setView} onRange={setRange} testIdPrefix="pattern" />
 

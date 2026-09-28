@@ -17,7 +17,7 @@ test('with nothing recorded, every view says so and nothing errors', async ({ pa
   }
 });
 
-test('two demo sessions give one point per session on each chart, the ranges filter them, and the header links here', async ({ page }) => {
+test('two demo sessions give one point per session on each chart, the ranges filter them, and its tab links here', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   for (let i = 0; i < 2; i++) {
@@ -25,11 +25,11 @@ test('two demo sessions give one point per session on each chart, the ranges fil
     await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   }
 
-  // The header's Analysis icon sits beside Patterns.
-  await expect(page.getByTestId('open-patterns')).toBeVisible();
-  await page.getByTestId('open-analysis').click();
+  // REV-136: Analysis is a tab, beside Patterns.
+  await expect(page.getByTestId('tab-patterns')).toBeVisible();
+  await page.getByTestId('tab-analysis').click();
   await expect(page).toHaveURL(/#\/analysis$/);
-  await expect(page.getByTestId('open-analysis')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('tab-analysis')).toHaveAttribute('aria-current', 'page');
 
   // Sight in: each demo session's first sighting target, so two sessions.
   // REV-130: each view button carries its kind's mark.

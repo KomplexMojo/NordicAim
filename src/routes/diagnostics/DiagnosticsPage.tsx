@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { DataRecovery } from '@/components/diagnostics/DataRecovery';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,14 @@ export function DiagnosticsPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col gap-4 p-4 lg:max-w-5xl">
+      {/* REV-136: Diagnostics is opened from Settings, so its own link is back to its parent. */}
+      <Link
+        to="/settings"
+        className="inline-flex h-11 items-center self-start text-sm text-primary underline underline-offset-4"
+        data-testid="diagnostics-back"
+      >
+        Back to Settings
+      </Link>
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Diagnostics</h1>
       </div>
