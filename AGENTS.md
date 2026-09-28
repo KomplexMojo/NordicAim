@@ -92,8 +92,8 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
 - **Share rule.** The only images handed to the share sheet or a download are a stored `CompositeArtifact` (the session
   summary image, `docs/spec/rendering-composite.md` §6) and a stored `TrendsArtifact` (the coach image, `docs/spec/analysis.md`
   §5, REV-124), each only on the owner's tap. Photos never leave the phone, with one exception (REV-63): a
-  **backup the owner explicitly creates** (`docs/spec/backup.md`) may contain photos. Nothing else may leave the phone, and
-  nothing is ever sent anywhere automatically.
+  **backup the owner explicitly creates** (`docs/spec/backup.md`) may contain photos. The static printable sheets in `public/sheets/` (no user data, REV-135) may also be downloaded. Nothing else may leave
+  the phone, and nothing is ever sent anywhere automatically.
 - **Repo privacy.** Never commit `fixtures/private/`, `.env*` (except `.env.example`), or user data. Committed images
   carry no GPS EXIF (`pnpm check:privacy`).
 - **Pure/adapter split.** Pixel algorithms take `RgbaImage { data: Uint8ClampedArray; width; height }` and don't touch

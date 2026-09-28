@@ -159,6 +159,33 @@ Adjust uses the reference in force at that moment, like the Settings backing and
   points to it is always restored (REV-115). *Owner to confirm* (issue #52: whether backups include custom sheets).
 - Shipped defaults are public, committed images: they must pass `pnpm check:privacy` and show nothing but the target circles.
 
+## 10. Printable NordicAim sheets (issue #67, REV-135)
+
+Each row of **Target sheets** also has **Download printable sheet (PDF)**. It downloads a static, same-origin PDF:
+
+| Template | Asset (`public/`) | Pages |
+|---|---|---|
+| sighting | `sheets/nordicaim-sighting-letter.pdf` | 1 Sight in, 2 Confirm |
+| precision | `sheets/nordicaim-precision-letter.pdf` | 1 Prone, 2 Standing |
+
+- The record is `PRINTABLE_SHEET` in `src/lib/defaults/printable-sheets.ts`; the PDFs are made by `pnpm make:test-sheets`
+  (`scripts/make-test-sheets.mjs`) and committed. The service worker precaches them (`vite.config.ts`, `pdf` in
+  `globPatterns`), so the download works offline.
+- **US Letter only** (215.9 × 279.4 mm), printed at 100% / Actual size. The target's centre is the page centre, drawn from
+  the template geometry (`src/lib/defaults/templates.ts`) with no ring numbers. The sighting disc is black to the centre.
+- **Four AprilTag 36h11 markers**, 20 mm (8 × 8 cells, 1-cell border), centres at (±85, ±105) mm from the target centre, with a
+  4 mm quiet zone. Marker id = `version << 4 | kind << 2 | corner`: version 1; kind 0 sight in, 1 confirm, 2 precision prone,
+  3 precision standing; corner 0 top left, 1 top right, 2 bottom left, 3 bottom right. So the ids are 16–31 and one marker
+  gives the kind, orientation and sheet version.
+- **Nothing is printed** between the outermost printed circle and the markers. The **top centre is left blank** (±70 mm across,
+  where a clipboard clamp sits). The 100 mm scale bar, write-in lines (Name, Date, String) and three lines of text (kind and
+  version, "Print at 100% / Actual size", the repo URL) sit in the bottom band, below the markers' inner edge.
+- The app does not read the markers yet (issue #65). A photo of a printed sheet is aligned and scored like any other sheet.
+  Measured on a clean render of both sheets at 7.56 px/mm with exact calibration: detection kept no marker cell and no text as a
+  shot, and found all four simulated holes, two of them near markers.
+- The PDFs are generated artwork, not user data: no photo, name or location. They are the third kind of file the owner may
+  download (`privacy-storage-hosting.md` §1).
+
 ## 9. Open
 
 - M26 Decision 3 (registration precision) and Decision 4 (the compared signal): §6.

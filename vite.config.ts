@@ -99,7 +99,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,jpg,heic,wasm,json,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,jpg,heic,wasm,json,webmanifest,pdf}'],
         // Never cached by the worker: the whole point is to ask the network what is deployed now.
         globIgnores: ['**/version.json'],
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
