@@ -41,8 +41,8 @@ export function TemplateSheetSettings({ templateReferences, holeDiameterMm, onCh
         when your printed sheets change. Only the circles are kept.
       </p>
       <p className="text-xs text-muted-foreground">
-        Or print NordicAim&apos;s own training sheets: US Letter, printed at 100% / Actual size. Their corner markers leave the
-        top centre free for a clipboard clamp.
+        Or print NordicAim&apos;s own training sheets: US Letter, printed at 100% / Actual size. Each page carries its kind&apos;s mark
+        at the top, so a hung sheet is easy to tell apart.
       </p>
       {ROWS.map((row) => (
         <TemplateSheetRow

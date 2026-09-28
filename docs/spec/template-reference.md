@@ -177,11 +177,14 @@ Each row of **Target sheets** also has **Download printable sheet (PDF)**. It do
   4 mm quiet zone. Marker id = `version << 4 | kind << 2 | corner`: version 1; kind 0 sight in, 1 confirm, 2 precision prone,
   3 precision standing; corner 0 top left, 1 top right, 2 bottom left, 3 bottom right. So the ids are 16–31 and one marker
   gives the kind, orientation and sheet version.
-- **Nothing is printed** between the outermost printed circle and the markers. The **top centre is left blank** (±70 mm across,
-  where a clipboard clamp sits). The 100 mm scale bar, write-in lines (Name, Date, String) and three lines of text (kind and
+- **Nothing is printed** between the outermost printed circle and the markers. **The top centre carries the kind** (REV-138):
+  the app's own mark for the page's kind (`renderPatternViewMark`: sight-in scatter, confirm scope sight, prone or standing bar),
+  17 mm across with its top 5 mm below the paper's edge, and the kind's name in 8 mm bold beside it, centred together. It sits
+  in the clipboard clamp's zone (±70 mm across, 22 mm deep), so it is covered on the clipboard and easy to read when the sheet
+  hangs on its own (owner's choice). The script runs under `tsx` so it can import the mark. The 100 mm scale bar, write-in lines (Name, Date, String) and three lines of text (kind and
   version, "Print at 100% / Actual size", the repo URL) sit in the bottom band, below the markers' inner edge.
 - The app does not read the markers yet (issue #65). A photo of a printed sheet is aligned and scored like any other sheet.
-  Measured on a clean render of both sheets at 7.56 px/mm with exact calibration: detection kept no marker cell and no text as a
+  Measured on a clean render of both sheets at 7.56 px/mm with exact calibration: detection kept no marker cell, kind mark or text as a
   shot, and found all four simulated holes, two of them near markers.
 - The PDFs are generated artwork, not user data: no photo, name or location. They are the third kind of file the owner may
   download (`privacy-storage-hosting.md` §1).
