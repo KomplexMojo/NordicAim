@@ -57,9 +57,11 @@ function precisionTarget() {
 function sightingTarget() {
   let s = circle(SIGHTING.disc / 2, 'fill="#000"');
   s += circle(SIGHTING.standingGuide / 2, `fill="none" stroke="#fff" stroke-width="${LINE}" stroke-dasharray="3 2"`);
-  s += circle(SIGHTING.proneSolid / 2, 'fill="#fff"');
-  s += circle(SIGHTING.proneGuide / 2, `fill="none" stroke="#000" stroke-width="${LINE}" stroke-dasharray="2 1.5"`);
-  s += circle(SIGHTING.inner / 2, `fill="none" stroke="#000" stroke-width="${LINE}"`);
+  // The whole disc is black, centre included (owner, 2026-09-28): the prone zone and the inner circle are white lines on it,
+  // not a white centre.
+  s += circle(SIGHTING.proneSolid / 2, `fill="none" stroke="#fff" stroke-width="${LINE}"`);
+  s += circle(SIGHTING.proneGuide / 2, `fill="none" stroke="#fff" stroke-width="${LINE}" stroke-dasharray="2 1.5"`);
+  s += circle(SIGHTING.inner / 2, `fill="none" stroke="#fff" stroke-width="${LINE}"`);
   return s;
 }
 
