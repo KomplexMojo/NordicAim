@@ -57,7 +57,10 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
 
 ## 4a. Trend lines (REV-129, owner 2026-09-28)
 
-- Every chart with **at least 3 sessions** that have a value (`MIN_TREND_SESSIONS`) gets a **trend line**: the ordinary
+- **Not on the MPI charts** (REV-133, owner 2026-09-28, `TrendMetric.trendLine`): they plot a signed position, so a line
+  through 0 cannot tell swapping sides (6 mm left, then 6 mm right) from closing in; whether the group is getting closer to
+  the centre is the Accuracy (RMS) chart's, and the coach image's MPI arrow's.
+- Every other chart with **at least 3 sessions** that have a value (`MIN_TREND_SESSIONS`) gets a **trend line**: the ordinary
   least-squares fit of the value on the session's **index**, the same evenly spaced x the chart uses (§4), over the
   sessions that have a value (`leastSquares`, `chart.ts`). Two points would only restate the line between them.
 - It runs from the first to the last session with a value, **dashed** (1.5 px, `5 3`) in the text colour so it never
@@ -86,20 +89,26 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
   - **Grid** (1440): the four Patterns drawings in the order Sight in, Confirm (top), Precision prone, Precision standing
     (bottom). Each has its view mark (REV-122), name and totals (score or hit rate, shots, sessions), or `No shots in
     this range`.
-  - **Averages band** (150 + 270 per view + 10; REV-131, owner 2026-09-28, in place of the trend charts, which stay on the
+  - **Averages band** (150 + 295 per view + 10; REV-131, owner 2026-09-28, in place of the trend charts, which stay on the
     Analysis screen):
     - the title `Averages in this range`, the session count and span, `each session counted once` and `charts over time are
       on the Analysis screen`, then the arrows' key (REV-132);
     - **one row per view**, in the grid's order: the view's mark, its name (two lines when it is two words and long) and
       its session count, or `No shots in this range`;
-    - three small **number boxes** (270 × 245): **Score** (precision) or **Hit rate** (sighting), **Group size** and
+    - three small **number boxes** (270 × 270): **Score** (precision) or **Hit rate** (sighting), **Group size** and
       **Accuracy (RMS)**, each the view's **average** over the range (`coachAverages`: the mean of its session values,
       each session counted once), formatted as on the Analysis screen, with a one-line note; `—` with no value;
     - an **MPI box**: a simulated bullseye (two rings, at half and all of the scale, and a centre dot) on axes, **+x right
       and +y up**, with the ends labelled in mm; the **view's own mark** sits at the view's average MPI (x = mean of the
-      session MPI x, y likewise), and under it the offset in words (`10.0 mm right · 2.0 mm low`);
+      session MPI x, y likewise), and under it the offset in words (`avg 10.0 mm right · 2.0 mm low`; an offset that rounds
+      to 0.0 mm reads `centred`);
+    - REV-133 (owner 2026-09-28): the average is the bias to dial out with the sights, but sessions on alternate sides
+      average to about 0 and would look centred. So each session's MPI is also drawn as a **faint dot** under the mark
+      (`mpiSessions`), and from 2 sessions a second line gives how far off a session **typically** sits, whichever way:
+      the mean of each session's MPI distance from the centre (`mpiTypicalMm`), `sessions typically 6.0 mm off`;
     - every MPI box shares **one scale** (`mpiScale`): the first of 5, 10, 20, 50, 100, 200, 500 mm that is at least 15%
-      past the largest average offset of any view, so a mark never sits on the edge and positions compare across boxes;
+      past the largest offset of any session's MPI in any view, so no dot or mark sits on the edge and positions compare
+      across boxes;
     - **trend arrows** (REV-132, owner 2026-09-28): each box, from **3 sessions** with a value (as §4a), carries a small
       arrow at its top right that shows only the direction of the least-squares trend over the range (`trendOf`, the same
       fit as §4a): tilted **up** 30°, **level**, or tilted **down** 30°. The MPI box's arrow is the trend of the MPI's

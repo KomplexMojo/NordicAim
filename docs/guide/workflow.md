@@ -105,7 +105,7 @@ Every shot is laid over the printed target. Where they pile up they darken, so y
   <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen with every precision prone shot laid over the printed target and the observed patterns below">
 </p>
 
-Then tap **Analysis** beside it. The same kinds of target and ranges, but one point per session, so you see how your score or hit rate, group size, accuracy (RMS) and mean point of impact move over time. From three sessions, a dashed trend line shows the direction and how much it changes per session.
+Then tap **Analysis** beside it. The same kinds of target and ranges, but one point per session, so you see how your score or hit rate, group size, accuracy (RMS) and mean point of impact move over time. From three sessions, a dashed trend line on the score, group size and accuracy shows the direction and how much it changes per session.
 
 <p align="center">
   <img src="../assets/screens/analysis-trends.png" width="300" alt="The Analysis screen's Score and Group size charts, each with a dashed trend line">

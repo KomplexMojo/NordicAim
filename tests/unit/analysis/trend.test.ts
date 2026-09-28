@@ -83,6 +83,8 @@ describe('trendMetrics', () => {
     expect(trendMetrics('precision').map((m) => m.title)).toEqual(['Score', 'Group size', 'Accuracy (RMS)', 'MPI left / right', 'MPI up / down']);
     expect(trendMetrics('sighting')[0]!.title).toBe('Hit rate');
     expect(trendMetrics('precision').map((m) => m.zeroLine)).toEqual([false, false, false, true, true]);
+    // REV-133: a signed position has no trend line; the size and closeness measures do.
+    expect(trendMetrics('precision').map((m) => m.trendLine)).toEqual([true, true, true, false, false]);
   });
 
   it('writes the trend as a signed change per session in the metric unit (REV-129)', () => {
