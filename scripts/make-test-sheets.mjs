@@ -2,15 +2,18 @@
 // Issue #65 / #67 (REV-135): the printable NordicAim training sheets, one US Letter PDF per template, two pages each (sighting:
 // sight in, confirm; precision: prone, standing). Each page has the app's own template geometry, four AprilTag 36h11 corner
 // markers whose ids encode the sheet version, target kind and corner, a 100 mm scale bar, write-in lines, and no print between
-// the outer ring and the markers. The top centre is left blank: a clipboard clamp covers it.
+// the outer ring and the markers. The kind's mark and name sit at the top centre, under the clipboard clamp (REV-138), so a sheet
+// hung on its own is easy to tell apart; the mark is the app's own (`renderPatternViewMark`), so it never drifts from the results.
 //
-//   node scripts/make-test-sheets.mjs [outDir]     # default public/sheets/
+//   pnpm make:test-sheets [outDir]     # tsx scripts/make-test-sheets.mjs; default public/sheets/
 //
 // Print at 100% / Actual size. Chromium writes the PDFs, so every length below is exact millimetres on paper.
 
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { renderPatternViewMark, VIEW_MARK_VIEWBOX } from '../src/lib/render/diagram-marks.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -33,8 +36,10 @@ export const SHEETS = [
   { template: 'sighting', file: 'nordicaim-sighting-letter.pdf', title: 'Sighting sheet' },
   { template: 'precision', file: 'nordicaim-precision-letter.pdf', title: 'Precision sheet' },
 ];
-/** The clipboard clamp's zone at the top centre: nothing is printed in it. */
+/** The clipboard clamp's zone at the top centre: only the kind's mark and name are printed in it (REV-138). */
 export const CLAMP = { halfWidth: 70, depth: 22 };
+/** The kind's mark: 17 mm across, its top 5 mm below the paper's edge (inside most printers' margins), with its name in 8 mm bold. */
+export const KIND_MARK = { size: 17, top: 5, gap: 3, label: 8 };
 
 /** The marker id for a corner (0..3, CORNERS order) of a kind: version << 4 | kind << 2 | corner. */
 export function markerId(kindCode, corner, version = SHEET_VERSION) {
@@ -112,8 +117,21 @@ function marker(cells, corner) {
   return `<path d="${d}" fill="#000" shape-rendering="crispEdges"/>`;
 }
 
-function text(x, y, size, body, anchor = 'middle') {
-  return `<text x="${f(x)}" y="${f(y)}" font-size="${size}" text-anchor="${anchor}" font-family="Helvetica, Arial, sans-serif" fill="#000">${body}</text>`;
+function text(x, y, size, body, anchor = 'middle', weight = 'normal') {
+  return `<text x="${f(x)}" y="${f(y)}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" font-family="Helvetica, Arial, sans-serif" fill="#000">${body}</text>`;
+}
+
+/** The kind's mark (the app's own drawing, REV-79/86) and its name, centred together at the top of the page. */
+export function kindMark(kind) {
+  const [vx, vy, vw] = VIEW_MARK_VIEWBOX.split(' ').map(Number);
+  const k = KIND_MARK.size / vw;
+  // Helvetica bold's average advance is about 0.58 em: enough to centre mark and name as one block.
+  const labelWidth = kind.label.length * KIND_MARK.label * 0.58;
+  const width = KIND_MARK.size + KIND_MARK.gap + labelWidth;
+  const x0 = CX - width / 2;
+  const mark = `<g data-kind="${kind.id}" transform="translate(${f(x0 - vx * k)} ${f(KIND_MARK.top - vy * k)}) scale(${f(k)})">${renderPatternViewMark(kind.id)}</g>`;
+  const baseline = KIND_MARK.top + KIND_MARK.size / 2 + KIND_MARK.label * 0.35;
+  return mark + text(x0 + KIND_MARK.size + KIND_MARK.gap, baseline, KIND_MARK.label, kind.label, 'start', 'bold');
 }
 
 /** The bottom band, between the bottom markers and below their inner edge: scale bar and write-in lines. */
@@ -151,6 +169,7 @@ function page(cv, kind) {
   const markers = CORNERS.map((_, corner) => marker(markerCells(cv, markerId(kind.code, corner)), corner)).join('');
   const bottomMarkerTop = CY + MARK.dy - MARK.size / 2;
   const body = [
+    kindMark(kind),
     target,
     markers,
     scaleBar(bottomMarkerTop + 5),

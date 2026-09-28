@@ -216,7 +216,7 @@ Changing the rule **re-scores every session you have stored**. Your shots and al
 
 **Target sheets.** NordicAim ships with a picture of each printed sheet. When your printed sheets change, photograph a blank, unused sheet so it matches exactly what you shoot at; only the target circles are kept. **Restore default** goes back to the built-in sheet.
 
-**Printable sheets.** Each row also has **Download printable sheet (PDF)**: NordicAim's own training sheets, one PDF per template (sighting: Sight in and Confirm; precision: Prone and Standing). They work offline once the app is installed. Print them on US Letter at **100% / Actual size**, and check that the bar at the bottom measures exactly 100 mm. Card stock tears cleaner holes than printer paper. Nothing is printed at the top centre, so a clipboard clamp can hold the sheet there. Photograph all four corner markers with the target.
+**Printable sheets.** Each row also has **Download printable sheet (PDF)**: NordicAim's own training sheets, one PDF per template (sighting: Sight in and Confirm; precision: Prone and Standing). They work offline once the app is installed. Print them on US Letter at **100% / Actual size**, and check that the bar at the bottom measures exactly 100 mm. Card stock tears cleaner holes than printer paper. Each page has its kind's mark and name at the top centre (Sight in, Confirm, Precision prone, Precision standing), so a hung sheet is easy to tell apart; on a clipboard the clamp covers it. Photograph all four corner markers with the target.
 
 **Backup.** See the next section.
 

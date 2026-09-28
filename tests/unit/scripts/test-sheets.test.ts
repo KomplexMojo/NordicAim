@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 
 import type { OpenCv } from '@/lib/cv/opencv';
+import { renderPatternViewMark } from '@/lib/render/diagram-marks';
 
 import { loadOpenCvForTests } from '../../helpers/opencv';
 // @ts-expect-error: a Node-only .mjs script without type declarations.
@@ -9,11 +10,15 @@ import * as sheets from '../../../scripts/make-test-sheets.mjs';
 // Issue #65 / #67 (REV-135): the printable sheets' AprilTag corner markers and layout.
 
 interface Kind {
+  id: 'sight-in' | 'confirm' | 'precision-prone' | 'precision-standing';
+  label: string;
   code: number;
   template: string;
 }
-const { CLAMP, KINDS, MARK, PAGE, markerCells, markerId, markerOrigin } = sheets as {
+const { CLAMP, KIND_MARK, KINDS, MARK, PAGE, kindMark, markerCells, markerId, markerOrigin } = sheets as {
   CLAMP: { halfWidth: number; depth: number };
+  KIND_MARK: { size: number; top: number; gap: number; label: number };
+  kindMark(kind: Kind): string;
   KINDS: Kind[];
   MARK: { size: number; cells: number; dx: number; dy: number; quiet: number };
   PAGE: { w: number; h: number };
@@ -93,6 +98,28 @@ describe('sheet layout', () => {
         const clampRight = PAGE.w / 2 + CLAMP.halfWidth;
         expect(right < clampLeft || left > clampRight).toBe(true);
       }
+    }
+  });
+});
+
+describe('sheet kind mark (REV-138)', () => {
+  it("is the app's own mark for each kind, with the kind's name", () => {
+    for (const kind of KINDS) {
+      const svg = kindMark(kind);
+      expect(svg).toContain(renderPatternViewMark(kind.id));
+      expect(svg).toContain(`>${kind.label}</text>`);
+    }
+  });
+
+  it('sits in the clamp zone at the top centre, inside the printable margin and clear of the top markers', () => {
+    expect(KIND_MARK.top).toBeGreaterThanOrEqual(4);
+    expect(KIND_MARK.top + KIND_MARK.size).toBeLessThanOrEqual(CLAMP.depth);
+    // Between the top markers: the top-left marker's quiet zone ends this far left of the page centre.
+    const clearHalfWidth = PAGE.w / 2 - (markerOrigin(0).x + MARK.size + MARK.quiet);
+    for (const kind of KINDS) {
+      // The same width estimate kindMark centres by; the longest name must fit the zone.
+      const width = KIND_MARK.size + KIND_MARK.gap + kind.label.length * KIND_MARK.label * 0.58;
+      expect(width / 2).toBeLessThan(Math.min(CLAMP.halfWidth, clearHalfWidth));
     }
   });
 });
