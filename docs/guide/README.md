@@ -39,7 +39,7 @@ The bar at the bottom has three screens, always one tap apart: **Sessions** (you
 
 ## 2. Your first session
 
-A session is one visit to the range: a sight in, a confirm, one or two precision targets.
+A session is one visit to the range: a sight in, a confirm, one or two precision targets. On the Sessions screen, each session's row shows the marks of the targets it holds (up to four, one per target; past that, one per kind with a count), so a session missing a target stands out. A plain ring is a target whose kind isn't chosen yet.
 
 1. On the Sessions screen, tap **Start & capture** (or **Capture (today's session)** if you already started one today).
 2. Choose what you are photographing: **Sight in**, **Confirm**, **Precision prone** or **Precision standing**. Each button carries the mark that kind of target has everywhere in the app: a scatter for sight in, a scope sight for confirm, a flat bar for prone and an upright bar for standing.

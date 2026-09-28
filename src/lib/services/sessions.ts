@@ -2,7 +2,8 @@ import { BiathlonSession, repairSession, upgradeSession } from '@/lib/domain/ses
 import { photoPrefix, diagramPrefix, artifactPrefix } from '@/lib/store/blob-keys';
 import { deleteByPrefix } from '@/lib/store/blobs-repo';
 import { deleteAnalysisRecord } from '@/lib/store/analyses-repo';
-import { deletePhotoRecord, listPhotoIdsBySession } from '@/lib/store/photos-repo';
+import { deletePhotoRecord, listPhotoIdsBySession, listPhotoRecords } from '@/lib/store/photos-repo';
+import { kindsBySession, type SessionKinds } from '@/lib/sessions/kinds';
 import {
   deleteSessionRecord,
   getRawSessionRecord,
@@ -70,6 +71,14 @@ export async function listSessionsWithProblems(
   ctx: ServiceContext,
 ): Promise<{ sessions: BiathlonSession[]; unreadable: UnreadableRecord[] }> {
   return listSessionRecordsWithProblems(ctx.db);
+}
+
+/**
+ * Issue #73 (REV-139): every session's target kinds, for the marks on Home's rows. One read of the photo records (no blobs),
+ * grouped by session, so the list stays quick however many sessions there are.
+ */
+export async function listSessionKinds(ctx: ServiceContext): Promise<Map<string, SessionKinds>> {
+  return kindsBySession(await listPhotoRecords(ctx.db));
 }
 
 export interface UpdateSessionInput {
