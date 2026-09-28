@@ -15,8 +15,8 @@ import { PATTERNS_SIZE, renderPatternsSvg } from './patterns';
 import { el, num, text } from './svg';
 import { renderAveragesBand, TRENDS_WIDTH } from './trends-averages';
 
-/** Bump whenever this renderer's output changes. */
-export const TRENDS_RENDERER_VERSION = 2;
+/** Bump whenever this renderer's output changes (3: REV-137's brighter group ellipse). */
+export const TRENDS_RENDERER_VERSION = 3;
 
 const HEADER_HEIGHT = 120;
 const CELL = 720;

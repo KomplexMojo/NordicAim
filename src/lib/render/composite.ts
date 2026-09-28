@@ -52,10 +52,10 @@ export interface CompositeInput {
 
 /**
  * rendering-composite.md §6: bumped whenever this renderer's output changes (REV-51 layout, REV-52 shared
- * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
+ * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method, REV-137 the brighter group ellipse). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 18;
+export const COMPOSITE_RENDERER_VERSION = 19;
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'NordicAim';

@@ -28,7 +28,8 @@ Implementation: `src/lib/render/*` (pure, returns SVG strings); `src/lib/render/
 | `shotProne` | `#E8604C` | prone shots |
 | `shotStanding` | `#8A5CF6` | standing shots |
 | `mpi` | `#C8452F` | MPI marker |
-| `ellipse` | `#2F7FB0` | group ellipse |
+| `ellipse` | `#3AA8F8` | group ellipse (REV-137; was `#2F7FB0`) |
+| `ellipseHalo` | `#0E2A40` | the group ellipse's halo, at opacity 0.55 (REV-137) |
 | `header` | `#1F2630` | summary image header |
 
 The UI theme reuses these as CSS variables.
@@ -91,8 +92,10 @@ diagram out until the farthest shot lands on the printed halo's edge, never belo
      `ringOnLight` 2.5; black disc r 56.2 `discPrecision`; ring lines n = 4…10 `ringOnDark` 2; inner ten r 2.5 `ringOnDark` 1.5 dash
      `4 3`; labels (class `ring-label`) n = 1…9 at x = cx + ((r_n + r_{n+1})/2)·s, y = cy + 6, 17 bold, `ringOnDark` if midpoint < 56.2
      else `textPrimary`; "10" at (cx + 1.5·s, cy − 3·s) 13 px.
-6. **Group ellipse** (non-null): at the MPI, rx = rxMm·s, ry = ryMm·s, stroke `ellipse` 2, `transform="rotate(${-angleDeg} X Y)"`
-   (negative: CCW target angle → clockwise SVG rotation).
+6. **Group ellipse** (non-null): at the MPI, rx = rxMm·s, ry = ryMm·s, `transform="rotate(${-angleDeg} X Y)"`
+   (negative: CCW target angle → clockwise SVG rotation). REV-137: drawn twice, a halo (stroke `ellipseHalo` 8, opacity 0.55)
+   under the line (stroke `ellipse` 4, class `group-ellipse`), so it reads on the black disc and on white paper and survives the
+   cells' and the coach image's downscaling. The Patterns screen and the coach image use the same drawing.
 7. **Shots** (class `shot`): one circle per `Shot`, fixed display marker r = 8 px (not the true hole size, so tight groups stay
    readable; REV-22), × 1.25 if multiplicity > 1; fill by the position
    of unit 0; white stroke 2. `x<k>` label 15 bold `accentText` when k > 1, preferred position (X + 10, Y − 14), placed per item 11.
