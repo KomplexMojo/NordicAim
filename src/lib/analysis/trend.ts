@@ -93,7 +93,9 @@ function change(decimals: number, unit: string): (slope: number) => string {
 
 /** §3: the charts, in order. The score's meaning depends on the target kind. */
 export function trendMetrics(kind: 'precision' | 'sighting'): TrendMetric[] {
-  const signed = (v: number, pos: string, neg: string) => `${Math.abs(v).toFixed(1)} mm ${v >= 0 ? pos : neg}`;
+  // An offset that rounds to 0.0 mm has no side: it reads "centred", not "0.0 mm right".
+  const signed = (v: number, pos: string, neg: string) =>
+    Math.abs(v) < 0.05 ? 'centred' : `${Math.abs(v).toFixed(1)} mm ${v >= 0 ? pos : neg}`;
   return [
     {
       id: 'score',

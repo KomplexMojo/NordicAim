@@ -118,7 +118,7 @@ The summary image puts your session on one page: the sight in and the confirm ac
 
 <p align="center">
   <img src="../assets/summary-image.png" width="460" alt="A session summary image: sight in and confirm above, two precision positions below, then the session analysis">
-  <br><sub>A summary image made from the project's reference target photos.</sub>
+  <br><sub>A summary image from a real range session.</sub>
 </p>
 
 Tap **Share** to send the image with the iPhone share sheet: save it to Photos, message it to a coach or teammate, or post it to your team's chat. If you have changed anything since, tap **Update summary** first.
@@ -185,7 +185,7 @@ From three sessions, each chart draws a dashed **trend line**, the straight line
 
 <p align="center">
   <img src="../assets/coach-image.png" width="460" alt="A coach image: the four Patterns drawings, then a row of averages boxes for each kind of target, with trend arrows and a small bullseye showing the mean point of impact">
-  <br><sub>A coach image made from the app's demo targets. Confirm and precision standing are empty because the demo has none.</sub>
+  <br><sub>A coach image of three range sessions.</sub>
 </p>
 
 ## 11. Settings

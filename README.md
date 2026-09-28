@@ -112,7 +112,7 @@ When the session is done, NordicAim builds **one summary image**: your name and 
 
 <p align="center">
   <img src="docs/assets/summary-image.png" alt="A brag sheet: the NordicAim summary image with sight in and confirm above, two precision positions below, then the session analysis" width="460">
-  <br><sub>An example brag sheet, made from the app's demo targets (a sight in and a precision prone target).</sub>
+  <br><sub>A real brag sheet from a range session: sight in and confirm above, precision prone and standing below.</sub>
 </p>
 
 You choose what to share and when. NordicAim does not connect to Strava or Garmin, and nothing is posted for you. The image leaves your phone only when you share it, and your photos never do.
@@ -188,7 +188,8 @@ pnpm test:e2e     # Playwright, mobile Chromium + mobile WebKit
 pnpm test:e2e:offline  # Playwright against the production build, offline after the first load
 pnpm check:privacy
 pnpm make:icons   # regenerate public/icons/* (sharp; concentric-ring motif)
-pnpm docs:screens # regenerate the README and guide screenshots in docs/assets/ from the demo data
+pnpm docs:screens -- --hero-only  # rebuild docs/assets/hero-screens.png from the phone screenshots in docs/assets/screens/
+pnpm docs:screens # preview only: replaces those real screenshots with demo-data ones from the fake-camera build
 ```
 
 Pushing to `main` deploys to GitHub Pages (`.github/workflows/pages.yml`). To run the capability checks on an iPhone, open

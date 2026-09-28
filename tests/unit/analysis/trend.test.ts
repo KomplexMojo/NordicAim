@@ -98,5 +98,9 @@ describe('trendMetrics', () => {
     expect(x!.format(-3.14)).toBe('3.1 mm left');
     expect(x!.format(2)).toBe('2.0 mm right');
     expect(y!.format(-0.5)).toBe('0.5 mm low');
+    // Rounding to 0.0 mm has no side.
+    expect(x!.format(0.04)).toBe('centred');
+    expect(y!.format(-0.049)).toBe('centred');
+    expect(x!.format(0.05)).toBe('0.1 mm right');
   });
 });
