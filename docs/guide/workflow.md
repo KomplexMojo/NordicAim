@@ -1,7 +1,7 @@
 # The NordicAim workflow
 
 <p align="center">
-  <img src="../assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, a single target read out with its score, the shot correction screen, and the patterns view" width="900">
+  <img src="../assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, a single target read out with its score, the shot correction screen, and the Analysis screen's trend charts" width="900">
 </p>
 
 The whole thing in eight steps. Steps 1 to 3 you do once. Steps 4 to 8 you repeat every time you shoot.
@@ -15,7 +15,7 @@ The whole thing in eight steps. Steps 1 to 3 you do once. Steps 4 to 8 you repea
 | 5 | [Photograph each target on the backing paper](#5-photograph-each-target) | Every session |
 | 6 | [Review the photos and adjust](#6-review-the-photos-and-adjust) | Every session |
 | 7 | [Generate the analysis](#7-generate-the-analysis) | Every session |
-| 8 | [Review the session against your patterns](#8-review-the-session-against-your-patterns) | Every session |
+| 8 | [Review the session against your patterns and trends](#8-review-the-session-against-your-patterns-and-trends) | Every session |
 
 ## 1. Install the app
 
@@ -29,9 +29,9 @@ Do this on Wi-Fi. The first load downloads the image analysis engine. After that
 
 Open **Settings** on the bottom bar. Under **Athlete**, fill in:
 
-- **Name** and **Ski club**, which appear on the summary images you share.
+- **Name** and **Ski club**, which appear on the summary and coach images you share, and name your backup files.
 - **Handedness**, right-handed or left-handed.
-- **Passphrase**, at least 12 characters. It creates the stamp that lets anyone check a summary image really came from you and was not edited. The passphrase itself is never stored and never leaves the phone, so keep a note of it somewhere safe.
+- **Passphrase**, at least 12 characters. It creates the stamp that lets anyone check a summary image really came from you and was not edited, and the key fingerprint in your backup file names. The passphrase itself is never stored and never leaves the phone, so keep a note of it somewhere safe.
 
 <p align="center">
   <img src="../assets/screens/settings.png" width="300" alt="The Settings screen with the Athlete section: name, ski club, handedness and passphrase">
@@ -56,10 +56,10 @@ Shoot as you normally do: a sight in, a confirm, one or two precision targets. T
 
 Photograph **one target at a time**, on the backing paper, on the clipboard.
 
-1. On the Shooting screen, tap **Start & capture**.
-2. Choose **Sighting** or **Precision**, and the position (**Prone**, **Standing** or **Both**).
+1. On the Sessions screen, tap **Start & capture**.
+2. Choose the target type: **Sight in**, **Confirm**, **Precision prone** or **Precision standing**.
 3. Line the overlay up with the target: match it to the sheet with the **Size** slider, and line up the black aiming mark with the thick circle.
-4. Tap the shutter, check the photo, then tap **Use photo**. Repeat for the next target, then tap **Done** and add the session details (name, rounds fired, lighting).
+4. Tap the shutter, check the photo, then tap **Use photo**. Repeat for the next target, then tap **Done** and add the session details (name, rounds fired, lighting), then tap **Analyze**.
 
 Tips for photos you can compare:
 
@@ -69,11 +69,13 @@ Tips for photos you can compare:
 
 ## 6. Review the photos and adjust
 
-Each target opens on its own screen with the holes NordicAim found drawn on the photo. Look at each one:
+On the results screen, tap a target's picture. Its screen shows the holes NordicAim found drawn on your photo. Look at each one:
 
-- **A hole was missed or is wrong:** tap the photo to add a shot, drag a shot to move it, or select it and tap **Delete this shot**. Dashed **suggested holes** score nothing until you tap them to confirm.
+- **A hole was missed or is wrong:** in **Shots**, tap the photo to add a shot, drag a shot to move it, or select it and tap **Delete this shot**.
 - **Two shots through one hole:** select it and tap **Looks like 2 shots**.
-- **The rings do not sit on the printed rings:** switch to **Alignment** and drag the handles, then tap **Re-analyze**.
+- **The rings do not sit on the printed rings:** switch to **Alignment** and drag the handles.
+
+Then tap **Save** (or **Save and re-analyze** after moving the rings).
 
 To step through the whole session in order, tap **Review session**. Targets that need attention come first.
 
@@ -87,13 +89,13 @@ Anything you place or move by hand is kept. NordicAim never overwrites your corr
 
 When the photos look right, go to the session results. NordicAim scores each target, measures the group and the mean point of impact, and builds **one summary image**: the session name, your name and logo, the shooting and lighting conditions, every target and the session analysis.
 
-Tap **Update summary** if you changed anything, then **Share** to send the image from the iPhone share sheet. That image is your brag sheet: post it to a Strava or Garmin Connect activity as a photo, or send it to a coach. NordicAim does not connect to either service and posts nothing for you. The image is the only thing that leaves your phone, and only when you share it.
+Tap **Update summary** if you changed anything, then **Share** to send the image from the iPhone share sheet. That image is your brag sheet: post it to a Strava or Garmin Connect activity as a photo, or send it to a coach. NordicAim does not connect to either service and posts nothing for you. The image leaves your phone only when you share it, and your photos never do.
 
 <p align="center">
   <img src="../assets/screens/results.png" width="300" alt="The results screen with the session summary image">
 </p>
 
-## 8. Review the session against your patterns
+## 8. Review the session against your patterns and trends
 
 Tap **Patterns** at the top of the screen. Choose the kind of target (**Sight in**, **Confirm**, **Precision prone** or **Precision standing**) and **Latest session**, then compare it with **30 days**, **90 days** or **All time**.
 
@@ -103,9 +105,17 @@ Every shot is laid over the printed target. Where they pile up they darken, so y
   <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen with every precision prone shot laid over the printed target and the observed patterns below">
 </p>
 
+Then tap **Analysis** beside it. The same kinds of target and ranges, but one point per session, so you see how your score or hit rate, group size, accuracy (RMS) and mean point of impact move over time. From three sessions, a dashed trend line shows the direction and how much it changes per session.
+
+<p align="center">
+  <img src="../assets/screens/analysis-trends.png" width="300" alt="The Analysis screen's Score and Group size charts, each with a dashed trend line">
+</p>
+
+For a coach, tap **Make coach image**, then **Share**: one picture with the Patterns drawings and your averages for the range, each with a small arrow for its trend.
+
 ## Keep a backup
 
-Your sessions live only on your phone. Use **Settings, Back up now** every so often. NordicAim reminds you when it has been a while.
+Your sessions live only on your phone. Use **Settings, Back up now** every so often and keep the file in Files or iCloud Drive. It is compressed and named with your name and the date. NordicAim reminds you when it has been a while. To restore, use **Choose backup file…** in Settings, in Safari on your iPhone.
 
 ---
 
