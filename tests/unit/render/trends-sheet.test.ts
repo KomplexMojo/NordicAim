@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { coachAverages, coachTrends, mpiScale } from '@/lib/analysis/coach';
+import { coachAverages, coachTrends, mpiScale, trendOf } from '@/lib/analysis/coach';
 import { PATTERN_VIEWS, type PatternPoint, type PatternView } from '@/lib/patterns/collect';
 import { summarizePatterns } from '@/lib/patterns/summarize';
-import { shortDate } from '@/lib/render/trends-averages';
+import { shortDate, TREND_COLOUR } from '@/lib/render/trends-averages';
 import { renderTrendsSheet, type TrendsSheetInput } from '@/lib/render/trends-sheet';
 
 // analysis.md §5 (REV-124, REV-131): the coach image: the four Patterns drawings, then each view's averages in small boxes.
@@ -33,7 +33,7 @@ describe('renderTrendsSheet', () => {
   it('is 1440 wide and a fixed height: header, the 2 × 2 grid, the averages band (four rows), footer', () => {
     const out = renderTrendsSheet(input(5));
     expect(out.width).toBe(1440);
-    expect(out.height).toBe(120 + 1440 + (120 + 4 * 270 + 10) + 110);
+    expect(out.height).toBe(120 + 1440 + (150 + 4 * 270 + 10) + 110);
     expect(out.svg).toContain(`height="${out.height}"`);
   });
 
@@ -111,6 +111,52 @@ describe('the MPI boxes (REV-131)', () => {
     const prone = coachAverages(coachTrends(byView)).views.find((v) => v.view === 'precision-prone')!;
     expect(prone.sessions).toBe(2);
     expect(prone.values.score).toBeCloseTo(80, 9); // (90 + 70) / 2
+  });
+});
+
+describe('trend arrows (REV-132)', () => {
+  it('need three sessions, like the trend lines', () => {
+    expect(trendOf('group', [0.5, 0.4])).toBeNull();
+    expect(trendOf('group', [0.5, null, 0.4])).toBeNull();
+    expect(trendOf('group', [0.6, 0.5, 0.4])).toEqual({ direction: 'down', improving: true });
+  });
+
+  it('call a score rising an improvement, and a group, accuracy or MPI distance rising a worsening', () => {
+    expect(trendOf('score', [80, 85, 90])).toEqual({ direction: 'up', improving: true });
+    expect(trendOf('score', [90, 85, 80])).toEqual({ direction: 'down', improving: false });
+    expect(trendOf('rms', [5, 7, 9])).toEqual({ direction: 'up', improving: false });
+    expect(trendOf('mpi', [9, 6, 3])).toEqual({ direction: 'down', improving: true });
+  });
+
+  it('are flat when the fitted change across the range is under 5% of the average, or under the unit floor', () => {
+    // 90 → 94 over the range: a change of 4 is under 5% of 92 (4.6), so steady.
+    expect(trendOf('score', [90, 92, 94])).toEqual({ direction: 'flat', improving: null });
+    expect(trendOf('score', [90, 93, 96])).toEqual({ direction: 'up', improving: true });
+    // A small group: 0.20 → 0.21 MOA is 5% of 0.205 but under the 0.02 MOA floor.
+    expect(trendOf('group', [0.2, 0.205, 0.21])).toEqual({ direction: 'flat', improving: null });
+    // The MPI's distance near the centre: 0.2 → 0.6 mm is under the 0.5 mm floor.
+    expect(trendOf('mpi', [0.2, 0.4, 0.6])).toEqual({ direction: 'flat', improving: null });
+  });
+
+  it('use the MPI\'s distance from the centre, whichever way it drifts', () => {
+    const byView = sessions(3);
+    // Prone drifts out to the left, one session at a time: (−2, 0), (−4, 0), (−6, 0).
+    byView['precision-prone'] = byView['precision-prone'].map((p) => ({ ...p, xMm: -2 * (Number(p.sessionId.slice(1)) + 1), yMm: 0 }));
+    const prone = coachAverages(coachTrends(byView)).views.find((v) => v.view === 'precision-prone')!;
+    expect(prone.trends.mpi).toEqual({ direction: 'up', improving: false });
+  });
+
+  it('are drawn on every box from three sessions, tilted and coloured by the trend, and not at all below', () => {
+    const byView = sessions(3);
+    byView['precision-standing'] = byView['precision-standing'].map((p) => ({ ...p, ring: 7 + Number(p.sessionId.slice(1)) }));
+    const { svg } = renderTrendsSheet({ ...input(3), trends: coachTrends(byView) });
+    expect(svg.match(/class="trend-arrow"/g)).toHaveLength(4 * 4);
+    const start = svg.indexOf('data-view="precision-standing" data-metric="score"');
+    const box = svg.slice(start, svg.indexOf('data-metric="group"', start));
+    expect(box).toContain('data-trend="up" data-improving="true"');
+    expect(box).toContain('rotate(-30)');
+    expect(box).toContain(TREND_COLOUR.improving);
+    expect(renderTrendsSheet(input(2)).svg).not.toContain('class="trend-arrow"');
   });
 });
 

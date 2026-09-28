@@ -3,7 +3,7 @@
 // average shot lands on a simulated bullseye. Every MPI box shares one scale. The trends over time stay on the Analysis screen.
 // Pure SVG.
 
-import { coachAverages, type CoachAverages, type CoachTrends } from '../analysis/coach';
+import { coachAverages, type AverageBox, type CoachAverages, type CoachTrends } from '../analysis/coach';
 import { trendMetrics, type TrendMetricId } from '../analysis/trend';
 import { PATTERN_VIEW_LABEL, type PatternView } from '../patterns/collect';
 
@@ -14,7 +14,7 @@ import { el, num, text } from './svg';
 export const TRENDS_WIDTH = 1440;
 
 const MARGIN = 40;
-const TITLE_HEIGHT = 120;
+const TITLE_HEIGHT = 150;
 const ROW_HEIGHT = 270;
 const LABEL_WIDTH = 230;
 const BOX_WIDTH = 270;
@@ -32,6 +32,33 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export function shortDate(iso: string): string {
   const month = MONTHS[Number(iso.slice(5, 7)) - 1] ?? iso.slice(5, 7);
   return `${month} ${Number(iso.slice(8, 10))}`;
+}
+
+/** REV-132: the trend arrow's colours on a white box: improving, worsening, flat. Direction always carries the trend too. */
+export const TREND_COLOUR = { improving: '#1E8E4E', worsening: '#C8452F', flat: '#5B6775' } as const;
+
+const TREND_ANGLE = { up: -30, flat: 0, down: 30 } as const;
+
+/** A small arrow, pointing right and tilted up, level or down, centred on (x, y). Nothing below three sessions. */
+function trendArrow(avg: CoachAverages, box: AverageBox, x: number, y: number): string {
+  const trend = avg.trends[box];
+  if (trend === null) return '';
+  const colour = trend.improving === null ? TREND_COLOUR.flat : trend.improving ? TREND_COLOUR.improving : TREND_COLOUR.worsening;
+  const word = trend.direction === 'flat' ? 'steady' : `trending ${trend.direction}, ${trend.improving ? 'improving' : 'worsening'}`;
+  const shape =
+    `<title>${word}</title>` +
+    el('line', { x1: -11, y1: 0, x2: 5, y2: 0, stroke: colour, 'stroke-width': 3, 'stroke-linecap': 'round' }) +
+    el('path', { d: 'M12 0 L3 -6 L3 6 Z', fill: colour });
+  return el(
+    'g',
+    {
+      class: 'trend-arrow',
+      'data-trend': trend.direction,
+      'data-improving': trend.improving === null ? 'flat' : String(trend.improving),
+      transform: `translate(${num(x)} ${num(y)}) rotate(${TREND_ANGLE[trend.direction]})`,
+    },
+    shape,
+  );
 }
 
 function kindOf(view: PatternView): 'precision' | 'sighting' {
@@ -53,6 +80,7 @@ function numberBox(avg: CoachAverages, id: 'score' | 'group' | 'rms', x: number,
   out += text(cx, y + 36, 19, metric.title, { anchor: 'middle', bold: true, color: PALETTE.textSecondary });
   out += text(cx, y + 140, 50, value === null ? '—' : metric.format(value), { anchor: 'middle', bold: true, color: PALETTE.textPrimary });
   out += text(cx, y + 200, 15, NOTE[id](kind), { anchor: 'middle', color: PALETTE.textSecondary });
+  out += trendArrow(avg, id, x + BOX_WIDTH - 26, y + 30);
   return el('g', { class: 'average-box', 'data-view': avg.view, 'data-metric': id }, out);
 }
 
@@ -66,7 +94,8 @@ function mpiBox(avg: CoachAverages, scaleMm: number, x: number, y: number): stri
   const cx = x + MPI_WIDTH / 2;
   const cy = y + 50 + MPI_HALF;
   let out = el('rect', { x, y, width: MPI_WIDTH, height: BOX_HEIGHT, rx: 12, fill: '#FFFFFF', stroke: PALETTE.panelBorder, 'stroke-width': 1 });
-  out += text(cx, y + 24, 16, 'MPI (mean point of impact)', { anchor: 'middle', bold: true, color: PALETTE.textSecondary });
+  out += text(cx, y + 24, 16, 'Mean point of impact', { anchor: 'middle', bold: true, color: PALETTE.textSecondary });
+  out += trendArrow(avg, 'mpi', x + MPI_WIDTH - 22, y + 20);
   // The bullseye: two rings and a centre dot, under the axes.
   out += el('circle', { cx, cy, r: MPI_HALF, fill: PALETTE.haloFill, stroke: PALETTE.panelBorder, 'stroke-width': 1 });
   out += el('circle', { cx, cy, r: MPI_HALF / 2, fill: 'none', stroke: PALETTE.panelBorder, 'stroke-width': 1 });
@@ -128,9 +157,12 @@ export function renderAveragesBand(trends: CoachTrends, y: number): { svg: strin
     MARGIN,
     y + 90,
     18,
-    `${trends.sessions.length} ${trends.sessions.length === 1 ? 'session' : 'sessions'} · ${span} · each session counted once · trends over time are on the Analysis screen`,
+    `${trends.sessions.length} ${trends.sessions.length === 1 ? 'session' : 'sessions'} · ${span} · each session counted once · charts over time are on the Analysis screen`,
     { color: PALETTE.textSecondary },
   );
+  out += text(MARGIN, y + 120, 18, 'Arrows show the trend over the range, from 3 sessions: green improving, red worsening, grey steady', {
+    color: PALETTE.textSecondary,
+  });
   views.forEach((avg, i) => {
     out += row(avg, mpiScaleMm, y + TITLE_HEIGHT + i * ROW_HEIGHT);
   });

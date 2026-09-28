@@ -4,6 +4,7 @@
 
 import { PATTERN_VIEWS, type PatternPoint, type PatternView } from '../patterns/collect';
 
+import { leastSquares } from './chart';
 import { sessionTrend, trendMetrics, type TrendMetricId, type TrendPoint } from './trend';
 
 export interface CoachSession {
@@ -77,6 +78,35 @@ export interface CoachAverages {
   /** Sessions in the range with shots in this view. */
   sessions: number;
   values: Record<TrendMetricId, number | null>;
+  /** REV-132: each box's trend over the range; null below `MIN_TREND_SESSIONS` sessions with a value. */
+  trends: Record<AverageBox, CoachTrend | null>;
+}
+
+/** The boxes on the coach image: three numbers and the MPI (whose trend is its distance from the centre). */
+export type AverageBox = 'score' | 'group' | 'rms' | 'mpi';
+
+export interface CoachTrend {
+  direction: 'up' | 'flat' | 'down';
+  /** Whether the direction is an improvement: up for the score, down for the others; null when flat. */
+  improving: boolean | null;
+}
+
+/**
+ * REV-132: a change smaller than this is flat. The fitted change across the range (slope × sessions spanned) must reach 5% of
+ * the average, and at least a floor in the box's unit, so a wobble never shows as a trend.
+ */
+export const FLAT_SHARE = 0.05;
+export const FLAT_FLOOR: Record<AverageBox, number> = { score: 1, group: 0.02, rms: 0.5, mpi: 0.5 };
+
+export function trendOf(box: AverageBox, values: Array<number | null>): CoachTrend | null {
+  const fit = leastSquares(values);
+  if (fit === null) return null;
+  const present = values.filter((v): v is number => v !== null);
+  const average = present.reduce((a, b) => a + b, 0) / present.length;
+  const change = fit.slope * (fit.last - fit.first);
+  if (Math.abs(change) < Math.max(FLAT_SHARE * Math.abs(average), FLAT_FLOOR[box])) return { direction: 'flat', improving: null };
+  const direction = change > 0 ? 'up' : 'down';
+  return { direction, improving: box === 'score' ? direction === 'up' : direction === 'down' };
 }
 
 /**
@@ -86,13 +116,26 @@ export interface CoachAverages {
 export function coachAverages(trends: CoachTrends): { views: CoachAverages[]; mpiScaleMm: number } {
   const views = PATTERN_VIEWS.map((view) => {
     const values = {} as Record<TrendMetricId, number | null>;
+    const series = {} as Record<TrendMetricId, Array<number | null>>;
     let sessions = 0;
     for (const m of trends.metrics) {
-      const present = (m.series.find((s) => s.view === view)?.values ?? []).filter((v): v is number => v !== null);
+      series[m.id] = m.series.find((s) => s.view === view)?.values ?? [];
+      const present = series[m.id].filter((v): v is number => v !== null);
       values[m.id] = present.length === 0 ? null : present.reduce((a, b) => a + b, 0) / present.length;
       if (m.id === 'mpiX') sessions = present.length;
     }
-    return { view, sessions, values };
+    // The MPI's trend is its distance from the centre, session by session: up is drifting away, down is closing in.
+    const distance = series.mpiX.map((x, i) => {
+      const y = series.mpiY[i];
+      return x === null || y === null || y === undefined ? null : Math.hypot(x, y);
+    });
+    const boxTrends: Record<AverageBox, CoachTrend | null> = {
+      score: trendOf('score', series.score),
+      group: trendOf('group', series.group),
+      rms: trendOf('rms', series.rms),
+      mpi: trendOf('mpi', distance),
+    };
+    return { view, sessions, values, trends: boxTrends };
   });
   const offsets = views.flatMap((v) => [v.values.mpiX, v.values.mpiY]).filter((v): v is number => v !== null);
   return { views, mpiScaleMm: mpiScale(offsets.length === 0 ? 0 : Math.max(...offsets.map(Math.abs))) };
