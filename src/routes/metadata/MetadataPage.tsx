@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PhotoMetadataCard } from '@/components/metadata/PhotoMetadataCard';
+import { SessionDateField } from '@/components/metadata/SessionDateField';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { isTargetPhoto } from '@/lib/domain/backing';
@@ -19,13 +20,15 @@ import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 import { sightingRoles } from '@/lib/domain/sighting-role';
 import { deletePhoto, requestAnalysis, updatePhotoMetadata } from '@/lib/services/photos';
-import { getSession, updateSession } from '@/lib/services/sessions';
+import { getSession, localToday, updateSession } from '@/lib/services/sessions';
+import { nameForNewDate } from '@/lib/domain/session-date';
 
 const NAME_NOTES_DEBOUNCE_MS = 600;
 
 interface MetadataData {
   sid: string;
   name: string;
+  sessionDate: string;
   notes: string;
   photos: TargetPhoto[];
   analyses: Map<string, TargetAnalysis | null>;
@@ -47,6 +50,7 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
   return {
     sid,
     name: session.name,
+    sessionDate: session.sessionDate,
     notes: session.notes,
     photos: ordered,
     analyses: new Map(analysisEntries),
@@ -68,6 +72,20 @@ export function MetadataPage() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const today = localToday(ctx);
+
+  /** REV-141: saved at once (a picker, not typing); a default name follows the date, in this form too. */
+  async function onDateChange(sessionDate: string) {
+    if (!data) return;
+    const renamed = nameForNewDate(name, data.sessionDate, sessionDate);
+    if (renamed !== name) setName(renamed);
+    try {
+      await updateSession(ctx, sid, { sessionDate, name: renamed });
+      toast.success(`Session date set to ${sessionDate}.`);
+    } catch (err) {
+      toast.error(`Could not save the date: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   if (data && data.sid === sid && seededFor !== sid) {
     setSeededFor(sid);
@@ -182,6 +200,7 @@ export function MetadataPage() {
         <Label htmlFor="session-name">Session name</Label>
         <Input id="session-name" value={name} onChange={(e) => setName(e.currentTarget.value)} maxLength={80} />
       </div>
+      <SessionDateField value={data.sessionDate} today={today} onChange={(d) => void onDateChange(d)} />
       <div className="flex flex-col gap-1">
         <Label htmlFor="session-notes">Session notes</Label>
         <Textarea

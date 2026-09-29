@@ -1,4 +1,6 @@
 import { BiathlonSession, repairSession, upgradeSession } from '@/lib/domain/session';
+import { defaultSessionName, isValidSessionDate, nameForNewDate } from '@/lib/domain/session-date';
+import { clientNow } from '@/lib/media/capture-time';
 import { photoPrefix, diagramPrefix, artifactPrefix } from '@/lib/store/blob-keys';
 import { deleteByPrefix } from '@/lib/store/blobs-repo';
 import { deleteAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -42,7 +44,7 @@ export async function createSession(ctx: ServiceContext, input: CreateSessionInp
   const session: BiathlonSession = {
     schemaVersion: 3,
     id: ctx.newId(),
-    name: input.name ?? `Session ${sessionDate}`,
+    name: input.name ?? defaultSessionName(sessionDate),
     sessionDate,
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -81,6 +83,11 @@ export async function listSessionKinds(ctx: ServiceContext): Promise<Map<string,
   return kindsBySession(await listPhotoRecords(ctx.db));
 }
 
+/** The phone's local date today, `YYYY-MM-DD` (the date quick start gives a new session). */
+export function localToday(ctx: ServiceContext): string {
+  return clientNow(ctx.now()).clientLocal.slice(0, 10);
+}
+
 export interface UpdateSessionInput {
   name?: string;
   sessionDate?: string;
@@ -92,14 +99,21 @@ export async function updateSession(
   sessionId: string,
   input: UpdateSessionInput,
 ): Promise<BiathlonSession> {
+  // REV-141: a session's date is a real day, not in the future (the phone's local today).
+  if (input.sessionDate !== undefined && !isValidSessionDate(input.sessionDate, localToday(ctx))) {
+    throw new RangeError(`Not a valid session date: ${input.sessionDate}`);
+  }
   const tx = ctx.db.transaction('sessions', 'readwrite');
   const session = await getSessionRecord(tx, sessionId);
   if (session === null) throw new SessionNotFoundError(sessionId);
+  // A blank name is a field being retyped, not a rename: keep the current one (owner, 2026-09-19).
+  const name = input.name?.trim() ? input.name.trim() : session.name;
+  const sessionDate = input.sessionDate ?? session.sessionDate;
   const updated: BiathlonSession = {
     ...session,
-    // A blank name is a field being retyped, not a rename: keep the current one (owner, 2026-09-19).
-    name: input.name?.trim() ? input.name.trim() : session.name,
-    sessionDate: input.sessionDate ?? session.sessionDate,
+    // REV-141: a default name ("Session <date>") follows a changed date; a typed name is kept.
+    name: nameForNewDate(name, session.sessionDate, sessionDate),
+    sessionDate,
     notes: input.notes ?? session.notes,
     updatedAt: ctx.now().toISOString(),
   };

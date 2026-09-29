@@ -73,6 +73,37 @@ describe('updateSession', () => {
     expect(updated.sessionDate).toBe(session.sessionDate);
     db.close();
   });
+
+  // REV-141: a session can be given an earlier day on the metadata screen.
+  it('moves a session to an earlier date, and a default name follows it', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-09-29T12:00:00.000Z' });
+    const session = await createSession(ctx, { sessionDate: '2026-09-29' });
+    expect(session.name).toBe('Session 2026-09-29');
+    const moved = await updateSession(ctx, session.id, { sessionDate: '2026-09-20' });
+    expect(moved.sessionDate).toBe('2026-09-20');
+    expect(moved.name).toBe('Session 2026-09-20');
+    db.close();
+  });
+
+  it('keeps a name the athlete typed when the date changes', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-09-29T12:00:00.000Z' });
+    const session = await createSession(ctx, { sessionDate: '2026-09-29', name: 'Club race' });
+    expect((await updateSession(ctx, session.id, { sessionDate: '2026-09-20' })).name).toBe('Club race');
+    db.close();
+  });
+
+  it('refuses a future date or one that is not a real day, and stores nothing', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-09-29T12:00:00.000Z' });
+    const session = await createSession(ctx, { sessionDate: '2026-09-29' });
+    await expect(updateSession(ctx, session.id, { sessionDate: '2026-10-05' })).rejects.toThrow(RangeError);
+    await expect(updateSession(ctx, session.id, { sessionDate: '2026-02-30' })).rejects.toThrow(RangeError);
+    await expect(updateSession(ctx, session.id, { sessionDate: 'yesterday' })).rejects.toThrow(RangeError);
+    expect((await getSession(ctx, session.id))?.sessionDate).toBe('2026-09-29');
+    db.close();
+  });
 });
 
 describe('deleteSession', () => {

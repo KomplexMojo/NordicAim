@@ -1,5 +1,6 @@
 
 import { suggestSeason } from '@/lib/domain/season';
+import { PencilLine } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router';
 import { backToFrom } from '@/lib/app/nav';
 
@@ -196,9 +197,10 @@ export function TargetPage() {
         </Link>
         <Link
           to={`/sessions/${sid}/metadata`}
-          className="inline-flex h-11 items-center rounded-md border border-border px-3 text-sm font-medium"
+          className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium"
           data-testid="target-edit-metadata"
         >
+          <PencilLine className="size-5 shrink-0" aria-hidden="true" />
           Edit type, rounds, lighting
         </Link>
       </header>

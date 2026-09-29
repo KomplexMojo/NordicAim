@@ -1,4 +1,4 @@
-import { Star } from 'lucide-react';
+import { ListChecks, PencilLine, Star } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -120,16 +120,29 @@ export function ResultsPage() {
           when something in the session actually needs a look (status `needs-attention`, the same group
           the review pass walks first) — with nothing flagged, the button still opens the pass, but starts
           bare. */}
-      {data.photos.length > 0 && (
+      {/* REV-141: Edit metadata sits beside Review session (it was a text link at the foot of the screen), each with its
+          icon; with no targets yet there is nothing to review, so Edit metadata takes the row. */}
+      <div className={data.photos.length > 0 ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1'}>
+        {data.photos.length > 0 && (
+          <Link
+            to={`/review/${sid}`}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+            data-testid="review-session-link"
+          >
+            <ListChecks className="size-5 shrink-0" aria-hidden="true" />
+            Review session
+            {needsReview && <Star className="size-4 shrink-0" aria-hidden="true" fill="currentColor" data-testid="review-session-star" />}
+          </Link>
+        )}
         <Link
-          to={`/review/${sid}`}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-          data-testid="review-session-link"
+          to={`/sessions/${sid}/metadata`}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium"
+          data-testid="edit-metadata-link"
         >
-          {needsReview && <Star className="size-4 shrink-0" aria-hidden="true" fill="currentColor" data-testid="review-session-star" />}
-          Review session
+          <PencilLine className="size-5 shrink-0" aria-hidden="true" />
+          Edit metadata
         </Link>
-      )}
+      </div>
 
       {showDebug && <TimingDebugPanel />}
 
@@ -164,13 +177,6 @@ export function ResultsPage() {
         Add photos
       </Link>
 
-      <Link
-        to={`/sessions/${sid}/metadata`}
-        className="inline-flex h-11 items-center justify-center text-sm text-primary underline underline-offset-4"
-        data-testid="edit-metadata-link"
-      >
-        Edit metadata
-      </Link>
     </main>
   );
 }
