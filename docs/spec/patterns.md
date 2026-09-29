@@ -49,6 +49,13 @@ points the dots are drawn as one path per 500 (still SVG; a canvas fallback is n
 
 ## 6. Screen
 
-`#/patterns`, reached from Home (a **Patterns** link, not a fourth tab: REV-47 stands). A view switch (four buttons), a range
+`#/patterns`, the **Patterns** tab on the bottom bar (REV-136). A view switch (four buttons), a range
 switch (three), the drawing, the summary, and the left-out count. The drawing can be zoomed. Empty and thin states are
 plain sentences. Not shareable on its own; its four drawings are part of the coach image (`analysis.md` §5, REV-124).
+
+**From a dot to its target (REV-140, issue #72).** The view and range are in the address (`#/patterns?view=confirm&range=90`,
+`src/lib/patterns/url.ts`). A tap on the drawing lists, under it, every target with a shot within 22 CSS px of the tap (a 44 px
+target at any zoom), nearest first (`pickTargets`, `src/lib/patterns/pick.ts`): its session's date and time, how many of its
+shots are there, and **Open target** (`#/sessions/:sid/photos/:pid`). A tap with no shot near says so. Nothing opens on the
+tap itself. The target screen's back link then reads **Back to Patterns** and returns to the same view and range; opened any
+other way it is **Back to results**, as before (`backToFrom`, `src/lib/app/nav.ts`). The coach image has no links.

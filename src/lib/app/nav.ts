@@ -35,3 +35,23 @@ export function showsTabBar(pathname: string): boolean {
   if (/^\/settings\/template-sheet\/[^/]+\/?$/.test(pathname)) return false;
   return true;
 }
+
+/**
+ * Issue #72 (REV-140): where a target screen opened from Patterns or Analysis goes back to. Carried in the navigation state
+ * as `{ from: { path, label } }`; anything else (or no state) means the session's results, as before.
+ */
+export interface BackTo {
+  path: string;
+  label: string;
+}
+
+export function backToFrom(state: unknown, sessionId: string): BackTo {
+  const from = typeof state === 'object' && state !== null ? (state as { from?: unknown }).from : undefined;
+  if (typeof from === 'object' && from !== null) {
+    const { path, label } = from as { path?: unknown; label?: unknown };
+    if (typeof path === 'string' && /^\/(patterns|analysis)(\?|$)/.test(path) && typeof label === 'string' && label.length > 0) {
+      return { path, label };
+    }
+  }
+  return { path: `/sessions/${sessionId}/results`, label: 'Back to results' };
+}

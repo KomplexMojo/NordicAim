@@ -134,6 +134,13 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
   averages, which follow from them). `#/verify` does not yet recognise
   trends stamps (it looks up session summaries).
 
+## 5a. From a point to its targets (REV-140, issue #72)
+
+Tapping a chart point (already the readout, §4) also lists, under the chart, that session's targets of the view with **Open
+target** each (`TrendPoint.photoIds`). The view and range are in the address (`#/analysis?view=…&range=…`), and the target
+screen's back link reads **Back to Analysis** and returns to them. The points stay focusable, so it works from the keyboard.
+Patterns does the same for a tapped dot (`patterns.md` §6).
+
 ## 6. Not in this version
 
 - **Group-pattern notes** (BACKLOG B12).
