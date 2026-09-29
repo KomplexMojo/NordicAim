@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 
@@ -29,35 +30,50 @@ export function TargetLinks({ refs, from, onClose, testId }: TargetLinksProps) {
   useEffect(() => {
     box.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   }, [refs]);
+  // One compact row per target: its date and time (details under it, small), Open target, and a close cross at the top right.
   return (
-    <div ref={box} className="flex flex-col gap-2 rounded-md border bg-muted/40 p-3 text-sm" data-testid={testId} role="group" aria-label="Targets under this point">
+    <div
+      ref={box}
+      className="flex items-start gap-1 rounded-md border bg-muted/40 py-1 pl-3 pr-1 text-sm"
+      data-testid={testId}
+      role="group"
+      aria-label="Targets under this point"
+    >
       {refs.length === 0 ? (
-        <p className="text-muted-foreground">No shot there. Tap a dot to open its target.</p>
+        <p className="flex min-h-11 flex-1 items-center text-muted-foreground">No shot there. Tap a dot to open its target.</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {refs.map((ref, i) => (
-            <li key={ref.photoId} className="flex items-center justify-between gap-2">
-              <span>
-                {shortDate(ref.sessionDate)} · {sessionTimeLabel({ createdAt: ref.sessionStamp })}
-                {refs.length > 1 && <span className="text-muted-foreground"> · target {i + 1}</span>}
-                {ref.shots !== undefined && (
-                  <span className="text-muted-foreground">
-                    {' '}
-                    · {ref.shots} {ref.shots === 1 ? 'shot' : 'shots'} here
+        <ul className="flex flex-1 flex-col divide-y">
+          {refs.map((ref, i) => {
+            const details = [
+              refs.length > 1 ? `target ${i + 1}` : null,
+              ref.shots !== undefined ? `${ref.shots} ${ref.shots === 1 ? 'shot' : 'shots'} here` : null,
+            ].filter((d): d is string => d !== null);
+            return (
+              <li key={ref.photoId} className="flex min-h-11 items-center justify-between gap-2 py-1">
+                <span className="flex flex-col leading-tight">
+                  <span className="font-medium">
+                    {shortDate(ref.sessionDate)} · {sessionTimeLabel({ createdAt: ref.sessionStamp })}
                   </span>
-                )}
-              </span>
-              <Button asChild variant="outline" className="h-11 shrink-0">
-                <Link to={targetPath(ref)} state={{ from }} data-testid={`${testId}-open`}>
-                  Open target
-                </Link>
-              </Button>
-            </li>
-          ))}
+                  {details.length > 0 && <span className="text-xs text-muted-foreground">{details.join(' · ')}</span>}
+                </span>
+                <Button asChild variant="outline" className="h-11 shrink-0 px-3">
+                  <Link to={targetPath(ref)} state={{ from }} data-testid={`${testId}-open`}>
+                    Open target
+                  </Link>
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       )}
-      <Button variant="ghost" className="h-11 self-end" onClick={onClose} data-testid={`${testId}-close`}>
-        Close
+      <Button
+        variant="ghost"
+        className="size-11 shrink-0 p-0 text-muted-foreground"
+        onClick={onClose}
+        aria-label="Close"
+        data-testid={`${testId}-close`}
+      >
+        <X className="size-5" aria-hidden="true" />
       </Button>
     </div>
   );
