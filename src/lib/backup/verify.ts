@@ -13,6 +13,7 @@ import {
   type BackupPreference,
 } from './format';
 import { rebuildSource } from './rebuild';
+import { restoreProblem } from './safety';
 
 export interface VerifiedBackup {
   file: BackupFile;
@@ -92,6 +93,9 @@ export async function verifyBackup(text: string): Promise<VerifyResult> {
     }
     if (!bytes.has(r.from)) return { ok: false, problem: `Image ${r.from} is missing, so ${r.key} cannot be made again.` };
   }
+  // Issue #45: only types the app stores, no active content in a diagram SVG, and settings the app can read.
+  const unsafe = restoreProblem({ blobs: blobs as Array<{ key: string; contentType: unknown }>, settings: records.settings as unknown[] }, bytes);
+  if (unsafe !== null) return { ok: false, problem: unsafe };
   // REV-115: preferences are optional (older backups have none); only well-formed `asa.` entries are kept.
   const prefs: BackupPreference[] = Array.isArray(raw.preferences)
     ? (raw.preferences as unknown[]).flatMap((p) =>

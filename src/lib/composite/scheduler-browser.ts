@@ -13,6 +13,7 @@ import { listPhotosBySession } from '@/lib/store/photos-repo';
 
 import { EmptyCompositeError } from './artifact';
 import { buildComposite } from './build';
+import { errorSummary } from '@/lib/app/log';
 
 const DEBOUNCE_MS = 1500;
 /**
@@ -53,7 +54,7 @@ async function runBuild(sessionId: string): Promise<void> {
     // was deleted while its rebuild waited (issue #18): nothing was written, `buildComposite` re-reads the session
     // inside its write transaction and throws first.
     if (!(err instanceof EmptyCompositeError) && !(err instanceof SessionNotFoundError)) {
-      console.error('[summary] build failed', err);
+      console.error('[summary] build failed', errorSummary(err));
     }
   } finally {
     pending.delete(sessionId);

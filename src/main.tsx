@@ -6,6 +6,7 @@ import { AppRouter } from '@/app/router';
 import { loadAppServices } from '@/lib/app/services';
 import { startSummaryScheduler } from '@/lib/composite/scheduler-browser';
 import { startPipelineRunner } from '@/lib/pipeline/runner-browser';
+import { errorSummary } from '@/lib/app/log';
 import { getCvClient } from '@/workers/cv-client';
 
 import './index.css';
@@ -25,7 +26,7 @@ void loadAppServices()
     startSummaryScheduler(ctx, renderTools, BUILD_SHA);
   })
   .catch((err: unknown) => {
-    console.error('[pipeline] runner failed to start', err);
+    console.error('[pipeline] runner failed to start', errorSummary(err));
   });
 
 const rootEl = document.getElementById('root');
