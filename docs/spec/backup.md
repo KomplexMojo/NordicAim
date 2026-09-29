@@ -75,7 +75,10 @@ sheets and SVGs are always kept. The working copy is the largest of these, so th
 
 Refuse, naming the failure, when: the text is not JSON (truncated); `format`/`formatVersion` differ; a manifest count does not
 equal the records/blobs present; a blob's decoded bytes do not hash to its manifest SHA-256 or size; a key is missing or extra.
-A refused file writes nothing.
+Also (REV-142, issue #45; `src/lib/backup/safety.ts`): a blob whose content type is not one the app stores (`image/jpeg`,
+`image/png`, `image/heic`, `image/heif`, `image/webp`, `image/svg+xml`, `application/json`); a diagram SVG with content the app's
+renderer never writes (a script, an event handler, a `javascript:` URL, `foreignObject`, an iframe or an entity); a settings row
+that does not read as `AppSettings` (after `upgradeSettings`). A refused file writes nothing.
 
 ## 4. Restore
 

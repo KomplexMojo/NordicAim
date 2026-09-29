@@ -17,6 +17,7 @@ import { planJobs, type Job } from './plan';
 import { runStageA, type CvApi } from './stage-a';
 import { runStageB } from './stage-b';
 import { recordTiming } from './timing';
+import { errorSummary } from '@/lib/app/log';
 
 export interface RunnerDeps {
   /** Lazy so the CV worker (and OpenCV with it) is only created when a job actually needs it. */
@@ -105,7 +106,7 @@ async function runJob(runner: { ctx: ServiceContext; deps: RunnerDeps }, job: Jo
     if (err instanceof PhotoNotFoundError || err instanceof AnalysisNotFoundError) return;
     // runStageA/runStageB record their own failures; reaching here means the job could not even be recorded.
     poisoned.add(jobKey(job));
-    console.error(`[pipeline] ${job.kind} job failed for photo ${job.photoId}`, err);
+    console.error(`[pipeline] ${job.kind} job failed for photo ${job.photoId}`, errorSummary(err));
   }
 }
 

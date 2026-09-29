@@ -8,6 +8,7 @@ import type { ServiceContext } from '@/lib/services/context';
 import { openAppDb } from '@/lib/store/db';
 import { refreshStaleDiagrams } from '@/lib/services/diagram-version';
 import { migrateBackingToSettings } from '@/lib/store/migrate-backing';
+import { errorSummary } from '@/lib/app/log';
 
 export interface AppServices {
   ctx: ServiceContext;
@@ -27,7 +28,7 @@ export function loadAppServices(): Promise<AppServices> {
       const ctx: ServiceContext = { db, now: () => new Date(), newId: () => crypto.randomUUID() };
       // rendering-composite.md §6 (REV-58): redraw stored diagrams once when the renderer has changed since they
       // were drawn. Never allowed to stop the app opening: the worst case is a diagram at the old scale.
-      await refreshStaleDiagrams(ctx).catch((err: unknown) => console.error('[diagrams] refresh failed', err));
+      await refreshStaleDiagrams(ctx).catch((err: unknown) => console.error('[diagrams] refresh failed', errorSummary(err)));
       return {
         ctx,
         imageTools: browserImageTools,
