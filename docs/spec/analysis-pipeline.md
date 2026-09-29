@@ -41,7 +41,11 @@ the safe-area inset so the bar never covers it.
 capture → Use photo (Stage A starts in the background) → next target → **Done** → metadata screen.
 
 **Step 2: add metadata** (`MetadataPage`):
-- Session name (default `Session <YYYY-MM-DD>`) and optional session notes.
+- Session name (default `Session <YYYY-MM-DD>`), **session date** and optional session notes. REV-141: the date is today's local
+  date for a session made by Start & capture, and a date picker (not after today, not before 2000; `isValidSessionDate`,
+  `src/lib/domain/session-date.ts`) moves it to an earlier day, saved at once. A default name follows the new date; a typed
+  name is kept. `updateSession` refuses a date that is not a real day or is in the future. On the results screen, **Edit
+  metadata** is a button beside **Review session** (REV-141), each with its icon (lucide `PencilLine`, `ListChecks`).
 - One card per photo: thumbnail, a small Stage A progress indicator ("Checking photo…", "Aligning…", "Finding shots…",
   "Ready"), and these fields:
   - **Target type** (prefilled from capture; REV-79): Sight in, Confirm, Precision prone or Precision standing, which sets the template and position

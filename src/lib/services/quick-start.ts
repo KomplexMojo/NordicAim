@@ -4,13 +4,10 @@ import type { BiathlonSession } from '@/lib/domain/session';
 import { clientNow } from '@/lib/media/capture-time';
 
 import type { ServiceContext } from './context';
-import { createSession, listSessions } from './sessions';
+import { createSession, listSessions, localToday } from './sessions';
 
 export type NavigateFn = (path: string) => void;
 
-function localDate(ctx: ServiceContext): string {
-  return clientNow(ctx.now()).clientLocal.slice(0, 10);
-}
 
 /** `true` when a session with `sessionDate` = today (local) already exists. */
 export function quickStartLabel(sessions: BiathlonSession[], now: Date): string {
@@ -22,7 +19,7 @@ export function quickStartLabel(sessions: BiathlonSession[], now: Date): string 
 /** Finds today's local session or creates `Session <today>` (creates once, then reuses), then navigates to its
  * capture screen. */
 export async function quickStart(ctx: ServiceContext, navigate: NavigateFn): Promise<BiathlonSession> {
-  const today = localDate(ctx);
+  const today = localToday(ctx);
   const sessions = await listSessions(ctx);
   const existing = sessions.find((s) => s.sessionDate === today);
   const session = existing ?? (await createSession(ctx, { sessionDate: today }));

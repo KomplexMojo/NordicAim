@@ -74,6 +74,7 @@ After you tap **Done**, the **Add metadata** screen lists each photo.
 | Field | What to put |
 |---|---|
 | **Session name** | Anything you will recognise later, for example the date or the range. |
+| **Session date** | The day you shot. A new session gets today's date; change it here to record a session from an earlier day. A name like *Session 2026-09-29* follows the new date; a name you typed is kept. |
 | **Session notes** | Optional. Wind, gear, how you felt. |
 | **Target type** | **Sight in**, **Confirm**, **Precision prone** or **Precision standing**, already set if you chose it when you took the photo. |
 | **Rounds** | How many rounds you fired. NordicAim starts from the usual counts (ten, or five for a confirm), so change it only if yours differ. |
@@ -89,7 +90,7 @@ Tap **Analyze** when you are ready (the button says how many targets). Rounds ma
 
 ## 5. Read the results
 
-The results screen opens on the **session summary**, with a card for each target below it.
+The results screen opens with two buttons: **Review session** (next section) and, beside it, **Edit metadata**, to go back and change the session's name, date, notes or a target's details. Below them is the **session summary**, with a card for each target.
 
 **Sighting targets** show **hits and misses**, for example *9 hits, 1 miss*, and how those hits sit against the zone for your position.
 
