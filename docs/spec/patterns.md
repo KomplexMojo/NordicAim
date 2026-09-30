@@ -28,7 +28,7 @@ Shots are the located **units** of `computed.result.all.units`, in mm from the t
 
 ## 3. Date range
 
-By `session.sessionDate` (`YYYY-MM-DD`): **Latest session** (one session: the latest date that has shots in the view, then the latest session creation time, all its shots), **This week** (the calendar week, Monday to today), **30 days**, **90 days**, **All time** (default). "Days" count back from today (the
+By `session.sessionDate` (`YYYY-MM-DD`): **Latest session** (one session: the latest date that has shots in the view, then the latest session creation time, all its shots), **7 days**, **14 days**, **30 days**, **90 days**, **All time** (default, owner, 2026-09-30). "Days" count back from today (the
 service supplies today; `patterns/` never reads the clock). The dots and the summary change together.
 
 ## 4. Summary (per view, over the shown points)
@@ -50,7 +50,7 @@ points the dots are drawn as one path per 500 (still SVG; a canvas fallback is n
 ## 6. Screen
 
 `#/patterns`, the **Patterns** tab on the bottom bar (REV-136). A view switch (four buttons), a range
-switch (three), the drawing, the summary, and the left-out count. The drawing can be zoomed. Empty and thin states are
+switch (a six-stop slider, §3), the drawing, the summary, and the left-out count. The drawing can be zoomed. Empty and thin states are
 plain sentences. Not shareable on its own; its four drawings are part of the coach image (`analysis.md` §5, REV-124).
 
 **From a dot to its target (REV-140, issue #72).** The view and range are in the address (`#/patterns?view=confirm&range=90`,

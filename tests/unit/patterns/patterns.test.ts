@@ -113,7 +113,7 @@ describe('filterByRange (patterns.md §3)', () => {
   });
 });
 
-describe('filterByRange: this week and latest session (REV-77)', () => {
+describe('filterByRange: 7/14 days and latest session (REV-77, owner 2026-09-30)', () => {
   const at = (sessionId: string, sessionDate: string, sessionStamp: string): PatternPoint => ({
     xMm: 0,
     yMm: 0,
@@ -126,13 +126,15 @@ describe('filterByRange: this week and latest session (REV-77)', () => {
     sessionStamp,
   });
 
-  it('this week is the calendar week from Monday to today', () => {
-    // 2026-09-20 is a Sunday, so the week began on Monday 2026-09-14.
-    const points = [at('a', '2026-09-13', '2026-09-13T08:00:00Z'), at('b', '2026-09-14', '2026-09-14T08:00:00Z'), at('c', '2026-09-20', '2026-09-20T08:00:00Z')];
-    expect(filterByRange(points, 'week', '2026-09-20').map((p) => p.sessionId)).toEqual(['b', 'c']);
-    // On a Monday the week is just that day.
-    expect(filterByRange(points, 'week', '2026-09-14').map((p) => p.sessionId)).toEqual(['b', 'c']);
-    expect(filterByRange([at('a', '2026-09-13', 'x')], 'week', '2026-09-14')).toEqual([]);
+  it('7 and 14 days count back that many days from today, inclusive', () => {
+    const points = [
+      at('a', '2026-09-05', '2026-09-05T08:00:00Z'), // 15 days before 09-20: outside both
+      at('b', '2026-09-06', '2026-09-06T08:00:00Z'), // 14 days before: inside 14, outside 7
+      at('c', '2026-09-13', '2026-09-13T08:00:00Z'), // 7 days before: inside both
+      at('d', '2026-09-20', '2026-09-20T08:00:00Z'), // today: inside both
+    ];
+    expect(filterByRange(points, '7', '2026-09-20').map((p) => p.sessionId)).toEqual(['c', 'd']);
+    expect(filterByRange(points, '14', '2026-09-20').map((p) => p.sessionId)).toEqual(['b', 'c', 'd']);
   });
 
   it('the latest session is one session: the latest date, then the latest creation time, with all its points', () => {

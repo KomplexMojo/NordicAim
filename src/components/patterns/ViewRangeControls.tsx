@@ -8,8 +8,12 @@ import { PATTERN_RANGE_LABEL, PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternRan
 
 // patterns.md §3, broadest to most recent: the order the slider moves through, left to right. "Latest session" sits
 // on the right, since that's this session, and dragging left goes back in time (owner, 2026-09-30).
-const RANGE_ORDER: readonly PatternRange[] = ['all', '90', '30', 'week', 'last'];
-const RANGE_STEPS = RANGE_ORDER.map((id) => ({ id, label: PATTERN_RANGE_LABEL[id] }));
+const RANGE_ORDER: readonly PatternRange[] = ['all', '90', '30', '14', '7', 'last'];
+// The slider's own tick text (owner, 2026-09-30): short enough at six stops to stay easy to read and to tap. "1" for
+// this session, then how many days back, then "-∞" for all time. `PATTERN_RANGE_LABEL` (the full word, e.g. "14 days")
+// is still the accessible name and what the coach image and its sentence use.
+const RANGE_TICK_LABEL: Record<PatternRange, string> = { last: '1', '7': '-7', '14': '-14', '30': '-30', '90': '-90', all: '-∞' };
+const RANGE_STEPS = RANGE_ORDER.map((id) => ({ id, tick: RANGE_TICK_LABEL[id], label: PATTERN_RANGE_LABEL[id] }));
 const LAST_STEP = RANGE_STEPS.length - 1;
 
 interface ViewRangeControlsProps {
@@ -21,17 +25,16 @@ interface ViewRangeControlsProps {
   testIdPrefix: string;
 }
 
-/** Each step's label sits centred over its tick, except the two ends: their box hugs the track's edge and the text
- * inside it is edge-aligned too (left for the first, right for the last), so the label reads flush with the track
- * rather than floating past it. */
-function tickPlacement(index: number): { offset: string; align: string } {
-  if (index === 0) return { offset: '0%', align: 'items-start text-left' };
-  if (index === LAST_STEP) return { offset: '-100%', align: 'items-end text-right' };
-  return { offset: '-50%', align: 'items-center text-center' };
+/** Each tick's box hugs the track under its own position: centred, except the two ends, which sit flush with the
+ * track's edge so the row never overhangs it. */
+function tickOffset(index: number): string {
+  if (index === 0) return '0%';
+  if (index === LAST_STEP) return '-100%';
+  return '-50%';
 }
 
 /**
- * patterns.md §1, §3 and analysis.md §1 (REV-123): the four views, and the date range as a five-stop slider
+ * patterns.md §1, §3 and analysis.md §1 (REV-123): the four views, and the date range as a six-stop slider
  * ("Latest session" last, on the right), the same controls on Patterns and on Analysis.
  */
 export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }: ViewRangeControlsProps) {
@@ -100,26 +103,23 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
           />
         </div>
         <div role="group" aria-label="Date range" className="relative h-11">
-          {RANGE_STEPS.map((step, i) => {
-            const { offset, align } = tickPlacement(i);
-            return (
-              <button
-                key={step.id}
-                type="button"
-                aria-pressed={i === index}
-                data-testid={`${testIdPrefix}-range-${step.id}`}
-                onClick={() => moveTo(i)}
-                className={cn(
-                  'absolute top-0 flex h-11 w-[4.5rem] flex-col justify-center text-[11px] leading-tight text-wrap',
-                  align,
-                  i === index ? 'font-semibold text-primary' : 'text-muted-foreground',
-                )}
-                style={{ left: `calc(1rem + (100% - 2rem) * ${i / LAST_STEP})`, transform: `translateX(${offset})` }}
-              >
-                {step.label}
-              </button>
-            );
-          })}
+          {RANGE_STEPS.map((step, i) => (
+            <button
+              key={step.id}
+              type="button"
+              aria-pressed={i === index}
+              aria-label={step.label}
+              data-testid={`${testIdPrefix}-range-${step.id}`}
+              onClick={() => moveTo(i)}
+              className={cn(
+                'absolute top-0 flex h-11 w-10 items-center justify-center text-sm tabular-nums',
+                i === index ? 'font-semibold text-primary' : 'text-muted-foreground',
+              )}
+              style={{ left: `calc(1rem + (100% - 2rem) * ${i / LAST_STEP})`, transform: `translateX(${tickOffset(i)})` }}
+            >
+              {step.tick}
+            </button>
+          ))}
         </div>
       </div>
     </>

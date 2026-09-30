@@ -14,12 +14,14 @@ export const PATTERN_VIEW_LABEL: Record<PatternView, string> = {
   'precision-standing': 'Precision standing',
 };
 
-export type PatternRange = 'last' | 'week' | '30' | '90' | 'all';
+export type PatternRange = 'last' | '7' | '14' | '30' | '90' | 'all';
 
-/** patterns.md §3: each range as its button reads, oldest-first order. Also the coach image's subtitle (analysis.md §5). */
+/** patterns.md §3: each range as read in a sentence (the coach image's subtitle, analysis.md §5, and `ViewRangeControls`'s
+ * accessible label — its visible tick text is its own, shorter set). */
 export const PATTERN_RANGE_LABEL: Record<PatternRange, string> = {
   last: 'Latest session',
-  week: 'This week',
+  '7': '7 days',
+  '14': '14 days',
   '30': '30 days',
   '90': '90 days',
   all: 'All time',
@@ -116,16 +118,9 @@ export function collectPatterns(sources: PatternSource[]): PatternData {
   return { points, leftOut };
 }
 
-/** The Monday on or before `today` (`YYYY-MM-DD`), the start of the calendar week. */
-function weekStart(today: string): string {
-  const d = new Date(`${today}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return d.toISOString().slice(0, 10);
-}
-
 /**
  * patterns.md §3: `today` is `YYYY-MM-DD`, supplied by the caller. `last` is the most recent session that has points here
- * (latest session date, then latest creation time); `week` is this calendar week, Monday to today; `30` and `90` count back days.
+ * (latest session date, then latest creation time); `7`, `14`, `30` and `90` count back that many days from today.
  */
 export function filterByRange(points: PatternPoint[], range: PatternRange, today: string): PatternPoint[] {
   if (range === 'all') return points;
@@ -137,10 +132,6 @@ export function filterByRange(points: PatternPoint[], range: PatternRange, today
       }
     }
     return latest === null ? [] : points.filter((p) => p.sessionId === latest.sessionId);
-  }
-  if (range === 'week') {
-    const start = weekStart(today);
-    return points.filter((p) => p.sessionDate >= start);
   }
   const cutoff = new Date(`${today}T00:00:00Z`);
   cutoff.setUTCDate(cutoff.getUTCDate() - Number(range));

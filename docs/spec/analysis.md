@@ -12,7 +12,7 @@ Code: `src/lib/analysis/trend.ts` and `chart.ts` (pure), `src/routes/analysis/An
 - Route **`#/analysis`**, reached from the **Analysis** tab (a small line chart) on the bottom tab bar, beside **Patterns** (REV-136; it was a header icon until then).
 - The same four views as Patterns (`patterns.md` §1): **Sight in**, **Confirm**, **Precision prone**, **Precision
   standing**. They use the same buttons (`ViewRangeControls`).
-- The same date ranges and buttons as Patterns (`patterns.md` §3): latest session, this week, 30 days, 90 days, all time.
+- The same date ranges and slider as Patterns (`patterns.md` §3): latest session, 7 days, 14 days, 30 days, 90 days, all time.
 
 ## 2. Which shots, and one point per session
 
