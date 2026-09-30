@@ -15,6 +15,9 @@ import { verifyBackupFile, type VerifiedBackup } from '@/lib/backup/verify';
 import type { AppSettings } from '@/lib/domain/settings';
 import { buildBackupFile, planBackupRestore, recordBackupMade, restoreBackup, setBackupReminderDays } from '@/lib/services/backup';
 import { shareBackup } from '@/lib/share/share-browser';
+import { listSessions } from '@/lib/services/sessions';
+
+import { BackupScopePicker, type BackupScope } from './BackupScopePicker';
 
 interface Loaded {
   backup: VerifiedBackup;
@@ -38,6 +41,12 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
   const [message, setMessage] = useState<string | null>(null);
   const [chosenName, setChosenName] = useState<string | null>(null);
   const [days, setDays] = useState(String(settings.backupReminderDays));
+  // REV-143: everything (the default), or chosen sessions. The list is read when the dialog opens.
+  const [scope, setScope] = useState<BackupScope>('all');
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const { value: sessions } = useLiveQuery(() => (confirming ? listSessions(ctx) : Promise.resolve([])), [ctx, confirming]);
+  const sessionList = [...(sessions ?? [])].sort((a, b) => b.sessionDate.localeCompare(a.sessionDate) || b.createdAt.localeCompare(a.createdAt));
+  const chosenIds = sessionList.filter((s) => chosen.has(s.id)).map((s) => s.id);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function onCreate() {
@@ -46,7 +55,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
     setMessage(null);
     try {
       const started = performance.now();
-      const made = await buildBackupFile(ctx, BUILD_SHA);
+      const made = await buildBackupFile(ctx, BUILD_SHA, scope === 'chosen' ? chosenIds : undefined);
       const outcome = await shareBackup(made.blob, made.fileName);
       if (outcome === 'cancelled') {
         setMessage('Backup cancelled. Nothing was saved.');
@@ -55,8 +64,10 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
         const mb = (made.blob.size / 1_048_576).toFixed(1);
         const rawMb = (made.uncompressedBytes / 1_048_576).toFixed(1);
         const secs = ((performance.now() - started) / 1000).toFixed(1);
+        const n = made.manifest.counts.sessions;
         setMessage(
-          `Backup made: ${made.manifest.counts.sessions} sessions, ${made.manifest.counts.photos} photos, ${mb} MB (${rawMb} MB before compression) in ${secs} s.`,
+          `Backup made: ${n} ${n === 1 ? 'session' : 'sessions'}, ${made.manifest.counts.photos} photos, ${mb} MB (${rawMb} MB before compression) in ${secs} s.` +
+            (made.manifest.scope !== undefined ? ' Only the chosen sessions: this does not count as your backup.' : ''),
         );
       }
     } catch (err) {
@@ -142,7 +153,16 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
         Your sessions live only on this phone. Removing the Home Screen icon or clearing website data deletes them, so keep a
         backup in Files or iCloud Drive.
       </p>
-      <Button className="h-11" disabled={busy} onClick={() => setConfirming(true)} data-testid="backup-now">
+      <Button
+        className="h-11"
+        disabled={busy}
+        onClick={() => {
+          setScope('all');
+          setChosen(new Set());
+          setConfirming(true);
+        }}
+        data-testid="backup-now"
+      >
         {busy ? 'Working…' : 'Back up now'}
       </Button>
 
@@ -197,6 +217,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
             <p className="text-sm font-medium">
               This backup checks out. It holds {loaded.backup.file.manifest.counts.sessions} sessions and{' '}
               {loaded.backup.file.manifest.counts.photos} photos.
+              {loaded.backup.file.manifest.scope !== undefined && ' It is a backup of chosen sessions, not everything.'}
             </p>
             <ul className="text-xs text-muted-foreground">
               {loaded.backup.file.manifest.sessions.map((s) => (
@@ -237,18 +258,24 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent data-testid="backup-confirm-dialog">
           <DialogHeader>
-            <DialogTitle>Back up everything?</DialogTitle>
+            <DialogTitle>Make a backup</DialogTitle>
             <DialogDescription>
               The backup file contains your original photos, and photos keep the exact GPS location where they were taken. Keep the
               file in your own Files or iCloud Drive and do not share it. Nothing is sent anywhere by the app.
             </DialogDescription>
           </DialogHeader>
+          <BackupScopePicker sessions={sessionList} scope={scope} chosen={chosen} onScope={setScope} onChosen={setChosen} />
           <DialogFooter>
             <Button variant="outline" className="h-11" onClick={() => setConfirming(false)}>
               Cancel
             </Button>
-            <Button className="h-11" onClick={() => void onCreate()} data-testid="backup-confirm">
-              Create backup
+            <Button
+              className="h-11"
+              disabled={scope === 'chosen' && chosenIds.length === 0}
+              onClick={() => void onCreate()}
+              data-testid="backup-confirm"
+            >
+              {scope === 'all' ? 'Create backup' : `Back up ${chosenIds.length} ${chosenIds.length === 1 ? 'session' : 'sessions'}`}
             </Button>
           </DialogFooter>
         </DialogContent>

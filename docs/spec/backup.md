@@ -8,7 +8,7 @@ images base64, no password; the file holds photo GPS and the app says so.
 A backup the owner explicitly creates may contain photos. It is created only by a tap on **Back up now** (Settings, or the
 reminder). It goes only to the share sheet or a download. Nothing is sent anywhere automatically. No runtime network calls.
 
-## 2. File (`nordic-aim-backup`, formatVersion 2; version 1 still restores), file name `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD.json.gz`
+## 2. File (`nordic-aim-backup`, formatVersion 2; version 1 still restores), file name `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD[-<n>-session(s)].json.gz` (the session count only for a backup of chosen sessions, §2c)
 
 REV-125: the name carries the athlete's name as a lower-case ASCII slug (Nordic letters spelled out: ø→o, æ→ae, å→a; at
 most 30 characters; left out when no name is set), the key fingerprint (8 hex digits, upper case; left out when no key was
@@ -70,6 +70,18 @@ sheets and SVGs are always kept. The working copy is the largest of these, so th
 - The rebuilt working copy is a fresh JPEG encoding of the same original, so its pixels can differ very slightly from the
   one detection first ran on. Stored shots and alignment are not changed; only a later re-detection sees the new copy.
 - The restore report counts the images made again.
+
+## 2c. A backup of chosen sessions (REV-143)
+
+**Make a backup** offers **All sessions** (the default) or **Choose sessions**: a list of every session, newest first (name, date,
+start time, targets), with **Select all** / **Select none**; the button reads **Back up N sessions** and is disabled with none
+chosen. `createBackup(db, { …, sessionIds })` (`scopeToSessions`, `src/lib/backup/scope.ts`) keeps the chosen sessions, their
+photos, those photos' analyses, and the blobs that belong to them (`photo:<pid>:*`, `diagram:<pid>:*`, and `artifact:<aid>:*` for
+the session's summary images); every other blob (reference sheets, coach images, anything not tied to one session) and the settings
+row always come along, so a restore never meets a record pointing at something missing. The manifest gains
+`scope: { kind: 'sessions', sessionIds }` (absent for a full backup, and in every earlier file; the format version is unchanged). The
+file name ends `-<n>-session(s)` (§2). Such a backup **does not count as the backup**: `lastBackupAt` and the reminder are left as
+they were, and the message says so. Restoring one works like any restore (§4); the preview says it is a backup of chosen sessions.
 
 ## 3. Verify (before anything is written)
 
