@@ -25,12 +25,17 @@ interface ViewRangeControlsProps {
   testIdPrefix: string;
 }
 
-/** Each tick's box hugs the track under its own position: centred, except the two ends, which sit flush with the
- * track's edge so the row never overhangs it. */
-function tickOffset(index: number): string {
-  if (index === 0) return '0%';
-  if (index === LAST_STEP) return '-100%';
-  return '-50%';
+// The track sits inset 1rem from the row (`inset-x-4`); the thumb is 2.25rem across (`size-9`) and, like every
+// native range input, its centre travels only between one radius in from each end of the track, never over the
+// track's own edges. A tick at a linear 0–100% position would drift away from the thumb's actual centre everywhere
+// but the midpoint (REV-145, owner-reported), so ticks are placed with the same 1rem + radius inset instead.
+const TRACK_INSET_REM = 1;
+const THUMB_RADIUS_REM = 1.125;
+
+/** Where the thumb's centre sits, in CSS `calc()`, for a step at `fraction` (0–1) along the track. */
+function thumbCenterX(fraction: number): string {
+  const inset = TRACK_INSET_REM + THUMB_RADIUS_REM;
+  return `calc(${inset}rem + (100% - ${2 * inset}rem) * ${fraction})`;
 }
 
 /**
@@ -82,7 +87,7 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
           <div className="pointer-events-none absolute inset-x-4 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted" />
           <div
             className="pointer-events-none absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-primary"
-            style={{ left: '1rem', width: `calc((100% - 2rem) * ${index / LAST_STEP})` }}
+            style={{ left: `${TRACK_INSET_REM}rem`, width: `calc(${thumbCenterX(index / LAST_STEP)} - ${TRACK_INSET_REM}rem)` }}
           />
           <input
             type="range"
@@ -115,9 +120,10 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
                 'absolute top-0 flex h-11 w-10 items-center justify-center text-sm tabular-nums',
                 i === index ? 'font-semibold text-primary' : 'text-muted-foreground',
               )}
-              style={{ left: `calc(1rem + (100% - 2rem) * ${i / LAST_STEP})`, transform: `translateX(${tickOffset(i)})` }}
+              style={{ left: thumbCenterX(i / LAST_STEP), transform: 'translateX(-50%)' }}
             >
-              {step.tick}
+              {/* "∞" sits smaller than a digit at the same font-size in most fonts; bump it to read the same size. */}
+              <span className={step.id === 'all' ? 'text-base' : undefined}>{step.tick}</span>
             </button>
           ))}
         </div>
