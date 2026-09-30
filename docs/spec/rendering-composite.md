@@ -278,10 +278,12 @@ export async function loadArtifact(ctx: ServiceContext, sessionId: string, artif
 export async function latestArtifact(ctx: ServiceContext, sessionId: string): Promise<{ artifact: CompositeArtifact; png: Blob } | null>;
 ```
 
-- **Stored diagrams are versioned too (REV-58).** The per-photo `full` and `cell` diagrams are written when a photo is scored, so a
-  renderer change would not reach existing sessions. `DIAGRAM_RENDERER_VERSION` (currently **1**) is compared, at app start, with
+- **Stored diagrams are versioned too (REV-58).** The per-photo `full` and `cell` diagrams — and, since Stage B writes both in the same
+  pass, `computed.result.<subset>.characteristics` (owner, 2026-09-30) — are written when a photo is scored, so a renderer or
+  characterization change would not reach existing sessions. `DIAGRAM_RENDERER_VERSION` (currently **9**) is compared, at app start, with
   `AppSettings.diagramRendererVersion` (default 0); when the setting is behind, every finished analysis goes back to Stage B once
-  (`rescoreAll`) and the setting is brought up to date. Bump it whenever a per-target diagram's output changes.
+  (`rescoreAll`) and the setting is brought up to date. Bump it whenever a per-target diagram's output changes, or
+  `characterize-result.ts`'s / `characteristics.ts`'s.
 - `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **3**) records which renderer drew an artifact; it
   defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
   current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
