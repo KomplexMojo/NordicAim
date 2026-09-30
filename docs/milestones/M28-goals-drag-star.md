@@ -76,6 +76,23 @@ pnpm test:e2e
 - A focusable, `tabIndex={0}` SVG `<rect>` gets the browser's default focus outline the instant a mouse-drag focuses
   it (visible in a screenshot taken mid-drag) — visually noisy for a pointer user, but a keyboard user genuinely
   needs it. Fixed with `outline-none` plus `focus-visible:outline` rather than removing the outline altogether.
+- **WebKit-specific `setPointerCapture` failure (CI, 2026-09-30, caught after the first push):** a multi-step drag
+  (`{ steps: 4 }` in the e2e test) stopped updating partway through in CI's `mobile-webkit` project, three times in
+  a row across CI's own retries — Chromium never showed it locally (this container has no WebKit to test against
+  at all, per `CLAUDE.md`). First fix attempt replaced `setPointerCapture` with `window`-level `pointermove`/
+  `pointerup` listeners, reasoning that WebKit's pointer capture might be unreliable on SVG specifically; this
+  introduced a *new*, worse, reproducible-in-Chromium bug (~40% local failure rate) — Chromium's mouse pointer
+  always reports `pointerId: 1`, so if a drag's cleanup doesn't fire before some unrelated later mouse action
+  (even a button click elsewhere on the page), a leftover `window` listener matches that later event's `pointerId`
+  too, stealing it. Reverted that attempt. The actual fix: kept the original, proven `setPointerCapture` approach
+  entirely (state-based `pointerId`, fresh `getBoundingClientRect()` per event — already correct, never the
+  problem), but moved *which element* it's attached to from the SVG `<rect>` to an absolutely-positioned HTML
+  `<div>` overlaid on the SVG's plot area (percentage-positioned from `BOX`, so it scales with the SVG). This
+  targets the actual documented gap — WebKit's `setPointerCapture`/pointer-event support is more mature on HTML
+  elements than SVG ones — while reusing the exact capture pattern already proven across this app's own WebKit e2e
+  coverage (`ImageStage.tsx`'s shot-dragging). Verified the overlay div's screen position matches the SVG's plot
+  rect to sub-pixel precision (not just "looks right") before trusting it. Unverified locally beyond that: this
+  container has no WebKit, so the real confirmation is the next CI run.
 
 ## Open questions
 None. The one thing this milestone's own stub left open — whether to keep the numeric entry as a fallback — was

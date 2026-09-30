@@ -9,6 +9,12 @@ import type { PatternView } from '@/lib/patterns/collect';
 
 const BOX: ChartBox = { width: 320, height: 170, left: 44, right: 12, top: 12, bottom: 28 };
 const PLOT_H = BOX.height - BOX.top - BOX.bottom;
+// The interactive surface is an HTML `<div>` overlaid on the SVG's plot area, positioned by percentage of the
+// SVG's own box (it scales with the SVG, `viewBox` to rendered size, so a percentage stays aligned at any width).
+const PLOT_LEFT_PCT = (BOX.left / BOX.width) * 100;
+const PLOT_TOP_PCT = (BOX.top / BOX.height) * 100;
+const PLOT_WIDTH_PCT = ((BOX.width - BOX.left - BOX.right) / BOX.width) * 100;
+const PLOT_HEIGHT_PCT = (PLOT_H / BOX.height) * 100;
 /** M28 (goals.md §5): the star sits at the chart's own star, echoing the Goals tab's icon (`TabBar.tsx`). */
 const STAR_PATH = 'M12,3 14.12,9.09 20.56,9.22 15.42,13.11 17.29,19.28 12,15.6 6.71,19.28 8.58,13.11 3.44,9.22 9.88,9.09 Z';
 const STAR_SCALE = 0.7;
@@ -48,6 +54,11 @@ interface GoalChartProps {
  * saves, Escape cancels: unlike a native range input, a key press only updates a live preview rather than writing
  * a new append-only log entry (goals.md §2) on every step, so the log only grows on an actual release or Enter. A
  * separate component from `TrendChart` on purpose: this stays additive, so the shipped Analysis screen is untouched.
+ *
+ * The drag surface is an HTML `<div>` absolutely positioned over the SVG's plot area, not the SVG itself: WebKit's
+ * `setPointerCapture` is unreliable on an SVG element specifically (a multi-step drag stopped updating partway
+ * through in CI's WebKit run, though Chromium never showed it), while the same capture-on-an-HTML-element pattern
+ * is already proven across this app's WebKit e2e coverage (`ImageStage.tsx`'s shot-dragging, mirrored here).
  */
 export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChartProps) {
   const dataValues = useMemo(() => trend.map((p) => metric.value(p)), [trend, metric]);
@@ -80,32 +91,32 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
     return valueAt(y, BOX, data.domain);
   }
 
-  function onPlotPointerDown(e: React.PointerEvent<SVGRectElement>) {
+  function onPlotPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (saving) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setPointerId(e.pointerId);
     setDraft(valueFromPointer(e));
   }
 
-  function onPlotPointerMove(e: React.PointerEvent<SVGRectElement>) {
+  function onPlotPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     if (e.pointerId !== pointerId) return;
     setDraft(valueFromPointer(e));
   }
 
-  function onPlotPointerUp(e: React.PointerEvent<SVGRectElement>) {
+  function onPlotPointerUp(e: React.PointerEvent<HTMLDivElement>) {
     if (e.pointerId !== pointerId) return;
     e.currentTarget.releasePointerCapture(e.pointerId);
     setPointerId(null);
     void commit(valueFromPointer(e));
   }
 
-  function onPlotPointerCancel(e: React.PointerEvent<SVGRectElement>) {
+  function onPlotPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
     if (e.pointerId !== pointerId) return;
     setPointerId(null);
     setDraft(null);
   }
 
-  function onPlotKeyDown(e: React.KeyboardEvent<SVGRectElement>) {
+  function onPlotKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (saving) return;
     const [lo, hi] = data.domain;
     const clamp = (v: number) => Math.min(hi, Math.max(lo, v));
@@ -180,62 +191,60 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
           <p className="text-sm text-muted-foreground">No sessions with this measure in the range.</p>
         ) : (
           <>
-            <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} className="h-auto w-full select-none" role="img" aria-label={`${metric.title} over ${data.points.length} sessions, with its goal`}>
-              {data.yTicks.map((t) => (
-                <g key={t.value}>
-                  <line x1={BOX.left} x2={BOX.width - BOX.right} y1={t.y} y2={t.y} className="stroke-border" strokeWidth={1} />
-                  <text x={BOX.left - 6} y={t.y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">
-                    {tickLabel(t.value)}
-                  </text>
-                </g>
-              ))}
-              {data.zeroY !== null && <line x1={BOX.left} x2={BOX.width - BOX.right} y1={data.zeroY} y2={data.zeroY} className="stroke-muted-foreground" strokeWidth={1} />}
-              <text x={data.points[0]!.x} y={BOX.height - 8} textAnchor={data.points.length === 1 ? 'middle' : 'start'} className="fill-muted-foreground text-[10px]">
-                {shortDate(trend[data.points[0]!.index]!.sessionDate)}
-              </text>
-              {data.points.length > 1 && (
-                <text x={data.points.at(-1)!.x} y={BOX.height - 8} textAnchor="end" className="fill-muted-foreground text-[10px]">
-                  {shortDate(trend[data.points.at(-1)!.index]!.sessionDate)}
+            <div className="relative">
+              <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} className="h-auto w-full select-none" role="img" aria-label={`${metric.title} over ${data.points.length} sessions, with its goal`}>
+                {data.yTicks.map((t) => (
+                  <g key={t.value}>
+                    <line x1={BOX.left} x2={BOX.width - BOX.right} y1={t.y} y2={t.y} className="stroke-border" strokeWidth={1} />
+                    <text x={BOX.left - 6} y={t.y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">
+                      {tickLabel(t.value)}
+                    </text>
+                  </g>
+                ))}
+                {data.zeroY !== null && <line x1={BOX.left} x2={BOX.width - BOX.right} y1={data.zeroY} y2={data.zeroY} className="stroke-muted-foreground" strokeWidth={1} />}
+                <text x={data.points[0]!.x} y={BOX.height - 8} textAnchor={data.points.length === 1 ? 'middle' : 'start'} className="fill-muted-foreground text-[10px]">
+                  {shortDate(trend[data.points[0]!.index]!.sessionDate)}
                 </text>
-              )}
-              {/* goals.md §4: the goal step-line, drawn under the data and trend lines so real shots always read on top. */}
-              {goal.path !== '' && (
-                <path d={goal.path} fill="none" className="stroke-sky-500" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" data-testid={`goal-${metric.id}-step`} />
-              )}
-              <path d={data.path} fill="none" className="stroke-primary" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-              {fit !== null && (
-                <line
-                  x1={fit.x1}
-                  y1={fit.y1}
-                  x2={fit.x2}
-                  y2={fit.y2}
-                  className="stroke-foreground"
-                  strokeWidth={1.5}
-                  strokeDasharray="5 3"
-                  strokeLinecap="round"
-                  data-testid={`goal-${metric.id}-line`}
-                />
-              )}
-              {data.points.map((p) => (
-                <circle key={p.index} cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
-              ))}
-              {starValue !== null && (
-                <g
-                  transform={`translate(${starX - 12 * STAR_SCALE} ${valueToY(starValue, BOX, data.domain) - 12 * STAR_SCALE}) scale(${STAR_SCALE})`}
-                  className="pointer-events-none"
-                  data-testid={`goal-${metric.id}-star`}
-                >
-                  <path d={STAR_PATH} className="fill-sky-500 stroke-card" strokeWidth={1.5} strokeLinejoin="round" />
-                </g>
-              )}
+                {data.points.length > 1 && (
+                  <text x={data.points.at(-1)!.x} y={BOX.height - 8} textAnchor="end" className="fill-muted-foreground text-[10px]">
+                    {shortDate(trend[data.points.at(-1)!.index]!.sessionDate)}
+                  </text>
+                )}
+                {/* goals.md §4: the goal step-line, drawn under the data and trend lines so real shots always read on top. */}
+                {goal.path !== '' && (
+                  <path d={goal.path} fill="none" className="stroke-sky-500" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" data-testid={`goal-${metric.id}-step`} />
+                )}
+                <path d={data.path} fill="none" className="stroke-primary" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+                {fit !== null && (
+                  <line
+                    x1={fit.x1}
+                    y1={fit.y1}
+                    x2={fit.x2}
+                    y2={fit.y2}
+                    className="stroke-foreground"
+                    strokeWidth={1.5}
+                    strokeDasharray="5 3"
+                    strokeLinecap="round"
+                    data-testid={`goal-${metric.id}-line`}
+                  />
+                )}
+                {data.points.map((p) => (
+                  <circle key={p.index} cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
+                ))}
+                {starValue !== null && (
+                  <g
+                    transform={`translate(${starX - 12 * STAR_SCALE} ${valueToY(starValue, BOX, data.domain) - 12 * STAR_SCALE}) scale(${STAR_SCALE})`}
+                    className="pointer-events-none"
+                    data-testid={`goal-${metric.id}-star`}
+                  >
+                    <path d={STAR_PATH} className="fill-sky-500 stroke-card" strokeWidth={1.5} strokeLinejoin="round" />
+                  </g>
+                )}
+              </svg>
               {/* M28 (goals.md §5): tap or drag anywhere in the plot to place/move the star; Enter/arrow keys for a keyboard user. */}
-              <rect
-                x={BOX.left}
-                y={BOX.top}
-                width={BOX.width - BOX.left - BOX.right}
-                height={PLOT_H}
-                fill="transparent"
-                className="touch-none cursor-ns-resize outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
+              <div
+                className="absolute touch-none cursor-ns-resize outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
+                style={{ left: `${PLOT_LEFT_PCT}%`, top: `${PLOT_TOP_PCT}%`, width: `${PLOT_WIDTH_PCT}%`, height: `${PLOT_HEIGHT_PCT}%` }}
                 tabIndex={0}
                 role="slider"
                 aria-orientation="vertical"
@@ -252,7 +261,7 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
                 onKeyDown={onPlotKeyDown}
                 onBlur={onPlotBlur}
               />
-            </svg>
+            </div>
             <p className="text-xs text-muted-foreground">Tap or drag on the chart to set the goal.</p>
           </>
         )}
