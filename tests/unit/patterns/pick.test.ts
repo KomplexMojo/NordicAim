@@ -50,10 +50,10 @@ describe('patternsPxToMm', () => {
 });
 
 describe('view and range in the address', () => {
-  it('reads what it writes, and falls back to Sight in / All time for anything else', () => {
+  it('reads what it writes, and falls back to Sight in / Latest session for anything else', () => {
     expect(parseViewRange(new URLSearchParams(viewRangeSearch('confirm', '90')))).toEqual({ view: 'confirm', range: '90' });
-    expect(parseViewRange(new URLSearchParams(''))).toEqual({ view: 'sight-in', range: 'all' });
-    expect(parseViewRange(new URLSearchParams('view=nope&range=nope'))).toEqual({ view: 'sight-in', range: 'all' });
+    expect(parseViewRange(new URLSearchParams(''))).toEqual({ view: 'sight-in', range: 'last' });
+    expect(parseViewRange(new URLSearchParams('view=nope&range=nope'))).toEqual({ view: 'sight-in', range: 'last' });
   });
 });
 

@@ -84,6 +84,8 @@ test('Patterns can show the latest session or the last 7 days only', async ({ pa
   }
   await page.goto('/#/patterns');
   await page.getByTestId('pattern-view-sight-in').click();
+  // Owner, 2026-09-30: Patterns opens on the latest session by default; widen to see both demo sessions first.
+  await page.getByTestId('pattern-range-all').click();
   await expect(page.getByTestId('patterns-counts')).toContainText('2 sessions');
   await page.getByTestId('pattern-range-last').click();
   await expect(page.getByTestId('patterns-counts')).toContainText('1 session');

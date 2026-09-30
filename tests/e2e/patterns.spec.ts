@@ -24,6 +24,8 @@ test('two demo sessions overlay on the right views, the range filter and the dra
   await page.goto('/#/');
   await page.getByTestId('tab-patterns').click();
   await expect(page).toHaveURL(/#\/patterns$/);
+  // Owner, 2026-09-30: Patterns opens on the latest session by default; widen to see both demo sessions.
+  await page.getByTestId('pattern-range-all').click();
 
   // One sighting target per demo session: both are each session's first, so Sight in holds both and Confirm none.
   await page.getByTestId('pattern-view-sight-in').click();

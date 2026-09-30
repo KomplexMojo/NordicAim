@@ -30,6 +30,8 @@ test('two demo sessions give one point per session on each chart, the ranges fil
   await page.getByTestId('tab-analysis').click();
   await expect(page).toHaveURL(/#\/analysis$/);
   await expect(page.getByTestId('tab-analysis')).toHaveAttribute('aria-current', 'page');
+  // Owner, 2026-09-30: Analysis opens on the latest session by default; widen to see both demo sessions.
+  await page.getByTestId('analysis-range-all').click();
 
   // Sight in: each demo session's first sighting target, so two sessions.
   // REV-130: each view button carries its kind's mark.

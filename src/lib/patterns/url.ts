@@ -4,7 +4,9 @@
 import { PATTERN_RANGE_LABEL, PATTERN_VIEWS, type PatternRange, type PatternView } from './collect';
 
 export const DEFAULT_VIEW: PatternView = 'sight-in';
-export const DEFAULT_RANGE: PatternRange = 'all';
+// Owner, 2026-09-30: opening Patterns or Analysis fresh starts on the athlete's latest session, not everything ever
+// recorded.
+export const DEFAULT_RANGE: PatternRange = 'last';
 
 /** The view and range a query string names; anything missing or unknown falls back to the defaults. */
 export function parseViewRange(params: URLSearchParams): { view: PatternView; range: PatternRange } {
