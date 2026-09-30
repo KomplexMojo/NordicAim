@@ -6,8 +6,9 @@ import { cn } from '@/lib/utils';
 import { ViewMark } from './ViewMark';
 import { PATTERN_RANGE_LABEL, PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 
-// patterns.md §3, most recent to broadest: the order the slider moves through, left to right.
-const RANGE_ORDER: readonly PatternRange[] = ['last', 'week', '30', '90', 'all'];
+// patterns.md §3, broadest to most recent: the order the slider moves through, left to right. "Latest session" sits
+// on the right, since that's this session, and dragging left goes back in time (owner, 2026-09-30).
+const RANGE_ORDER: readonly PatternRange[] = ['all', '90', '30', 'week', 'last'];
 const RANGE_STEPS = RANGE_ORDER.map((id) => ({ id, label: PATTERN_RANGE_LABEL[id] }));
 const LAST_STEP = RANGE_STEPS.length - 1;
 
@@ -30,8 +31,8 @@ function tickPlacement(index: number): { offset: string; align: string } {
 }
 
 /**
- * patterns.md §1, §3 and analysis.md §1 (REV-123): the four views, and the date range as a five-stop slider (oldest
- * "Latest session" first), the same controls on Patterns and on Analysis.
+ * patterns.md §1, §3 and analysis.md §1 (REV-123): the four views, and the date range as a five-stop slider
+ * ("Latest session" last, on the right), the same controls on Patterns and on Analysis.
  */
 export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }: ViewRangeControlsProps) {
   const rangeIndex = Math.max(
