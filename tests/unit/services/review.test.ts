@@ -283,4 +283,10 @@ describe('adjustSavePatch: Save confirms what is on screen (owner report 2026-09
     expect(saved.calibration?.source).toBe('manual');
     db.close();
   });
+
+  it('sends the unmoved alignment when the sheet markers disputed it, so Save confirms it (REV-144)', () => {
+    const disputed = analysisWith('cv');
+    const patch = adjustSavePatch({ ...disputed, pipeline: { ...disputed.pipeline, warnings: ['sheet-markers-disagree'] } }, { ...guess }, shots);
+    expect(patch.calibration).toBeDefined();
+  });
 });

@@ -68,4 +68,10 @@ describe('reasonMessage: REV-39 reasons (M20, analysis-pipeline §4)', () => {
       "2 round(s) weren't found and are scored as misses.",
     );
   });
+
+  it('sheet-markers-disagree points the owner to Adjust (REV-144)', () => {
+    expect(reasonMessage('sheet-markers-disagree')).toBe(
+      "The sheet's corner markers don't match the alignment — check the rings line up in Adjust.",
+    );
+  });
 });

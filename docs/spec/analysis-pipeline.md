@@ -77,7 +77,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 |---|---|---|---|
 | A1 | *(store)* | `ingestPhoto` saves original/working/thumb and the photo record | photo, blobs |
 | A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
-| A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
+| A3 | **Review image** | Worker: sharpness score, template hint, and a NordicAim sheet's corner markers (REV-144: they fill an empty kind and check A4) | `pipeline.sharpness`, `pipeline.templateHint`, `photo.categorization` when empty |
 | A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior, then measure every printed circle and store the sheet's tilt with it (REV-44, §3) → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
 | A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); when the declared rounds are known the set is **reconciled** against them (REV-39, geometry-scoring §8.3): rejected (`too-many-holes`), capped (`extra-candidates-dropped`, REV-28), given inferred double punches (`double-punch-assumed`) and misses (`rounds-scored-as-miss`). With a coloured backing (REV-38, `backing-sheet.md` §5) — the **Settings** backing mode and colour as they are when A5 runs (REV-48) — holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
 
@@ -160,13 +160,13 @@ adjusts the constant with a note.
 export type PhotoStatus = 'needs-metadata' | 'processing' | 'ready' | 'analyzed' | 'needs-attention' | 'failed';
 export type Reason = 'target-not-found' | 'no-shots-found' | 'too-many-shots' | 'extra-candidates-dropped'
   | 'rounds-unaccounted' | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch' | 'backing-colour-not-found'
-  | 'too-many-holes' | 'double-punch-assumed' | 'rounds-scored-as-miss';
+  | 'too-many-holes' | 'double-punch-assumed' | 'rounds-scored-as-miss' | 'sheet-markers-disagree';
 export function photoStatus(input: { categorization: Categorization; analysis: TargetAnalysis; result: AnalysisResult | null })
   : { status: PhotoStatus; reasons: Reason[] };
 ```
 
 Rules, first match sets the status. Pipeline warnings are **always appended** to `reasons` (in the order
-`extra-candidates-dropped`, `too-many-holes`, `double-punch-assumed`, `rounds-scored-as-miss`,
+`sheet-markers-disagree`, `extra-candidates-dropped`, `too-many-holes`, `double-punch-assumed`, `rounds-scored-as-miss`,
 `backing-colour-not-found`, `alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`,
 `processing`, and `failed`:
 1. categorization incomplete → `needs-metadata`, []
@@ -187,6 +187,9 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
    overlay fallback means **no disc was found**, so the rings sit where the owner aimed rather than where the target is. A guess
    must not present as a finished score. A `cv` alignment with `outsidePrior: true` is *not* escalated — there the disc was
    measured, so its `alignment-uncertain` warning stays an appended note.)
+9a. warnings include `sheet-markers-disagree` and `pipeline.alignment.method !== 'manual'` → `needs-attention`, [...warnings]
+   (REV-144: the printed sheet's corner markers put the target more than 8 mm from the measured alignment, so the rings are
+   probably on the wrong circle. Stage A raises it only for a `cv` alignment; an alignment the owner saved is never second-guessed.)
 10. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0 and the warnings do not include
     `rounds-scored-as-miss`), ...warnings] (M20: reconciliation reports its misses as `rounds-scored-as-miss`; `rounds-unaccounted`
     remains only for a result that was never reconciled. M24, issue #8 point 5: this rule is unchanged — `rounds-unaccounted`
@@ -204,6 +207,8 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 - done/done, warnings [extra-candidates-dropped] → `needs-attention`, [extra-candidates-dropped]
 - done/done, `alignment.method` `overlay` → `needs-attention`, [alignment-uncertain] (REV-31)
 - done/done, `alignment.method` `cv` with warnings [alignment-uncertain] (the `outsidePrior` case) → `analyzed`, [alignment-uncertain]
+- done/done, `alignment.method` `cv`, warnings [image-blurry, sheet-markers-disagree] → `needs-attention`, [sheet-markers-disagree, image-blurry] (REV-144)
+- done/done, `alignment.method` `manual`, warnings [sheet-markers-disagree] → `analyzed` (REV-144)
 - done/done, precision golden fixture (missing 0) → `analyzed`, []
 - done/done, golden with P8 multiplicity 1 (missing 1) → `analyzed`, [rounds-unaccounted]
 - done/done, warnings [too-many-holes], result null → `needs-attention`, [too-many-holes] (M20)
@@ -225,6 +230,7 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 | `too-many-holes` | Found `<N>` clear holes but you entered `<D>` rounds. This may be the wrong target or the wrong round count. |
 | `double-punch-assumed` | `<N>` hole(s) look like two shots through the same hole. |
 | `rounds-scored-as-miss` | `<N>` round(s) weren't found and are scored as misses. |
+| `sheet-markers-disagree` | The sheet's corner markers don't match the alignment — check the rings line up in Adjust. |
 
 ## 5. Triggers and runner
 
@@ -335,6 +341,8 @@ template is already set is aligned against the right disc size.
   (§4 rule 9 — no disc was found, the rings sit where the owner aimed), a Save sends the alignment on screen even if the
   rings were not moved (`adjustSavePatch`), so it becomes `manual` and rule 9 releases the photo. The owner has seen those
   rings over the photo and saved. Before, a shots-only save left the guess stored and the photo at `needs-attention`.
+- **Saving confirms an alignment the sheet's markers disputed** (REV-144): when the warnings hold `sheet-markers-disagree`, a
+  Save sends the alignment on screen even if unmoved (`adjustSavePatch`), and saving an alignment removes the warning.
 - Saving in Adjust sets `stageB = 'pending'` and calls `notify()`.
 
 ## 9. Performance budget (iPhone 16 Pro Max, measured in M15)

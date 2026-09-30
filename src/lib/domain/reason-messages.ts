@@ -40,6 +40,8 @@ export function reasonMessage(reason: Reason, ctx: ReasonMessageContext = {}): s
       return `${ctx.missing ?? 0} round(s) not found — re-analyze to score them as misses.`;
     case 'alignment-uncertain':
       return 'Used your on-screen alignment — check the rings line up.';
+    case 'sheet-markers-disagree':
+      return "The sheet's corner markers don't match the alignment — check the rings line up in Adjust.";
     case 'image-blurry':
       return 'This photo looks blurry, so results may be less accurate.';
     case 'template-mismatch':

@@ -81,8 +81,12 @@ export function adjustSavePatch(
   shots: Shot[],
 ): { calibration?: Calibration; shots: Shot[] } {
   const stored = analysis.calibration;
+  // An overlay guess (REV-31) and an alignment the sheet's markers disputed (REV-144) are both confirmed by Save, unmoved.
   const send =
-    stored === null || !sameCalibration(stored, calibration) || analysis.pipeline.alignment.method === 'overlay';
+    stored === null ||
+    !sameCalibration(stored, calibration) ||
+    analysis.pipeline.alignment.method === 'overlay' ||
+    analysis.pipeline.warnings.includes('sheet-markers-disagree');
   return { ...(send ? { calibration } : {}), shots };
 }
 

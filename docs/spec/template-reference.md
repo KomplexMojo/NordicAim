@@ -183,8 +183,16 @@ Each row of **Target sheets** also has **Download printable sheet (PDF)**. It do
   in the clipboard clamp's zone (±70 mm across, 22 mm deep), so it is covered on the clipboard and easy to read when the sheet
   hangs on its own (owner's choice). The script runs under `tsx` so it can import the mark. The 100 mm scale bar, write-in lines (Name, Date, String) and three lines of text (kind and
   version, "Print at 100% / Actual size", the repo URL) sit in the bottom band, below the markers' inner edge.
-- The app does not read the markers yet (issue #65). A photo of a printed sheet is aligned and scored like any other sheet.
-  Measured on a clean render of both sheets at 7.56 px/mm with exact calibration: detection kept no marker cell, kind mark or text as a
+- **The app reads the markers for two things only** (issue #65, REV-144). A3 finds them on the working image scaled to 1500 px
+  (`detectSheetMarkers`, `src/lib/cv/sheet-markers.ts`; ids outside version 1 are ignored). (1) A photo with no kind yet (no
+  template and no position) takes the kind every marker names (`categorizationForKind`); a chosen kind is never replaced, and
+  markers that disagree fill nothing. (2) With two or more markers, their corners give a homography (`homographyFromPoints`);
+  when a measured (`cv`) alignment and that homography place the target centre or any of 16 points on the anchor disc's edge
+  more than `MARKER_DISAGREE_MM` = 8 mm apart (`markerAlignmentGapMm`), Stage A warns `sheet-markers-disagree`
+  (analysis-pipeline §4 rule 9a). The markers never align the photo or set its scale: on the owner's first four sheet photos
+  (2026-09-30) a marker fit was 1.0–1.4 mm off the printed disc edge (median) where the ring fit was 0.2–0.4 mm, since the
+  sheet bows on its clipboard; the two differed by at most 4.7 mm, and a ring fit on the wrong circle by about 21 mm.
+- A photo of a printed sheet is otherwise aligned and scored like any other sheet. Measured on a clean render of both sheets at 7.56 px/mm with exact calibration: detection kept no marker cell, kind mark or text as a
   shot, and found all four simulated holes, two of them near markers.
 - The PDFs are generated artwork, not user data: no photo, name or location. They are the third kind of file the owner may
   download (`privacy-storage-hosting.md` §1).

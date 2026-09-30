@@ -263,4 +263,24 @@ describe('photoStatus: REV-39 declared rounds (M20, analysis-pipeline §4 rule 7
     });
     expect(out.status).not.toBe('analyzed');
   });
+
+  it('rule 9a (REV-144): a measured alignment the sheet markers dispute -> needs-attention, warning first', () => {
+    const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ alignmentMethod: 'cv', warnings: ['image-blurry', 'sheet-markers-disagree'] }),
+      result: resultStub({ all, subsets: [all] }),
+    });
+    expect(out).toEqual({ status: 'needs-attention', reasons: ['sheet-markers-disagree', 'image-blurry'] });
+  });
+
+  it('rule 9a never holds an alignment the owner saved', () => {
+    const all = subsetStub({ identified: 10, missing: 0, overcount: 0 });
+    const out = photoStatus({
+      categorization: completeCategorization,
+      analysis: analysisStub({ alignmentMethod: 'manual', warnings: ['sheet-markers-disagree'] }),
+      result: resultStub({ all, subsets: [all] }),
+    });
+    expect(out.status).toBe('analyzed');
+  });
 });

@@ -182,10 +182,12 @@ export async function saveAdjustments(
       // analysis-pipeline §4 rule 8 / §8: `extra-candidates-dropped` asks the owner to confirm which capped
       // marks were kept, and saving shots in Adjust is that confirmation. Stage B's reconciliation raises
       // it again only if it actually drops shots on its next pass, so a real over-count is never hidden.
-      warnings:
-        patch.shots === undefined
-          ? analysis.pipeline.warnings
-          : analysis.pipeline.warnings.filter((w) => w !== 'extra-candidates-dropped'),
+      // REV-144: a saved alignment is the owner's answer to `sheet-markers-disagree`.
+      warnings: analysis.pipeline.warnings.filter(
+        (w) =>
+          !(patch.shots !== undefined && w === 'extra-candidates-dropped') &&
+          !(patch.calibration !== undefined && w === 'sheet-markers-disagree'),
+      ),
     },
     };
   });

@@ -4,6 +4,7 @@ import type { Categorization } from './photo';
 import type { AnalysisResult, TargetAnalysis } from './analysis';
 
 const WARNING_ORDER: Warning[] = [
+  'sheet-markers-disagree',
   'extra-candidates-dropped',
   'too-many-holes',
   'double-punch-assumed',
@@ -92,6 +93,13 @@ export function photoStatus(input: PhotoStatusInput): PhotoStatusOutput {
       status: 'needs-attention',
       reasons: ['alignment-uncertain', ...warnings.filter((w) => w !== 'alignment-uncertain')],
     };
+  }
+
+  // 9a. REV-144: the printed sheet's corner markers disagree with the measured alignment by more than
+  // MARKER_DISAGREE_MM, so the rings are probably on the wrong circle. An alignment the owner saved in
+  // Adjust is theirs and is not second-guessed.
+  if (pipeline.warnings.includes('sheet-markers-disagree') && pipeline.alignment.method !== 'manual') {
+    return { status: 'needs-attention', reasons: [...warnings] };
   }
 
   // 10. analyzed
