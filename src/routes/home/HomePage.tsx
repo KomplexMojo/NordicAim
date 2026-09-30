@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { Link } from 'react-router';
 
 import { UpdateBanner } from '@/components/UpdateBanner';
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { listSessionKinds, listSessionsWithProblems } from '@/lib/services/sessions';
+import { sortSessions, type SessionSortDirection } from '@/lib/sessions/list-view';
 
 /**
  * Route `#/` (analysis-pipeline §1). REV-72: the one screen that lists every session, and the one place a session is
@@ -21,7 +23,10 @@ export function HomePage() {
   const { value, loading } = useLiveQuery(() => listSessionsWithProblems(ctx), [ctx]);
   const { value: kinds } = useLiveQuery(() => listSessionKinds(ctx), [ctx]);
   const [deleting, setDeleting] = useState<string | null>(null);
+  // Newest session date first by default; the toggle beside the heading flips it.
+  const [sortDirection, setSortDirection] = useState<SessionSortDirection>('desc');
   const sessions = value?.sessions;
+  const sorted = useMemo(() => sortSessions(sessions ?? [], sortDirection), [sessions, sortDirection]);
   const unreadable = value?.unreadable ?? [];
 
   return (
@@ -36,12 +41,24 @@ export function HomePage() {
       <BackupReminder />
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-medium text-muted-foreground">Sessions</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">Sessions</h2>
+          <Button
+            variant="ghost"
+            className="h-auto min-h-11 min-w-11 px-2 text-muted-foreground"
+            onClick={() => setSortDirection((d) => (d === 'desc' ? 'asc' : 'desc'))}
+            aria-label={sortDirection === 'desc' ? 'Sorted newest first; show oldest first' : 'Sorted oldest first; show newest first'}
+            data-testid="session-sort-toggle"
+            data-sort={sortDirection}
+          >
+            {sortDirection === 'desc' ? <ArrowDown className="size-4" aria-hidden /> : <ArrowUp className="size-4" aria-hidden />}
+          </Button>
+        </div>
         {loading && sessions === undefined ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <SessionList
-            sessions={sessions ?? []}
+            sessions={sorted}
             kinds={kinds}
             emptyMessage="No sessions yet. Quick start to take your first photo."
             onDelete={(session) => setDeleting(session.id)}
