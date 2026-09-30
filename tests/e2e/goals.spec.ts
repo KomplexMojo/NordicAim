@@ -52,7 +52,7 @@ test('a chart shows demo data; setting a goal persists across reload and shows o
   await expect(chart).toBeVisible();
   await expect(chart).toHaveAttribute('data-has-goal', 'false');
   await expect(page.getByTestId('goal-score-value')).toHaveText('No goal');
-  await expect(page.getByTestId('goal-score-line')).toHaveCount(0);
+  await expect(page.getByTestId('goal-score-step')).toHaveCount(0);
 
   // Set the first goal.
   await page.getByTestId('goal-score-set').click();
@@ -60,7 +60,7 @@ test('a chart shows demo data; setting a goal persists across reload and shows o
   await page.getByTestId('goal-score-save').click();
   await expect(page.getByTestId('goal-score-value')).toHaveText('Goal: 70%');
   await expect(chart).toHaveAttribute('data-has-goal', 'true');
-  await expect(page.getByTestId('goal-score-line')).toHaveCount(1);
+  await expect(page.getByTestId('goal-score-step')).toHaveCount(1);
 
   // It survives a reload, having been written to storage rather than just component state.
   await page.reload();
@@ -80,6 +80,25 @@ test('a chart shows demo data; setting a goal persists across reload and shows o
   expect(scoreGoals).toHaveLength(2);
   expect(scoreGoals.map((e) => e.value).sort((a, b) => a - b)).toEqual([70, 85]);
   expect(new Set(scoreGoals.map((e) => e.setAt)).size).toBe(2);
+});
+
+test('with three or more sessions, the chart draws the same least-squares trend line Analysis does', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+    await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  }
+
+  await page.goto('/#/goals');
+  await page.getByTestId('goals-range-all').click();
+  await page.getByTestId('goals-view-precision-prone').click();
+  await expect(page.getByTestId('goals-counts')).toHaveText('Precision prone: 3 sessions');
+  await expect(page.getByTestId('goal-score-line')).toHaveCount(1);
+  await expect(page.getByTestId('goal-score-slope')).toContainText('Trend:');
+
+  // MPI charts plot a signed position rather than a magnitude, so they draw no trend line (REV-133).
+  await expect(page.getByTestId('goal-mpiX-line')).toHaveCount(0);
 });
 
 test('the tab bar stays at four targets, each at least 44 px, with Goals visible alongside the others', async ({ page }) => {

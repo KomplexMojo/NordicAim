@@ -40,6 +40,8 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
   const domainFrom = useMemo(() => [...dataValues, ...goalValues], [dataValues, goalValues]);
   const data = useMemo(() => chartGeometry(dataValues, BOX, metric.zeroLine, 4, domainFrom), [dataValues, metric.zeroLine, domainFrom]);
   const goal = useMemo(() => chartGeometry(goalValues, BOX, metric.zeroLine, 4, domainFrom), [goalValues, metric.zeroLine, domainFrom]);
+  // REV-133/analysis.md §4a: the same least-squares trend line Analysis draws for this metric, carried over here too.
+  const fit = metric.trendLine ? data.trend : null;
 
   const goalNow = currentGoal(entries, view, metric.id);
   const [editing, setEditing] = useState(false);
@@ -73,6 +75,14 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
           </span>
         </CardTitle>
         <p className="text-xs text-muted-foreground">{metric.note}</p>
+        {fit !== null && (
+          <p className="text-xs text-muted-foreground" data-testid={`goal-${metric.id}-slope`}>
+            <svg viewBox="0 0 20 6" className="mr-1 inline-block h-1.5 w-5 align-middle" aria-hidden="true">
+              <line x1={0} y1={3} x2={20} y2={3} className="stroke-foreground" strokeWidth={2} strokeDasharray="5 3" />
+            </svg>
+            Trend: {metric.formatChange(fit.slope)}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {data.points.length === 0 ? (
@@ -96,11 +106,24 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
                 {shortDate(trend[data.points.at(-1)!.index]!.sessionDate)}
               </text>
             )}
-            {/* goals.md §4: the goal step-line, drawn under the data line so real shots always read on top. */}
+            {/* goals.md §4: the goal step-line, drawn under the data and trend lines so real shots always read on top. */}
             {goal.path !== '' && (
-              <path d={goal.path} fill="none" className="stroke-sky-500" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" data-testid={`goal-${metric.id}-line`} />
+              <path d={goal.path} fill="none" className="stroke-sky-500" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" data-testid={`goal-${metric.id}-step`} />
             )}
             <path d={data.path} fill="none" className="stroke-primary" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            {fit !== null && (
+              <line
+                x1={fit.x1}
+                y1={fit.y1}
+                x2={fit.x2}
+                y2={fit.y2}
+                className="stroke-foreground"
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                strokeLinecap="round"
+                data-testid={`goal-${metric.id}-line`}
+              />
+            )}
             {data.points.map((p) => (
               <circle key={p.index} cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
             ))}
