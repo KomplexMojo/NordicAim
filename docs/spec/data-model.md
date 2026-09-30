@@ -245,7 +245,7 @@ export const AppSettings = z.object({
 
 ## 6. IndexedDB schema (`src/lib/store/db.ts`)
 
-Database `asa`, version **1**, opened with `idb`'s `openDB`.
+Database `asa`, version **3**, opened with `idb`'s `openDB`.
 
 | Store | Key | Indexes | Value |
 |---|---|---|---|
@@ -255,6 +255,7 @@ Database `asa`, version **1**, opened with `idb`'s `openDB`.
 | `blobs` | out-of-line string key | — | `StoredBlob { bytes: ArrayBuffer; contentType: string; sizeBytes: number; createdAt: UtcIso }` |
 | `secrets` | `key` (`'provenance'`) | — | `{ key, keyB64 }` — the derived provenance key (REV-100, `provenance.md`). Database version 2. **Never in a backup**; the passphrase is never stored. |
 | `settings` | keyPath `key` | — | `AppSettings` |
+| `goals` | keyPath `key` | — | `GoalsStore` — the append-only goal log (`goals.md` §2). Database version 3. |
 
 Blob keys (`src/lib/store/blob-keys.ts`):
 - `photo:<pid>:original`, `photo:<pid>:working` (JPEG ≤ 3000 px, oriented, no metadata), `photo:<pid>:thumb` (≤ 480 px)
@@ -293,6 +294,7 @@ export interface RenderTools { svgToPng(svg: string, widthPx: number, heightPx: 
 | `saveAdjustments(ctx, photoId, { calibration?, shots? })` · `redetectShots(ctx, photoId, cvApi)` | `services/adjust.ts` | M13 |
 | `buildComposite(ctx, sessionId, renderTools)` · `loadArtifact` | `composite/build.ts` | M14 |
 | `recordShare(ctx, sessionId, artifactId, method)` | `services/shares.ts` | M14 |
+| `listGoals(ctx)` · `setGoal(ctx, { view, metric, value })` | `services/goals.ts` | M27 |
 
 Every mutating service updates `session.updatedAt` and recomputes `photo.status`/`reasons` with `photoStatus` in the same transaction.
 After committing, services call `pipelineHooks.notify()` (`src/lib/pipeline/hooks.ts`; a no-op until the runner is registered in M10).

@@ -8,6 +8,7 @@ import seedCalibrations from '@fixtures/seed-calibrations.json';
 import { loadAppServices } from '@/lib/app/services';
 import { Shot, type TargetAnalysis } from '@/lib/domain/analysis';
 import { Warning } from '@/lib/domain/enums';
+import type { GoalLogEntry } from '@/lib/domain/goals';
 import { Calibration, Categorization, type TargetPhoto } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
@@ -17,6 +18,7 @@ import { clientNow } from '@/lib/media/capture-time';
 import type { ServiceContext } from '@/lib/services/context';
 import { ingestPhoto } from '@/lib/services/ingest';
 import { requestAnalysis } from '@/lib/services/photos';
+import { listGoals } from '@/lib/services/goals';
 import { createSession, getSession } from '@/lib/services/sessions';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { getPhotoRecord, listPhotosBySession, putPhotoRecord } from '@/lib/store/photos-repo';
@@ -41,6 +43,8 @@ export interface AsaTestHooks {
   loadDemo(): Promise<string>;
   /** M14: reads `artifacts` / `shares` so e2e specs can assert on the summary image without a UI hook for them. */
   getSession(sessionId: string): Promise<BiathlonSession | null>;
+  /** M27: reads the raw goal log, so e2e specs can assert an append happened without relying on the chart's own step line. */
+  listGoals(): Promise<GoalLogEntry[]>;
 }
 
 declare global {
@@ -255,6 +259,10 @@ export function installTestHooks(): void {
     async getSession(sessionId) {
       const { ctx } = await loadAppServices();
       return getSession(ctx, sessionId);
+    },
+    async listGoals() {
+      const { ctx } = await loadAppServices();
+      return listGoals(ctx);
     },
   };
 }

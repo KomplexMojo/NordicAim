@@ -5,11 +5,12 @@ import { describe, expect, it } from 'vitest';
 import { MAIN_TABS, activeTab, inSettings, showsTabBar } from '@/lib/app/nav';
 
 describe('MAIN_TABS', () => {
-  it('is Sessions, Analysis, Patterns in that order', () => {
+  it('is Sessions, Analysis, Patterns, Goals in that order (M27)', () => {
     expect(MAIN_TABS.map((t) => [t.label, t.to])).toEqual([
       ['Sessions', '/'],
       ['Analysis', '/analysis'],
       ['Patterns', '/patterns'],
+      ['Goals', '/goals'],
     ]);
   });
 });
@@ -30,9 +31,11 @@ describe('activeTab', () => {
     }
   });
 
-  it('marks Analysis and Patterns', () => {
+  it('marks Analysis, Patterns and Goals', () => {
     expect(activeTab('/analysis')).toBe('analysis');
     expect(activeTab('/patterns')).toBe('patterns');
+    expect(activeTab('/goals')).toBe('goals');
+    expect(activeTab('/goals/anything')).toBe('goals');
   });
 
   it('marks no tab on Settings and Diagnostics, which belong to the header gear', () => {

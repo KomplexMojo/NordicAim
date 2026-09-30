@@ -38,6 +38,8 @@ as shown (`<model> · <effort>`).
 | [M25](M25-import-review.md) | An imported photo is shown on the overlay screen (issue #1) | take picture(s) | M07 | sonnet · medium | sonnet · high | no | done |
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | done |
 | [M26](M26-template-reference-photos.md) | Template reference photos (blank-sheet differencing) | post-MVP · generate analysis | M16, M19 | opus · high | opus · high | yes | blocked: part 2 (detection uses the reference) — gain unproven on the production benchmark; part 1 (Settings, storage, defaults) done 2026-09-27 |
+| [M27](M27-goals-foundation.md) | Goals: append-only goal log, the Goals tab and chart screen, numeric goal entry (issue #97) | post-MVP · goals | M22 | sonnet · high | sonnet · high | no | done |
+| [M28](M28-goals-drag-star.md) | Goals: drag-a-star-on-the-chart in place of the numeric entry (issue #97) | post-MVP · goals | M27 | sonnet · high | sonnet · high | no | pending |
 
 ```mermaid
 flowchart TD
@@ -120,6 +122,14 @@ session could find and fix. M26 records the case for photographing a blank refer
 difference against, instead of continuing to hand-measure one geometric constant at a time. It is `blocked` on owner
 design decisions (capture UX, registration precision, what signal to difference) — deliberately not implementable as
 filed, per golden rule 2.
+
+**2026-09-30 M27/M28 added (post-MVP, owner ideation → issue #97 → `docs/spec/goals.md`).** The owner asked for a
+Goals concept: a fourth tab, reusing Patterns/Analysis's own view and date-range controls, where a target value per
+(view, metric) is drawn on the same trend chart Analysis already has — its history read straight off the chart's
+existing x-axis (a step line), with no separate scrubber, baseline or achieved-flag. M27 builds the storage, the
+screen, and a numeric way to set a goal; M28 replaces that numeric entry with the drag-a-star-on-the-chart gesture
+the owner actually described, once M27's chart and storage exist to drag against. Depends on M22 for the tab-bar
+shell; neither touches scoring, detection or storage the MVP milestones already shipped.
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.

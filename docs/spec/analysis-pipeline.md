@@ -27,11 +27,12 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
 | `#/settings/template-sheet/:template` | Capture in sheet mode: photograph a blank sheet as that template's reference (full screen, no tab bar; `template-reference.md` §2) | M26 |
 | `#/analysis` | Analysis: trends over time, one data point per session, with the Patterns views and date ranges (`analysis.md`, REV-123). The view and range are in the query, `?view=<view>&range=<range>` (REV-140; `#/patterns` too), so Back from a target opened there returns to them | — |
+| `#/goals` | Goals: a target value per (view, metric), drawn on the same charts as Analysis (`goals.md`) | M27 |
 | `#/diagnostics` | Device capability checks | M01 |
 
-**Three main screens (REV-47, REV-136).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has three tabs of at
-least 44 px, each an icon and a label, with the active one marked: **Sessions** (`#/` and every `#/sessions/...` and
-`#/review/...` route), **Analysis** (`#/analysis`) and **Patterns** (`#/patterns`). **Settings** is a gear with its label at the
+**Four main screens (REV-47, REV-136; Goals added M27).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has
+four tabs of at least 44 px, each an icon and a label, with the active one marked: **Sessions** (`#/` and every `#/sessions/...`
+and `#/review/...` route), **Analysis** (`#/analysis`), **Patterns** (`#/patterns`) and **Goals** (`#/goals`). **Settings** is a gear with its label at the
 right of the header, marked on `#/settings` and `#/diagnostics`, where no tab is marked. **Diagnostics** is opened from Settings
 (About) and links back to it. The bar is **hidden on the full-screen
 capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`, `#/settings/template-sheet/:template`). Scrolling content is padded by the bar's height plus

@@ -37,17 +37,27 @@ function PatternsIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** M27 (goals.md §3): Goals, a star — the same mark a goal places on its chart. */
+function GoalsIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12,3 14.12,9.09 20.56,9.22 15.42,13.11 17.29,19.28 12,15.6 6.71,19.28 8.58,13.11 3.44,9.22 9.88,9.09 Z" />
+    </svg>
+  );
+}
+
 const ICONS: Record<MainTab, ComponentType<SVGProps<SVGSVGElement>>> = {
   shooting: SessionsIcon,
   analysis: AnalysisIcon,
   patterns: PatternsIcon,
+  goals: GoalsIcon,
 };
 
 /**
- * REV-47 (analysis-pipeline §1), REV-136: the three main screens (Sessions, Analysis, Patterns), one tap apart. Fixed to the bottom, clear of
- * the home indicator (`env(safe-area-inset-bottom)`), three targets of at least 44 px, each an icon
- * and a label, the active one marked (none on Settings and Diagnostics, which the header's gear opens). The layout (`AppShell` in `src/app/router.tsx`) pads the page so the bar
- * never covers content.
+ * REV-47 (analysis-pipeline §1), REV-136, M27: the four main screens (Sessions, Analysis, Patterns, Goals), one tap
+ * apart. Fixed to the bottom, clear of the home indicator (`env(safe-area-inset-bottom)`), four targets of at least
+ * 44 px, each an icon and a label, the active one marked (none on Settings and Diagnostics, which the header's gear
+ * opens). The layout (`AppShell` in `src/app/router.tsx`) pads the page so the bar never covers content.
  */
 export function TabBar({ active }: { active: MainTab | null }) {
   return (
@@ -56,7 +66,7 @@ export function TabBar({ active }: { active: MainTab | null }) {
       data-testid="tab-bar"
       className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
     >
-      <ul className="mx-auto grid max-w-md grid-cols-3">
+      <ul className="mx-auto grid max-w-md grid-cols-4">
         {MAIN_TABS.map((tab) => {
           const Icon = ICONS[tab.id];
           const isActive = tab.id === active;
