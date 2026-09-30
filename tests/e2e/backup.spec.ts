@@ -178,3 +178,40 @@ test('a restore brings the settings and preferences back too, and asks for the p
   await page.getByTestId('unlock-passphrase').click();
   await expect(page.getByTestId('passphrase-message')).toContainText('Unlocked', { timeout: 30_000 });
 });
+
+test('back up chosen sessions: one session in a smaller, clearly named file that does not count as the backup (REV-143)', async ({ page }, testInfo) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  const first = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  await page.goto('/#/settings');
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
+  });
+  await page.getByTestId('backup-now').click();
+  await expect(page.getByTestId('backup-scope-all')).toBeChecked();
+  await expect(page.getByTestId('backup-confirm')).toHaveText('Create backup');
+
+  await page.getByTestId('backup-scope-chosen').check();
+  await expect(page.getByTestId('backup-session-check')).toHaveCount(2);
+  await expect(page.getByTestId('backup-confirm')).toBeDisabled();
+  await page.locator(`[data-testid="backup-session-check"][data-session-id="${first}"]`).check();
+  await expect(page.getByTestId('backup-confirm')).toHaveText('Back up 1 session');
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
+  expect(download.suggestedFilename()).toMatch(/^nordic-aim-backup-\d{4}-\d{2}-\d{2}-1-session\.json\.gz$/);
+  const path = testInfo.outputPath('one-session.json.gz');
+  await download.saveAs(path);
+  await expect(page.getByTestId('backup-message')).toContainText('Backup made: 1 session,');
+  await expect(page.getByTestId('backup-message')).toContainText('does not count as your backup');
+  // The reminder and the last-backup line wait for a backup of everything.
+  await expect(page.getByTestId('last-backup')).toHaveText('No backup yet.');
+
+  // Choosing it for a restore says what it is.
+  await page.getByTestId('restore-file').setInputFiles(path);
+  await expect(page.getByTestId('restore-preview')).toContainText('It holds 1 sessions');
+  await expect(page.getByTestId('restore-preview')).toContainText('backup of chosen sessions');
+});

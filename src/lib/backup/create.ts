@@ -3,6 +3,7 @@
 import type { AppDb } from '@/lib/store/db';
 
 import { rebuildEntries } from './rebuild';
+import { scopeToSessions } from './scope';
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, bytesToBase64, gzipBlob, sha256Hex, type BackupBlob, type BackupManifest, type BackupPreference } from './format';
 
 function str(raw: unknown, key: string): string | null {
@@ -21,16 +22,26 @@ export interface CreatedBackup {
 
 export async function createBackup(
   db: AppDb,
-  opts: { appBuild: string; nowIso: string; preferences?: BackupPreference[] },
+  opts: {
+    appBuild: string;
+    nowIso: string;
+    preferences?: BackupPreference[];
+    /** §2c (REV-143): back up only these sessions (and the app-wide data). Absent: everything. */
+    sessionIds?: string[];
+  },
 ): Promise<CreatedBackup> {
   // All reads happen before anything is built; they are plain reads, each its own transaction.
-  const [sessions, photos, analyses, settings, keys] = await Promise.all([
+  const [allSessions, allPhotos, allAnalyses, settings, allKeys] = await Promise.all([
     db.getAll('sessions') as Promise<unknown[]>,
     db.getAll('photos') as Promise<unknown[]>,
     db.getAll('analyses') as Promise<unknown[]>,
     db.getAll('settings') as Promise<unknown[]>,
     db.getAllKeys('blobs') as Promise<string[]>,
   ]);
+  const { sessions, photos, analyses, keys } = scopeToSessions(
+    { sessions: allSessions, photos: allPhotos, analyses: allAnalyses, keys: allKeys },
+    opts.sessionIds,
+  );
 
   // §2b: a photo's working copy and thumbnail, and a diagram's PNG, are made again on restore from the original and the SVG.
   const rebuild = rebuildEntries(keys);
@@ -69,6 +80,7 @@ export async function createBackup(
     }),
     blobs: blobManifest,
     rebuild,
+    ...(opts.sessionIds === undefined ? {} : { scope: { kind: 'sessions' as const, sessionIds: sessions.flatMap((s) => (str(s, 'id') === null ? [] : [str(s, 'id')!])) } }),
   };
 
   // Written as parts, so the images are never joined into one enormous string.

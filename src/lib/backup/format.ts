@@ -13,6 +13,8 @@ export interface BackupManifest {
   blobs: Array<{ key: string; sha256: string; sizeBytes: number }>;
   /** §2b: images left out of the file and the image in it each is made from. Absent in version 1. */
   rebuild?: Array<{ key: string; from: string }>;
+  /** §2c (REV-143): present when the owner chose sessions; absent for a full backup (and in every earlier file). */
+  scope?: { kind: 'sessions'; sessionIds: string[] };
 }
 
 export interface BackupBlob {
@@ -83,15 +85,17 @@ export function fileNameSlug(text: string): string {
 }
 
 /**
- * backup.md §2: `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD.json.gz`. The athlete part is left out when no name is
- * set, the fingerprint when no key was ever set up; `localDate` is the phone's own calendar date.
+ * backup.md §2: `nordic-aim-backup[-<athlete>][-<fingerprint>]-YYYY-MM-DD[-<n>-session(s)].json.gz`. The athlete part is left out
+ * when no name is set, the fingerprint when no key was ever set up; `localDate` is the phone's own calendar date. A backup of
+ * chosen sessions (§2c) ends with how many it holds, so it is never mistaken for a full one.
  */
-export function backupFileName(opts: { localDate: string; athleteName: string; keyFingerprint: string | null }): string {
+export function backupFileName(opts: { localDate: string; athleteName: string; keyFingerprint: string | null; sessions?: number }): string {
   const parts = ['nordic-aim-backup'];
   const slug = fileNameSlug(opts.athleteName);
   if (slug !== '') parts.push(slug);
   if (opts.keyFingerprint !== null && /^[0-9A-F]{8}$/i.test(opts.keyFingerprint)) parts.push(opts.keyFingerprint.toUpperCase());
   parts.push(opts.localDate);
+  if (opts.sessions !== undefined) parts.push(`${opts.sessions}-${opts.sessions === 1 ? 'session' : 'sessions'}`);
   return `${parts.join('-')}.json.gz`;
 }
 

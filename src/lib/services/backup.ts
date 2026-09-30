@@ -18,17 +18,28 @@ export interface BackupFileToShare extends CreatedBackup {
   fileName: string;
 }
 
-export async function buildBackupFile(ctx: ServiceContext, appBuild: string): Promise<BackupFileToShare> {
+/** `sessionIds` (REV-143, backup.md §2c): back up only those sessions; absent, everything. */
+export async function buildBackupFile(ctx: ServiceContext, appBuild: string, sessionIds?: string[]): Promise<BackupFileToShare> {
   const now = ctx.now();
   const nowIso = now.toISOString();
   const settings = await getSettings(ctx.db);
-  const created = await createBackup(ctx.db, { appBuild, nowIso, preferences: collectPreferences() });
+  const created = await createBackup(ctx.db, { appBuild, nowIso, preferences: collectPreferences(), sessionIds });
   const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  return { ...created, fileName: backupFileName({ localDate, athleteName: settings.athleteName, keyFingerprint: settings.keyFingerprint }) };
+  const fileName = backupFileName({
+    localDate,
+    athleteName: settings.athleteName,
+    keyFingerprint: settings.keyFingerprint,
+    sessions: sessionIds === undefined ? undefined : created.manifest.counts.sessions,
+  });
+  return { ...created, fileName };
 }
 
-/** Called once the file has been handed to the share sheet or a download, so Settings can say when. */
+/**
+ * Called once the file has been handed to the share sheet or a download, so Settings can say when. Only a full backup counts:
+ * a backup of chosen sessions (REV-143) leaves the last-backup date and the reminder as they were, since the rest is not in it.
+ */
 export async function recordBackupMade(ctx: ServiceContext, made: BackupFileToShare): Promise<void> {
+  if (made.manifest.scope !== undefined) return;
   const tx = ctx.db.transaction('settings', 'readwrite');
   const settings = await getSettings(tx);
   await putSettings(tx, { ...settings, lastBackupAt: made.manifest.createdAt, lastBackupSessions: made.manifest.counts.sessions });
