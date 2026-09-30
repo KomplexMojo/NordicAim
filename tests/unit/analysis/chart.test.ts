@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chartGeometry, leastSquares, MIN_TREND_SESSIONS, niceStep, valueAt } from '@/lib/analysis/chart';
+import { chartGeometry, leastSquares, MIN_TREND_SESSIONS, niceStep, valueToY } from '@/lib/analysis/chart';
 
 // analysis.md §4 (REV-123).
 const BOX = { width: 300, height: 160, left: 40, right: 10, top: 10, bottom: 30 };
@@ -113,23 +113,17 @@ describe('trend line (analysis.md §4a, REV-129)', () => {
   });
 });
 
-describe('valueAt (goals.md §5 / M28: the inverse of chartGeometry\'s own yAt)', () => {
-  it('round-trips every point a chart actually drew', () => {
+describe('valueToY (goals.md §5 / M28: placing a marker at a value chartGeometry never plotted)', () => {
+  it('matches the y every point in the same domain actually got', () => {
     const g = chartGeometry([1.2, 3.7, 2.5], BOX, false);
     for (const p of g.points) {
-      expect(valueAt(p.y, BOX, g.domain)).toBeCloseTo(p.value, 9);
+      expect(valueToY(p.value, BOX, g.domain)).toBeCloseTo(p.y, 9);
     }
   });
 
-  it('maps the plot\'s top and bottom edges to the domain\'s max and min', () => {
+  it('maps the domain\'s max and min to the plot\'s top and bottom edges', () => {
     const g = chartGeometry([1, 9], BOX, false);
-    expect(valueAt(BOX.top, BOX, g.domain)).toBeCloseTo(g.domain[1], 9);
-    expect(valueAt(BOX.height - BOX.bottom, BOX, g.domain)).toBeCloseTo(g.domain[0], 9);
-  });
-
-  it('clamps a y outside the plot to the domain it falls nearest', () => {
-    const domain: [number, number] = [0, 10];
-    expect(valueAt(-50, BOX, domain)).toBe(10);
-    expect(valueAt(10_000, BOX, domain)).toBe(0);
+    expect(valueToY(g.domain[1], BOX, g.domain)).toBeCloseTo(BOX.top, 9);
+    expect(valueToY(g.domain[0], BOX, g.domain)).toBeCloseTo(BOX.height - BOX.bottom, 9);
   });
 });

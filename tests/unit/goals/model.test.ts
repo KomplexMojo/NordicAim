@@ -32,11 +32,11 @@ describe('currentGoal / goalAsOf (goals.md §2)', () => {
   it('is the only entry for that pair, ignoring other views and metrics', () => {
     const entries = [
       entry({ value: 70, setAt: '2026-09-01T00:00:00.000Z' }),
-      entry({ value: 2.5, setAt: '2026-09-01T00:00:00.000Z', view: 'confirm', metric: 'group' }),
+      entry({ value: 2.5, setAt: '2026-09-01T00:00:00.000Z', view: 'precision-standing', metric: 'group' }),
     ];
     expect(currentGoal(entries, 'precision-prone', 'score')?.value).toBe(70);
-    expect(currentGoal(entries, 'confirm', 'group')?.value).toBe(2.5);
-    expect(currentGoal(entries, 'confirm', 'score')).toBeNull();
+    expect(currentGoal(entries, 'precision-standing', 'group')?.value).toBe(2.5);
+    expect(currentGoal(entries, 'precision-standing', 'score')).toBeNull();
   });
 
   it('picks the latest setAt when the same pair has been set more than once', () => {

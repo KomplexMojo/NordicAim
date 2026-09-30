@@ -28,6 +28,18 @@ describe('GoalLogEntry / GoalsStore (goals.md §2)', () => {
     expect(GoalLogEntry.safeParse({ ...entry, metric: 'mpiY' }).success).toBe(false);
   });
 
+  it('rejects Sight in and Confirm: goals were narrowed to the two precision views (owner, 2026-09-30)', () => {
+    const entry = {
+      id: '11111111-1111-4111-8111-111111111111',
+      view: 'sight-in',
+      metric: 'score',
+      value: 70,
+      setAt: '2026-09-30T12:00:00.000Z',
+    };
+    expect(GoalLogEntry.safeParse(entry).success).toBe(false);
+    expect(GoalLogEntry.safeParse({ ...entry, view: 'confirm' }).success).toBe(false);
+  });
+
   it('defaults to an empty entries array', () => {
     expect(defaultGoalsStore()).toEqual({ schemaVersion: 1, key: 'app', entries: [] });
     expect(GoalsStore.safeParse(defaultGoalsStore()).success).toBe(true);

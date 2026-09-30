@@ -16,7 +16,7 @@ describe('goals-repo (goals.md §2)', () => {
     const db = await openTestDb();
     const store = {
       ...defaultGoalsStore(),
-      entries: [{ id: '11111111-1111-4111-8111-111111111111', view: 'confirm' as const, metric: 'group' as const, value: 2.5, setAt: '2026-09-30T00:00:00.000Z' }],
+      entries: [{ id: '11111111-1111-4111-8111-111111111111', view: 'precision-standing' as const, metric: 'group' as const, value: 2.5, setAt: '2026-09-30T00:00:00.000Z' }],
     };
     await putGoals(db, store);
     expect(await getGoals(db)).toEqual(store);

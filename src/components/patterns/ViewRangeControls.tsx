@@ -23,6 +23,9 @@ interface ViewRangeControlsProps {
   onRange(range: PatternRange): void;
   /** `pattern` on Patterns, `analysis` on Analysis: the test ids are `<prefix>-view-<id>` and `<prefix>-range-<id>`. */
   testIdPrefix: string;
+  /** Which view buttons to offer, in order. Defaults to all four; Goals passes only the two precision views
+   * (goals.md §1 — Sight in and Confirm aren't goal-able, owner 2026-09-30). */
+  views?: readonly PatternView[];
 }
 
 // The track sits inset 1rem from the row (`inset-x-4`); the thumb is 2.25rem across (`size-9`) and, like every
@@ -39,10 +42,11 @@ function thumbCenterX(fraction: number): string {
 }
 
 /**
- * patterns.md §1, §3 and analysis.md §1 (REV-123): the four views, and the date range as a six-stop slider
- * ("Latest session" last, on the right), the same controls on Patterns and on Analysis.
+ * patterns.md §1, §3 and analysis.md §1 (REV-123): the view switch (all four by default; Goals narrows to just the
+ * two precision views via `views`, goals.md §1) and the date range as a six-stop slider ("Latest session" last, on
+ * the right), the same controls on Patterns, Analysis and Goals.
  */
-export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }: ViewRangeControlsProps) {
+export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix, views = PATTERN_VIEWS }: ViewRangeControlsProps) {
   const rangeIndex = Math.max(
     0,
     RANGE_STEPS.findIndex((s) => s.id === range),
@@ -67,8 +71,8 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
 
   return (
     <>
-      <div role="group" aria-label="Target type" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {PATTERN_VIEWS.map((id) => (
+      <div role="group" aria-label="Target type" className={cn('grid grid-cols-2 gap-2', views.length > 2 && 'sm:grid-cols-4')}>
+        {views.map((id) => (
           <Button
             key={id}
             variant={id === view ? 'default' : 'outline'}

@@ -1,8 +1,7 @@
 // goals.md §6: the Goals screen's one write. Read-modify-write of the single goals row, in one transaction that
 // only awaits IndexedDB calls (data-model §6).
 
-import { GoalLogEntry, type GoalMetric, type GoalsStore } from '@/lib/domain/goals';
-import type { PatternView } from '@/lib/patterns/collect';
+import { GoalLogEntry, type GoalMetric, type GoalsStore, type GoalView } from '@/lib/domain/goals';
 import { getGoals, putGoals } from '@/lib/store/goals-repo';
 
 import type { ServiceContext } from './context';
@@ -17,7 +16,7 @@ export async function listGoals(ctx: ServiceContext): Promise<GoalLogEntry[]> {
  */
 export async function setGoal(
   ctx: ServiceContext,
-  input: { view: PatternView; metric: GoalMetric; value: number },
+  input: { view: GoalView; metric: GoalMetric; value: number },
 ): Promise<GoalLogEntry> {
   const entry = GoalLogEntry.parse({
     id: ctx.newId(),

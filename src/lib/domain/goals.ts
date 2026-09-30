@@ -4,8 +4,12 @@ import { z } from 'zod';
 
 import { Id, UtcIso } from './primitives';
 
-/** Matches `PatternView` (`src/lib/patterns/collect.ts`); duplicated here since domain schemas don't import UI-adjacent code. */
-export const GoalView = z.enum(['sight-in', 'confirm', 'precision-prone', 'precision-standing']);
+/**
+ * A subset of `PatternView` (`src/lib/patterns/collect.ts`; duplicated here since domain schemas don't import
+ * UI-adjacent code): Sight in and Confirm are excluded (owner, 2026-09-30) — a goal doesn't make sense for those
+ * views the way it does for the two precision ones.
+ */
+export const GoalView = z.enum(['precision-prone', 'precision-standing']);
 export type GoalView = z.infer<typeof GoalView>;
 
 /**

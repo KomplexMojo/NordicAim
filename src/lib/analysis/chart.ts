@@ -151,16 +151,3 @@ export function valueToY(value: number, box: ChartBox, domain: [number, number])
   if (span === 0) return box.top + plotH;
   return box.top + plotH - ((value - domain[0]) / span) * plotH;
 }
-
-/**
- * goals.md §5 / M28: the inverse of {@link valueToY} — an SVG y-coordinate back to a value in `domain`, for reading
- * a pointer or key press on the chart. Clamped to `domain`, so a drag can't leave the visible axis (a value saved
- * at that edge widens the domain on the next render, letting a further drag push past it).
- */
-export function valueAt(y: number, box: ChartBox, domain: [number, number]): number {
-  const plotH = box.height - box.top - box.bottom;
-  const span = domain[1] - domain[0];
-  if (plotH <= 0 || span === 0) return domain[0];
-  const raw = domain[0] + ((plotH - (y - box.top)) / plotH) * span;
-  return Math.min(domain[1], Math.max(domain[0], raw));
-}

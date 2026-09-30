@@ -39,7 +39,7 @@ as shown (`<model> · <effort>`).
 | [M15](M15-mvp-release.md) | Install, offline, polish, MVP release | release | M13, M14, M16, M17, M18, M19, M20, M21, M22, M23, M24, M25 | sonnet · medium | sonnet · high | yes | done |
 | [M26](M26-template-reference-photos.md) | Template reference photos (blank-sheet differencing) | post-MVP · generate analysis | M16, M19 | opus · high | opus · high | yes | blocked: part 2 (detection uses the reference) — gain unproven on the production benchmark; part 1 (Settings, storage, defaults) done 2026-09-27 |
 | [M27](M27-goals-foundation.md) | Goals: append-only goal log, the Goals tab and chart screen, numeric goal entry (issue #97) | post-MVP · goals | M22 | sonnet · high | sonnet · high | no | done |
-| [M28](M28-goals-drag-star.md) | Goals: drag-a-star-on-the-chart in place of the numeric entry (issue #97) | post-MVP · goals | M27 | sonnet · high | sonnet · high | no | done |
+| [M28](M28-goals-drag-star.md) | Goals: replace the numeric goal entry — shipped as up/down buttons, after a drag-a-star attempt (issue #97) | post-MVP · goals | M27 | sonnet · high | sonnet · high | no | done |
 
 ```mermaid
 flowchart TD
@@ -129,10 +129,17 @@ target value per (view, metric) is drawn on the same trend chart Analysis alread
 off the chart's existing x-axis (a step line), with no separate scrubber, baseline or achieved-flag. M27 built the
 storage, the screen, and (as an interim step) a numeric way to set a goal. The owner then reviewed the shipped M27
 screen directly and asked for two changes: the chart was missing the least-squares trend line `goals.md` §4 had
-already called for (a M27 implementation gap, fixed in its own commit), and the numeric entry should become the
-drag-a-star-on-the-chart gesture the owner had actually described in the original ideation — M28 replaced it
-entirely (not as a fallback alongside it). Depends on M22 for the tab-bar shell; neither touches scoring, detection
-or storage the MVP milestones already shipped.
+already called for (a M27 implementation gap, fixed in its own commit), and the numeric entry should become a
+drag-a-star-on-the-chart gesture, as the owner had actually described in the original ideation — M28 built that
+(replacing the numeric entry entirely, not as a fallback alongside it) and separately fixed a WebKit-specific bug
+in it once CI caught it. The owner then tried the shipped drag build directly and asked for a different mechanism
+again: up/down arrow buttons beside the chart that step a horizontal goal line — simpler, and it also sidestepped
+the WebKit issue entirely (a native button needs no custom pointer-event code in any browser). That is what
+shipped; the drag attempt and its fixes are kept in `M28-goals-drag-star.md`'s History section as a real record,
+not deleted. Also, after trying the shipped screen, the owner asked to drop MPI left/right and MPI up/down from
+Goals — a goal doesn't read as "better/worse" against a signed position the way it does the other three metrics —
+narrowing `GoalMetric` from five metrics to three; Analysis still shows both MPI charts. Depends on M22 for the
+tab-bar shell; neither touches scoring, detection or storage the MVP milestones already shipped.
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.

@@ -31,7 +31,7 @@ as "met" follows from the metric already knowing which way is better.
 export const GoalLogEntry = z.object({
   id: z.string(),
   view: z.enum(['sight-in', 'confirm', 'precision-prone', 'precision-standing']),
-  metric: z.enum(['score', 'group', 'rms', 'mpiX', 'mpiY']),
+  metric: z.enum(['score', 'group', 'rms']),
   value: z.number(),     // the metric's own unit: %, MOA or mm
   setAt: z.string(),     // UtcIso
 });
@@ -61,8 +61,8 @@ out of a separately maintained flag (see §4).
 ## 3. Screen (`#/goals`, fourth tab)
 
 - Tab bar (`src/lib/app/nav.ts`, `src/components/nav/TabBar.tsx`): `MAIN_TABS` gains `{ id: 'goals', label: 'Goals',
-  to: '/goals' }`; the bar's `grid-cols-3` becomes `grid-cols-4`; a new icon in the existing stroke-SVG style (a
-  star, echoing §4's marker). `activeTab()` recognises `/goals`.
+  to: '/goals' }`; the bar's `grid-cols-3` becomes `grid-cols-4`; a new star icon in the existing stroke-SVG style.
+  `activeTab()` recognises `/goals`.
 - Route `/goals` → `GoalsPage`, inside the same `ServicesLayout`/`AppShell` every other main screen uses.
 - **Same `ViewRangeControls`** as Patterns and Analysis (`testIdPrefix="goals"`), unmodified: the view switch and the
   six-stop date-range slider. The range filters which sessions' dots are plotted, exactly as it does on Analysis —
@@ -70,58 +70,62 @@ out of a separately maintained flag (see §4).
   also how a goal's own history comes into view (there is no separate scrubber for it). A one-line hint under the
   slider on this screen only (`goals-range-hint`) says so, since nothing else on screen implies the range control
   does double duty (owner, 2026-09-30).
-- Below it, one chart per metric for the selected view (`trendMetrics(kind)`, same `sessionTrend`/`filterByRange`
-  pipeline Analysis already runs) — reusing `analysis.md` §4's geometry (`chartGeometry`) but each chart also draws
-  the goal line (§4) and carries a **Set goal** control (§5).
+- Below it, one chart per goal-able metric for the selected view (`trendMetrics(kind)`, same
+  `sessionTrend`/`filterByRange` pipeline Analysis already runs) — reusing `analysis.md` §4's geometry
+  (`chartGeometry`) but each chart also draws the goal history and live goal lines (§4) and carries a pair of
+  up/down buttons to set it (§5).
 - Empty/thin states match Analysis: "No sessions here yet" with none; a chart with no goal yet just shows the data
   line, no "not enough shots" floor beyond what `chartGeometry` already does (an empty chart says "No sessions with
   this measure in the range", as today).
 
-## 4. The goal line: a step function over the same x-axis as the data
+## 4. Two goal lines: history (a step function) and the live value
 
 The chart's x-axis is one session per evenly-spaced position, in order (`analysis.md` §4 — deliberately not a true
-time scale, "so a burst of sessions stays readable"). The goal line **reuses exactly those x-positions**: for each
-session in the trend, look up the goal in effect **as of that session's date** (§2's "goal as of a date"), giving a
-second `Array<number | null>` the same length as the data values. Both series are run through the existing
-`chartGeometry()` (`analysis.md` §4a) with a shared `domainFrom` (data values ++ goal values), so they share one
-y-axis and the same x-position per index — no date-to-pixel interpolation, no change to `chart.ts`'s geometry
-functions.
+time scale, "so a burst of sessions stays readable"). The **history step-line** reuses exactly those x-positions:
+for each session in the trend, look up the goal in effect **as of that session's date** (§2's "goal as of a date"),
+giving a second `Array<number | null>` the same length as the data values. Both series are run through the existing
+`chartGeometry()` (`analysis.md` §4a) with a shared `domainFrom` (data values ++ goal values ++ the live value, §5),
+so they share one y-axis and the same x-position per index — no date-to-pixel interpolation, no change to
+`chart.ts`'s geometry functions beyond the `valueToY` helper §5 needs to place a line at a value that isn't one of
+`chartGeometry`'s own plotted points.
 
-Reading the result left to right **is** the goal's history: flat until the first session on/after a `setAt`, then a
-step to the new value, flat again until the next one. Widening the range slider to "All time" shows more of that
+Reading the step-line left to right **is** the goal's history: flat until the first session on/after a `setAt`, then
+a step to the new value, flat again until the next one. Widening the range slider to "All time" shows more of that
 history; there is no separate scrubber. **Achieved** is not a stored state — it's the data line meeting or crossing
 the goal line, visible on the chart by construction. A session before any goal was ever set for that pair draws no
-goal line (not zero, not the first goal retroactively).
+goal line (not zero, not the first goal retroactively). Drawn as a dashed path, distinct from the data line and the
+least-squares trend line (a colour distinct from both — `PALETTE.ellipse`/`#3AA8F8`-family blue reads as "a marked
+target" elsewhere in the app's diagrams and is free here since the trend chart draws neither the group ellipse nor
+the MPI marker).
 
-Drawn as a second path, distinct from the data line and the existing least-squares trend line (`stroke-dasharray`,
-a colour distinct from both — `PALETTE.ellipse`/`#3AA8F8`-family blue reads as "a marked target" elsewhere in the
-app's diagrams and is free here since the trend chart draws neither the group ellipse nor the MPI marker).
+A second, **solid** full-width horizontal line at the *current* goal value (or the value being stepped to, §5) sits
+on top of the dashed history line — the step-line's own rightmost segment already reaches this same value, so the
+solid line is a highlight of it, not a new fact, making "what am I aiming for right now" readable at a glance
+without reading the step pattern.
 
-## 5. Setting a goal: drag (or tap) a star on the chart
+## 5. Setting a goal: up/down buttons beside the chart
 
-**M27** shipped a numeric entry (a **Set goal** button opening a small text field). **M28** replaced it entirely
-with direct manipulation, per the owner's own review of the shipped M27 screen: pressing and dragging anywhere on
-the chart's plot area places the star at that Y position, with a live preview (`Setting: <value>`) shown while the
-pointer is down; releasing calls the service (§6) and appends a `GoalLogEntry`. A bare tap (press, no move, release)
-works the same way — it's a zero-distance drag. The star always sits at the plot's right edge (the same x every
-metric's "now" reads at), since a goal is a Y-only quantity with no x of its own (§1).
+**M27** shipped a numeric entry (a **Set goal** button opening a small text field). **M28** tried replacing it with
+a drag-a-star-on-the-chart gesture, then — after the owner tried the shipped drag build and asked for something
+clearer, and a cross-browser pointer-capture issue in the drag gesture turned out to need its own fix — settled on
+a plain **stepper**: two `size-11` (44 px) buttons, ▲ and ▼, stacked to the left of the chart, by the y-axis. Each
+press moves the solid live goal line (§4) by one step (`STEP` in `GoalChart.tsx`: 1% for score, 0.1 MOA for group,
+0.5 mm for RMS) and **saves immediately** — there is no separate draft/preview state and no Save button; a press is
+the decision. Clamped to a fixed, sensible range per metric (`BOUNDS` in `GoalChart.tsx`: score 0–100%, group and
+RMS 0 and up — deliberately *not* the chart's own visible axis range, which for a single session is exactly
+`[dataValue, currentGoal]` and would make "up" stop working the instant a goal is set); the button at a bound
+disables rather than silently no-opping.
 
-The draggable range is clamped to the chart's own currently visible y-domain (`chart.ts`'s `domain`, the same nice-
-rounded bounds the axis ticks use) — a drag can't leave the visible axis in one gesture. Saving a value at that
-edge widens the domain on the next render (it's now one of the values `chartGeometry`'s `domainFrom` sees), so a
-goal further outside the current data's range is reached by dragging to the edge, releasing, then dragging again.
+Native `<button>` elements need no custom pointer or keyboard code at all: Tab reaches them and Enter/Space
+activates them for free, and a click behaves identically in every browser engine, which a drag gesture reading a
+pointer position off an SVG element did not (WebKit's `setPointerCapture` support there lagged Chromium's). This
+was the deciding factor alongside the plainer interaction model, once the drag build was in front of the owner.
 
-**Keyboard** (desktop, and anyone who can't drag): the plot is a focusable `role="slider"` — Left/Down and
-Right/Up nudge the value by a per-metric step (`KEYBOARD_STEP` in `GoalChart.tsx`: 1% for score, 0.1 MOA for group,
-0.5 mm for RMS and each MPI axis), Page Up/Down nudge by five times that, Home/End jump to the domain's ends. Unlike
-a native `<input type="range">`, a key press only updates a **local, unsaved preview** — nothing is written to the
-append-only log (§2) until **Enter** (or the control loses focus); **Escape** cancels the preview, restoring
-whatever the current goal already was. This is a deliberate departure from native range-input semantics, forced by
-§2's storage model: committing a `GoalLogEntry` on every arrow-key repeat would flood the log with incidental
-in-progress values instead of the goal-setting decisions it's meant to hold.
-
-The stored shape (§2) did not change for this milestone: dragging and the keyboard both just call the same
-`setGoal` (§6) M27 already built.
+Each press is one append-only `GoalLogEntry` (§2) — a burst of presses is a burst of entries, not one. This was a
+deliberate trade favouring simplicity (no debounce, no batching) over a tighter log; revisit only if the log's size
+or a cluttered history view actually becomes a problem (§7 lists a history-list screen as still out of scope for
+now, so there's nowhere yet that a busy log would even be visible beyond the chart's own step-line, which only ever
+draws the entry in effect per session, not every entry).
 
 ## 6. Service (`src/lib/services/goals.ts`)
 

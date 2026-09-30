@@ -1,32 +1,35 @@
 import { useMemo, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { chartGeometry, valueAt, valueToY, type ChartBox } from '@/lib/analysis/chart';
+import { chartGeometry, valueToY, type ChartBox } from '@/lib/analysis/chart';
 import type { TrendMetric, TrendPoint } from '@/lib/analysis/trend';
-import type { GoalLogEntry, GoalMetric } from '@/lib/domain/goals';
+import type { GoalLogEntry, GoalMetric, GoalView } from '@/lib/domain/goals';
 import { currentGoal, goalSeries } from '@/lib/goals/model';
-import type { PatternView } from '@/lib/patterns/collect';
 
 const BOX: ChartBox = { width: 320, height: 170, left: 44, right: 12, top: 12, bottom: 28 };
-const PLOT_H = BOX.height - BOX.top - BOX.bottom;
-// The interactive surface is an HTML `<div>` overlaid on the SVG's plot area, positioned by percentage of the
-// SVG's own box (it scales with the SVG, `viewBox` to rendered size, so a percentage stays aligned at any width).
-const PLOT_LEFT_PCT = (BOX.left / BOX.width) * 100;
-const PLOT_TOP_PCT = (BOX.top / BOX.height) * 100;
-const PLOT_WIDTH_PCT = ((BOX.width - BOX.left - BOX.right) / BOX.width) * 100;
-const PLOT_HEIGHT_PCT = (PLOT_H / BOX.height) * 100;
-/** M28 (goals.md §5): the star sits at the chart's own star, echoing the Goals tab's icon (`TabBar.tsx`). */
-const STAR_PATH = 'M12,3 14.12,9.09 20.56,9.22 15.42,13.11 17.29,19.28 12,15.6 6.71,19.28 8.58,13.11 3.44,9.22 9.88,9.09 Z';
-const STAR_SCALE = 0.7;
 
 /**
- * One keyboard nudge, in the metric's own unit — chosen for a sensible step, not derived from the axis ticks. Only
- * the goal-able metrics (`GoalMetric`, `domain/goals.ts`): MPI's two axes were removed from Goals (owner, 2026-09-30).
+ * One arrow-button step, in the metric's own unit — chosen for a sensible step, not derived from the axis ticks.
+ * Only the goal-able metrics (`GoalMetric`, `domain/goals.ts`): MPI's two axes were removed from Goals (owner,
+ * 2026-09-30).
  */
-const KEYBOARD_STEP: Record<GoalMetric, number> = {
+const STEP: Record<GoalMetric, number> = {
   score: 1,
   group: 0.1,
   rms: 0.5,
+};
+
+/**
+ * Sane floor/ceiling for a stepped value — deliberately *not* the chart's own visible `domain`: that's sized to
+ * whatever's plotted right now (for one session, exactly `[dataValue, currentGoal]`), so clamping to it would stop
+ * "up" from ever going further up once the goal reaches the data value, the moment it's set (found via an e2e test
+ * that kept clicking up and watching the value refuse to move past its own starting point).
+ */
+const BOUNDS: Record<GoalMetric, [number, number]> = {
+  score: [0, 100],
+  group: [0, Infinity],
+  rms: [0, Infinity],
 };
 
 /** `YYYY-MM-DD` -> `Sep 21` (the axis is sessions in order; the date names each end). */
@@ -40,7 +43,7 @@ function tickLabel(value: number): string {
 }
 
 interface GoalChartProps {
-  view: PatternView;
+  view: GoalView;
   metric: TrendMetric & { id: GoalMetric };
   trend: TrendPoint[];
   entries: GoalLogEntry[];
@@ -49,16 +52,11 @@ interface GoalChartProps {
 
 /**
  * goals.md §3–§5: one metric's chart, the same shape as `TrendChart` (analysis.md §4) plus the goal step-line and
- * its own least-squares trend line, and a draggable star (M28) to set the goal — tap or drag anywhere on the plot
- * to place it at that Y position; release to save. Arrow/Page/Home/End keys move it for a keyboard user, Enter
- * saves, Escape cancels: unlike a native range input, a key press only updates a live preview rather than writing
- * a new append-only log entry (goals.md §2) on every step, so the log only grows on an actual release or Enter. A
- * separate component from `TrendChart` on purpose: this stays additive, so the shipped Analysis screen is untouched.
- *
- * The drag surface is an HTML `<div>` absolutely positioned over the SVG's plot area, not the SVG itself: WebKit's
- * `setPointerCapture` is unreliable on an SVG element specifically (a multi-step drag stopped updating partway
- * through in CI's WebKit run, though Chromium never showed it), while the same capture-on-an-HTML-element pattern
- * is already proven across this app's WebKit e2e coverage (`ImageStage.tsx`'s shot-dragging, mirrored here).
+ * its own least-squares trend line, and a horizontal goal line set with up/down arrow buttons beside the chart
+ * (M28, revised after the owner's review of the drag-a-star build: a discrete stepper reads clearer than a drag
+ * gesture, and sidesteps drag-specific cross-browser pointer-capture issues entirely — native `<button>` clicks
+ * need no custom pointer-event code). Each press nudges the line by `STEP` and saves immediately. A separate
+ * component from `TrendChart` on purpose: this stays additive, so the shipped Analysis screen is untouched.
  */
 export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChartProps) {
   const dataValues = useMemo(() => trend.map((p) => metric.value(p)), [trend, metric]);
@@ -71,96 +69,27 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
 
   const goalNow = currentGoal(entries, view, metric.id);
   const [draft, setDraft] = useState<number | null>(null);
-  const [pointerId, setPointerId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  async function commit(value: number) {
+  async function step(direction: 1 | -1) {
+    if (saving) return;
+    const [lo, hi] = BOUNDS[metric.id];
+    const base = draft ?? goalNow?.value ?? dataValues.at(-1) ?? 0;
+    const next = Math.min(hi, Math.max(lo, base + direction * STEP[metric.id]));
+    setDraft(next); // moves the line immediately; the save below is the async round trip.
     setSaving(true);
     try {
-      await onSetGoal(value);
+      await onSetGoal(next);
     } finally {
       setSaving(false);
       setDraft(null);
     }
   }
 
-  function valueFromPointer(e: { clientY: number; currentTarget: Element }): number {
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (rect.height <= 0) return draft ?? goalNow?.value ?? data.domain[0];
-    const y = BOX.top + ((e.clientY - rect.top) / rect.height) * PLOT_H;
-    return valueAt(y, BOX, data.domain);
-  }
-
-  function onPlotPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (saving) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setPointerId(e.pointerId);
-    setDraft(valueFromPointer(e));
-  }
-
-  function onPlotPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (e.pointerId !== pointerId) return;
-    setDraft(valueFromPointer(e));
-  }
-
-  function onPlotPointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    if (e.pointerId !== pointerId) return;
-    e.currentTarget.releasePointerCapture(e.pointerId);
-    setPointerId(null);
-    void commit(valueFromPointer(e));
-  }
-
-  function onPlotPointerCancel(e: React.PointerEvent<HTMLDivElement>) {
-    if (e.pointerId !== pointerId) return;
-    setPointerId(null);
-    setDraft(null);
-  }
-
-  function onPlotKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (saving) return;
-    const [lo, hi] = data.domain;
-    const clamp = (v: number) => Math.min(hi, Math.max(lo, v));
-    const step = KEYBOARD_STEP[metric.id];
-    const base = draft ?? goalNow?.value ?? dataValues.at(-1) ?? (lo + hi) / 2;
-    switch (e.key) {
-      case 'ArrowUp':
-      case 'ArrowRight':
-        setDraft(clamp(base + step));
-        break;
-      case 'ArrowDown':
-      case 'ArrowLeft':
-        setDraft(clamp(base - step));
-        break;
-      case 'PageUp':
-        setDraft(clamp(base + step * 5));
-        break;
-      case 'PageDown':
-        setDraft(clamp(base - step * 5));
-        break;
-      case 'Home':
-        setDraft(lo);
-        break;
-      case 'End':
-        setDraft(hi);
-        break;
-      case 'Enter':
-        if (draft !== null) void commit(draft);
-        break;
-      case 'Escape':
-        setDraft(null);
-        break;
-      default:
-        return;
-    }
-    e.preventDefault();
-  }
-
-  function onPlotBlur() {
-    if (draft !== null && pointerId === null) void commit(draft);
-  }
-
-  const starValue = draft ?? goalNow?.value ?? null;
-  const starX = BOX.width - BOX.right;
+  const lineValue = draft ?? goalNow?.value ?? null;
+  const [lo, hi] = BOUNDS[metric.id];
+  const atUpBound = lineValue !== null && lineValue >= hi;
+  const atLowBound = lineValue !== null && lineValue <= lo;
 
   return (
     <Card data-testid={`goal-${metric.id}`} data-has-goal={goalNow !== null}>
@@ -180,90 +109,92 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
             Trend: {metric.formatChange(fit.slope)}
           </p>
         )}
-        {draft !== null && (
-          <p className="text-xs font-medium text-sky-600" data-testid={`goal-${metric.id}-preview`} aria-live="polite">
-            Setting: {metric.format(draft)}
-          </p>
-        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {data.points.length === 0 ? (
           <p className="text-sm text-muted-foreground">No sessions with this measure in the range.</p>
         ) : (
-          <>
-            <div className="relative">
-              <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} className="h-auto w-full select-none" role="img" aria-label={`${metric.title} over ${data.points.length} sessions, with its goal`}>
-                {data.yTicks.map((t) => (
-                  <g key={t.value}>
-                    <line x1={BOX.left} x2={BOX.width - BOX.right} y1={t.y} y2={t.y} className="stroke-border" strokeWidth={1} />
-                    <text x={BOX.left - 6} y={t.y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">
-                      {tickLabel(t.value)}
-                    </text>
-                  </g>
-                ))}
-                {data.zeroY !== null && <line x1={BOX.left} x2={BOX.width - BOX.right} y1={data.zeroY} y2={data.zeroY} className="stroke-muted-foreground" strokeWidth={1} />}
-                <text x={data.points[0]!.x} y={BOX.height - 8} textAnchor={data.points.length === 1 ? 'middle' : 'start'} className="fill-muted-foreground text-[10px]">
-                  {shortDate(trend[data.points[0]!.index]!.sessionDate)}
-                </text>
-                {data.points.length > 1 && (
-                  <text x={data.points.at(-1)!.x} y={BOX.height - 8} textAnchor="end" className="fill-muted-foreground text-[10px]">
-                    {shortDate(trend[data.points.at(-1)!.index]!.sessionDate)}
-                  </text>
-                )}
-                {/* goals.md §4: the goal step-line, drawn under the data and trend lines so real shots always read on top. */}
-                {goal.path !== '' && (
-                  <path d={goal.path} fill="none" className="stroke-sky-500" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" data-testid={`goal-${metric.id}-step`} />
-                )}
-                <path d={data.path} fill="none" className="stroke-primary" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-                {fit !== null && (
-                  <line
-                    x1={fit.x1}
-                    y1={fit.y1}
-                    x2={fit.x2}
-                    y2={fit.y2}
-                    className="stroke-foreground"
-                    strokeWidth={1.5}
-                    strokeDasharray="5 3"
-                    strokeLinecap="round"
-                    data-testid={`goal-${metric.id}-line`}
-                  />
-                )}
-                {data.points.map((p) => (
-                  <circle key={p.index} cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
-                ))}
-                {starValue !== null && (
-                  <g
-                    transform={`translate(${starX - 12 * STAR_SCALE} ${valueToY(starValue, BOX, data.domain) - 12 * STAR_SCALE}) scale(${STAR_SCALE})`}
-                    className="pointer-events-none"
-                    data-testid={`goal-${metric.id}-star`}
-                  >
-                    <path d={STAR_PATH} className="fill-sky-500 stroke-card" strokeWidth={1.5} strokeLinejoin="round" />
-                  </g>
-                )}
-              </svg>
-              {/* M28 (goals.md §5): tap or drag anywhere in the plot to place/move the star; Enter/arrow keys for a keyboard user. */}
-              <div
-                className="absolute touch-none cursor-ns-resize outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"
-                style={{ left: `${PLOT_LEFT_PCT}%`, top: `${PLOT_TOP_PCT}%`, width: `${PLOT_WIDTH_PCT}%`, height: `${PLOT_HEIGHT_PCT}%` }}
-                tabIndex={0}
-                role="slider"
-                aria-orientation="vertical"
-                aria-label={`${metric.title} goal`}
-                aria-valuemin={data.domain[0]}
-                aria-valuemax={data.domain[1]}
-                aria-valuenow={starValue ?? undefined}
-                aria-valuetext={starValue === null ? 'No goal' : metric.format(starValue)}
-                data-testid={`goal-${metric.id}-plot`}
-                onPointerDown={onPlotPointerDown}
-                onPointerMove={onPlotPointerMove}
-                onPointerUp={onPlotPointerUp}
-                onPointerCancel={onPlotPointerCancel}
-                onKeyDown={onPlotKeyDown}
-                onBlur={onPlotBlur}
-              />
+          <div className="flex items-stretch gap-2">
+            <div className="flex flex-col items-center justify-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                disabled={saving || atUpBound}
+                aria-label={`Raise the ${metric.title} goal by ${metric.format(STEP[metric.id])}`}
+                data-testid={`goal-${metric.id}-up`}
+                onClick={() => void step(1)}
+              >
+                ▲
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                disabled={saving || atLowBound}
+                aria-label={`Lower the ${metric.title} goal by ${metric.format(STEP[metric.id])}`}
+                data-testid={`goal-${metric.id}-down`}
+                onClick={() => void step(-1)}
+              >
+                ▼
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Tap or drag on the chart to set the goal.</p>
-          </>
+            <svg viewBox={`0 0 ${BOX.width} ${BOX.height}`} className="h-auto w-full select-none" role="img" aria-label={`${metric.title} over ${data.points.length} sessions, with its goal`}>
+              {data.yTicks.map((t) => (
+                <g key={t.value}>
+                  <line x1={BOX.left} x2={BOX.width - BOX.right} y1={t.y} y2={t.y} className="stroke-border" strokeWidth={1} />
+                  <text x={BOX.left - 6} y={t.y + 4} textAnchor="end" className="fill-muted-foreground text-[10px] tabular-nums">
+                    {tickLabel(t.value)}
+                  </text>
+                </g>
+              ))}
+              {data.zeroY !== null && <line x1={BOX.left} x2={BOX.width - BOX.right} y1={data.zeroY} y2={data.zeroY} className="stroke-muted-foreground" strokeWidth={1} />}
+              <text x={data.points[0]!.x} y={BOX.height - 8} textAnchor={data.points.length === 1 ? 'middle' : 'start'} className="fill-muted-foreground text-[10px]">
+                {shortDate(trend[data.points[0]!.index]!.sessionDate)}
+              </text>
+              {data.points.length > 1 && (
+                <text x={data.points.at(-1)!.x} y={BOX.height - 8} textAnchor="end" className="fill-muted-foreground text-[10px]">
+                  {shortDate(trend[data.points.at(-1)!.index]!.sessionDate)}
+                </text>
+              )}
+              {/* goals.md §4: the goal's history, a step line under the data/trend/live lines so real shots read on top. */}
+              {goal.path !== '' && (
+                <path d={goal.path} fill="none" className="stroke-sky-300" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" data-testid={`goal-${metric.id}-step`} />
+              )}
+              <path d={data.path} fill="none" className="stroke-primary" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+              {fit !== null && (
+                <line
+                  x1={fit.x1}
+                  y1={fit.y1}
+                  x2={fit.x2}
+                  y2={fit.y2}
+                  className="stroke-foreground"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 3"
+                  strokeLinecap="round"
+                  data-testid={`goal-${metric.id}-line`}
+                />
+              )}
+              {data.points.map((p) => (
+                <circle key={p.index} cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
+              ))}
+              {/* The live goal line — solid and full-width, distinct from the dashed history step-line above. */}
+              {lineValue !== null && (
+                <line
+                  x1={BOX.left}
+                  x2={BOX.width - BOX.right}
+                  y1={valueToY(lineValue, BOX, data.domain)}
+                  y2={valueToY(lineValue, BOX, data.domain)}
+                  className="stroke-sky-500"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  data-testid={`goal-${metric.id}-indicator`}
+                />
+              )}
+            </svg>
+          </div>
         )}
       </CardContent>
     </Card>

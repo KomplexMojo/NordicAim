@@ -1,6 +1,7 @@
 // M27/M28 (issue #97, docs/spec/goals.md): the Goals tab — the same view/range filters as Patterns and Analysis,
-// one chart per metric, and a draggable star to set a goal whose value is stamped with the clock and never
-// overwritten (M28 replaced M27's numeric entry with this drag-on-the-chart gesture, per the owner's own review).
+// one chart per metric, and up/down arrow buttons beside each chart that step a horizontal goal line, saved
+// immediately and stamped with the clock (never overwritten — M28 tried a numeric entry, then a drag-a-star
+// gesture, before settling on this stepper after the owner's review of both earlier builds).
 
 import { expect, test } from '@playwright/test';
 
@@ -32,13 +33,25 @@ test('the Goals tab is the fourth tab, navigates, and is marked active', async (
 
 test('with nothing recorded, the view says so and nothing errors', async ({ page }) => {
   await page.goto('/#/goals');
-  for (const id of ['sight-in', 'confirm', 'precision-prone', 'precision-standing']) {
+  for (const id of ['precision-prone', 'precision-standing']) {
     await page.getByTestId(`goals-view-${id}`).click();
     await expect(page.getByText('No sessions here yet.')).toBeVisible();
   }
 });
 
-test('dragging the star on the chart sets a goal that persists across reload and shows on the chart; dragging again appends', async ({ page }) => {
+test('Sight in and Confirm are not offered as goal views; a URL naming one falls back to Precision prone', async ({ page }) => {
+  await page.goto('/#/goals');
+  await expect(page.getByTestId('goals-view-sight-in')).toHaveCount(0);
+  await expect(page.getByTestId('goals-view-confirm')).toHaveCount(0);
+  await expect(page.getByTestId('goals-view-precision-prone')).toBeVisible();
+  await expect(page.getByTestId('goals-view-precision-standing')).toBeVisible();
+
+  await page.goto('/#/goals?view=confirm&range=all');
+  await expect(page.getByTestId('goals-view-precision-prone')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('goals-counts')).toContainText('Precision prone');
+});
+
+test('the up/down buttons set a goal that persists across reload and draws a horizontal line; more taps append', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
@@ -53,18 +66,12 @@ test('dragging the star on the chart sets a goal that persists across reload and
   await expect(chart).toBeVisible();
   await expect(chart).toHaveAttribute('data-has-goal', 'false');
   await expect(page.getByTestId('goal-score-value')).toHaveText('No goal');
-  await expect(page.getByTestId('goal-score-star')).toHaveCount(0);
+  await expect(page.getByTestId('goal-score-indicator')).toHaveCount(0);
   await expect(page.getByTestId('goal-score-step')).toHaveCount(0);
 
-  // Press near the top of the plot, hold (a live preview shows while the pointer is down), then release.
-  const plotBox = (await page.getByTestId('goal-score-plot').boundingBox())!;
-  await page.mouse.move(plotBox.x + plotBox.width / 2, plotBox.y + plotBox.height * 0.2);
-  await page.mouse.down();
-  await expect(page.getByTestId('goal-score-preview')).toBeVisible();
-  await page.mouse.up();
-  await expect(page.getByTestId('goal-score-preview')).toHaveCount(0);
+  await page.getByTestId('goal-score-up').click();
   await expect(chart).toHaveAttribute('data-has-goal', 'true');
-  await expect(page.getByTestId('goal-score-star')).toHaveCount(1);
+  await expect(page.getByTestId('goal-score-indicator')).toHaveCount(1);
   await expect(page.getByTestId('goal-score-step')).toHaveCount(1);
   const firstValueText = await page.getByTestId('goal-score-value').textContent();
   expect(firstValueText).toMatch(/^Goal: \d+%$/);
@@ -75,22 +82,25 @@ test('dragging the star on the chart sets a goal that persists across reload and
   await page.getByTestId('goals-view-precision-prone').click();
   await expect(page.getByTestId('goal-score-value')).toHaveText(firstValueText!);
 
-  // Dragging to a very different Y appends a new log entry rather than editing the old one.
-  const plotBox2 = (await page.getByTestId('goal-score-plot').boundingBox())!;
-  await page.mouse.move(plotBox2.x + plotBox2.width / 2, plotBox2.y + plotBox2.height * 0.95);
-  await page.mouse.down();
-  await page.mouse.move(plotBox2.x + plotBox2.width / 2, plotBox2.y + plotBox2.height * 0.05, { steps: 4 });
-  await page.mouse.up();
+  // A few more taps append new log entries rather than editing the first one.
+  await page.getByTestId('goal-score-up').click();
+  await page.getByTestId('goal-score-up').click();
   // The write is async (IndexedDB, then a live-query refetch), so wait for the DOM rather than reading it cold.
   await expect(page.getByTestId('goal-score-value')).not.toHaveText(firstValueText!);
 
   const entries = await page.evaluate(() => (window as HookWindow).__asaTest!.listGoals());
   const scoreGoals = entries.filter((e) => e.view === 'precision-prone' && e.metric === 'score');
-  expect(scoreGoals).toHaveLength(2);
-  expect(new Set(scoreGoals.map((e) => e.setAt)).size).toBe(2);
+  expect(scoreGoals).toHaveLength(3);
+  expect(new Set(scoreGoals.map((e) => e.setAt)).size).toBe(3);
+  expect(scoreGoals.map((e) => e.value)).toEqual([...scoreGoals.map((e) => e.value)].sort((a, b) => a - b));
+
+  // The down button steps the other way.
+  const beforeDown = await page.getByTestId('goal-score-value').textContent();
+  await page.getByTestId('goal-score-down').click();
+  await expect(page.getByTestId('goal-score-value')).not.toHaveText(beforeDown!);
 });
 
-test('the keyboard: arrow keys preview a value on the focused plot, Enter saves it, Escape cancels without saving', async ({ page }) => {
+test('the buttons are plain, native buttons: Tab and Enter/Space work with no custom keyboard code', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
@@ -100,28 +110,10 @@ test('the keyboard: arrow keys preview a value on the focused plot, Enter saves 
   await page.getByTestId('goals-range-all').click();
   await page.getByTestId('goals-view-precision-prone').click();
 
-  const plot = page.getByTestId('goal-group-plot');
-  await plot.focus();
-
-  // Escape after a couple of nudges leaves no goal behind.
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await expect(page.getByTestId('goal-group-preview')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('goal-group-preview')).toHaveCount(0);
   await expect(page.getByTestId('goal-group-value')).toHaveText('No goal');
-
-  // Enter saves the previewed value. Re-focus first: some browsers blur a focused element on Escape.
-  await plot.focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(page.getByTestId('goal-group-preview')).toBeVisible();
-  const previewText = await page.getByTestId('goal-group-preview').textContent();
+  await page.getByTestId('goal-group-up').focus();
   await page.keyboard.press('Enter');
-  // The write is async (IndexedDB, then a live-query refetch): the preview clears locally right away, but wait for
-  // the saved value itself before reading it, rather than a stale "No goal" left over from before the refetch.
   await expect(page.getByTestId('goal-group-value')).not.toHaveText('No goal');
-  const savedText = await page.getByTestId('goal-group-value').textContent();
-  expect(savedText).toBe(`Goal: ${previewText!.replace('Setting: ', '')}`);
 
   const entries = await page.evaluate(() => (window as HookWindow).__asaTest!.listGoals());
   expect(entries.filter((e) => e.view === 'precision-prone' && e.metric === 'group')).toHaveLength(1);
