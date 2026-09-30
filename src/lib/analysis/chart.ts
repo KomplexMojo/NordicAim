@@ -99,9 +99,8 @@ export function chartGeometry(
   const domain: [number, number] = [Math.floor(lo / step) * step, Math.ceil(hi / step) * step];
 
   const plotW = box.width - box.left - box.right;
-  const plotH = box.height - box.top - box.bottom;
   const xAt = (i: number) => (values.length <= 1 ? box.left + plotW / 2 : box.left + (i * plotW) / (values.length - 1));
-  const yAt = (v: number) => box.top + plotH - ((v - domain[0]) / (domain[1] - domain[0])) * plotH;
+  const yAt = (v: number) => valueToY(v, box, domain);
 
   const points: ChartPoint[] = [];
   let path = '';
@@ -142,4 +141,26 @@ export function chartGeometry(
     trend = { x1: xAt(i1), y1: yAt(at(i1)), x2: xAt(i2), y2: yAt(at(i2)), slope: fit.slope };
   }
   return { points, path, yTicks, zeroY, domain, trend };
+}
+
+/** The same value-to-y mapping `chartGeometry` uses internally for its own points and ticks, exposed so a goal
+ * marker can be placed at an arbitrary value that didn't come from a `ChartPoint` (goals.md §5 / M28). */
+export function valueToY(value: number, box: ChartBox, domain: [number, number]): number {
+  const plotH = box.height - box.top - box.bottom;
+  const span = domain[1] - domain[0];
+  if (span === 0) return box.top + plotH;
+  return box.top + plotH - ((value - domain[0]) / span) * plotH;
+}
+
+/**
+ * goals.md §5 / M28: the inverse of {@link valueToY} — an SVG y-coordinate back to a value in `domain`, for reading
+ * a pointer or key press on the chart. Clamped to `domain`, so a drag can't leave the visible axis (a value saved
+ * at that edge widens the domain on the next render, letting a further drag push past it).
+ */
+export function valueAt(y: number, box: ChartBox, domain: [number, number]): number {
+  const plotH = box.height - box.top - box.bottom;
+  const span = domain[1] - domain[0];
+  if (plotH <= 0 || span === 0) return domain[0];
+  const raw = domain[0] + ((plotH - (y - box.top)) / plotH) * span;
+  return Math.min(domain[1], Math.max(domain[0], raw));
 }

@@ -62,7 +62,10 @@ out of a separately maintained flag (see §4).
 - Route `/goals` → `GoalsPage`, inside the same `ServicesLayout`/`AppShell` every other main screen uses.
 - **Same `ViewRangeControls`** as Patterns and Analysis (`testIdPrefix="goals"`), unmodified: the view switch and the
   six-stop date-range slider. The range filters which sessions' dots are plotted, exactly as it does on Analysis —
-  it has nothing to do with a goal's own history (that's the chart's x-axis, §4).
+  and because the goal line (§4) is a step function over those same sessions' x-positions, widening the range is
+  also how a goal's own history comes into view (there is no separate scrubber for it). A one-line hint under the
+  slider on this screen only (`goals-range-hint`) says so, since nothing else on screen implies the range control
+  does double duty (owner, 2026-09-30).
 - Below it, one chart per metric for the selected view (`trendMetrics(kind)`, same `sessionTrend`/`filterByRange`
   pipeline Analysis already runs) — reusing `analysis.md` §4's geometry (`chartGeometry`) but each chart also draws
   the goal line (§4) and carries a **Set goal** control (§5).
@@ -90,19 +93,31 @@ Drawn as a second path, distinct from the data line and the existing least-squar
 a colour distinct from both — `PALETTE.ellipse`/`#3AA8F8`-family blue reads as "a marked target" elsewhere in the
 app's diagrams and is free here since the trend chart draws neither the group ellipse nor the MPI marker).
 
-## 5. Setting a goal
+## 5. Setting a goal: drag (or tap) a star on the chart
 
-**This milestone**: a **Set goal** button beside each chart's title opens a small numeric entry (pre-filled with the
-current goal if one exists, matching the metric's own `format`/decimals) for that (view, metric) pair; Save appends
-a `GoalLogEntry` via the service (§6) and the chart re-reads live. This is the plainest possible "minimal clicks"
-entry point: the view and metric are already fixed by which chart you tapped, so the only thing left to provide is
-the number.
+**M27** shipped a numeric entry (a **Set goal** button opening a small text field). **M28** replaced it entirely
+with direct manipulation, per the owner's own review of the shipped M27 screen: pressing and dragging anywhere on
+the chart's plot area places the star at that Y position, with a live preview (`Setting: <value>`) shown while the
+pointer is down; releasing calls the service (§6) and appends a `GoalLogEntry`. A bare tap (press, no move, release)
+works the same way — it's a zero-distance drag. The star always sits at the plot's right edge (the same x every
+metric's "now" reads at), since a goal is a Y-only quantity with no x of its own (§1).
 
-**Deferred to a follow-up milestone** (not built here): replacing the numeric entry with a **drag-a-star-on-the-
-chart** gesture — tap/drag directly on the plot to place the goal at that Y position, dragging the existing star to
-adjust it, the resolved value shown live while dragging (the same pattern the capture overlay's own sliders already
-use). The stored shape (§2) does not change for this: it is a different way to produce the same `value`, so the
-follow-up touches only the input component, not the schema or the service.
+The draggable range is clamped to the chart's own currently visible y-domain (`chart.ts`'s `domain`, the same nice-
+rounded bounds the axis ticks use) — a drag can't leave the visible axis in one gesture. Saving a value at that
+edge widens the domain on the next render (it's now one of the values `chartGeometry`'s `domainFrom` sees), so a
+goal further outside the current data's range is reached by dragging to the edge, releasing, then dragging again.
+
+**Keyboard** (desktop, and anyone who can't drag): the plot is a focusable `role="slider"` — Left/Down and
+Right/Up nudge the value by a per-metric step (`KEYBOARD_STEP` in `GoalChart.tsx`: 1% for score, 0.1 MOA for group,
+0.5 mm for RMS and each MPI axis), Page Up/Down nudge by five times that, Home/End jump to the domain's ends. Unlike
+a native `<input type="range">`, a key press only updates a **local, unsaved preview** — nothing is written to the
+append-only log (§2) until **Enter** (or the control loses focus); **Escape** cancels the preview, restoring
+whatever the current goal already was. This is a deliberate departure from native range-input semantics, forced by
+§2's storage model: committing a `GoalLogEntry` on every arrow-key repeat would flood the log with incidental
+in-progress values instead of the goal-setting decisions it's meant to hold.
+
+The stored shape (§2) did not change for this milestone: dragging and the keyboard both just call the same
+`setGoal` (§6) M27 already built.
 
 ## 6. Service (`src/lib/services/goals.ts`)
 
@@ -125,9 +140,8 @@ export function goalSeries(entries: GoalLogEntry[], view: PatternView, metric: T
 `setGoal` reads the stored row, appends (`id: ctx.newId()`, `setAt: ctx.now().toISOString()`), writes it back — the
 same prepare-then-one-transaction shape every other write in this app follows (`data-model.md` §6 rules).
 
-## 7. Out of scope (this milestone)
+## 7. Out of scope
 
-- The drag-to-place star interaction (§5) — numeric entry only, for now.
 - A new "miss rate" trend metric for goals like "zero misses on Confirm" (the owner's own example). `PatternPoint`
   already carries the real, position-aware scoring `zone` for sighting shots (`patterns/collect.ts`), so a 6th
   `TrendMetric` — the share with `zone === 'miss'` — is well-defined and cheap to add later, but `trendMetrics()`

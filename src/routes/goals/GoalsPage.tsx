@@ -46,6 +46,9 @@ export function GoalsPage() {
       <h1 className="text-xl font-semibold">Goals</h1>
 
       <ViewRangeControls view={view} range={range} onView={setView} onRange={setRange} testIdPrefix="goals" />
+      <p className="text-xs text-muted-foreground" data-testid="goals-range-hint">
+        This also sets how far back you can see a goal's own history — widen it to look further back.
+      </p>
 
       {loading && value === undefined ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

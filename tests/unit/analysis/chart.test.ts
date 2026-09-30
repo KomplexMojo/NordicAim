@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chartGeometry, leastSquares, MIN_TREND_SESSIONS, niceStep } from '@/lib/analysis/chart';
+import { chartGeometry, leastSquares, MIN_TREND_SESSIONS, niceStep, valueAt } from '@/lib/analysis/chart';
 
 // analysis.md §4 (REV-123).
 const BOX = { width: 300, height: 160, left: 40, right: 10, top: 10, bottom: 30 };
@@ -110,5 +110,26 @@ describe('trend line (analysis.md §4a, REV-129)', () => {
     const g = chartGeometry([5, 5, 5], box, false);
     expect(g.trend!.slope).toBe(0);
     expect(g.trend!.y1).toBeCloseTo(g.trend!.y2, 12);
+  });
+});
+
+describe('valueAt (goals.md §5 / M28: the inverse of chartGeometry\'s own yAt)', () => {
+  it('round-trips every point a chart actually drew', () => {
+    const g = chartGeometry([1.2, 3.7, 2.5], BOX, false);
+    for (const p of g.points) {
+      expect(valueAt(p.y, BOX, g.domain)).toBeCloseTo(p.value, 9);
+    }
+  });
+
+  it('maps the plot\'s top and bottom edges to the domain\'s max and min', () => {
+    const g = chartGeometry([1, 9], BOX, false);
+    expect(valueAt(BOX.top, BOX, g.domain)).toBeCloseTo(g.domain[1], 9);
+    expect(valueAt(BOX.height - BOX.bottom, BOX, g.domain)).toBeCloseTo(g.domain[0], 9);
+  });
+
+  it('clamps a y outside the plot to the domain it falls nearest', () => {
+    const domain: [number, number] = [0, 10];
+    expect(valueAt(-50, BOX, domain)).toBe(10);
+    expect(valueAt(10_000, BOX, domain)).toBe(0);
   });
 });
