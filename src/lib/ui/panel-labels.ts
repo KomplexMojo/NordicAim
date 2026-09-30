@@ -29,3 +29,14 @@ export function dataLabel(counts: { sessions: number; photos: number }): string 
   const p = counts.photos === 1 ? '1 photo' : `${counts.photos} photos`;
   return `${s} · ${p}`;
 }
+
+/**
+ * Observed patterns' `outsideShare` row: what "outside the zone" means for this template and position, matching
+ * `characterize-result.ts`'s `discRadiusMm` branch for branch (owner, 2026-09-30) — `standing` is the one case that
+ * reads the physical black disc ("Outside the black" makes sense only there, for precision); everything else,
+ * `null` included, reads a tighter, position-specific zone and so reads "Miss on prone".
+ */
+export function missLabel(kind: 'precision' | 'sighting', position: 'prone' | 'standing' | null): string {
+  if (position === 'standing') return kind === 'precision' ? 'Outside the black' : 'Miss on standing';
+  return 'Miss on prone';
+}

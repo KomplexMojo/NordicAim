@@ -15,9 +15,10 @@ export function ObservedPatterns({
 }: {
   characteristics: Characteristics | null | undefined;
   scope: string;
-  /** What `outsideShare` means for this target's template and position (precision: "Outside the black"; sighting:
-   * "Miss on prone" or "Miss on standing", since the whole sighting disc is black and only a thin printed line marks
-   * each zone, owner, 2026-09-30). */
+  /** What `outsideShare` means for this target's template and position (`missLabel` in `panel-labels.ts`): "Outside
+   * the black" only for precision standing, the one case that's really the physical black disc; every other case
+   * reads a tighter, position-specific zone and so reads "Miss on prone" (or "Miss on standing" for sighting,
+   * owner, 2026-09-30). */
   missLabel?: string;
 }) {
   if (characteristics === null || characteristics === undefined || characteristics.n === 0) return null;

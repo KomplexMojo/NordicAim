@@ -24,6 +24,7 @@ import { formatAngular, formatMm } from '@/lib/scoring/format';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { getPhotoRecord } from '@/lib/store/photos-repo';
+import { missLabel } from '@/lib/ui/panel-labels';
 
 interface TargetData {
   pid: string;
@@ -188,6 +189,9 @@ export function TargetPage() {
   const warnings = analysis?.pipeline.warnings ?? [];
   const template = photo.categorization.template;
   const position = photo.categorization.position;
+  // Matches `withCharacteristics`'s own resolution for the `all` subset: a `both` target's combined subset is
+  // judged by neither position, same as unset.
+  const allSubsetPosition = position === 'prone' || position === 'standing' ? position : null;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
@@ -251,7 +255,7 @@ export function TargetPage() {
         <ObservedPatterns
           characteristics={result.all.characteristics}
           scope="Worked out from this target's shots when its analysis was saved."
-          missLabel={template === 'sighting' ? (position === 'standing' ? 'Miss on standing' : 'Miss on prone') : 'Outside the black'}
+          missLabel={missLabel(result.template, allSubsetPosition)}
         />
       )}
 

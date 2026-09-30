@@ -8,6 +8,9 @@
 // (`refreshStaleDiagrams`).
 //
 // Bump it whenever a per-target diagram's output changes, or `characterize-result.ts`'s / `characteristics.ts`'s:
+//   10 — owner, 2026-09-30: precision's "miss" zone (`discRadiusMm`) is ring 8's radius (21.2 mm) for prone,
+//        standing in for the prone-specific zone the precision target has none of its own; standing still reads
+//        the full black disc.
 //   9 — owner, 2026-09-30: sighting's "miss" zone (`discRadiusMm`) is the shot's own position's zone (22.5 mm
 //       prone, 57.5 mm standing), not always the standing zone — see `characterize-result.ts`.
 //   8 — REV-137: the group ellipse is a brighter blue on a dark halo, and wider.
@@ -17,4 +20,4 @@
 //   3 — REV-79: a sighting diagram's top-left mark is the sight-in or confirm symbol.
 //   2 — REV-60: the target screen also shows accuracy (stored results gain `accuracyRmseMm`).
 //   1 — REV-58: one fixed cell scale (no zoom-out), `+N off view`, and a detail diagram that shows every shot.
-export const DIAGRAM_RENDERER_VERSION = 9;
+export const DIAGRAM_RENDERER_VERSION = 10;

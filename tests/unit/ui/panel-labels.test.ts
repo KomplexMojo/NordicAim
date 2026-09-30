@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { checksLabel, dataLabel, metricsLabel, reasonsLabel } from '@/lib/ui/panel-labels';
+import { checksLabel, dataLabel, metricsLabel, missLabel, reasonsLabel } from '@/lib/ui/panel-labels';
 import { readPanelOpen, writePanelOpen } from '@/lib/ui/panel-state';
 
 describe('panel labels (issue #14)', () => {
@@ -20,6 +20,15 @@ describe('panel labels (issue #14)', () => {
     expect(checksLabel({ pass: 14, fail: 0 })).toBe('14 pass · 0 fail');
     expect(dataLabel({ sessions: 2, photos: 6 })).toBe('2 sessions · 6 photos');
     expect(dataLabel({ sessions: 1, photos: 1 })).toBe('1 session · 1 photo');
+  });
+
+  it('miss label (owner, 2026-09-30): "Outside the black" only for precision standing', () => {
+    expect(missLabel('precision', 'standing')).toBe('Outside the black');
+    expect(missLabel('precision', 'prone')).toBe('Miss on prone');
+    expect(missLabel('precision', null)).toBe('Miss on prone');
+    expect(missLabel('sighting', 'standing')).toBe('Miss on standing');
+    expect(missLabel('sighting', 'prone')).toBe('Miss on prone');
+    expect(missLabel('sighting', null)).toBe('Miss on prone');
   });
 });
 

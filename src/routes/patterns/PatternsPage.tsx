@@ -18,6 +18,7 @@ import { pickTargets, TAP_RADIUS_CSS_PX, type TargetRef } from '@/lib/patterns/p
 import { parseViewRange, viewRangeSearch } from '@/lib/patterns/url';
 import { loadPatterns } from '@/lib/services/patterns';
 import { formatMm } from '@/lib/scoring/format';
+import { missLabel } from '@/lib/ui/panel-labels';
 
 function percent(share: number): string {
   return `${Math.round(share * 100)}%`;
@@ -122,7 +123,7 @@ export function PatternsPage() {
           <ObservedPatterns
             characteristics={observed}
             scope={`Worked out over all ${shown.length} shots shown, as one group.`}
-            missLabel={kind === 'precision' ? 'Outside the black' : position === 'standing' ? 'Miss on standing' : 'Miss on prone'}
+            missLabel={missLabel(kind, position)}
           />
           <section className="flex flex-col gap-1 text-sm" aria-label="Summary" data-testid="patterns-summary">
             <p className="font-medium" data-testid="patterns-counts">
