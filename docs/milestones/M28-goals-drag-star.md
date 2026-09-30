@@ -95,3 +95,12 @@ pnpm test:e2e --project=mobile-chromium
 ```
 Also verified: the drag/keyboard e2e tests re-run several times back to back (not just once) to catch the render-
 race flakiness described in the Pitfalls section, until stable.
+
+**Follow-up (2026-09-30, same day):** the owner asked to remove MPI left/right and MPI up/down from Goals
+entirely, after seeing the shipped screen — a goal Y-value doesn't read as "better" or "worse" against a signed
+position the way it does for Score, Group size and Accuracy. `domain/goals.ts`'s `GoalMetric` enum narrowed from
+five metrics to three (`score`/`group`/`rms`); `GoalsPage.tsx` filters `trendMetrics(kind)` down to `GoalMetric`
+before rendering, with a type-narrowing predicate so `GoalChart` only ever receives a goal-able metric. `goals.md`
+§1 updated. `trendMetrics()` itself is untouched — Analysis still shows both MPI charts. Covered by a new domain
+test (MPI rejected by `GoalLogEntry.safeParse`) and a new e2e test (Goals shows exactly three charts; Analysis
+still shows MPI). `pnpm check` and the full `pnpm test:e2e --project=mobile-chromium` both green.

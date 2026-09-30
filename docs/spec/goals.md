@@ -14,9 +14,13 @@ as "met" follows from the metric already knowing which way is better.
 
 - **Views**: the same four as Patterns/Analysis (`patterns.md` §1) — Sight in, Confirm, Precision prone, Precision
   standing.
-- **Metrics**: the same five `trendMetrics()` already computes (`analysis.md` §3, `src/lib/analysis/trend.ts`) —
-  Score/Hit rate (%), Group size (MOA), Accuracy/RMS (mm), MPI left/right (mm), MPI up/down (mm). No new metric is
-  added in this milestone (see §7 for the miss-rate idea that stays out of scope).
+- **Metrics**: three of the five `trendMetrics()` computes (`analysis.md` §3, `src/lib/analysis/trend.ts`) —
+  Score/Hit rate (%), Group size (MOA), Accuracy/RMS (mm). MPI left/right and MPI up/down are **not** goal-able
+  (owner, 2026-09-30, after reviewing the shipped screen): each one plots a signed *position* along one axis, not a
+  single magnitude, so a goal Y-value doesn't read as "better" or "worse" the way it does for the other three —
+  Analysis still shows both MPI charts, only Goals narrows its set (`src/lib/domain/goals.ts`'s `GoalMetric` enum;
+  `GoalsPage.tsx` filters `trendMetrics(kind)` down to it before rendering). No new metric is added to
+  `trendMetrics()` itself (see §7 for the miss-rate idea that stays out of scope).
 - A goal is **not** tied to a baseline or a date range. Setting "Group size ≤ 2.5 MOA" means exactly that, at any
   time, against whatever sessions the screen's own range filter is currently showing — the same range filter
   Patterns and Analysis already have (`patterns.md` §3), reused verbatim.
@@ -125,16 +129,16 @@ The stored shape (§2) did not change for this milestone: dragging and the keybo
 export async function listGoals(ctx: ServiceContext): Promise<GoalLogEntry[]>;
 export async function setGoal(
   ctx: ServiceContext,
-  input: { view: PatternView; metric: TrendMetricId; value: number },
+  input: { view: PatternView; metric: GoalMetric; value: number },
 ): Promise<GoalLogEntry>;
 ```
 
 Pure helpers live in `src/lib/goals/model.ts` (no clock, no storage, unit-tested directly):
 
 ```ts
-export function currentGoal(entries: GoalLogEntry[], view: PatternView, metric: TrendMetricId): GoalLogEntry | null;
-export function goalAsOf(entries: GoalLogEntry[], view: PatternView, metric: TrendMetricId, atIso: string): GoalLogEntry | null;
-export function goalSeries(entries: GoalLogEntry[], view: PatternView, metric: TrendMetricId, trend: TrendPoint[]): Array<number | null>;
+export function currentGoal(entries: GoalLogEntry[], view: PatternView, metric: GoalMetric): GoalLogEntry | null;
+export function goalAsOf(entries: GoalLogEntry[], view: PatternView, metric: GoalMetric, atIso: string): GoalLogEntry | null;
+export function goalSeries(entries: GoalLogEntry[], view: PatternView, metric: GoalMetric, trend: TrendPoint[]): Array<number | null>;
 ```
 
 `setGoal` reads the stored row, appends (`id: ctx.newId()`, `setAt: ctx.now().toISOString()`), writes it back — the

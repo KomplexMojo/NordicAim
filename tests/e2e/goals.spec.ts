@@ -141,9 +141,29 @@ test('with three or more sessions, the chart draws the same least-squares trend 
   await expect(page.getByTestId('goals-counts')).toHaveText('Precision prone: 3 sessions');
   await expect(page.getByTestId('goal-score-line')).toHaveCount(1);
   await expect(page.getByTestId('goal-score-slope')).toContainText('Trend:');
+});
 
-  // MPI charts plot a signed position rather than a magnitude, so they draw no trend line (REV-133).
-  await expect(page.getByTestId('goal-mpiX-line')).toHaveCount(0);
+test('MPI is not goal-able: only Score, Group size and Accuracy (RMS) get a chart', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  await page.goto('/#/goals');
+  await page.getByTestId('goals-range-all').click();
+  await page.getByTestId('goals-view-precision-prone').click();
+
+  await expect(page.getByTestId('goal-score')).toBeVisible();
+  await expect(page.getByTestId('goal-group')).toBeVisible();
+  await expect(page.getByTestId('goal-rms')).toBeVisible();
+  await expect(page.getByTestId('goal-mpiX')).toHaveCount(0);
+  await expect(page.getByTestId('goal-mpiY')).toHaveCount(0);
+
+  // Analysis keeps MPI — only Goals narrowed its metric set.
+  await page.goto('/#/analysis');
+  await page.getByTestId('analysis-range-all').click();
+  await page.getByTestId('analysis-view-precision-prone').click();
+  await expect(page.getByTestId('trend-mpiX')).toBeVisible();
 });
 
 test('the tab bar stays at four targets, each at least 44 px, with Goals visible alongside the others', async ({ page }) => {

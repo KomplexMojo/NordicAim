@@ -3,17 +3,25 @@ import { useSearchParams } from 'react-router';
 
 import { GoalChart } from '@/components/goals/GoalChart';
 import { ViewRangeControls } from '@/components/patterns/ViewRangeControls';
-import { sessionTrend, trendMetrics } from '@/lib/analysis/trend';
+import { sessionTrend, trendMetrics, type TrendMetric } from '@/lib/analysis/trend';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
+import { GoalMetric } from '@/lib/domain/goals';
 import { PATTERN_VIEW_LABEL, filterByRange, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 import { loadPatterns } from '@/lib/services/patterns';
 import { listGoals, setGoal } from '@/lib/services/goals';
 import { parseViewRange, viewRangeSearch } from '@/lib/patterns/url';
 
+const GOAL_METRIC_IDS: readonly string[] = GoalMetric.options;
+function isGoalMetric(m: TrendMetric): m is TrendMetric & { id: GoalMetric } {
+  return GOAL_METRIC_IDS.includes(m.id);
+}
+
 /**
  * Route `#/goals` (goals.md, issue #97): a target value per (view, metric), drawn on the same charts as Analysis —
- * same views, same date range, same `sessionTrend`/`trendMetrics` pipeline. The goal's own history is the chart's
+ * same views, same date range, same `sessionTrend`/`trendMetrics` pipeline, though only the metrics `GoalMetric`
+ * (`domain/goals.ts`) allows: MPI's two axes were removed from Goals (owner, 2026-09-30) — they plot a signed
+ * position, not a single magnitude a goal can usefully sit above or below. The goal's own history is the chart's
  * existing x-axis (a step line, goals.md §4), so widening the range slider is how you "go back in time" to see
  * what a goal used to be; there is no separate control for it.
  */
@@ -34,7 +42,7 @@ export function GoalsPage() {
     () => (value === undefined ? [] : sessionTrend(filterByRange(value.data.points[view], range, value.today), kind)),
     [value, view, range, kind],
   );
-  const metrics = useMemo(() => trendMetrics(kind), [kind]);
+  const metrics = useMemo(() => trendMetrics(kind).filter(isGoalMetric), [kind]);
 
   async function handleSetGoal(metricId: (typeof metrics)[number]['id'], newValue: number) {
     await setGoal(ctx, { view, metric: metricId, value: newValue });

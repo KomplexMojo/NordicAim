@@ -8,8 +8,12 @@ import { Id, UtcIso } from './primitives';
 export const GoalView = z.enum(['sight-in', 'confirm', 'precision-prone', 'precision-standing']);
 export type GoalView = z.infer<typeof GoalView>;
 
-/** Matches `TrendMetricId` (`src/lib/analysis/trend.ts`). */
-export const GoalMetric = z.enum(['score', 'group', 'rms', 'mpiX', 'mpiY']);
+/**
+ * A subset of `TrendMetricId` (`src/lib/analysis/trend.ts`): MPI left/right and MPI up/down are excluded (owner,
+ * 2026-09-30) — a goal is one Y-value on a chart, and MPI's two axes plot a signed *position*, not a single
+ * magnitude a star can usefully sit above or below.
+ */
+export const GoalMetric = z.enum(['score', 'group', 'rms']);
 export type GoalMetric = z.infer<typeof GoalMetric>;
 
 /**

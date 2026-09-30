@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { chartGeometry, valueAt, valueToY, type ChartBox } from '@/lib/analysis/chart';
-import type { TrendMetric, TrendMetricId, TrendPoint } from '@/lib/analysis/trend';
-import type { GoalLogEntry } from '@/lib/domain/goals';
+import type { TrendMetric, TrendPoint } from '@/lib/analysis/trend';
+import type { GoalLogEntry, GoalMetric } from '@/lib/domain/goals';
 import { currentGoal, goalSeries } from '@/lib/goals/model';
 import type { PatternView } from '@/lib/patterns/collect';
 
@@ -13,13 +13,14 @@ const PLOT_H = BOX.height - BOX.top - BOX.bottom;
 const STAR_PATH = 'M12,3 14.12,9.09 20.56,9.22 15.42,13.11 17.29,19.28 12,15.6 6.71,19.28 8.58,13.11 3.44,9.22 9.88,9.09 Z';
 const STAR_SCALE = 0.7;
 
-/** One keyboard nudge, in the metric's own unit — chosen for a sensible step, not derived from the axis ticks. */
-const KEYBOARD_STEP: Record<TrendMetricId, number> = {
+/**
+ * One keyboard nudge, in the metric's own unit — chosen for a sensible step, not derived from the axis ticks. Only
+ * the goal-able metrics (`GoalMetric`, `domain/goals.ts`): MPI's two axes were removed from Goals (owner, 2026-09-30).
+ */
+const KEYBOARD_STEP: Record<GoalMetric, number> = {
   score: 1,
   group: 0.1,
   rms: 0.5,
-  mpiX: 0.5,
-  mpiY: 0.5,
 };
 
 /** `YYYY-MM-DD` -> `Sep 21` (the axis is sessions in order; the date names each end). */
@@ -34,7 +35,7 @@ function tickLabel(value: number): string {
 
 interface GoalChartProps {
   view: PatternView;
-  metric: TrendMetric;
+  metric: TrendMetric & { id: GoalMetric };
   trend: TrendPoint[];
   entries: GoalLogEntry[];
   onSetGoal(value: number): Promise<void>;
