@@ -401,6 +401,28 @@ describe('saving shots confirms the capped set (owner report 2026-09-19)', () =>
   });
 });
 
+describe('saving the alignment answers the sheet markers (REV-144)', () => {
+  it('clears sheet-markers-disagree when the owner saves an alignment', async () => {
+    const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)], warnings: ['sheet-markers-disagree', 'image-blurry'] });
+
+    await saveAdjustments(ctx, photoId, { calibration: MOVED_CAL });
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.warnings).toEqual(['image-blurry']);
+    ctx.db.close();
+  });
+
+  it('keeps it when only shots were saved', async () => {
+    const shot = autoShot('auto-1', 1, 1);
+    const { ctx, photoId } = await seed({ shots: [shot], warnings: ['sheet-markers-disagree'] });
+
+    await saveAdjustments(ctx, photoId, { shots: [shot] });
+
+    expect((await getAnalysisRecord(ctx.db, photoId))?.pipeline.warnings).toEqual(['sheet-markers-disagree']);
+    ctx.db.close();
+  });
+});
+
 describe('reanalyze (REV-46)', () => {
   it('passes the Settings backing to the worker (REV-48)', async () => {
     const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)] });

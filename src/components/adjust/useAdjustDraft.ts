@@ -174,7 +174,9 @@ export function useAdjustDraft(pid: string) {
     // `extra-candidates-dropped`) and, via `adjustSavePatch`, an overlay-guess alignment. Without this the
     // preview kept saying "needs attention" for exactly the two things a Save resolves.
     const willSave = adjustSavePatch(analysis, calibration, shots);
-    let warnings: Warning[] = analysis.pipeline.warnings.filter((w) => w !== 'extra-candidates-dropped');
+    let warnings: Warning[] = analysis.pipeline.warnings.filter(
+      (w) => w !== 'extra-candidates-dropped' && !(willSave.calibration !== undefined && w === 'sheet-markers-disagree'),
+    );
     const method = analysis.pipeline.detection.method;
     if (categorization.template !== null && isCategorizationComplete(categorization)) {
       const profile = { ...BIATHLON_50M, holeDiameterMm: scoringHoleDiameterMm } as typeof BIATHLON_50M;

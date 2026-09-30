@@ -7,6 +7,7 @@ import type { DetectionRecord } from '@/lib/domain/analysis';
 import type { BackingMode, ColourSignature } from '@/lib/domain/backing';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
+import type { TargetKind } from '@/lib/domain/target-kind';
 import type { CappableShot } from '@/lib/scoring/cap-shots';
 
 /** analysis-pipeline §6: what `reviewAndAlign` gives Stage A back. */
@@ -14,6 +15,14 @@ export interface ReviewAndAlignResult {
   detection: { calibration: Calibration; confidence: number; outsidePrior: boolean } | null;
   sharpness: number;
   templateHint: { template: TemplateId; confidence: number } | null;
+  /** REV-144: the corner markers of the app's own printed sheets, when any were read (template-reference.md §10). */
+  sheet?: SheetMarkersResult;
+}
+
+/** REV-144: the kind the markers agree on (null when they disagree) and each marker's corners in working-image px. */
+export interface SheetMarkersResult {
+  kind: TargetKind | null;
+  markers: Array<{ corner: 0 | 1 | 2 | 3; corners: Array<{ x: number; y: number }> }>;
 }
 
 /** backing-sheet.md §5 (REV-48): the Settings backing, as A5 and Re-analyze need it. */

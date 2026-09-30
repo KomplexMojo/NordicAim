@@ -14,6 +14,8 @@ import type { Calibration, Categorization, TargetPhoto } from '@/lib/domain/phot
 import { withBackingColour } from '@/lib/domain/backing';
 import { backingInputFromSettings } from '@/lib/domain/settings';
 import { photoStatus } from '@/lib/domain/status';
+import { categorizationForKind, type TargetKind } from '@/lib/domain/target-kind';
+import { MARKER_DISAGREE_MM, markerAlignmentGapMm } from '@/lib/geometry/sheet-marker-check';
 import { withoutArea } from '@/lib/scoring/cap-shots';
 import { reconcileShots } from '@/lib/scoring/reconcile-shots';
 import { scaleCalibration } from '@/lib/geometry/transform';
@@ -108,11 +110,39 @@ export function shotTemplate(
   );
 }
 
-/** One transaction: save the mutated analysis and the photo status it implies (data-model §7). */
+/**
+ * REV-144 (issue #65): the kind the sheet's markers name, as the photo's categorization, but only for a photo that has no
+ * kind yet. The owner's choice (or the capture screen's) is never replaced.
+ */
+export function categorizationFromMarkers(current: Categorization, kind: TargetKind | null | undefined): Categorization | null {
+  if (kind === null || kind === undefined) return null;
+  if (current.template !== null || current.position !== null) return null;
+  return categorizationForKind(kind);
+}
+
+/**
+ * REV-144: whether the sheet's markers put the target more than MARKER_DISAGREE_MM from where Stage A's alignment does. An
+ * alignment the owner saved is theirs, and the overlay fallback is already flagged (§4 rule 9), so only a measured one is checked.
+ */
+export function markersDisagree(
+  sheet: ReviewAndAlignResult['sheet'],
+  calibration: Calibration | null,
+  method: TargetAnalysis['pipeline']['alignment']['method'],
+): boolean {
+  if (sheet === undefined || calibration === null || method !== 'cv') return false;
+  const gap = markerAlignmentGapMm(sheet.markers, calibration);
+  return gap !== null && gap > MARKER_DISAGREE_MM;
+}
+
+/**
+ * One transaction: save the mutated analysis and the photo status it implies (data-model §7). `markerKind` (REV-144) fills
+ * the categorization when the stored photo still has none, read inside the same transaction.
+ */
 async function commitAnalysis(
   ctx: ServiceContext,
   photoId: string,
   mutate: (analysis: TargetAnalysis) => TargetAnalysis,
+  markerKind?: TargetKind | null,
 ): Promise<void> {
   const nowIso = ctx.now().toISOString();
   const tx = ctx.db.transaction(['photos', 'analyses'], 'readwrite');
@@ -124,14 +154,11 @@ async function commitAnalysis(
   }
 
   const next: TargetAnalysis = { ...mutate(analysis), updatedAt: nowIso };
-  const { status, reasons } = photoStatus({
-    categorization: photo.categorization,
-    analysis: next,
-    result: next.computed?.result ?? null,
-  });
+  const categorization = categorizationFromMarkers(photo.categorization, markerKind) ?? photo.categorization;
+  const { status, reasons } = photoStatus({ categorization, analysis: next, result: next.computed?.result ?? null });
 
   await putAnalysisRecord(tx, next);
-  await putPhotoRecord(tx, { ...photo, status, reasons });
+  await putPhotoRecord(tx, { ...photo, categorization, status, reasons });
   await tx.done;
 }
 
@@ -197,6 +224,7 @@ export async function runStageA(
 
     const warnings: Warning[] = [...choice.warnings];
     if (review.sharpness < BLUR_THRESHOLD) warnings.push('image-blurry');
+    if (markersDisagree(review.sheet, choice.calibration, choice.method)) warnings.push('sheet-markers-disagree');
     // Stage B owns `template-mismatch` (analysis-pipeline §2 B4); keep it if it was already there.
     if (analysis.pipeline.warnings.includes('template-mismatch')) warnings.push('template-mismatch');
 
@@ -252,7 +280,7 @@ export async function runStageA(
         warnings,
         detection,
       },
-    }));
+    }), review.sheet?.kind);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await commitAnalysis(ctx, photoId, (a) => ({
