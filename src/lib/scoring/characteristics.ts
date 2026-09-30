@@ -54,7 +54,7 @@ export interface Characteristics {
   axisDeg: number | null;
   shape: 'round' | 'horizontal string' | 'vertical string' | 'diagonal string (up to the trigger side)' | 'diagonal string (down to the trigger side)' | null;
   flyers: number;
-  /** Share of shots outside the black disc. */
+  /** Share of shots outside the position's zone (`CharacterizeOptions.discRadiusMm`). */
   outsideShare: number | null;
   twoClusters: boolean;
   issues: IssueFinding[];
@@ -72,7 +72,7 @@ export interface CharacterizeOptions {
   handedness: Handedness;
   /** `prone` runs the prone-only rules; `standing` and null skip them. */
   position: 'prone' | 'standing' | null;
-  /** The black disc's radius in mm, for the outside-the-disc share. */
+  /** The "miss" zone's radius in mm, for the outside-the-zone share (`discRadiusMm` in `characterize-result.ts`). */
   discRadiusMm: number;
 }
 
@@ -222,7 +222,7 @@ export function characterize(points: readonly Pt[], options: CharacterizeOptions
     if (esMoa <= T.looseMoa && offMoa >= T.offsetMoa && kappa >= T.offsetRatio) {
       f('zero-off', 'Zero off', `centre ${fmt(offMoa)} MOA from the bullseye, ${fmt(kappa)} group widths`);
     }
-    if (outside >= 0.5) f('fundamentals', 'Fundamentals / equipment', `${Math.round(outside * 100)}% of shots outside the black`);
+    if (outside >= 0.5) f('fundamentals', 'Fundamentals / equipment', `${Math.round(outside * 100)}% of shots outside the zone`);
     if (flyerIdx.length >= 2 && moa(esCore) <= T.tightMoa && outside >= 0.2 && outside < 0.5) {
       f('sight-alignment', 'Sight alignment', `${flyerIdx.length} flyers around a ${fmt(moa(esCore))} MOA core`);
     }

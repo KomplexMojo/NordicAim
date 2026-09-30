@@ -38,6 +38,7 @@ export function PatternsPage() {
   const from = { path: `/patterns?${viewKey}`, label: 'Back to Patterns' };
 
   const kind = view.startsWith('precision') ? 'precision' : 'sighting';
+  const position = view === 'precision-standing' ? 'standing' : 'prone';
   const shown = useMemo(
     () => (value === undefined ? [] : filterByRange(value.data.points[view], range, value.today)),
     [value, view, range],
@@ -50,10 +51,10 @@ export function PatternsPage() {
         ? null
         : characterize(shown, {
             handedness: value.handedness,
-            position: view === 'precision-standing' ? 'standing' : 'prone',
-            discRadiusMm: discRadiusMm(kind === 'precision' ? 'precision' : 'sighting'),
+            position,
+            discRadiusMm: discRadiusMm(kind === 'precision' ? 'precision' : 'sighting', position),
           }),
-    [shown, value, view, kind],
+    [shown, value, position, kind],
   );
   // One size for all four views, worked out from every shot ever recorded (patterns.md §5).
   const factor = useMemo(
@@ -118,7 +119,11 @@ export function PatternsPage() {
           </div>
 
           <div className="flex flex-col gap-3 lg:w-80">
-          <ObservedPatterns characteristics={observed} scope={`Worked out over all ${shown.length} shots shown, as one group.`} />
+          <ObservedPatterns
+            characteristics={observed}
+            scope={`Worked out over all ${shown.length} shots shown, as one group.`}
+            missLabel={kind === 'precision' ? 'Outside the black' : position === 'standing' ? 'Miss on standing' : 'Miss on prone'}
+          />
           <section className="flex flex-col gap-1 text-sm" aria-label="Summary" data-testid="patterns-summary">
             <p className="font-medium" data-testid="patterns-counts">
               {summary.shots} {summary.shots === 1 ? 'shot' : 'shots'} · {summary.targets}{' '}

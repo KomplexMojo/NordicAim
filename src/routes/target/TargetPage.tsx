@@ -248,7 +248,11 @@ export function TargetPage() {
       </ZoomFrame>
 
       {result !== null && (
-        <ObservedPatterns characteristics={result.all.characteristics} scope="Worked out from this target's shots when its analysis was saved." />
+        <ObservedPatterns
+          characteristics={result.all.characteristics}
+          scope="Worked out from this target's shots when its analysis was saved."
+          missLabel={template === 'sighting' ? (position === 'standing' ? 'Miss on standing' : 'Miss on prone') : 'Outside the black'}
+        />
       )}
 
       {result !== null && (

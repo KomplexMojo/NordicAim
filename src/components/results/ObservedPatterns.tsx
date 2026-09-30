@@ -8,7 +8,18 @@ const one = (v: number | null, unit: string): string => (v === null ? '—' : `$
  * when its analysis is saved) and on Patterns (worked out over the whole set of shots on screen). The rules are provisional
  * (`docs/spec/shooting-issues.md`), so the wording is 'potential', not a verdict.
  */
-export function ObservedPatterns({ characteristics, scope }: { characteristics: Characteristics | null | undefined; scope: string }) {
+export function ObservedPatterns({
+  characteristics,
+  scope,
+  missLabel = 'Outside the black',
+}: {
+  characteristics: Characteristics | null | undefined;
+  scope: string;
+  /** What `outsideShare` means for this target's template and position (precision: "Outside the black"; sighting:
+   * "Miss on prone" or "Miss on standing", since the whole sighting disc is black and only a thin printed line marks
+   * each zone, owner, 2026-09-30). */
+  missLabel?: string;
+}) {
   if (characteristics === null || characteristics === undefined || characteristics.n === 0) return null;
   const c = characteristics;
   const found = c.issues.length;
@@ -39,7 +50,7 @@ export function ObservedPatterns({ characteristics, scope }: { characteristics: 
             <dd>{c.shape ?? '—'}</dd>
             <dt className="text-muted-foreground">Flyers</dt>
             <dd>{c.flyers}</dd>
-            <dt className="text-muted-foreground">Outside the black</dt>
+            <dt className="text-muted-foreground">{missLabel}</dt>
             <dd>{c.outsideShare === null ? '—' : `${Math.round(c.outsideShare * 100)}%`}</dd>
           </dl>
           {c.enough && (

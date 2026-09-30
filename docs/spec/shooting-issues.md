@@ -34,7 +34,7 @@
 | `θ` | angle of the principal axis, CCW from +x′, in `[0°, 180°)` | **grouping** |
 | `med` | median of the `dᵢ` | **precision** |
 | flyer | a shot with `dᵢ ≥ F · med`, `F = 2.5` (*P*); the rest are the **core**; `ES_core` is the core's spread | **grouping** |
-| `q` | share of shots farther than the black disc's radius from the bullseye (56.2 mm precision, 57.5 mm sighting) | **accuracy** |
+| `q` | share of shots farther than the position's zone radius from the bullseye: precision 56.2 mm (every position alike); sighting 22.5 mm prone, 57.5 mm standing (`discRadiusMm`, owner, 2026-09-30: an unknown position falls back to prone, the tighter of the two) | **accuracy** |
 | two clusters | 2-means split, each cluster ≥ 2 shots, centroid separation `Δ ≥ 2 · w` and `Δ ≥ 1 MOA`, `w` the larger within-cluster mean radius | **grouping** |
 | `Z` | a "significant" offset: `M ≥ Z`, `Z = 1.0 MOA` (≈ 14.5 mm) (*P*) | |
 
@@ -51,7 +51,7 @@ Named shapes: **horizontal string** `a ≤ 0.5 ∧ θ ≤ 25° ∨ θ ≥ 155°`
 | 1 | **Tight group** | grouping | `MOA(ES) ≤ 1.5` | all |
 | 2 | **Scattered group** | grouping | `MOA(ES) ≥ 3.0` | all |
 | 3 | **Zero off** (incorrect zero) | accuracy vs precision | `MOA(ES) ≤ T_loose ∧ M ≥ Z ∧ κ ≥ 2` | all |
-| 4 | **Fundamentals / equipment** (a) | accuracy | `q ≥ 0.5` (half or more of the shots outside the black disc) | all |
+| 4 | **Fundamentals / equipment** (a) | accuracy | `q ≥ 0.5` (half or more of the shots outside the zone) | all |
 | 5 | **Sight alignment** (b) | grouping | `≥ 2 flyers ∧ MOA(ES_core) ≤ 1.5 ∧ 0.2 ≤ q < 0.5` | all |
 | 6 | **Position change** (d) | grouping | two clusters | prone |
 | 7 | **Wind or light drift** (e) | grouping | horizontal string `∧ MOA(ES) ≥ 2 ∧ |x̄′| < Z` | all |
