@@ -38,3 +38,13 @@ export function dataLabel(counts: { sessions: number; photos: number }): string 
 export function missLabel(position: 'prone' | 'standing' | null): string {
   return position === 'standing' ? 'Miss on standing' : 'Miss on prone';
 }
+
+/**
+ * Issue #81 (analysis-pipeline §1): the metadata card's Stage A badge. No sub-steps are stored, so a queued photo and a
+ * running one are told apart, and a running one says what Stage A does as a whole.
+ */
+export function stageALabel(state: 'pending' | 'running' | 'done' | 'error', error: string | null): string {
+  if (state === 'error') return `Couldn't process this photo${error ? `: ${error}` : ''}`;
+  if (state === 'done') return 'Ready';
+  return state === 'running' ? 'Aligning and finding shots…' : 'Queued…';
+}

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { checksLabel, dataLabel, metricsLabel, missLabel, reasonsLabel } from '@/lib/ui/panel-labels';
+import { checksLabel, dataLabel, metricsLabel, missLabel, reasonsLabel, stageALabel } from '@/lib/ui/panel-labels';
 import { readPanelOpen, writePanelOpen } from '@/lib/ui/panel-state';
 
 describe('panel labels (issue #14)', () => {
@@ -62,5 +62,13 @@ describe('panel state', () => {
     expect(readPanelOpen('unit-b', false)).toBe(false);
     expect(() => writePanelOpen('unit-b', true)).not.toThrow();
     expect(readPanelOpen('unit-b', false)).toBe(true);
+  });
+
+  it('Stage A badge (issue #81): queued and running are told apart, never "Waiting…"', () => {
+    expect(stageALabel('pending', null)).toBe('Queued…');
+    expect(stageALabel('running', null)).toBe('Aligning and finding shots…');
+    expect(stageALabel('done', null)).toBe('Ready');
+    expect(stageALabel('error', 'no target found')).toBe("Couldn't process this photo: no target found");
+    expect(stageALabel('error', null)).toBe("Couldn't process this photo");
   });
 });

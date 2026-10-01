@@ -47,8 +47,9 @@ capture → Use photo (Stage A starts in the background) → next target → **D
   `src/lib/domain/session-date.ts`) moves it to an earlier day, saved at once. A default name follows the new date; a typed
   name is kept. `updateSession` refuses a date that is not a real day or is in the future. On the results screen, **Edit
   metadata** is a button beside **Review session** (REV-141), each with its icon (lucide `PencilLine`, `ListChecks`).
-- One card per photo: thumbnail, a small Stage A progress indicator ("Checking photo…", "Aligning…", "Finding shots…",
-  "Ready"), and these fields:
+- One card per photo: thumbnail, a small Stage A progress indicator, and these fields. The indicator maps Stage A's stored
+  state (no sub-steps are stored, issue #81): `pending` "Queued…", `running` "Aligning and finding shots…", `done` "Ready",
+  `error` "Couldn't process this photo: <error>". The fields:
   - **Target type** (prefilled from capture; REV-79): Sight in, Confirm, Precision prone or Precision standing, which sets the template and position
   - **Rounds** for prone and/or standing (defaults from `categorizationForKind`, REV-79)
   - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`, with **Season** (Winter | Spring | Summer | Fall) beside it
