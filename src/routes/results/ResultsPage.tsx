@@ -2,6 +2,7 @@ import { ListChecks, PencilLine, Star } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { EpisodeSteps } from '@/components/session/EpisodeSteps';
 import { GoalChecksCard } from '@/components/goals/GoalChecks';
 import { BackupReminder } from '@/components/settings/BackupReminder';
 import { SummaryCard } from '@/components/results/SummaryCard';
@@ -146,6 +147,7 @@ export function ResultsPage() {
         </span>
       </header>
 
+      <EpisodeSteps current={3} />
       <h1 className="text-xl font-semibold">{data.name}</h1>
 
       {needsReview && actions}

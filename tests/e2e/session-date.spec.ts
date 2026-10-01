@@ -57,8 +57,15 @@ test('results: Edit metadata sits beside Review session, both with icons', async
   await expect(edit).toHaveText('Edit metadata');
   await expect(review.locator('svg').first()).toBeVisible();
   await expect(edit.locator('svg')).toBeVisible();
-  // Side by side: the same row, each at least 44 px tall.
-  const [r, e] = [await review.boundingBox(), await edit.boundingBox()];
+  // Side by side: the same row, each at least 44 px tall. Issue #85 put the row below the summary image, which can still be
+  // loading, so both boxes are read in one go once it has.
+  await expect(page.getByTestId('summary-image')).toBeVisible({ timeout: 30_000 });
+  const [r, e] = await page.evaluate(() =>
+    ['review-session-link', 'edit-metadata-link'].map((id) => {
+      const b = document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect();
+      return { x: b.x, y: b.y, height: b.height };
+    }),
+  );
   expect(Math.abs((r?.y ?? 0) - (e?.y ?? 1))).toBeLessThan(2);
   expect(e!.x).toBeGreaterThan(r!.x);
   expect(Math.min(r!.height, e!.height)).toBeGreaterThanOrEqual(44);

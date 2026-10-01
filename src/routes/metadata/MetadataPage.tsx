@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { EpisodeSteps } from '@/components/session/EpisodeSteps';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -197,6 +198,7 @@ export function MetadataPage() {
         </span>
       </header>
 
+      <EpisodeSteps current={2} />
       <h1 className="text-xl font-semibold">Add metadata</h1>
 
       <div className="flex flex-col gap-1">

@@ -63,6 +63,10 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 - Primary button **Analyze N targets**: enabled when every photo's categorization is complete. Tapping it confirms
   lighting on every photo, sets `session.analyzeRequestedAt`, and navigates to results.
 
+**Episode steps (issue #78).** The metadata (step 2) and results (step 3) screens open with a small, non-interactive strip,
+**Photograph · Confirm · Results** (`EpisodeSteps`): earlier steps ticked, the current one filled. Capture stays full-screen
+without it.
+
 **Step 3: receive analysis** (`ResultsPage`):
 - Top: **Session summary** card with the summary image, **Share**, then a quiet **Update summary**, and the "Attach in Garmin
   Connect" steps (M14). Issue #85: the payoff leads. On a healthy session the **Review session** / **Edit metadata** row

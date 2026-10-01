@@ -163,3 +163,20 @@ test('cards and the target screen say the result in plain words before the metri
   await expect(page.getByTestId('target-detail-title')).toBeVisible();
   await expect(page.getByTestId('plain-line')).toHaveText(/^Average ring /);
 });
+
+test('metadata and results show where the session is: Photograph → Confirm → Results (issue #78)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/metadata`);
+  const steps = page.getByTestId('episode-steps');
+  await expect(steps).toHaveAttribute('data-current', '2');
+  await expect(steps.locator('[aria-current="step"]')).toContainText('Confirm');
+  await expect(steps.locator('[data-step="1"]')).toHaveAttribute('data-done', 'true');
+  await expect(steps.locator('[data-step="3"]')).toHaveAttribute('data-done', 'false');
+
+  await page.goto(`/#/sessions/${sessionId}/results`);
+  await expect(page.getByTestId('episode-steps')).toHaveAttribute('data-current', '3');
+  await expect(page.getByTestId('episode-steps').locator('[aria-current="step"]')).toContainText('Results');
+
+  await page.goto(`/#/sessions/${sessionId}/capture`);
+  await expect(page.getByTestId('episode-steps')).toHaveCount(0); // capture stays full-screen
+});
