@@ -259,11 +259,11 @@ test('Goals charts Score, Group size, Accuracy (RMS) and Biathlon hits; not MPI'
   await expect(page.getByTestId('trend-zoneHit')).toHaveCount(0);
 });
 
-test('the tab bar stays at four targets, each at least 44 px, with Goals visible alongside the others', async ({ page }) => {
+test('the tab bar has five targets, each at least 44 px, with Goals visible alongside the others (issue #42 added Board)', async ({ page }) => {
   await page.goto('/#/goals');
   const bar = page.getByTestId('tab-bar');
-  await expect(bar.locator('li')).toHaveCount(4);
-  for (const name of ['Sessions', 'Analysis', 'Patterns', 'Goals']) {
+  await expect(bar.locator('li')).toHaveCount(5);
+  for (const name of ['Sessions', 'Analysis', 'Patterns', 'Goals', 'Board']) {
     await expect(bar.getByRole('link', { name })).toBeVisible();
   }
 });
