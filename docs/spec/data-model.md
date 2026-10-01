@@ -257,6 +257,7 @@ Database `asa`, version **3**, opened with `idb`'s `openDB`.
 | `secrets` | `key` (`'provenance'`) | — | `{ key, keyB64 }` — the derived provenance key (REV-100, `provenance.md`). Database version 2. **Never in a backup**; the passphrase is never stored. |
 | `settings` | keyPath `key` | — | `AppSettings` |
 | `goals` | keyPath `key` | — | `GoalsStore` — the append-only goal log (`goals.md` §2). Database version 3. |
+| `board` | keyPath `key` | — | `BoardStore` — submissions and challenges received from other shooters (`leaderboard.md` §8). Database version 4. |
 
 Blob keys (`src/lib/store/blob-keys.ts`):
 - `photo:<pid>:original`, `photo:<pid>:working` (JPEG ≤ 3000 px, oriented, no metadata), `photo:<pid>:thumb` (≤ 480 px)

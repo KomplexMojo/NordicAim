@@ -154,6 +154,12 @@ A restore returns the application to its previous state, not just its sessions:
 - **Preferences travel too.** The file has an optional top-level `"preferences": [{ "key", "value" }]`: the app's `localStorage` entries under `asa.` (the open or closed state of each Settings panel, the capture screen's remembered choices). Only well-formed `asa.` entries are read back; a backup from before this has none and still restores. Written by `collectPreferences` and put back by `applyPreferences` (`backup/preferences-browser.ts`).
 - **The key is not.** The derived provenance key stays out of every backup (`provenance.md` §1). After a restore the report says so, and Settings → Athlete shows **Unlock**: the same passphrase re-derives it with the restored salt.
 - The Settings screen re-reads the restored settings and preferences at once; no reload is needed.
+- **The received board travels in a full backup** (REV-155, `leaderboard.md` §8). The file has an optional top-level `"board":
+  { "submissions": [...], "challenges": [...] }`, as stored; a backup of chosen sessions (§2c) and every earlier file have none.
+  On restore every submission and challenge is checked again (shape and signature) and merged like an import, newest per shooter
+  winning, with no Keep / Replace question; the report says how many shooters came back. The board's signing key is never in a
+  backup: it is derived from the stamp passphrase, so **Unlock** brings the same identity back. Each target's automatic baseline
+  travels inside its analysis record.
 
 The format version stays 1: the new field is optional.
 

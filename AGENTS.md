@@ -92,8 +92,10 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
 - **Share rule.** The only images handed to the share sheet or a download are a stored `CompositeArtifact` (the session
   summary image, `docs/spec/rendering-composite.md` §6) and a stored `TrendsArtifact` (the coach image, `docs/spec/analysis.md`
   §5, REV-124), each only on the owner's tap. Photos never leave the phone, with one exception (REV-63): a
-  **backup the owner explicitly creates** (`docs/spec/backup.md`) may contain photos. The static printable sheets in `public/sheets/` (no user data, REV-135) may also be downloaded. Nothing else may leave
-  the phone, and nothing is ever sent anywhere automatically.
+  **backup the owner explicitly creates** (`docs/spec/backup.md`) may contain photos. The static printable sheets in `public/sheets/` (no user data, REV-135) may also be downloaded. A
+  **signed board submission, board file or challenge** (`docs/spec/leaderboard.md` §6, REV-155: names, clubs and shot positions;
+  never a photo or GPS) may be shared, only on the owner's tap. Nothing else may leave the phone, and nothing is ever sent
+  anywhere automatically.
 - **Repo privacy.** Never commit `fixtures/private/`, `.env*` (except `.env.example`), or user data. Committed images
   carry no GPS EXIF (`pnpm check:privacy`).
 - **Pure/adapter split.** Pixel algorithms take `RgbaImage { data: Uint8ClampedArray; width; height }` and don't touch
@@ -130,7 +132,7 @@ iPhone testing: push to `main`, then open `https://komplexmojo.github.io/NordicA
 index.html                     CSP meta, root element
 src/main.tsx                   bootstrap, service worker registration, pipeline resume
 src/app/router.tsx             createHashRouter route table (routes: spec/analysis-pipeline.md §1)
-src/routes/                    home, patterns, analysis, capture, metadata, results, target, review, settings, diagnostics (sessions/ is only the redirect)
+src/routes/                    home, patterns, analysis, goals, board, capture, metadata, results, target, review, settings, diagnostics (sessions/ is only the redirect)
 src/components/                UI components (shadcn primitives in components/ui)
 src/lib/domain/                zod schemas, types, categorization helpers, status.ts (photoStatus)
 src/lib/defaults/              biathlon profile + template geometry
@@ -138,6 +140,7 @@ src/lib/geometry/              mm<->px transforms, calibration scaling
 src/lib/scoring/               pure scoring, groups, splits, missing-round modes, characteristics (observed patterns)
 src/lib/backup/  src/lib/patterns/   backup create/restore/verify/rebuild (REV-63, REV-125/126); cross-session Patterns collect/summarize
 src/lib/analysis/              Analysis trends (trend, chart incl. least-squares), coach image data and averages (REV-123/124, REV-128–132)
+src/lib/leaderboard/           Board (REV-155): board score and correction flag, automatic baseline, top 5, Ed25519 identity, signed submissions and challenges, merge, files
 src/lib/capture/               overlay.ts (pure), camera.ts, fake-camera.ts, wake-lock-browser.ts
 src/lib/media/                 format, capture-time, image-stats, lighting (pure); exif.ts; image-browser.ts
 src/lib/store/                 db.ts + repositories (idb) + persistence-browser.ts
