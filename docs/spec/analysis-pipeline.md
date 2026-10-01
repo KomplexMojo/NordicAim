@@ -72,6 +72,9 @@ capture → Use photo (Stage A starts in the background) → next target → **D
   - the `cell` diagram
   - headline (precision: `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses; sighting:
     `9/10 hits @ 45 mm`; `both`: per-position headlines). The score is definite — no range (REV-39)
+  - a plain-language line under the headline (issue #86, `plainLine` in `render/text-lines.ts`, also on the target
+    screen): `7 of 10 in the 45 mm zone · group 4.7 MOA across · centre 2 mm high, 3 mm left`, or for precision
+    `Average ring 8.9 · group 2.9 MOA across · centred` (a centre within 3 mm). It never mentions shots found (REV-49)
   - key metrics (group size mm · MOA · MRAD; MPI offset)
   - a **rejected** target (`too-many-holes`) shows the photo and its reason instead of a diagram, headline and metrics
   - status chip plus reason messages (§4)

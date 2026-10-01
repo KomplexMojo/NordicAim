@@ -149,3 +149,17 @@ test('results lead with the summary and Share; Review and Edit metadata follow o
   expect(s!.y).toBeLessThan(u!.y); // Share before Update summary
   await expect(page.getByTestId('edit-metadata-link')).toBeVisible();
 });
+
+test('cards and the target screen say the result in plain words before the metrics (issue #86)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/results`);
+  await waitForIdle(page);
+  const cards = page.getByTestId('target-card');
+  await expect(cards.first().getByTestId('plain-line')).toHaveText(/MOA across/, { timeout: 30_000 });
+  const precision = cards.filter({ hasText: 'Precision' }).first();
+  await expect(precision.getByTestId('plain-line')).toHaveText(/^Average ring \d+\.\d · group \d+\.\d MOA across · (centred|centre \d+ mm (high|low), \d+ mm (left|right))$/);
+  await precision.getByTestId('view-target').click();
+  await page.waitForURL(/\/photos\//);
+  await expect(page.getByTestId('target-detail-title')).toBeVisible();
+  await expect(page.getByTestId('plain-line')).toHaveText(/^Average ring /);
+});

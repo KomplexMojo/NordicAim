@@ -21,7 +21,7 @@ import type { AnalysisResult, SubsetResult, TargetAnalysis } from '@/lib/domain/
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { positionLabel } from '@/lib/pipeline/stage-b';
-import { shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
+import { plainLine, shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
 import { formatAngular, formatMm } from '@/lib/scoring/format';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -227,6 +227,11 @@ export function TargetPage() {
           <p className="text-sm text-muted-foreground" data-testid="shots-found-line">
             {shotsFoundLine(result)}
           </p>
+          {plainLine(result) !== null && (
+            <p className="text-sm" data-testid="plain-line">
+              {plainLine(result)}
+            </p>
+          )}
         </>
       )}
 

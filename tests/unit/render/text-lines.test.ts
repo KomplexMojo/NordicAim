@@ -8,6 +8,7 @@ import type { Shot } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
 import {
   cellCaption,
+  plainLine,
   precisionFooterLines,
   shotsFoundLine,
   sightingFooterLines,
@@ -304,3 +305,40 @@ describe('render/text-lines touchCreditNote (M24, REV-49: rendering-composite §
     expect(touchCreditNote(result.all.units)).not.toBeNull();
   });
 });
+
+describe('plainLine (issue #86)', () => {
+  const shot = (id: string, xMm: number, yMm: number): Shot => ({
+    id,
+    xMm,
+    yMm,
+    multiplicity: 1,
+    positionOverrides: null,
+    source: 'auto',
+    confidence: null,
+    cluster: false,
+    possibleOverlap: false,
+  });
+
+  it('sighting: hits of rounds in the zone, the group in MOA, and where the centre sits', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 4, roundsStanding: null };
+    // Centre (-10, 20): 20 mm high, 10 mm left. The 40 mm shot misses the 45 mm zone.
+    const shots = [shot('a', -10, 10), shot('b', -10, 30), shot('c', -20, 20), shot('d', 0, 20)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    const moa = result.all.extremeSpreadAngular!.moa.toFixed(1);
+    const { hits, misses } = result.all.sighting!;
+    expect(plainLine(result)).toBe(`${hits} of ${hits + misses} in the 45 mm zone · group ${moa} MOA across · centre 20 mm high, 10 mm left`);
+    expect(plainLine(result)).not.toMatch(/found/); // REV-49
+  });
+
+  it('precision: the average ring over the shots placed, and "centred" within 3 mm', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 2, roundsStanding: null };
+    const result = analyzeTarget({ template: 'precision', categorization, shots: [shot('a', 1, 0), shot('b', -1, 0)] });
+    expect(plainLine(result)).toMatch(/^Average ring 10\.0 · group \d+\.\d MOA across · centred$/);
+  });
+
+  it('is null with no shots', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null };
+    expect(plainLine(analyzeTarget({ template: 'precision', categorization, shots: [] }))).toBeNull();
+  });
+});
+

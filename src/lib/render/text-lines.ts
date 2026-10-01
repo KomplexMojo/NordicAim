@@ -209,3 +209,35 @@ export function shotsFoundLine(result: AnalysisResult): string {
 export function touchCreditNote(units: UnitResult[]): string | null {
   return units.some(isUnitTouchCredited) ? 'Dashed ring around a shot: scored by touching the line, not a solid hit' : null;
 }
+
+/**
+ * Issue #86: one plain-language line under the headline, before the dense metrics, in the athlete's words:
+ * sighting `7 of 10 in the 45 mm zone · group 4.7 MOA across · centre 2 mm high, 3 mm left`; precision
+ * `Average ring 8.9 · group 2.9 MOA across · centre 6 mm low, 1 mm right`. A centre within 3 mm reads `centred`. REV-49:
+ * it says nothing about shots found. Null when there is nothing to say (no shots).
+ */
+export function plainLine(result: AnalysisResult): string | null {
+  const subset = result.all;
+  const parts: string[] = [];
+  if (result.template === 'sighting' && result.position !== 'both' && subset.sighting !== null && subset.sighting.zoneDiameterMm !== null) {
+    const { hits, misses, zoneDiameterMm } = subset.sighting;
+    parts.push(`${hits} of ${hits + misses} in the ${zoneDiameterMm} mm zone`);
+  }
+  if (result.template === 'precision' && subset.precision !== null && subset.identified > 0) {
+    parts.push(`average ring ${(subset.precision.identifiedTotal / subset.identified).toFixed(1)}`);
+  }
+  const moa = subset.extremeSpreadAngular?.moa ?? null;
+  if (moa !== null) parts.push(`group ${moa.toFixed(1)} MOA across`);
+  const offset = subset.mpiOffset;
+  if (offset !== null) {
+    if (Math.hypot(offset.xMm, offset.yMm) < 3) parts.push('centred');
+    else {
+      const y = `${Math.round(Math.abs(offset.yMm))} mm ${offset.yMm >= 0 ? 'high' : 'low'}`;
+      const x = `${Math.round(Math.abs(offset.xMm))} mm ${offset.xMm >= 0 ? 'right' : 'left'}`;
+      parts.push(`centre ${y}, ${x}`);
+    }
+  }
+  if (parts.length === 0) return null;
+  const line = parts.join(' · ');
+  return line[0]!.toUpperCase() + line.slice(1);
+}
