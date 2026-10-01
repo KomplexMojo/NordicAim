@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildPrecisionScore,
   buildSightingOutcome,
-  combinePrecisionScores,
-  combineSightingOutcomes,
   missingInfo,
 } from '@/lib/scoring/missing';
 import type { SightingUnit } from '@/lib/scoring/missing';
@@ -52,15 +50,6 @@ describe('scoring/missing buildPrecisionScore (geometry-scoring.md §8.1, REV-39
   });
 });
 
-describe('scoring/missing combinePrecisionScores', () => {
-  it('sums tally, xCount and identifiedTotal element-wise', () => {
-    const a = buildPrecisionScore([ring(10, true), ring(9)], 2);
-    const b = buildPrecisionScore([ring(8)], 2);
-    const combined = combinePrecisionScores(a, b, 4);
-    expect(combined).toEqual({ tally: [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1], xCount: 1, identifiedTotal: 27, maxPossible: 40 });
-  });
-});
-
 function su(shotId: string, xMm: number, yMm: number, zone: SightingUnit['zone'], unitIndex = 0): SightingUnit {
   return { shotId, unitIndex, xMm, yMm, radialMm: Math.hypot(xMm, yMm), zone };
 }
@@ -80,13 +69,5 @@ describe('scoring/missing buildSightingOutcome (geometry-scoring.md §8.2, REV-3
   it('over-count: misses are the located units outside the zone only', () => {
     const over: SightingUnit[] = [su('a', 0, 0, 'clean'), su('b', 1, 0, 'clean'), su('c', 90, 0, 'miss')];
     expect(buildSightingOutcome(over, 1, 45)).toEqual({ zoneDiameterMm: 45, hits: 2, clean: 2, misses: 1 });
-  });
-});
-
-describe('scoring/missing combineSightingOutcomes', () => {
-  it('sums hits, clean and misses; the combined zone is null', () => {
-    const prone = buildSightingOutcome([su('p1', 0, 0, 'clean')], 2, 45);
-    const standing = buildSightingOutcome([su('s1', 10, 0, 'clean')], 1, 115);
-    expect(combineSightingOutcomes(prone, standing)).toEqual({ zoneDiameterMm: null, hits: 2, clean: 2, misses: 1 });
   });
 });

@@ -329,16 +329,6 @@ describe('render/composite renderCompositeSvg slot layout', () => {
   });
 });
 
-describe('render/composite does not repeat what the captions say (REV-106)', () => {
-  it('a sighting "both" target adds no per-target summary line to the band; its caption keeps the hits and ES', () => {
-    const bothCategorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const bothResult = analyzeTarget({ template: 'sighting', categorization: bothCategorization, shots: sightingFixture.shots });
-    const bothSlot = slot({ ...sightingFixture, categorization: bothCategorization }, bothResult);
-    const svg = renderCompositeSvg(baseInput({ slots: { sighting: [bothSlot, null], precision: [null, null] } }));
-    expect(svg).not.toContain('Sight in (prone + standing)');
-  });
-});
-
 // ---- REV-59: the band names the scoring method and shows where the rules differ (issue #17) ---------------------------------
 
 import type { ScoringRule } from '@/lib/domain/settings';

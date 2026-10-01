@@ -31,9 +31,7 @@ export const DIAGRAM_FULL_SIZE = { widthPx: 1500, heightPx: 1700 } as const;
 
 /** rendering-composite §3 item 3 / `DiagramInput.positionLabel`. */
 export function positionLabel(position: Position): string {
-  if (position === 'prone') return 'Prone';
-  if (position === 'standing') return 'Standing';
-  return 'Prone + standing';
+  return position === 'prone' ? 'Prone' : 'Standing';
 }
 
 /**

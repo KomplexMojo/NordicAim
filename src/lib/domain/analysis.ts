@@ -168,7 +168,7 @@ export interface SubsetResult {
 export interface AnalysisResult {
   engineVersion: string;
   template: 'sighting' | 'precision';
-  position: 'prone' | 'standing' | 'both';
+  position: 'prone' | 'standing';
   subsets: SubsetResult[];
   all: SubsetResult;
 }
@@ -177,7 +177,7 @@ export interface AnalysisResult {
 export const AnalysisResultSchema: z.ZodType<AnalysisResult> = z.object({
   engineVersion: z.string(),
   template: z.enum(['sighting', 'precision']),
-  position: z.enum(['prone', 'standing', 'both']),
+  position: z.enum(['prone', 'standing']),
   subsets: z.array(z.custom<SubsetResult>()),
   all: z.custom<SubsetResult>(),
 });
@@ -189,7 +189,11 @@ export const TargetAnalysis = z.object({
   shots: z.array(Shot),
   pipeline: PipelineState,
   updatedAt: UtcIso,
-  computed: z.object({ engineVersion: z.string(), result: AnalysisResultSchema }).nullable(),
+  // REV-153: a result stored for an old `both` target reads as not yet computed, so it is scored again as prone.
+  computed: z.preprocess(
+    (c) => ((c as { result?: { position?: unknown } } | null)?.result?.position === 'both' ? null : c),
+    z.object({ engineVersion: z.string(), result: AnalysisResultSchema }).nullable(),
+  ),
 });
 export type TargetAnalysis = z.infer<typeof TargetAnalysis>;
 

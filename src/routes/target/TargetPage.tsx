@@ -160,8 +160,6 @@ export function TargetPage() {
           {result.subsets.map((subset) => (
             <SubsetSection key={subset.key} subset={subset} />
           ))}
-          {/* For a `both` target the combined subset carries its own group and score (geometry-scoring §7). */}
-          {result.position === 'both' && <SubsetSection subset={result.all} />}
         </div>
       )}
 

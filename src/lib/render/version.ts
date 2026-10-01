@@ -8,6 +8,8 @@
 // (`refreshStaleDiagrams`).
 //
 // Bump it whenever a per-target diagram's output changes, or `characterize-result.ts`'s / `characteristics.ts`'s:
+//   13 — REV-153 (issue #25): there is no `both` position; a stored `both` target is read as prone (its rounds
+//        summed) and scored again, so its diagram loses the two-colour legend.
 //   12 — owner, 2026-10-01: an elongated group that is none of the named strings reads "elongated (…)", not
 //        "round" (`characteristics.ts`'s `shape`).
 //   11 — owner, 2026-10-01: the outside-the-zone share reads the real biathlon zones (45 mm prone, 115 mm
@@ -24,4 +26,4 @@
 //   3 — REV-79: a sighting diagram's top-left mark is the sight-in or confirm symbol.
 //   2 — REV-60: the target screen also shows accuracy (stored results gain `accuracyRmseMm`).
 //   1 — REV-58: one fixed cell scale (no zoom-out), `+N off view`, and a detail diagram that shows every shot.
-export const DIAGRAM_RENDERER_VERSION = 12;
+export const DIAGRAM_RENDERER_VERSION = 13;

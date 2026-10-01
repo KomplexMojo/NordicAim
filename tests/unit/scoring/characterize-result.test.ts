@@ -26,23 +26,17 @@ describe('hitsZone (docs/spec/shooting-issues.md, owner 2026-10-01)', () => {
 });
 
 describe('withCharacteristics', () => {
-  it('reads each subset against its own position\'s zone, and the combined subset of a `both` target as prone', () => {
+  it('reads the subset and the combined subset against the target\'s own position\'s zone (REV-153)', () => {
     const unit = (xMm: number) => ({ xMm, yMm: 0 });
-    // Prone shots at 10 mm (inside 25.3); standing shots at 40 mm (outside prone, inside standing's 60.3).
-    const prone = [unit(10), unit(10)];
-    const standing = [unit(40), unit(40)];
-    const result = {
-      template: 'precision',
-      subsets: [
-        { key: 'prone', units: prone },
-        { key: 'standing', units: standing },
-      ],
-      all: { key: 'all', units: [...prone, ...standing] },
-    } as unknown as AnalysisResult;
-    const categorization = { position: 'both' } as unknown as Categorization;
-    const out = withCharacteristics(result, categorization, 'right', 5.6);
-    expect(out.subsets[0]!.characteristics?.outsideShare).toBe(0);
-    expect(out.subsets[1]!.characteristics?.outsideShare).toBe(0);
-    expect(out.all.characteristics?.outsideShare).toBe(0.5);
+    // Shots at 10 mm (inside prone's 25.3) and 40 mm (outside prone, inside standing's 60.3).
+    const units = [unit(10), unit(40)];
+    const result = (key: 'prone' | 'standing') =>
+      ({ template: 'precision', subsets: [{ key, units }], all: { key: 'all', units } }) as unknown as AnalysisResult;
+    const prone = withCharacteristics(result('prone'), { position: 'prone' } as Categorization, 'right', 5.6);
+    expect(prone.subsets[0]!.characteristics?.outsideShare).toBe(0.5);
+    expect(prone.all.characteristics?.outsideShare).toBe(0.5);
+    const standing = withCharacteristics(result('standing'), { position: 'standing' } as Categorization, 'right', 5.6);
+    expect(standing.subsets[0]!.characteristics?.outsideShare).toBe(0);
+    expect(standing.all.characteristics?.outsideShare).toBe(0);
   });
 });

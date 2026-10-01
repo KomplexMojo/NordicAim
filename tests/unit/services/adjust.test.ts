@@ -564,16 +564,6 @@ describe('unplacedRounds (M17 step 1, REV-29)', () => {
     expect(unplacedRounds(precision10, shots)).toBe(0);
   });
 
-  it('sums both positions for a `both` target', () => {
-    const both: Categorization = {
-      template: 'precision',
-      position: 'both',
-      roundsProne: 5,
-      roundsStanding: 5,
-    };
-    expect(unplacedRounds(both, [autoShot('a0', 0, 0)])).toBe(9);
-  });
-
   it('parks nothing while the categorization is still incomplete', () => {
     const incomplete: Categorization = {
       template: 'precision',

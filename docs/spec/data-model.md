@@ -10,7 +10,7 @@ Formats: `UtcIso` = ISO-8601 with `Z`; `LocalDateTime` = `YYYY-MM-DDTHH:mm:ss`; 
 
 ```ts
 export const TemplateId   = z.enum(['sighting', 'precision']);
-export const Position     = z.enum(['prone', 'standing', 'both']);
+export const Position     = z.enum(['prone', 'standing']); // REV-153: `both` removed
 export const ShotPosition = z.enum(['prone', 'standing']);
 export const Lighting     = z.enum(['daylight', 'night', 'artificial', 'mixed', 'unknown']);
 export const PhotoOrigin  = z.enum(['camera-overlay', 'camera-native', 'import']);
@@ -108,9 +108,10 @@ export const Categorization = z.object({
   roundsStanding: z.number().int().min(1).max(50).nullable(),
   // REV-67: for a sighting target, whether it is the initial sight-in or the confirm. absent or null = not chosen, inferred by order.
   sightingRole: z.enum(['sight-in', 'confirm']).nullable().optional(),
-  // REV-79: the UI now sets template, position, rounds and role together from one target kind (`domain/target-kind.ts`); `position: 'both'`
-  // is no longer offered but stored values still read.
+  // REV-79: the UI now sets template, position, rounds and role together from one target kind (`domain/target-kind.ts`).
 });
+// REV-153: `Categorization` is `z.preprocess(upgradeBothCategorization, …)`: a stored `position: 'both'` reads as `prone` with
+// `roundsProne = roundsProne + roundsStanding` (null when both are null) and `roundsStanding: null`.
 
 export const TargetPhoto = z.object({
   schemaVersion: z.literal(1),
@@ -135,8 +136,8 @@ export const TargetPhoto = z.object({
 ```
 
 **Helpers** (`src/lib/domain/categorization.ts`):
-- `isCategorizationComplete(c)`: template and position set; `roundsProne` set if position ∈ {prone, both}; `roundsStanding`
-  set if position ∈ {standing, both}.
+- `isCategorizationComplete(c)`: template and position set; `roundsProne` set if position is prone; `roundsStanding`
+  set if position is standing.
 - `declaredRounds(c)`: geometry-scoring §7; throws `IncompleteCategorizationError`.
 - ~~`defaultCategorization`~~ removed (REV-92): `categorizationForKind(kind)` in `domain/target-kind.ts` (REV-79) gives the default rounds per kind.
 - `emptyCategorization()`: all null.
@@ -197,8 +198,8 @@ export interface SubsetResult { key: 'prone' | 'standing' | 'all'; declared: num
   overcount: number; units: UnitResult[]; mpi: { xMm: number; yMm: number } | null; extremeSpreadMm: number | null;
   extremeSpreadAngular: Angular | null; meanRadiusMm: number | null; accuracyRmseMm: number | null; mpiOffset: MpiOffset | null;
   groupEllipse: GroupEllipse | null; precision: PrecisionScore | null; sighting: SightingOutcome | null; warnings: Array<'overcount'> }
-export interface AnalysisResult { engineVersion: string; template: 'sighting' | 'precision'; position: 'prone' | 'standing' | 'both';
-  subsets: SubsetResult[]; all: SubsetResult }
+export interface AnalysisResult { engineVersion: string; template: 'sighting' | 'precision'; position: 'prone' | 'standing';
+  subsets: SubsetResult[]; all: SubsetResult } // REV-153: a stored `both` result makes `computed` read as null
 ```
 
 Status: `photoStatus` in `src/lib/domain/status.ts`, with rules and vectors in **analysis-pipeline §4**.

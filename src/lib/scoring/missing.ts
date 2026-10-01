@@ -41,16 +41,6 @@ export function buildPrecisionScore(units: RingScore[], declared: number): Preci
   return { tally, xCount, identifiedTotal, maxPossible: declared * 10 };
 }
 
-/** Sums two subsets' precision scores element-wise (geometry-scoring.md §8.1, `all` of a `both` target). */
-export function combinePrecisionScores(a: PrecisionScore, b: PrecisionScore, declaredAll: number): PrecisionScore {
-  return {
-    tally: a.tally.map((v, i) => v + (b.tally[i] ?? 0)),
-    xCount: a.xCount + b.xCount,
-    identifiedTotal: a.identifiedTotal + b.identifiedTotal,
-    maxPossible: declaredAll * 10,
-  };
-}
-
 export interface SightingUnit {
   shotId: string;
   unitIndex: number;
@@ -69,14 +59,4 @@ export function buildSightingOutcome(units: SightingUnit[], declared: number, zo
   const hits = units.filter((u) => u.zone !== 'miss').length;
   const clean = units.filter((u) => u.zone === 'clean').length;
   return { zoneDiameterMm, hits, clean, misses: units.length - hits + missing };
-}
-
-/** geometry-scoring.md §8.2, `all` of a `both` target: hits, clean and misses are summed over the subsets. */
-export function combineSightingOutcomes(prone: SightingOutcome, standing: SightingOutcome): SightingOutcome {
-  return {
-    zoneDiameterMm: null,
-    hits: prone.hits + standing.hits,
-    clean: prone.clean + standing.clean,
-    misses: prone.misses + standing.misses,
-  };
 }

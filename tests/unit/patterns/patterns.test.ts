@@ -83,7 +83,7 @@ describe('collectPatterns (patterns.md §1, §2)', () => {
     expect(data.points.confirm).toHaveLength(0);
   });
 
-  it('a both precision target splits its units by position', () => {
+  it('a precision unit goes to its own position\'s view', () => {
     const data = collectPatterns([source({ id: 'p', template: 'precision', units: [u(1, 0, 'prone', 10), u(2, 0, 'standing', 9), u(3, 0, 'standing', 8)] })]);
     expect(data.points['precision-prone']).toHaveLength(1);
     expect(data.points['precision-standing']).toHaveLength(2);

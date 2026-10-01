@@ -78,7 +78,7 @@ function selectSighting(photos: TargetPhoto[], analyses: Map<string, TargetAnaly
 
 /**
  * REV-90: slot 3 is the most recent Precision prone and slot 4 the most recent Precision standing. A session whose precision
- * targets have no single position (stored before REV-79 with "both", or not yet categorised) keeps the two most recent.
+ * targets have no position yet (not categorised) keeps the two most recent.
  */
 function selectPrecision(photos: TargetPhoto[], analyses: Map<string, TargetAnalysis>): [string | null, string | null] {
   const candidates = photos.filter(

@@ -72,8 +72,8 @@ describe('composite/select-defaults selectDefaultSlots (rendering-composite.md Â
     expect(slots.sighting).toEqual([null, null]);
   });
 
-  it('with no standing target slot 4 is empty, and legacy targets without a single position keep the two most recent', () => {
-    const at = (h: number, position: 'prone' | 'both' | null) =>
+  it('with no standing target slot 4 is empty, and legacy targets without a position keep the two most recent', () => {
+    const at = (h: number, position: 'prone' | null) =>
       makePhoto({
         status: 'analyzed',
         categorization: { template: 'precision', position, roundsProne: 10, roundsStanding: null },
@@ -82,7 +82,7 @@ describe('composite/select-defaults selectDefaultSlots (rendering-composite.md Â
     const [a, b] = [at(0, 'prone'), at(1, 'prone')];
     const proneOnly = new Map([a, b].map((p) => [p.id, analyzed(p.id, precisionResult(70))]));
     expect(selectDefaultSlots([a, b], proneOnly).precision).toEqual([b.id, null]);
-    const [c, d] = [at(0, 'both'), at(1, null)];
+    const [c, d] = [at(0, null), at(1, null)];
     const legacy = new Map([c, d].map((p) => [p.id, analyzed(p.id, precisionResult(70))]));
     expect(selectDefaultSlots([c, d], legacy).precision).toEqual([c.id, d.id]);
   });

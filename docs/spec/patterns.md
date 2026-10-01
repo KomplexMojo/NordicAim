@@ -16,7 +16,7 @@ analyses; reads no photo; nothing leaves the phone.
 mark over a short name (*Sight in*, *Confirm*, *Prone*, *Standing*), 56 px tall, with the full label as its accessible name.
 The date-range slider below is unchanged. Goals uses the same compact buttons for its two views (owner, 2026-10-01).
 
-A `both` precision target contributes its prone units to one view and its standing units to the other. The role is the owner's choice (`categorization.sightingRole`, REV-67) or, when not chosen, inferred by
+The role is the owner's choice (`categorization.sightingRole`, REV-67) or, when not chosen, inferred by
 `sightingRoles`: the oldest unset target is Sight in (unless one is explicitly Sight in), every other unset one is Confirm.
 
 Each view's drawing is headed by the results cards' own mark for it (REV-122, issue #58): the sight-in scatter, the

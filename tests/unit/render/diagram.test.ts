@@ -62,16 +62,6 @@ describe('render/diagram renderDiagramSvg structure (rendering-composite.md §3-
     expect(svg).toContain('rotate(-');
   });
 
-  it('the "both" legend is present only when position is both', () => {
-    const single = renderDiagramSvg(buildInput(sightingFixture, sightingResult), 'full');
-    expect(single).not.toContain('class="legend-both"');
-
-    const bothCategorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const bothResult = analyze(sightingFixture, bothCategorization);
-    const both = renderDiagramSvg(buildInput(sightingFixture, bothResult, 'Prone + standing'), 'full');
-    expect(both).toContain('class="legend-both"');
-  });
-
   it('shots use fixed display radii: full 8 (x1.25 for multiplicity), cell 5 (REV-22)', () => {
     const full = renderDiagramSvg(buildInput(sightingFixture, sightingResult), 'full');
     expect(full).toContain('r="8" fill');

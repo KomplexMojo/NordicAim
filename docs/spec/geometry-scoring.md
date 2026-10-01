@@ -1,7 +1,7 @@
 # Spec: geometry and scoring
 
-Source of truth for template geometry, coordinate conventions, scoring rules, group metrics, the `both`
-split, and missing rounds (scored as misses, REV-39). Everything here is **pure math**. Implementation lives in
+Source of truth for template geometry, coordinate conventions, scoring rules, group metrics, position
+assignment, and missing rounds (scored as misses, REV-39). Everything here is **pure math**. Implementation lives in
 `src/lib/defaults/`, `src/lib/geometry/`, and `src/lib/scoring/`.
 
 Numeric tolerance in tests: `1e-6` unless a vector states otherwise. Boundary comparisons are
@@ -25,8 +25,6 @@ export const BIATHLON_50M = {
     precisionRounds: 10,
     sightingRounds: 10,
     competitionBoutRoundsPerPosition: 5,
-    bothRoundsProne: 5,
-    bothRoundsStanding: 5,
   },
 } as const;
 ```
@@ -220,26 +218,20 @@ normalised to `[0, 180)`. Centre = `mpi`.
 clicks = `round(|move| / clickValueMm)`; words: `R`/`L` and `U`/`D`. Example: mpi (9.7, 3.85), click 6 →
 "move group 9.7 mm left, 3.9 mm down (≈2 L, 1 D)". Pure function `sightCorrection(mpi, clickValueMm)`.
 
-## 7. Declared rounds and the `both` split
+## 7. Declared rounds and position assignment
+
+**Amended by REV-153 (issue #25):** a target is shot `prone` or `standing`; there is no `both`. A target stored with
+`both` is read as `prone` with `roundsProne = roundsProne + roundsStanding` (null when both are null) and is scored again
+(`data-model.md` §2).
 
 `declaredRounds(categorization)`:
 - `prone` → `roundsProne`
 - `standing` → `roundsStanding`
-- `both` → `roundsProne + roundsStanding`
 
-**Position assignment** (`assignPositions(units, categorization, overrides)`):
-1. `prone` or `standing`: every unit gets that position.
-2. `both`, with S = `roundsStanding`:
-   - Sort units by `radialMm` **descending**. Break ties by `shotId` ascending (string compare), then `unitIndex` ascending.
-   - The first `min(S, N)` units are `standing`; the rest are `prone`.
-   - Then apply per-unit overrides (`Shot.positionOverrides[unitIndex]` when not null), which win.
-3. Subsets: `prone` units and `standing` units. The `all` subset is every unit.
+**Position assignment** (`assignPositions(units, categorization)`): every unit gets the target's position.
+`Shot.positionOverrides` is no longer read.
 
-Per-subset declared rounds: prone subset → `roundsProne`, standing subset → `roundsStanding`. For single-position
-targets there is exactly one subset, plus `all`, which equals it.
-
-**Vector** (both, S = 2, roundsProne = 3): shots A(r=3), B(r=30), C(r=10), D(r=45, k=2).
-Units sorted: D#0, D#1, B, C, A → standing = {D#0, D#1}; prone = {B, C, A}.
+There is exactly one subset (the target's position), plus `all`, which equals it.
 
 ## 8. Missing and over-count (per subset)
 
@@ -262,7 +254,6 @@ In the other direction, `missing > 0` is what the Adjust screen shows as parked 
 
 - A missing round scores **0**, so the total is `identifiedTotal` (the located units' total); `tally` counts located units only.
 - `maxPossible = declared * 10`.
-- For the `all` subset of a `both` target, `tally`, `xCount` and `identifiedTotal` are the **sum** of the prone and standing subsets.
 
 **Vector:** declared 10, identified rings [10, 9, 8, 8, 7] → identifiedTotal 42, missing 5 → total **42 / 100**.
 **Vector (M20):** declared 10, rings [10, 9, 9, 8] + 1 inferred double on the 9 + 5 misses → **45 / 100 · 5 misses**.
@@ -270,7 +261,6 @@ In the other direction, `missing > 0` is what the Adjust screen shows as parked 
 ### 8.2 Sighting
 
 - `hits` and `clean` count located units (§5). `misses = (located units outside the zone) + missing` — a missing round is a miss.
-- For the `all` subset of a `both` target, `hits`, `clean` and `misses` are summed over the subsets.
 
 **Vector** (prone, declared 5): identified (0,5), (10,0), (30,0) → radial 5, 10, 30 → hit, hit, miss, missing 2 → hits 2,
 clean 2, misses 3.

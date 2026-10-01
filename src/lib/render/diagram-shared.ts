@@ -1,5 +1,5 @@
 // rendering-composite.md §3-§4. Layout pieces shared verbatim by both templates: the page background,
-// title/subtitle, the "both"-position legend dots, shot circles, the group ellipse, the MPI marker, the
+// title/subtitle, shot circles, the group ellipse, the MPI marker, the
 // footer panel, and the cell-variant chip/caption band. Each template's own ring/zone geometry (the part
 // that actually differs) lives in `diagram-sighting.ts` / `diagram-precision.ts`.
 
@@ -63,20 +63,6 @@ export function renderSubtitle(positionLabel: string, declared: number, captureL
 export function renderLegendBand(x: number, y: number, width: number, height: number, innerContent: string): string {
   const band = el('rect', { x, y, width, height, rx: 10, fill: PALETTE.panel });
   return band + innerContent;
-}
-
-/** §3 item 4: "position `both`: prone and standing colour dots with labels at x 1200." Only ever
- * called when `result.position === 'both'` (callers gate this); structure tests check the `legend-both`
- * class is present only for that position. */
-export function renderLegendBothDots(): string {
-  const x = 1200;
-  const dotR = 6;
-  const proneDot = el('circle', { cx: x, cy: 146, r: dotR, fill: PALETTE.shotProne });
-  const proneLabel = text(x + 12, 152, 17, 'Prone', { color: PALETTE.textPrimary });
-  const standingX = x + 96;
-  const standingDot = el('circle', { cx: standingX, cy: 146, r: dotR, fill: PALETTE.shotStanding });
-  const standingLabel = text(standingX + 12, 152, 17, 'Standing', { color: PALETTE.textPrimary });
-  return el('g', { class: 'legend-both' }, proneDot + proneLabel + standingDot + standingLabel);
 }
 
 function shotFillColor(shot: Shot, units: UnitResult[], override?: string): string {

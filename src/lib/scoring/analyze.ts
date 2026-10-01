@@ -7,7 +7,7 @@ import { IncompleteCategorizationError, declaredRounds, isCategorizationComplete
 import type { Position, ShotPosition, TemplateId } from '../domain/enums';
 import type { Categorization } from '../domain/photo';
 import { accuracyRmse, angular, extremeSpread, groupEllipse, meanRadius, mpi, mpiOffset } from './groups';
-import { buildPrecisionScore, buildSightingOutcome, combinePrecisionScores, combineSightingOutcomes, missingInfo } from './missing';
+import { buildPrecisionScore, buildSightingOutcome, missingInfo } from './missing';
 import type { SightingUnit } from './missing';
 import { scoreRing } from './precision';
 import { zoneFor } from './sighting';
@@ -46,7 +46,7 @@ export function analyzeTarget(input: AnalyzeTargetInput): AnalysisResult {
   const distanceMm = profile.distanceM * 1000;
 
   const expanded = expandUnits(shots);
-  const positioned = assignPositions(expanded, categorization, shots);
+  const positioned = assignPositions(expanded, categorization);
 
   const classify = (u: PositionedUnit): UnitResult => {
     if (template === 'precision') {
@@ -82,59 +82,17 @@ export function analyzeTarget(input: AnalyzeTargetInput): AnalysisResult {
           ? buildSightingOutcome(
               units.map(toSightingUnit),
               declared,
-              key === 'all' ? (position === 'both' ? null : zoneDiameterFor(position as ShotPosition)) : zoneDiameterFor(key),
+              zoneDiameterFor(key === 'all' ? position : key),
             )
           : null,
       warnings,
     };
   };
 
-  if (position !== 'both') {
-    const declared = declaredRounds(categorization);
-    const units = positioned.filter((u) => u.position === position).map(classify);
-    const subset = buildSubset(position, units, declared);
-    const all: SubsetResult = { ...subset, key: 'all' };
-    return { engineVersion: ENGINE_VERSION, template, position, subsets: [subset], all };
-  }
-
-  const declaredProne = categorization.roundsProne as number;
-  const declaredStanding = categorization.roundsStanding as number;
-  const declaredAll = declaredProne + declaredStanding;
-
-  const proneUnits = positioned.filter((u) => u.position === 'prone').map(classify);
-  const standingUnits = positioned.filter((u) => u.position === 'standing').map(classify);
-  const proneSubset = buildSubset('prone', proneUnits, declaredProne);
-  const standingSubset = buildSubset('standing', standingUnits, declaredStanding);
-
-  const allUnits = [...proneSubset.units, ...standingSubset.units];
-  const { identified: identifiedAll, missing: missingAll, overcount: overcountAll, warnings: warningsAll } = missingInfo(
-    allUnits.length,
-    declaredAll,
-  );
-  const centerAll = mpi(allUnits);
-  const esAll = extremeSpread(allUnits);
-
-  const allSubset: SubsetResult = {
-    key: 'all',
-    declared: declaredAll,
-    identified: identifiedAll,
-    missing: missingAll,
-    overcount: overcountAll,
-    units: allUnits,
-    mpi: centerAll,
-    extremeSpreadMm: esAll,
-    extremeSpreadAngular: angular(esAll, distanceMm),
-    meanRadiusMm: meanRadius(allUnits, centerAll),
-    accuracyRmseMm: accuracyRmse(allUnits),
-    mpiOffset: mpiOffset(centerAll, distanceMm),
-    groupEllipse: groupEllipse(allUnits),
-    precision: template === 'precision' ? combinePrecisionScores(proneSubset.precision!, standingSubset.precision!, declaredAll) : null,
-    sighting:
-      template === 'sighting'
-        ? combineSightingOutcomes(proneSubset.sighting!, standingSubset.sighting!)
-        : null,
-    warnings: warningsAll,
-  };
-
-  return { engineVersion: ENGINE_VERSION, template, position, subsets: [proneSubset, standingSubset], all: allSubset };
+  // REV-153: every target is one position, so its one subset is also the whole target.
+  const declared = declaredRounds(categorization);
+  const units = positioned.filter((u) => u.position === position).map(classify);
+  const subset = buildSubset(position, units, declared);
+  const all: SubsetResult = { ...subset, key: 'all' };
+  return { engineVersion: ENGINE_VERSION, template, position, subsets: [subset], all };
 }

@@ -172,15 +172,6 @@ describe('render/text-lines targetHeadline (rendering-composite.md §3, Steps §
     expect(targetHeadline(result)).toBe('86 / 100 · X 1');
   });
 
-  it('"both" position joins each subset\'s own headline as "Prone <h> · Standing <h>"', () => {
-    const fixture = readFixture('sample-shots-sighting.json');
-    const categorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const result = analyzeTarget({ template: fixture.template, categorization, shots: fixture.shots });
-    const headline = targetHeadline(result);
-    expect(headline).toMatch(/^Prone .+ · Standing .+$/);
-    expect(headline).not.toContain('undefined');
-    expect(headline).not.toContain('null');
-  });
 });
 
 describe('render/text-lines golden checks (rendering-composite.md §3 "Golden check")', () => {
@@ -209,17 +200,10 @@ describe('render/text-lines golden checks (rendering-composite.md §3 "Golden ch
     expect(lines).toContain('x4'); // largest cluster note (S2 multiplicity 4)
   });
 
-  it('precisionFooterLines adds a "Prone: … · Standing: …" line only when position is both', () => {
+  it('precisionFooterLines has 5 lines (REV-39 removed "Range:"; REV-153 removed the per-position line)', () => {
     const fixture = readFixture('sample-shots-precision.json');
     const single = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots: fixture.shots });
-    // REV-39 removed the "Range:" line, so a single-position target has 5 lines.
     expect(precisionFooterLines(single, fixture.shots)).toHaveLength(5);
-
-    const both: Categorization = { template: 'precision', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const bothResult = analyzeTarget({ template: fixture.template, categorization: both, shots: fixture.shots });
-    const lines = precisionFooterLines(bothResult, fixture.shots);
-    expect(lines).toHaveLength(6);
-    expect(lines[5]).toMatch(/^Prone: \d+\/\d+ · Standing: \d+\/\d+$/);
   });
 });
 
@@ -254,12 +238,6 @@ describe('render/text-lines cellCaption (rendering-composite.md §4)', () => {
     expect(lines.join('\n')).not.toContain('Range');
   });
 
-  it('sighting "both" names each position\'s hits instead of a single zone', () => {
-    const fixture = readFixture('sample-shots-sighting.json');
-    const categorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const result = analyzeTarget({ template: fixture.template, categorization, shots: fixture.shots });
-    expect(cellCaption(result)).toMatch(/^Prone \d+ hits? · Standing \d+ hits? · ES /);
-  });
 });
 
 function atShot(id: string, xMm: number, multiplicity = 1): Shot {

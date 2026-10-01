@@ -85,10 +85,7 @@ export function sightingFooterLines(result: AnalysisResult, shots: Shot[], posit
   return lines;
 }
 
-/**
- * rendering-composite.md §3 item 10, Precision lines 1-6, plus line 7 only when `position === 'both'`.
- * Always uses `result.all` (and, for line 7, `result.subsets`).
- */
+/** rendering-composite.md §3 item 10, Precision lines 1-6. Always uses `result.all`. */
 export function precisionFooterLines(result: AnalysisResult, shots: Shot[]): string[] {
   const subset = result.all;
   const precision = subset.precision!;
@@ -101,21 +98,12 @@ export function precisionFooterLines(result: AnalysisResult, shots: Shot[]): str
     mpiOffsetLine(subset.mpiOffset),
   ];
 
-  if (result.position === 'both') {
-    const prone = result.subsets.find((s) => s.key === 'prone')!;
-    const standing = result.subsets.find((s) => s.key === 'standing')!;
-    lines.push(
-      `Prone: ${prone.precision!.identifiedTotal}/${prone.precision!.maxPossible} · ` +
-        `Standing: ${standing.precision!.identifiedTotal}/${standing.precision!.maxPossible}`,
-    );
-  }
-
   const touchNote = touchCreditNote(subset.units);
   if (touchNote !== null) lines.push(touchNote);
   return lines;
 }
 
-/** rendering-composite.md §4, caption band. Always uses `result.all` (and, for `both` sighting, `result.subsets`). */
+/** rendering-composite.md §4, caption band. Always uses `result.all`. */
 export function cellCaption(result: AnalysisResult): string {
   // rendering-composite.md §4 (REV-51, REV-49 wording): the cell caption says what it counts, like the
   // headline, so a summary image never reads as "7 of 10 found".
@@ -123,12 +111,6 @@ export function cellCaption(result: AnalysisResult): string {
   const esText = `ES ${fmtMm(subset.extremeSpreadMm)} mm · ${fmtAngular(subset.extremeSpreadAngular?.moa ?? null)} MOA`;
 
   if (result.template === 'sighting') {
-    if (result.position === 'both') {
-      const prone = result.subsets.find((s) => s.key === 'prone')!.sighting!;
-      const standing = result.subsets.find((s) => s.key === 'standing')!.sighting!;
-      const hits = (n: number) => `${n} ${n === 1 ? 'hit' : 'hits'}`;
-      return `Prone ${hits(prone.hits)} · Standing ${hits(standing.hits)} · ${esText}`;
-    }
     const zone = subset.sighting!.zoneDiameterMm;
     return `${sightingHeadline(subset, null)}${zone === null ? '' : ` — ${zone} mm`} · ${esText}`;
   }
@@ -150,10 +132,8 @@ function precisionHeadline(subset: SubsetResult): string {
 /**
  * REV-49 (M24, issue #6): say what is counted — hits and misses, never "hits" alongside a "found"
  * denominator that reads as a shot count. `positionWord` (lowercase "prone"/"standing") is appended
- * after the zone so a single-position headline reads "7 hits · 3 misses — 45 mm prone"; `null` for a
- * `both` headline, where the "Prone "/"Standing " prefix already names the position — the zone is
- * then dropped too (fix round 1: the zone is fixed per position and repeating it in both halves is
- * redundant, and keeping it pushed the composite image's per-slot line, §5, past its 110-char cap).
+ * after the zone so the headline reads "7 hits · 3 misses — 45 mm prone"; `null` drops the zone and position (the cell
+ * caption adds the zone itself).
  */
 function sightingHeadline(subset: SubsetResult, positionWord: 'prone' | 'standing' | null): string {
   const s = subset.sighting!;
@@ -168,24 +148,10 @@ function sightingHeadline(subset: SubsetResult, positionWord: 'prone' | 'standin
  * summary image (M24: all three call this one helper, so they stay in step): precision `72 / 100 · X
  * 1`, and `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: the total is definite,
  * never a range); sighting `<hits> hit(s) · <misses> miss(es) — <45|115> mm <prone|standing>` (REV-49,
- * issue #6: "hit(s)" and "found" never share a sentence — see `shotsFoundLine`); `both`: `Prone
- * <headline> · Standing <headline>`, each half computed from that subset alone (not from `result.all`).
+ * issue #6: "hit(s)" and "found" never share a sentence — see `shotsFoundLine`).
  */
 export function targetHeadline(result: AnalysisResult): string {
-  if (result.template === 'precision') {
-    if (result.position === 'both') {
-      const prone = result.subsets.find((s) => s.key === 'prone')!;
-      const standing = result.subsets.find((s) => s.key === 'standing')!;
-      return `Prone ${precisionHeadline(prone)} · Standing ${precisionHeadline(standing)}`;
-    }
-    return precisionHeadline(result.all);
-  }
-
-  if (result.position === 'both') {
-    const prone = result.subsets.find((s) => s.key === 'prone')!;
-    const standing = result.subsets.find((s) => s.key === 'standing')!;
-    return `Prone ${sightingHeadline(prone, null)} · Standing ${sightingHeadline(standing, null)}`;
-  }
+  if (result.template === 'precision') return precisionHeadline(result.all);
   return sightingHeadline(result.all, result.position);
 }
 
@@ -219,7 +185,7 @@ export function touchCreditNote(units: UnitResult[]): string | null {
 export function plainLine(result: AnalysisResult): string | null {
   const subset = result.all;
   const parts: string[] = [];
-  if (result.template === 'sighting' && result.position !== 'both' && subset.sighting !== null && subset.sighting.zoneDiameterMm !== null) {
+  if (result.template === 'sighting' && subset.sighting !== null && subset.sighting.zoneDiameterMm !== null) {
     const { hits, misses, zoneDiameterMm } = subset.sighting;
     parts.push(`${hits} of ${hits + misses} in the ${zoneDiameterMm} mm zone`);
   }

@@ -75,7 +75,7 @@ without it.
 - Then one **target card** per photo in capture order:
   - the `cell` diagram
   - headline (precision: `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses; sighting:
-    `9/10 hits @ 45 mm`; `both`: per-position headlines). The score is definite — no range (REV-39)
+    `9/10 hits @ 45 mm`). The score is definite — no range (REV-39)
   - a plain-language line under the headline (issue #86, `plainLine` in `render/text-lines.ts`, also on the target
     screen): `7 of 10 in the 45 mm zone · group 4.7 MOA across · centre 2 mm high, 3 mm left`, or for precision
     `Average ring 8.9 · group 2.9 MOA across · centred` (a centre within 3 mm). It never mentions shots found (REV-49)
@@ -102,7 +102,7 @@ without it.
 | Step | Name | What happens | Output |
 |---|---|---|---|
 | B1 | **Incorporate user metadata** | Read categorization and lighting | — |
-| B2 | **Generate analysis: scoring (core MVP, REV-20)** | `analyzeTarget(template, categorization, shots, profile)`: precision ring scores /100, X count, tally; sighting hits/misses/clean per zone; `both` split; missing rounds scored as misses, after reconciling the shots against the declared rounds again (geometry-scoring §8.3; a rejected target gets no result); group size mm/MOA/MRAD; MPI offset (geometry-scoring) | `analysis.computed` |
+| B2 | **Generate analysis: scoring (core MVP, REV-20)** | `analyzeTarget(template, categorization, shots, profile)`: precision ring scores /100, X count, tally; sighting hits/misses/clean per zone; missing rounds scored as misses, after reconciling the shots against the declared rounds again (geometry-scoring §8.3; a rejected target gets no result); group size mm/MOA/MRAD; MPI offset (geometry-scoring) | `analysis.computed` |
 | B3 | *(diagrams)* | Render `full-svg`, `full-png`, `cell-svg`; rasterise before the transaction | diagram blobs |
 | B4 | *(status)* | `photoStatus(...)` (§4), including the `template-mismatch` warning when `templateHint.template !== categorization.template && templateHint.confidence >= 0.5` | `photo.status`, `photo.reasons` |
 | B5 | *(summary)* | After all of a session's photos are settled, schedule the summary image build (§7) | artifact |

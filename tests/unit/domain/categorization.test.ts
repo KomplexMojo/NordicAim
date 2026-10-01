@@ -27,7 +27,7 @@ describe('categorization', () => {
       isCategorizationComplete({ template: 'precision', position: 'prone', roundsProne: null, roundsStanding: null }),
     ).toBe(false);
     expect(
-      isCategorizationComplete({ template: 'precision', position: 'both', roundsProne: 5, roundsStanding: null }),
+      isCategorizationComplete({ template: 'precision', position: 'standing', roundsProne: 5, roundsStanding: null }),
     ).toBe(false);
   });
 
@@ -43,12 +43,6 @@ describe('categorization', () => {
     ).toBe(10);
   });
 
-  it('declaredRounds: both 3/2 -> 5', () => {
-    expect(
-      declaredRounds({ template: 'precision', position: 'both', roundsProne: 3, roundsStanding: 2 }),
-    ).toBe(5);
-  });
-
   it('declaredRounds: standing with null rounds throws IncompleteCategorizationError', () => {
     expect(() =>
       declaredRounds({ template: 'precision', position: 'standing', roundsProne: null, roundsStanding: null }),
@@ -57,7 +51,7 @@ describe('categorization', () => {
 
   it('declaredRoundsOrNull: the same count when the categorization is complete', () => {
     expect(
-      declaredRoundsOrNull({ template: 'precision', position: 'both', roundsProne: 3, roundsStanding: 2 }),
+      declaredRoundsOrNull({ template: 'precision', position: 'standing', roundsProne: null, roundsStanding: 5 }),
     ).toBe(5);
   });
 

@@ -100,10 +100,8 @@ export function truncate(value: string, max = MAX_LINE_CHARS): string {
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
 }
 
-/** §3's `DiagramInput.positionLabel` ("Prone" | "Standing" | "Prone + standing"), duplicated here (not
- * imported from `pipeline/stage-b.ts`) so this pure render module stays free of the pipeline layer. */
+/** §3's `DiagramInput.positionLabel` ("Prone" | "Standing"), duplicated here (not imported from `pipeline/stage-b.ts`) so this
+ * pure render module stays free of the pipeline layer. */
 export function fullPositionLabel(position: Position): string {
-  if (position === 'prone') return 'Prone';
-  if (position === 'standing') return 'Standing';
-  return 'Prone + standing';
+  return position === 'prone' ? 'Prone' : 'Standing';
 }

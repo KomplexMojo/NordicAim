@@ -221,7 +221,6 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
         selected !== null ? (
           <ShotInspector
             shot={selected}
-            position={photo.categorization.position ?? 'prone'}
             onChange={draft.changeShot}
             onDelete={deleteSelected}
             onClose={() => setSelectedId(null)}

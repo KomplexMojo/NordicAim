@@ -51,12 +51,6 @@ describe('reasonMessage: REV-39 reasons (M20, analysis-pipeline §4)', () => {
     );
   });
 
-  it('too-many-holes says which position was rejected on a both target', () => {
-    expect(reasonMessage('too-many-holes', { holesFound: 8, rejectedDeclared: 5, rejectedPosition: 'prone' })).toBe(
-      'Prone: Found 8 clear holes but you entered 5 rounds. This may be the wrong target or the wrong round count.',
-    );
-  });
-
   it('double-punch-assumed', () => {
     expect(reasonMessage('double-punch-assumed', { doublePunches: 1 })).toBe(
       '1 hole(s) look like two shots through the same hole.',

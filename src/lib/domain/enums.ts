@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const TemplateId = z.enum(['sighting', 'precision']);
 export type TemplateId = z.infer<typeof TemplateId>;
 
-export const Position = z.enum(['prone', 'standing', 'both']);
+/** REV-153 (issue #25): a target is shot prone or standing; the old `both` is read as prone (`Categorization`). */
+export const Position = z.enum(['prone', 'standing']);
 export type Position = z.infer<typeof Position>;
 
 export const ShotPosition = z.enum(['prone', 'standing']);
