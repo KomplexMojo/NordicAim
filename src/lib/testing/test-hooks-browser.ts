@@ -18,6 +18,7 @@ import { clientNow } from '@/lib/media/capture-time';
 import type { ServiceContext } from '@/lib/services/context';
 import { ingestPhoto } from '@/lib/services/ingest';
 import { requestAnalysis } from '@/lib/services/photos';
+import { keepBaseline } from '@/lib/leaderboard/baseline';
 import { listGoals } from '@/lib/services/goals';
 import { createSession, getSession } from '@/lib/services/sessions';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
@@ -40,6 +41,11 @@ export interface AsaTestHooks {
    * (analysis-pipeline §4 rule 9): `method: 'overlay'`, `source: 'overlay'`, `alignment-uncertain`.
    */
   markOverlayGuess(photoId: string): Promise<void>;
+  /**
+   * leaderboard.md: makes a demo target read as found by the app (shots `auto`, alignment `cv`), as real detection leaves it,
+   * so the board and its correction checks can be exercised; a later `setShots` is then a hand correction of it.
+   */
+  markAutomatic(photoId: string): Promise<void>;
   loadDemo(): Promise<string>;
   /** M14: reads `artifacts` / `shares` so e2e specs can assert on the summary image without a UI hook for them. */
   getSession(sessionId: string): Promise<BiathlonSession | null>;
@@ -74,7 +80,7 @@ async function applyManual(ctx: ServiceContext, photoId: string, patch: ManualPa
     throw new Error(`No photo or analysis for ${photoId}`);
   }
 
-  const next: TargetAnalysis = {
+  const next: TargetAnalysis = keepBaseline(analysis, {
     ...analysis,
     calibration: patch.calibration ? { ...patch.calibration, source: 'manual' } : analysis.calibration,
     shots: patch.shots ? patch.shots.map((shot) => ({ ...shot, source: 'manual' as const })) : analysis.shots,
@@ -88,7 +94,7 @@ async function applyManual(ctx: ServiceContext, photoId: string, patch: ManualPa
         : analysis.pipeline.alignment,
     },
     updatedAt: nowIso,
-  };
+  }, nowIso);
   const { status, reasons } = photoStatus({
     categorization: photo.categorization,
     analysis: next,
@@ -246,6 +252,30 @@ export function installTestHooks(): void {
             ? analysis.pipeline.warnings
             : [...analysis.pipeline.warnings, 'alignment-uncertain'],
         },
+        updatedAt: ctx.now().toISOString(),
+      };
+      const { status, reasons } = photoStatus({ categorization: photo.categorization, analysis: next, result: next.computed?.result ?? null });
+      await putAnalysisRecord(tx, next);
+      await putPhotoRecord(tx, { ...photo, status, reasons });
+      await tx.done;
+      emitPipelineChanged({ sessionId: photo.sessionId, photoId });
+      pipelineHooks.notify();
+    },
+    async markAutomatic(photoId) {
+      const { ctx } = await loadAppServices();
+      const tx = ctx.db.transaction(['photos', 'analyses'], 'readwrite');
+      const photo = await getPhotoRecord(tx, photoId);
+      const analysis = await getAnalysisRecord(tx, photoId);
+      if (photo === null || analysis === null || analysis.calibration === null) {
+        await tx.done;
+        throw new Error(`No photo, analysis or calibration for ${photoId}`);
+      }
+      const next: TargetAnalysis = {
+        ...analysis,
+        calibration: { ...analysis.calibration, source: 'auto', confidence: 0.9 },
+        shots: analysis.shots.map((shot) => ({ ...shot, source: 'auto' as const })),
+        pipeline: { ...analysis.pipeline, stageB: 'pending', alignment: { method: 'cv', confidence: 0.9 } },
+        autoBaseline: null,
         updatedAt: ctx.now().toISOString(),
       };
       const { status, reasons } = photoStatus({ categorization: photo.categorization, analysis: next, result: next.computed?.result ?? null });

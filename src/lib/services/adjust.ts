@@ -17,6 +17,7 @@ import { backingInputFromSettings } from '@/lib/domain/settings';
 import { photoStatus } from '@/lib/domain/status';
 import type { Calibration } from '@/lib/domain/photo';
 import { reprojectShots } from '@/lib/geometry/reproject';
+import { keepBaseline } from '@/lib/leaderboard/baseline';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { WorkingImageMissingError, shotTemplate } from '@/lib/pipeline/stage-a';
@@ -70,7 +71,8 @@ async function commitAdjustment(
     throw photo === null ? new PhotoNotFoundError(photoId) : new AnalysisNotFoundError(photoId);
   }
 
-  const mutated = mutate(analysis);
+  // leaderboard.md §3: the first correction of an automatically scored target keeps what the app found.
+  const mutated = keepBaseline(analysis, mutate(analysis), nowIso);
   const next: TargetAnalysis = {
     ...mutated,
     pipeline: { ...mutated.pipeline, stageB: 'pending' },
