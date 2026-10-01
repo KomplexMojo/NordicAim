@@ -215,3 +215,32 @@ test('back up chosen sessions: one session in a smaller, clearly named file that
   await expect(page.getByTestId('restore-preview')).toContainText('It holds 1 sessions');
   await expect(page.getByTestId('restore-preview')).toContainText('backup of chosen sessions');
 });
+
+test('the backup reminder can be dismissed, and comes back once a new session is recorded (issue #92)', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  const sid = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await page.goto('/#/');
+  await expect(page.getByTestId('backup-reminder')).toBeVisible();
+
+  await page.getByTestId('backup-reminder-dismiss').click();
+  await expect(page.getByTestId('backup-reminder')).toHaveCount(0);
+  // Dismissed everywhere, and after a reload.
+  await page.goto(`/#/sessions/${sid}/results`);
+  await expect(page.getByTestId('summary-card')).toBeVisible();
+  await expect(page.getByTestId('backup-reminder')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId('summary-card')).toBeVisible();
+  await expect(page.getByTestId('backup-reminder')).toHaveCount(0);
+
+  // A new session since the dismissal brings it back.
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await page.goto('/#/');
+  await page.reload();
+  await expect(page.getByTestId('backup-reminder')).toBeVisible();
+  // Settings → Back up now is still right there.
+  await page.goto('/#/settings');
+  await expect(page.getByTestId('backup-now')).toBeVisible();
+});

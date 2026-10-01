@@ -18,3 +18,24 @@ export function backupDue(
   if (Number.isNaN(last)) return true;
   return nowMs - last > settings.backupReminderDays * 86_400_000;
 }
+
+/** Issue #92: when the owner dismissed the reminder, and how many sessions there were then (device-local, never backed up). */
+export interface ReminderDismissal {
+  atMs: number;
+  sessions: number;
+}
+
+/**
+ * Issue #92: whether the reminder shows. It needs `backupDue`; a dismissal hides it until a new session is recorded or
+ * `backupReminderDays` pass since the dismissal, whichever comes first. A backup clears the need itself (`backupDue`).
+ */
+export function backupReminderShown(
+  settings: { lastBackupAt: string | null; backupReminderDays: number },
+  nowMs: number,
+  sessionCount: number,
+  dismissal: ReminderDismissal | null,
+): boolean {
+  if (!backupDue(settings, nowMs, sessionCount)) return false;
+  if (dismissal === null) return true;
+  return sessionCount > dismissal.sessions || nowMs - dismissal.atMs > settings.backupReminderDays * 86_400_000;
+}

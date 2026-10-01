@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createBackup } from '@/lib/backup/create';
-import { backupDue } from '@/lib/backup/due';
+import { backupDue, backupReminderShown } from '@/lib/backup/due';
 import { readBackupText } from '@/lib/backup/format';
 import { applyRestore, planRestore } from '@/lib/backup/restore';
 import { verifyBackup } from '@/lib/backup/verify';
@@ -172,6 +172,23 @@ describe('backupDue', () => {
     expect(backupDue({ lastBackupAt: at(13), backupReminderDays: 14 }, now, 1)).toBe(false);
     expect(backupDue({ lastBackupAt: at(15), backupReminderDays: 14 }, now, 1)).toBe(true);
     expect(backupDue({ lastBackupAt: at(3), backupReminderDays: 1 }, now, 1)).toBe(true);
+  });
+});
+
+describe('backupReminderShown (issue #92)', () => {
+  const day = 86_400_000;
+  const now = Date.parse('2026-09-19T12:00:00Z');
+  const never = { lastBackupAt: null, backupReminderDays: 14 };
+  it('shows whenever a backup is due and nothing was dismissed; never when no backup is due', () => {
+    expect(backupReminderShown(never, now, 2, null)).toBe(true);
+    expect(backupReminderShown(never, now, 0, null)).toBe(false);
+  });
+  it('a dismissal hides it until a new session is recorded or the reminder interval passes', () => {
+    const dismissed = { atMs: now - 2 * day, sessions: 2 };
+    expect(backupReminderShown(never, now, 2, dismissed)).toBe(false);
+    expect(backupReminderShown(never, now, 3, dismissed)).toBe(true); // a new session since
+    expect(backupReminderShown(never, now, 2, { atMs: now - 15 * day, sessions: 2 })).toBe(true); // 14 days passed
+    expect(backupReminderShown({ lastBackupAt: null, backupReminderDays: 1 }, now, 2, dismissed)).toBe(true);
   });
 });
 

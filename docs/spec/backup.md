@@ -113,6 +113,10 @@ that does not read as `AppSettings` (after `upgradeSettings`). A refused file wr
 1–365). `backupDue(settings, nowMs, sessionCount)` (pure): false when there are no sessions; true when never backed up or
 `now − lastBackupAt > backupReminderDays` days. A reminder banner (Home and Results) links to Settings → Backup; Settings
 shows the last backup's date and session count. `lastBackupAt` is set when the file is created and handed to share/download.
+**Dismiss (issue #92).** The banner has a dismiss button. A dismissal (`{ atMs, sessions }`, device-local
+`localStorage` `asa.backupReminder.dismissed`, never in a backup) hides it on every screen until a new session is
+recorded or `backupReminderDays` pass since the dismissal (`backupReminderShown`, pure). A backup clears the need itself.
+Before the first backup the banner still shows until the owner dismisses it.
 
 ## 6. Tests
 
