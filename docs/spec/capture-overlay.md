@@ -19,7 +19,8 @@ Implements REV-5, REV-8, REV-15 step 1. Pure math: `src/lib/capture/overlay.ts`.
 6. **Use photo** → `ingestPhoto` (§5) → Stage A starts in the background → back to the live camera; badge "N captured".
 7. **Done** → `#/sessions/:sessionId/metadata` (step 2). With nothing captured yet it is a quiet outline button (muted text)
    so the shutter is the one strong action; it stays tappable. From the first photo on it is the solid primary (issue #83).
-8. Fallbacks: native camera (`<input type="file" accept="image/*" capture="environment">`, `origin: 'camera-native'`) and
+8. Fallbacks (issue #82: behind a **More options** toggle under the shutter, collapsed by default and shown open, with no
+   toggle, when the live camera can't start; the Size slider stays visible): native camera (`<input type="file" accept="image/*" capture="environment">`, `origin: 'camera-native'`) and
    **Import from Photos** (`accept="image/*,.heic,.heif"`, `multiple`, `origin: 'import'`). REV-50 (issue #1): each picked
    file — from either fallback — steps through the **same review screen** in turn, showing the chosen template's full
    overlay (`overlayLayout` + `renderOverlaySvg`, §3–§4) fitted to the review container, not to any frame-space prior — an

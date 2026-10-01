@@ -203,6 +203,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
           template={template}
           outerDiameterFraction={outerDiameterFraction}
           onImported={() => setCount((c) => c + 1)}
+          forceOpen={cameraError !== null}
         />
       </footer>
 

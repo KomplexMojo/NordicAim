@@ -93,6 +93,28 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
   await expect(page.getByTestId('metadata-photo-count')).toHaveText('1 photo');
 });
 
+test('the phone camera and Photos import sit behind More options, and show at once when there is no camera (issue #82)', async ({ page }) => {
+  const sessionId = await createSessionViaHome(page);
+  // No camera here: the options are the only way in, so they show open with no toggle.
+  await expect(page.getByRole('alert')).toContainText('Use Photos import below');
+  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'More options' })).toHaveCount(0);
+
+  // With a working camera they are tucked away; the Size slider stays visible.
+  await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
+  await expect(page.getByText('FAKE CAMERA')).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Size' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeHidden();
+  const more = page.getByRole('button', { name: 'More options' });
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Import from Photos' })).toBeVisible();
+  await more.click();
+  await expect(page.getByRole('button', { name: 'Import from Photos' })).toBeHidden();
+});
+
 test('sight in: prone, ten rounds, role stored; confirm: five rounds (REV-79)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
   await captureWithFakeCamera(page, sessionId, 'sighting', 'Sight in');
