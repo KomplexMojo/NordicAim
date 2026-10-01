@@ -203,3 +203,19 @@ before rendering, with a type-narrowing predicate so `GoalChart` only ever recei
 §1 updated. `trendMetrics()` itself is untouched — Analysis still shows both MPI charts. Covered by a new domain
 test (MPI rejected by `GoalLogEntry.safeParse`) and a new e2e test (Goals shows exactly three charts; Analysis
 still shows MPI). `pnpm check` and the full `pnpm test:e2e --project=mobile-chromium` both green.
+
+**Follow-up (2026-10-01): current goal only, no date range.** After reviewing the shipped screen, the owner asked
+to simplify the concept: "you set a goal at a particular point in time and you're measured against the goal that
+you set", with no record of earlier goals on screen and no date-range slider ("just going to confuse people").
+Answers to the two questions this raised: chart **all sessions, always**; a goal is **hit** when the average of
+the sessions since it was set (`sessionStamp >= setAt`) meets it in the metric's better direction (score higher;
+group size and RMS lower). Changes:
+- `goals/model.ts`: `goalAsOf` and `goalSeries` removed; `GOAL_DIRECTION` and `goalProgress` added.
+- `GoalChart.tsx`: the dashed history step-line removed; one solid current-goal line plus a status line
+  (`goal-<metric>-status`, `data-hit` pending/true/false).
+- `GoalsPage.tsx`: the view switch alone (`ViewSwitch`, extracted from `ViewRangeControls.tsx`, which Patterns and
+  Analysis still use unchanged); no range slider or hint; every session charted.
+- `goals.md` §1–§7 rewritten to match. The storage (append-only log, §2) is unchanged: earlier entries stay
+  stored, only the latest per pair is read.
+- Tests: new unit tests for `goalProgress` (window boundary, pending, skipped values, direction); new e2e tests
+  for "no range, one line" and for the hit status going pending → hit → pending as sessions and goal changes land.

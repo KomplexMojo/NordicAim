@@ -138,7 +138,9 @@ the WebKit issue entirely (a native button needs no custom pointer-event code in
 shipped; the drag attempt and its fixes are kept in `M28-goals-drag-star.md`'s History section as a real record,
 not deleted. Also, after trying the shipped screen, the owner asked to drop MPI left/right and MPI up/down from
 Goals — a goal doesn't read as "better/worse" against a signed position the way it does the other three metrics —
-narrowing `GoalMetric` from five metrics to three; Analysis still shows both MPI charts. Depends on M22 for the
+narrowing `GoalMetric` from five metrics to three; Analysis still shows both MPI charts. On 2026-10-01 the owner simplified
+Goals again: no date range and no goal history on screen. Each chart shows only the current goal and whether the
+sessions since it was set average out at or past it; changing the goal starts over (M28's follow-up note). Depends on M22 for the
 tab-bar shell; neither touches scoring, detection or storage the MVP milestones already shipped.
 
 **Why these tiers:**

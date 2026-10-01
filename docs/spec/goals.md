@@ -1,7 +1,9 @@
 # Goals screen: set and track targets over time (issue #97)
 
-A **Goals** tab lets the athlete mark where they want each trend metric to be, per view, and see that target drawn
-on the same chart Analysis already draws — including how the target itself has changed over time. View-only except
+A **Goals** tab lets the athlete mark where they want each trend metric to be, per view, see that target drawn on
+the same chart Analysis already draws, and see whether the sessions shot since setting it have hit it. Only the
+**current** goal is ever shown: changing a goal starts over, and earlier goals are not drawn (owner, 2026-10-01).
+View-only except
 for setting a goal's value; reads the same stored analyses as Patterns and Analysis (`patterns.md`, `analysis.md`),
 reads no photo, and nothing leaves the phone.
 
@@ -12,8 +14,9 @@ not a baseline. "Direction" (higher is better vs lower is better) is a property 
 `TrendMetric`), not of the goal: the goal is just a Y-value on that metric's chart, and whichever side of it counts
 as "met" follows from the metric already knowing which way is better.
 
-- **Views**: the same four as Patterns/Analysis (`patterns.md` §1) — Sight in, Confirm, Precision prone, Precision
-  standing.
+- **Views**: the two precision views, Precision prone and Precision standing (`GoalView` in
+  `src/lib/domain/goals.ts`). Sight in and Confirm were dropped from Goals (owner, 2026-09-30); a URL naming one
+  falls back to Precision prone.
 - **Metrics**: three of the five `trendMetrics()` computes (`analysis.md` §3, `src/lib/analysis/trend.ts`) —
   Score/Hit rate (%), Group size (MOA), Accuracy/RMS (mm). MPI left/right and MPI up/down are **not** goal-able
   (owner, 2026-09-30, after reviewing the shipped screen): each one plots a signed *position* along one axis, not a
@@ -21,9 +24,9 @@ as "met" follows from the metric already knowing which way is better.
   Analysis still shows both MPI charts, only Goals narrows its set (`src/lib/domain/goals.ts`'s `GoalMetric` enum;
   `GoalsPage.tsx` filters `trendMetrics(kind)` down to it before rendering). No new metric is added to
   `trendMetrics()` itself (see §7 for the miss-rate idea that stays out of scope).
-- A goal is **not** tied to a baseline or a date range. Setting "Group size ≤ 2.5 MOA" means exactly that, at any
-  time, against whatever sessions the screen's own range filter is currently showing — the same range filter
-  Patterns and Analysis already have (`patterns.md` §3), reused verbatim.
+- A goal is **not** tied to a baseline or a date range. It is measured from the moment it was set (its `setAt`)
+  against the sessions shot since (§4). There is no date-range control on Goals (owner, 2026-10-01: the slider
+  "is just going to confuse people").
 
 ## 2. Storage: an append-only log, one row (`data-model.md` §2/§6 addition)
 
@@ -48,8 +51,8 @@ export type GoalsStore = z.infer<typeof GoalsStore>;
 Store `goals`, keyPath `key`, one row (`key: 'app'`), the same one-document-per-feature shape `settings` already
 uses (`data-model.md` §5) — simplest possible schema for a handful of entries over a lifetime of use, no index
 needed. **Setting a goal never edits or deletes a row**: it appends a new `GoalLogEntry`. There is no
-`achievedAt`, no `baselineValue`, no `amountKind` — achievement and history both fall out of reading the log, never
-out of a separately maintained flag (see §4).
+`achievedAt`, no `baselineValue`, no `amountKind` — whether a goal is hit is computed on read (§4), never stored as
+a separately maintained flag. Earlier entries for a pair stay in the log but are never shown.
 
 - **Stored vs goal-able.** The stored entry schema accepts every view and metric an entry has ever been written
   with; the narrower `GoalView` (the two precision views) and `GoalMetric` (score, group, rms) only limit what the
@@ -57,9 +60,8 @@ out of a separately maintained flag (see §4).
   in the log, readable but never shown. Validating stored rows against the narrowed sets instead made a single old
   entry fail the whole row, so every read and write threw and the arrow buttons silently did nothing (owner's
   phone, 2026-10-01). Any future narrowing must keep the stored enums wide.
-- **Current goal** for a (view, metric) pair: the entry with that (view, metric) and the latest `setAt`.
-- **Goal as of a date**: the entry with that (view, metric) and the latest `setAt` **at or before** that date; `null`
-  before the first entry for that pair.
+- **Current goal** for a (view, metric) pair: the entry with that (view, metric) and the latest `setAt`; `null`
+  before the first entry for that pair. It is the only goal the screen reads.
 - `docs/spec/data-model.md` §6's store table gains `goals` (no indexes). `AsaDbSchema`'s IndexedDB version moves
   2 → 3 (`src/lib/store/db.ts`); the `upgrade` callback changes from its two early-return branches to cascading
   `if (oldVersion < N)` blocks (never skipping a store a still-older database is also missing).
@@ -70,44 +72,46 @@ out of a separately maintained flag (see §4).
   to: '/goals' }`; the bar's `grid-cols-3` becomes `grid-cols-4`; a new star icon in the existing stroke-SVG style.
   `activeTab()` recognises `/goals`.
 - Route `/goals` → `GoalsPage`, inside the same `ServicesLayout`/`AppShell` every other main screen uses.
-- **Same `ViewRangeControls`** as Patterns and Analysis (`testIdPrefix="goals"`), unmodified: the view switch and the
-  six-stop date-range slider. The range filters which sessions' dots are plotted, exactly as it does on Analysis —
-  and because the goal line (§4) is a step function over those same sessions' x-positions, widening the range is
-  also how a goal's own history comes into view (there is no separate scrubber for it). A one-line hint under the
-  slider on this screen only (`goals-range-hint`) says so, since nothing else on screen implies the range control
-  does double duty (owner, 2026-09-30).
-- Below it, one chart per goal-able metric for the selected view (`trendMetrics(kind)`, same
-  `sessionTrend`/`filterByRange` pipeline Analysis already runs) — reusing `analysis.md` §4's geometry
-  (`chartGeometry`) but each chart also draws the goal history and live goal lines (§4) and carries a pair of
-  up/down buttons to set it (§5).
+- **View switch only** (`ViewSwitch` from `ViewRangeControls.tsx`, `testIdPrefix="goals"`, offering only the two
+  `GoalView`s): no date-range slider and no range hint (owner, 2026-10-01). The view lives in the address
+  (`?view=`), as on Patterns and Analysis. Patterns and Analysis keep their full `ViewRangeControls`, unchanged.
+- Below it, one chart per goal-able metric for the selected view (`trendMetrics('precision')` filtered to
+  `GoalMetric`), plotting **every** session for that view (`sessionTrend`, no `filterByRange`) — reusing
+  `analysis.md` §4's geometry (`chartGeometry`) plus its least-squares trend line, the current goal line and status
+  (§4), and a pair of up/down buttons to set it (§5).
 - Empty/thin states match Analysis: "No sessions here yet" with none; a chart with no goal yet just shows the data
   line, no "not enough shots" floor beyond what `chartGeometry` already does (an empty chart says "No sessions with
-  this measure in the range", as today).
+  this measure yet": Analysis's "in the range" wording doesn't apply without a range).
 
-## 4. Two goal lines: history (a step function) and the live value
+## 4. The current goal: one line, and whether it's hit
 
-The chart's x-axis is one session per evenly-spaced position, in order (`analysis.md` §4 — deliberately not a true
-time scale, "so a burst of sessions stays readable"). The **history step-line** reuses exactly those x-positions:
-for each session in the trend, look up the goal in effect **as of that session's date** (§2's "goal as of a date"),
-giving a second `Array<number | null>` the same length as the data values. Both series are run through the existing
-`chartGeometry()` (`analysis.md` §4a) with a shared `domainFrom` (data values ++ goal values ++ the live value, §5),
-so they share one y-axis and the same x-position per index — no date-to-pixel interpolation, no change to
-`chart.ts`'s geometry functions beyond the `valueToY` helper §5 needs to place a line at a value that isn't one of
-`chartGeometry`'s own plotted points.
+Each chart draws the **current goal** (§2) as one **solid**, full-width horizontal line (`goal-<metric>-indicator`)
+at its value, or at the value being stepped to while a press saves (§5). The goal value joins the chart's y-domain
+(`chartGeometry`'s `domainFrom`), so the line stays on the chart even when it sits outside every session's value;
+`valueToY` (`src/lib/analysis/chart.ts`) places it. No goal yet: no line. Earlier goals are never drawn — there is
+no history line and no "goal as of a date" (owner, 2026-10-01: "Going back in time is no longer a thing").
 
-Reading the step-line left to right **is** the goal's history: flat until the first session on/after a `setAt`, then
-a step to the new value, flat again until the next one. Widening the range slider to "All time" shows more of that
-history; there is no separate scrubber. **Achieved** is not a stored state — it's the data line meeting or crossing
-the goal line, visible on the chart by construction. A session before any goal was ever set for that pair draws no
-goal line (not zero, not the first goal retroactively). Drawn as a dashed path, distinct from the data line and the
-least-squares trend line (a colour distinct from both — `PALETTE.ellipse`/`#3AA8F8`-family blue reads as "a marked
-target" elsewhere in the app's diagrams and is free here since the trend chart draws neither the group ellipse nor
-the MPI marker).
+A status line under the chart title (`goal-<metric>-status`) says whether the current goal is hit:
 
-A second, **solid** full-width horizontal line at the *current* goal value (or the value being stepped to, §5) sits
-on top of the dashed history line — the step-line's own rightmost segment already reaches this same value, so the
-solid line is a highlight of it, not a new fact, making "what am I aiming for right now" readable at a glance
-without reading the step pattern.
+- **Window**: the sessions whose `sessionStamp` (the session's `createdAt`, UTC ISO) is **at or after** the goal's
+  `setAt`. Sessions from before the goal was set are charted but don't count. Sessions with no value for the metric
+  are skipped.
+- **Measure**: the plain mean of those sessions' per-session metric values (the same values the chart plots).
+- **Hit**: compared in the metric's better direction (`GOAL_DIRECTION` in `src/lib/goals/model.ts`):
+
+  | Metric | Better | Hit when |
+  |---|---|---|
+  | `score` (Score/Hit rate, %) | higher | average ≥ goal |
+  | `group` (Group size, MOA) | lower | average ≤ goal |
+  | `rms` (Accuracy/RMS, mm) | lower | average ≤ goal |
+
+- **Text**: "No sessions since this goal was set" while the window is empty (`data-hit="pending"`); otherwise
+  "Average since set: {value} over N session(s) · **Hit**" or "· **Not yet**" (`data-hit="true"|"false"`).
+- No goal yet: no status line.
+
+The data line and the least-squares trend line (`analysis.md` §4a) are drawn as on Analysis; the goal line uses a
+colour distinct from both (a sky blue, the `PALETTE.ellipse`/`#3AA8F8` family that reads as "a marked target"
+elsewhere in the app).
 
 ## 5. Setting a goal: up/down buttons beside the chart
 
@@ -115,7 +119,7 @@ without reading the step pattern.
 a drag-a-star-on-the-chart gesture, then — after the owner tried the shipped drag build and asked for something
 clearer, and a cross-browser pointer-capture issue in the drag gesture turned out to need its own fix — settled on
 a plain **stepper**: two `size-11` (44 px) buttons, ▲ and ▼, stacked to the left of the chart, by the y-axis. Each
-press moves the solid live goal line (§4) by one step (`STEP` in `GoalChart.tsx`: 1% for score, 0.1 MOA for group,
+press moves the goal line (§4) by one step (`STEP` in `GoalChart.tsx`: 1% for score, 0.1 MOA for group,
 0.5 mm for RMS) and **saves immediately** — there is no separate draft/preview state and no Save button; a press is
 the decision. Clamped to a fixed, sensible range per metric (`BOUNDS` in `GoalChart.tsx`: score 0–100%, group and
 RMS 0 and up — deliberately *not* the chart's own visible axis range, which for a single session is exactly
@@ -128,10 +132,9 @@ pointer position off an SVG element did not (WebKit's `setPointerCapture` suppor
 was the deciding factor alongside the plainer interaction model, once the drag build was in front of the owner.
 
 Each press is one append-only `GoalLogEntry` (§2) — a burst of presses is a burst of entries, not one. This was a
-deliberate trade favouring simplicity (no debounce, no batching) over a tighter log; revisit only if the log's size
-or a cluttered history view actually becomes a problem (§7 lists a history-list screen as still out of scope for
-now, so there's nowhere yet that a busy log would even be visible beyond the chart's own step-line, which only ever
-draws the entry in effect per session, not every entry).
+deliberate trade favouring simplicity (no debounce, no batching) over a tighter log; only the latest entry is ever
+read, so a busy log is invisible. **Changing a goal restarts its window** (§4): the new entry's `setAt` is now, so
+the status goes back to "No sessions since this goal was set" until the next session.
 
 ## 6. Service (`src/lib/services/goals.ts`)
 
@@ -139,16 +142,22 @@ draws the entry in effect per session, not every entry).
 export async function listGoals(ctx: ServiceContext): Promise<GoalLogEntry[]>;
 export async function setGoal(
   ctx: ServiceContext,
-  input: { view: PatternView; metric: GoalMetric; value: number },
+  input: { view: GoalView; metric: GoalMetric; value: number },
 ): Promise<GoalLogEntry>;
 ```
 
 Pure helpers live in `src/lib/goals/model.ts` (no clock, no storage, unit-tested directly):
 
 ```ts
-export function currentGoal(entries: GoalLogEntry[], view: PatternView, metric: GoalMetric): GoalLogEntry | null;
-export function goalAsOf(entries: GoalLogEntry[], view: PatternView, metric: GoalMetric, atIso: string): GoalLogEntry | null;
-export function goalSeries(entries: GoalLogEntry[], view: PatternView, metric: GoalMetric, trend: TrendPoint[]): Array<number | null>;
+export const GOAL_DIRECTION: Record<GoalMetric, 'higher' | 'lower'>;
+export function currentGoal(entries: readonly GoalLogEntry[], view: GoalView, metric: GoalMetric): GoalLogEntry | null;
+export interface GoalProgress { sessions: number; average: number | null; hit: boolean | null } // hit null = pending
+export function goalProgress(
+  goal: Pick<GoalLogEntry, 'value' | 'setAt'>,
+  metric: GoalMetric,
+  trend: readonly TrendPoint[],
+  value: (p: TrendPoint) => number | null,
+): GoalProgress;
 ```
 
 `setGoal` reads the stored row, appends (`id: ctx.newId()`, `setAt: ctx.now().toISOString()`), writes it back — the
@@ -164,6 +173,8 @@ same prepare-then-one-transaction shape every other write in this app follows (`
   reads approximately as "Hit rate = 100%" on the existing Score/Hit rate chart.
   A precision-specific "ring 8" goal (the prone-equivalent boundary `characterize-result.ts`'s `discRadiusMm` now
   uses) is not part of this idea at all — `PatternPoint` carries no ring-8 hit/miss flag, only the scored `ring`.
-- A separate goal-history list screen. The step-line (§4) is the history view for v1.
+- Any view of past goals (a history list or a history line on the chart). Only the current goal is shown
+  (owner, 2026-10-01).
+- A date-range control on Goals.
 - Deleting or editing a past log entry. The log is append-only; a mistaken goal is corrected by setting a new one.
 - Goals for precision's ring (score already reflects ring performance) or any metric not already in `trendMetrics()`.

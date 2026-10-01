@@ -23,9 +23,36 @@ interface ViewRangeControlsProps {
   onRange(range: PatternRange): void;
   /** `pattern` on Patterns, `analysis` on Analysis: the test ids are `<prefix>-view-<id>` and `<prefix>-range-<id>`. */
   testIdPrefix: string;
-  /** Which view buttons to offer, in order. Defaults to all four; Goals passes only the two precision views
-   * (goals.md §1 — Sight in and Confirm aren't goal-able, owner 2026-09-30). */
-  views?: readonly PatternView[];
+}
+
+interface ViewSwitchProps<V extends PatternView> {
+  view: V;
+  onView(view: V): void;
+  /** The test ids are `<prefix>-view-<id>`. */
+  testIdPrefix: string;
+  /** Which views to offer, in order: all four on Patterns and Analysis; Goals passes only the two precision views. */
+  views: readonly V[];
+}
+
+/** patterns.md §1: the view buttons on their own — Goals uses these without the date range (goals.md §3). */
+export function ViewSwitch<V extends PatternView>({ view, onView, testIdPrefix, views }: ViewSwitchProps<V>) {
+  return (
+    <div role="group" aria-label="Target type" className={cn('grid grid-cols-2 gap-2', views.length > 2 && 'sm:grid-cols-4')}>
+      {views.map((id) => (
+        <Button
+          key={id}
+          variant={id === view ? 'default' : 'outline'}
+          className="h-11"
+          aria-pressed={id === view}
+          data-testid={`${testIdPrefix}-view-${id}`}
+          onClick={() => onView(id)}
+        >
+          <ViewMark kind={id} />
+          {PATTERN_VIEW_LABEL[id]}
+        </Button>
+      ))}
+    </div>
+  );
 }
 
 // The track sits inset 1rem from the row (`inset-x-4`); the thumb is 2.25rem across (`size-9`) and, like every
@@ -42,11 +69,10 @@ function thumbCenterX(fraction: number): string {
 }
 
 /**
- * patterns.md §1, §3 and analysis.md §1 (REV-123): the view switch (all four by default; Goals narrows to just the
- * two precision views via `views`, goals.md §1) and the date range as a six-stop slider ("Latest session" last, on
- * the right), the same controls on Patterns, Analysis and Goals.
+ * patterns.md §1, §3 and analysis.md §1 (REV-123): the four views, and the date range as a six-stop slider
+ * ("Latest session" last, on the right), the same controls on Patterns and on Analysis.
  */
-export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix, views = PATTERN_VIEWS }: ViewRangeControlsProps) {
+export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }: ViewRangeControlsProps) {
   const rangeIndex = Math.max(
     0,
     RANGE_STEPS.findIndex((s) => s.id === range),
@@ -71,21 +97,7 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix, 
 
   return (
     <>
-      <div role="group" aria-label="Target type" className={cn('grid grid-cols-2 gap-2', views.length > 2 && 'sm:grid-cols-4')}>
-        {views.map((id) => (
-          <Button
-            key={id}
-            variant={id === view ? 'default' : 'outline'}
-            className="h-11"
-            aria-pressed={id === view}
-            data-testid={`${testIdPrefix}-view-${id}`}
-            onClick={() => onView(id)}
-          >
-            <ViewMark kind={id} />
-            {PATTERN_VIEW_LABEL[id]}
-          </Button>
-        ))}
-      </div>
+      <ViewSwitch view={view} onView={onView} testIdPrefix={testIdPrefix} views={PATTERN_VIEWS} />
       <div className="flex flex-col gap-1">
         <div className="relative h-11">
           <div className="pointer-events-none absolute inset-x-4 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted" />

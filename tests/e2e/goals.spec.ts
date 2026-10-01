@@ -46,9 +46,68 @@ test('Sight in and Confirm are not offered as goal views; a URL naming one falls
   await expect(page.getByTestId('goals-view-precision-prone')).toBeVisible();
   await expect(page.getByTestId('goals-view-precision-standing')).toBeVisible();
 
-  await page.goto('/#/goals?view=confirm&range=all');
+  await page.goto('/#/goals?view=confirm');
   await expect(page.getByTestId('goals-view-precision-prone')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('goals-counts')).toContainText('Precision prone');
+});
+
+test('no date range on Goals: every session is charted, and only the current goal is drawn', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  for (let i = 0; i < 2; i++) {
+    await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+    await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  }
+
+  await page.goto('/#/goals');
+  await expect(page.getByTestId('goals-range-all')).toHaveCount(0);
+  await expect(page.getByTestId('goals-range-last')).toHaveCount(0);
+  await expect(page.getByTestId('goals-range-hint')).toHaveCount(0);
+  // Patterns and Analysis open on the latest session; Goals always shows all of them.
+  await expect(page.getByTestId('goals-counts')).toHaveText('Precision prone: 2 sessions');
+
+  // Changing the goal leaves one line, at the new value — nothing of the old one.
+  await page.getByTestId('goal-score-up').click();
+  await expect(page.getByTestId('goal-score-value')).toHaveText(/^Goal: \d+%$/);
+  const first = await page.getByTestId('goal-score-value').textContent();
+  await page.getByTestId('goal-score-up').click();
+  await expect(page.getByTestId('goal-score-value')).not.toHaveText(first!);
+  await expect(page.getByTestId('goal-score-indicator')).toHaveCount(1);
+  await expect(page.getByTestId('goal-score-step')).toHaveCount(0);
+});
+
+test('hit is the average of the sessions since the goal was set, in the metric\'s better direction', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  // Set goals just below the demo's score (higher is better) and just above its group size (lower is better).
+  await page.goto('/#/goals');
+  await page.getByTestId('goal-score-down').click();
+  await expect(page.getByTestId('goal-score-value')).toHaveText(/^Goal: \d+%$/);
+  await page.getByTestId('goal-group-up').click();
+  await expect(page.getByTestId('goal-group-value')).toHaveText(/^Goal: /);
+
+  // The only session predates both goals, so nothing counts yet.
+  await expect(page.getByTestId('goal-score-status')).toHaveAttribute('data-hit', 'pending');
+  await expect(page.getByTestId('goal-score-status')).toHaveText('No sessions since this goal was set');
+
+  // A session shot after the goals were set — the same demo targets — meets both.
+  await page.goto('/#/');
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  await page.goto('/#/goals');
+  await expect(page.getByTestId('goal-score-status')).toHaveAttribute('data-hit', 'true');
+  await expect(page.getByTestId('goal-score-status')).toContainText('over 1 session');
+  await expect(page.getByTestId('goal-score-status')).toContainText('Hit');
+  await expect(page.getByTestId('goal-group-status')).toHaveAttribute('data-hit', 'true');
+
+  // Raising the score goal past that average turns it to "Not yet" — and only that new goal's window counts, which
+  // has no sessions in it yet, so it reads pending until the next session.
+  await page.getByTestId('goal-score-up').click();
+  await page.getByTestId('goal-score-up').click();
+  await expect(page.getByTestId('goal-score-status')).toHaveAttribute('data-hit', 'pending');
 });
 
 test('the up/down buttons set a goal that persists across reload and draws a horizontal line; more taps append', async ({ page }) => {
@@ -58,7 +117,6 @@ test('the up/down buttons set a goal that persists across reload and draws a hor
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
 
   await page.goto('/#/goals');
-  await page.getByTestId('goals-range-all').click();
   await page.getByTestId('goals-view-precision-prone').click();
   await expect(page.getByTestId('goals-counts')).toHaveText('Precision prone: 1 session');
 
@@ -67,18 +125,16 @@ test('the up/down buttons set a goal that persists across reload and draws a hor
   await expect(chart).toHaveAttribute('data-has-goal', 'false');
   await expect(page.getByTestId('goal-score-value')).toHaveText('No goal');
   await expect(page.getByTestId('goal-score-indicator')).toHaveCount(0);
-  await expect(page.getByTestId('goal-score-step')).toHaveCount(0);
+  await expect(page.getByTestId('goal-score-status')).toHaveCount(0);
 
   await page.getByTestId('goal-score-up').click();
   await expect(chart).toHaveAttribute('data-has-goal', 'true');
   await expect(page.getByTestId('goal-score-indicator')).toHaveCount(1);
-  await expect(page.getByTestId('goal-score-step')).toHaveCount(1);
   const firstValueText = await page.getByTestId('goal-score-value').textContent();
   expect(firstValueText).toMatch(/^Goal: \d+%$/);
 
   // It survives a reload, having been written to storage rather than just component state.
   await page.reload();
-  await page.getByTestId('goals-range-all').click();
   await page.getByTestId('goals-view-precision-prone').click();
   await expect(page.getByTestId('goal-score-value')).toHaveText(firstValueText!);
 
@@ -128,7 +184,6 @@ test('goals saved by earlier builds (Confirm, Sight in, MPI) do not break readin
   );
 
   await page.goto('/#/goals');
-  await page.getByTestId('goals-range-all').click();
   await page.getByTestId('goals-view-precision-prone').click();
   await expect(page.getByTestId('goal-score-value')).toHaveText('No goal');
   await page.getByTestId('goal-score-up').click();
@@ -147,7 +202,6 @@ test('the buttons are plain, native buttons: Tab and Enter/Space work with no cu
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
 
   await page.goto('/#/goals');
-  await page.getByTestId('goals-range-all').click();
   await page.getByTestId('goals-view-precision-prone').click();
 
   await expect(page.getByTestId('goal-group-value')).toHaveText('No goal');
@@ -168,7 +222,6 @@ test('with three or more sessions, the chart draws the same least-squares trend 
   }
 
   await page.goto('/#/goals');
-  await page.getByTestId('goals-range-all').click();
   await page.getByTestId('goals-view-precision-prone').click();
   await expect(page.getByTestId('goals-counts')).toHaveText('Precision prone: 3 sessions');
   await expect(page.getByTestId('goal-score-line')).toHaveCount(1);
@@ -182,7 +235,6 @@ test('MPI is not goal-able: only Score, Group size and Accuracy (RMS) get a char
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
 
   await page.goto('/#/goals');
-  await page.getByTestId('goals-range-all').click();
   await page.getByTestId('goals-view-precision-prone').click();
 
   await expect(page.getByTestId('goal-score')).toBeVisible();

@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { chartGeometry, valueToY, type ChartBox } from '@/lib/analysis/chart';
 import type { TrendMetric, TrendPoint } from '@/lib/analysis/trend';
 import type { GoalLogEntry, GoalMetric, GoalView } from '@/lib/domain/goals';
-import { currentGoal, goalSeries } from '@/lib/goals/model';
+import { cn } from '@/lib/utils';
+import { currentGoal, goalProgress } from '@/lib/goals/model';
 
 const BOX: ChartBox = { width: 320, height: 170, left: 44, right: 12, top: 12, bottom: 28 };
 
@@ -51,26 +52,25 @@ interface GoalChartProps {
 }
 
 /**
- * goals.md §3–§5: one metric's chart, the same shape as `TrendChart` (analysis.md §4) plus the goal step-line and
- * its own least-squares trend line, and a horizontal goal line set with up/down arrow buttons beside the chart
- * (M28, revised after the owner's review of the drag-a-star build: a discrete stepper reads clearer than a drag
- * gesture, and sidesteps drag-specific cross-browser pointer-capture issues entirely — native `<button>` clicks
- * need no custom pointer-event code). Each press nudges the line by `STEP` and saves immediately. A separate
- * component from `TrendChart` on purpose: this stays additive, so the shipped Analysis screen is untouched.
+ * goals.md §3–§5: one metric's chart over every session, the same shape as `TrendChart` (analysis.md §4) plus its
+ * least-squares trend line, one horizontal line for the current goal (no history: owner, 2026-10-01), whether the
+ * sessions since it was set average out at or past it, and up/down buttons beside the chart that step the goal and
+ * save immediately. A separate component from `TrendChart` on purpose: the shipped Analysis screen is untouched.
  */
 export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChartProps) {
   const dataValues = useMemo(() => trend.map((p) => metric.value(p)), [trend, metric]);
-  const goalValues = useMemo(() => goalSeries(entries, view, metric.id, trend), [entries, view, metric.id, trend]);
   const goalNow = useMemo(() => currentGoal(entries, view, metric.id), [entries, view, metric.id]);
+  const progress = useMemo(
+    () => (goalNow === null ? null : goalProgress(goalNow, metric.id, trend, metric.value)),
+    [goalNow, metric, trend],
+  );
   const [draft, setDraft] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const lineValue = draft ?? goalNow?.value ?? null;
 
-  // The live value joins the axis too: `goalValues` only counts a goal from sessions on or after the day it was set,
-  // so a goal set today against older sessions would otherwise sit off the chart once it leaves the data's range.
-  const domainFrom = useMemo(() => [...dataValues, ...goalValues, lineValue], [dataValues, goalValues, lineValue]);
+  // The goal joins the axis so its line stays on the chart even when it sits outside every session's value.
+  const domainFrom = useMemo(() => [...dataValues, lineValue], [dataValues, lineValue]);
   const data = useMemo(() => chartGeometry(dataValues, BOX, metric.zeroLine, 4, domainFrom), [dataValues, metric.zeroLine, domainFrom]);
-  const goal = useMemo(() => chartGeometry(goalValues, BOX, metric.zeroLine, 4, domainFrom), [goalValues, metric.zeroLine, domainFrom]);
   // REV-133/analysis.md §4a: the same least-squares trend line Analysis draws for this metric, carried over here too.
   const fit = metric.trendLine ? data.trend : null;
 
@@ -111,10 +111,31 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
             Trend: {metric.formatChange(fit.slope)}
           </p>
         )}
+        {progress !== null && (
+          <p
+            className="text-sm tabular-nums"
+            data-testid={`goal-${metric.id}-status`}
+            data-hit={progress.hit === null ? 'pending' : String(progress.hit)}
+          >
+            {progress.average === null ? (
+              <span className="text-muted-foreground">No sessions since this goal was set</span>
+            ) : (
+              <>
+                <span className="text-muted-foreground">
+                  Average since set: {metric.format(progress.average)} over {progress.sessions}{' '}
+                  {progress.sessions === 1 ? 'session' : 'sessions'} ·{' '}
+                </span>
+                <span className={cn('font-semibold', progress.hit ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400')}>
+                  {progress.hit ? 'Hit' : 'Not yet'}
+                </span>
+              </>
+            )}
+          </p>
+        )}
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {data.points.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No sessions with this measure in the range.</p>
+          <p className="text-sm text-muted-foreground">No sessions with this measure yet.</p>
         ) : (
           <div className="flex items-stretch gap-2">
             <div className="flex flex-col items-center justify-center gap-1">
@@ -161,10 +182,6 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
                   {shortDate(trend[data.points.at(-1)!.index]!.sessionDate)}
                 </text>
               )}
-              {/* goals.md §4: the goal's history, a step line under the data/trend/live lines so real shots read on top. */}
-              {goal.path !== '' && (
-                <path d={goal.path} fill="none" className="stroke-sky-300" strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" strokeLinecap="round" data-testid={`goal-${metric.id}-step`} />
-              )}
               <path d={data.path} fill="none" className="stroke-primary" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
               {fit !== null && (
                 <line
@@ -182,7 +199,7 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
               {data.points.map((p) => (
                 <circle key={p.index} cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
               ))}
-              {/* The live goal line — solid and full-width, distinct from the dashed history step-line above. */}
+              {/* goals.md §4: the current goal, solid and full-width. */}
               {lineValue !== null && (
                 <line
                   x1={BOX.left}
