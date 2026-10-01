@@ -95,8 +95,9 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
 
 test('the phone camera and Photos import sit behind More options, and show at once when there is no camera (issue #82)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  // No camera here: the options are the only way in, so they show open with no toggle.
-  await expect(page.getByRole('alert')).toContainText('Use Photos import below');
+  // No camera here: the options are the only way in, so they show open with no toggle. The engines word it differently
+  // (Chromium: no camera found; WebKit: access denied), and both point to the options below.
+  await expect(page.getByRole('alert')).toContainText(/Photos import below/);
   await expect(page.getByRole('button', { name: 'Phone camera' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'More options' })).toHaveCount(0);
 
