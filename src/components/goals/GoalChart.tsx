@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { chartGeometry, valueToY, type ChartBox } from '@/lib/analysis/chart';
-import type { TrendMetric, TrendPoint } from '@/lib/analysis/trend';
 import type { GoalLogEntry, GoalMetric, GoalView } from '@/lib/domain/goals';
 import { cn } from '@/lib/utils';
+import type { GoalPoint, GoalTrendMetric } from '@/lib/goals/metrics';
 import { currentGoal, goalProgress } from '@/lib/goals/model';
 
 const BOX: ChartBox = { width: 320, height: 170, left: 44, right: 12, top: 12, bottom: 28 };
@@ -19,6 +19,8 @@ const STEP: Record<GoalMetric, number> = {
   score: 1,
   group: 0.1,
   rms: 0.5,
+  // A 10-shot target moves this in 10% steps, so 1% steps would take many taps to reach a meaningful change.
+  zoneHit: 5,
 };
 
 /**
@@ -31,6 +33,7 @@ const BOUNDS: Record<GoalMetric, [number, number]> = {
   score: [0, 100],
   group: [0, Infinity],
   rms: [0, Infinity],
+  zoneHit: [0, 100],
 };
 
 /** `YYYY-MM-DD` -> `Sep 21` (the axis is sessions in order; the date names each end). */
@@ -45,8 +48,8 @@ function tickLabel(value: number): string {
 
 interface GoalChartProps {
   view: GoalView;
-  metric: TrendMetric & { id: GoalMetric };
-  trend: TrendPoint[];
+  metric: GoalTrendMetric;
+  trend: GoalPoint[];
   entries: GoalLogEntry[];
   onSetGoal(value: number): Promise<void>;
 }

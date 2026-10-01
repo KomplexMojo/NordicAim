@@ -228,7 +228,7 @@ test('with three or more sessions, the chart draws the same least-squares trend 
   await expect(page.getByTestId('goal-score-slope')).toContainText('Trend:');
 });
 
-test('MPI is not goal-able: only Score, Group size and Accuracy (RMS) get a chart', async ({ page }) => {
+test('Goals charts Score, Group size, Accuracy (RMS) and Biathlon hits; not MPI', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
@@ -243,11 +243,20 @@ test('MPI is not goal-able: only Score, Group size and Accuracy (RMS) get a char
   await expect(page.getByTestId('goal-mpiX')).toHaveCount(0);
   await expect(page.getByTestId('goal-mpiY')).toHaveCount(0);
 
-  // Analysis keeps MPI — only Goals narrowed its metric set.
+  // Biathlon hits (owner, 2026-10-01): the real hit zone for the view's position, set like any other goal.
+  const hits = page.getByTestId('goal-zoneHit');
+  await expect(hits).toBeVisible();
+  await expect(hits).toContainText('45 mm prone');
+  await page.getByTestId('goal-zoneHit-up').click();
+  await expect(page.getByTestId('goal-zoneHit-value')).toHaveText(/^Goal: \d+%$/);
+  await expect(page.getByTestId('goal-zoneHit-indicator')).toHaveCount(1);
+
+  // Analysis keeps MPI and doesn't gain Biathlon hits — only Goals has its own set.
   await page.goto('/#/analysis');
   await page.getByTestId('analysis-range-all').click();
   await page.getByTestId('analysis-view-precision-prone').click();
   await expect(page.getByTestId('trend-mpiX')).toBeVisible();
+  await expect(page.getByTestId('trend-zoneHit')).toHaveCount(0);
 });
 
 test('the tab bar stays at four targets, each at least 44 px, with Goals visible alongside the others', async ({ page }) => {

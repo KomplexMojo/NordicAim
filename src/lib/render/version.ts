@@ -8,6 +8,8 @@
 // (`refreshStaleDiagrams`).
 //
 // Bump it whenever a per-target diagram's output changes, or `characterize-result.ts`'s / `characteristics.ts`'s:
+//   11 — owner, 2026-10-01: the outside-the-zone share reads the real biathlon zones (45 mm prone, 115 mm
+//        standing) on every template, with the scoring rule's touch (`hitsZone`), not ring 8 or the black disc.
 //   10 — owner, 2026-09-30: precision's "miss" zone (`discRadiusMm`) is ring 8's radius (21.2 mm) for prone,
 //        standing in for the prone-specific zone the precision target has none of its own; standing still reads
 //        the full black disc.
@@ -20,4 +22,4 @@
 //   3 — REV-79: a sighting diagram's top-left mark is the sight-in or confirm symbol.
 //   2 — REV-60: the target screen also shows accuracy (stored results gain `accuracyRmseMm`).
 //   1 — REV-58: one fixed cell scale (no zoom-out), `+N off view`, and a detail diagram that shows every shot.
-export const DIAGRAM_RENDERER_VERSION = 10;
+export const DIAGRAM_RENDERER_VERSION = 11;

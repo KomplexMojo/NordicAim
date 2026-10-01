@@ -91,7 +91,8 @@ export interface TrendMetric {
   formatChange(slope: number): string;
 }
 
-function change(decimals: number, unit: string): (slope: number) => string {
+/** A trend line's change per session, signed, with its unit (also used by Goals' own measure, goals.md §1). */
+export function change(decimals: number, unit: string): (slope: number) => string {
   return (slope) => {
     const r = Number(slope.toFixed(decimals));
     const sign = r > 0 ? '+' : r < 0 ? '−' : '±';

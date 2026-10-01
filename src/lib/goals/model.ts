@@ -8,6 +8,7 @@ export const GOAL_DIRECTION: Record<GoalMetric, 'higher' | 'lower'> = {
   score: 'higher',
   group: 'lower',
   rms: 'lower',
+  zoneHit: 'higher',
 };
 
 /**
@@ -37,11 +38,11 @@ export interface GoalProgress {
  * goals.md §4: how the sessions since the goal was set measure up. A session counts if it was created
  * (`sessionStamp`) at or after the goal's `setAt`, so changing the goal starts a fresh window.
  */
-export function goalProgress(
+export function goalProgress<P extends Pick<TrendPoint, 'sessionStamp'>>(
   goal: Pick<GoalLogEntry, 'value' | 'setAt'>,
   metric: GoalMetric,
-  trend: readonly TrendPoint[],
-  value: (point: TrendPoint) => number | null,
+  trend: readonly P[],
+  value: (point: P) => number | null,
 ): GoalProgress {
   const values = trend.flatMap((p) => {
     const v = p.sessionStamp >= goal.setAt ? value(p) : null;

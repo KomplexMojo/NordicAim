@@ -219,3 +219,18 @@ group size and RMS lower). Changes:
   stored, only the latest per pair is read.
 - Tests: new unit tests for `goalProgress` (window boundary, pending, skipped values, direction); new e2e tests
   for "no range, one line" and for the hit status going pending → hit → pending as sessions and goal changes land.
+
+**Follow-up (2026-10-01): Biathlon hits, and the real zone sizes (REV-146).** Asked what ring 7 and ring 8 mean for
+a "no shots below ring N" goal, the owner preferred exact distances, and chose Option A:
+- Observed patterns' outside-the-zone share reads the real biathlon zones (45 mm prone, 115 mm standing) on every
+  template, with the scoring rule's touch. It used to read ring 8 / the black disc on the precision sheet.
+- A fourth Goals chart, Biathlon hits.
+
+Changes:
+- `scoring/sighting.ts`: `hitsZone` (`zoneFor` now uses it).
+- `characteristics.ts`: takes the scoring hole diameter instead of `discRadiusMm`, which is removed; `missLabel`
+  names the position only.
+- `DIAGRAM_RENDERER_VERSION` 11, so stored characteristics are refreshed.
+- `goals/metrics.ts`: `goalTrend`/`goalMetrics`; `loadPatterns` returns the scoring hole diameter.
+- `shooting-issues.md` `q`, `goals.md` §1/§4–§7, REV-146.
+

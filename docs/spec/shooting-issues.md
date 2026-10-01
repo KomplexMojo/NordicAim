@@ -34,7 +34,7 @@
 | `θ` | angle of the principal axis, CCW from +x′, in `[0°, 180°)` | **grouping** |
 | `med` | median of the `dᵢ` | **precision** |
 | flyer | a shot with `dᵢ ≥ F · med`, `F = 2.5` (*P*); the rest are the **core**; `ES_core` is the core's spread | **grouping** |
-| `q` | share of shots farther than the position's zone radius from the bullseye: precision 56.2 mm standing (the physical black disc), else 21.2 mm (ring 8's radius, standing in for a "prone zone" the precision target has none of its own — the ring closest in size to the sighting target's 22.5 mm prone zone); sighting 22.5 mm prone, 57.5 mm standing (`discRadiusMm`, owner, 2026-09-30: an unknown position falls back to prone, the tighter of the two) | **accuracy** |
+| `q` | share of shots that would miss the biathlon hit zone for their position, on every template: `rᵢ − h > R`, with `R` = 22.5 mm prone, 57.5 mm standing (the sighting sheet's solid circles, the real 45 mm / 115 mm zones) and `h` half the scoring rule's hole diameter (REV-56; `hitsZone` in `scoring/sighting.ts`), so a hole touching the edge is in, as in the score. An unknown position reads prone, the tighter of the two. REV-146 (owner, 2026-10-01): replaces precision's ring 8 (prone) and black disc (standing) | **accuracy** |
 | two clusters | 2-means split, each cluster ≥ 2 shots, centroid separation `Δ ≥ 2 · w` and `Δ ≥ 1 MOA`, `w` the larger within-cluster mean radius | **grouping** |
 | `Z` | a "significant" offset: `M ≥ Z`, `Z = 1.0 MOA` (≈ 14.5 mm) (*P*) | |
 

@@ -11,7 +11,6 @@ import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { PATTERN_VIEWS, PATTERN_VIEW_LABEL, filterByRange, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 import { characterize } from '@/lib/scoring/characteristics';
-import { discRadiusMm } from '@/lib/scoring/characterize-result';
 import { summarizePatterns, THIN_SHOT_COUNT } from '@/lib/patterns/summarize';
 import { PATTERNS_SIZE, patternsPxToMm, patternsScale, patternsSizeFactor, renderPatternsSvg } from '@/lib/render/patterns';
 import { pickTargets, TAP_RADIUS_CSS_PX, type TargetRef } from '@/lib/patterns/pick';
@@ -53,9 +52,9 @@ export function PatternsPage() {
         : characterize(shown, {
             handedness: value.handedness,
             position,
-            discRadiusMm: discRadiusMm(kind === 'precision' ? 'precision' : 'sighting', position),
+            holeDiameterMm: value.holeDiameterMm,
           }),
-    [shown, value, position, kind],
+    [shown, value, position],
   );
   // One size for all four views, worked out from every shot ever recorded (patterns.md §5).
   const factor = useMemo(
@@ -123,7 +122,7 @@ export function PatternsPage() {
           <ObservedPatterns
             characteristics={observed}
             scope={`Worked out over all ${shown.length} shots shown, as one group.`}
-            missLabel={missLabel(kind, position)}
+            missLabel={missLabel(position)}
           />
           <section className="flex flex-col gap-1 text-sm" aria-label="Summary" data-testid="patterns-summary">
             <p className="font-medium" data-testid="patterns-counts">

@@ -7,6 +7,7 @@ import { BiathlonSession, upgradeSession } from '@/lib/domain/session';
 import { collectPatterns, type PatternData, type PatternSource } from '@/lib/patterns/collect';
 
 import type { Handedness } from '@/lib/domain/settings';
+import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { getSettings } from '@/lib/store/settings-repo';
 
 import type { ServiceContext } from './context';
@@ -17,6 +18,8 @@ export interface PatternsLoaded {
   today: string;
   /** The shooter's trigger hand (Settings), which the observed shooting issues follow. */
   handedness: Handedness;
+  /** The scoring rule's hole diameter (REV-56): whether a shot would hit the biathlon zone follows the same touch rule. */
+  holeDiameterMm: number;
 }
 
 export async function loadPatterns(ctx: ServiceContext): Promise<PatternsLoaded> {
@@ -46,5 +49,11 @@ export async function loadPatterns(ctx: ServiceContext): Promise<PatternsLoaded>
     if (session === undefined || photo.categorization.template === null) continue;
     sources.push({ sessionId: photo.sessionId, sessionDate: session.date, sessionStamp: session.stamp, photo, analysis: analyses.get(photo.id) ?? null });
   }
-  return { data: collectPatterns(sources), today: ctx.now().toISOString().slice(0, 10), handedness: (await getSettings(ctx.db)).handedness };
+  const settings = await getSettings(ctx.db);
+  return {
+    data: collectPatterns(sources),
+    today: ctx.now().toISOString().slice(0, 10),
+    handedness: settings.handedness,
+    holeDiameterMm: scoringDiameterFromSettings(settings),
+  };
 }

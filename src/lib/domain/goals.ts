@@ -13,11 +13,12 @@ export const GoalView = z.enum(['precision-prone', 'precision-standing']);
 export type GoalView = z.infer<typeof GoalView>;
 
 /**
- * A subset of `TrendMetricId` (`src/lib/analysis/trend.ts`): MPI left/right and MPI up/down are excluded (owner,
- * 2026-09-30) — a goal is one Y-value on a chart, and MPI's two axes plot a signed *position*, not a single
- * magnitude a star can usefully sit above or below.
+ * Three of `TrendMetricId` (`src/lib/analysis/trend.ts`) plus one Goals-only measure. MPI left/right and MPI up/down
+ * are excluded (owner, 2026-09-30) — a goal is one Y-value on a chart, and MPI's two axes plot a signed *position*,
+ * not a single magnitude a goal can usefully sit above or below. `zoneHit` is the share of shots that would hit the
+ * biathlon zone for the view's position (goals.md §1, owner, 2026-10-01); Analysis doesn't chart it.
  */
-export const GoalMetric = z.enum(['score', 'group', 'rms']);
+export const GoalMetric = z.enum(['score', 'group', 'rms', 'zoneHit']);
 export type GoalMetric = z.infer<typeof GoalMetric>;
 
 // Every view and metric an entry has ever been written with. The log is append-only, so entries saved before Goals
@@ -25,7 +26,7 @@ export type GoalMetric = z.infer<typeof GoalMetric>;
 // stored rows against the narrowed sets made one old entry fail the whole row, so every read and write threw.
 // They stay readable and inert: nothing on the Goals screen asks for those pairs.
 const StoredGoalView = z.enum(['sight-in', 'confirm', 'precision-prone', 'precision-standing']);
-const StoredGoalMetric = z.enum(['score', 'group', 'rms', 'mpiX', 'mpiY']);
+const StoredGoalMetric = z.enum(['score', 'group', 'rms', 'mpiX', 'mpiY', 'zoneHit']);
 
 /**
  * One goal-setting event. Never edited or deleted: setting a new goal for the same (view, metric) appends another

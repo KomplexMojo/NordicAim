@@ -255,7 +255,7 @@ export function TargetPage() {
         <ObservedPatterns
           characteristics={result.all.characteristics}
           scope="Worked out from this target's shots when its analysis was saved."
-          missLabel={missLabel(result.template, allSubsetPosition)}
+          missLabel={missLabel(allSubsetPosition)}
         />
       )}
 

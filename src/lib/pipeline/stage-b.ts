@@ -205,7 +205,7 @@ export async function runStageB(ctx: ServiceContext, photoId: string, renderTool
       // never rewrites shots it did not change (and never renumbers a manual one).
       shots: shotsChanged ? shots : currentAnalysis.shots,
       pipeline: { ...currentAnalysis.pipeline, stageB: 'done', error: null, warnings },
-      computed: result === null ? null : { engineVersion: ENGINE_VERSION, result: withCharacteristics(result, categorization, settings.handedness) },
+      computed: result === null ? null : { engineVersion: ENGINE_VERSION, result: withCharacteristics(result, categorization, settings.handedness, holeDiameterMm) },
       updatedAt: nowIso,
     };
     const { status, reasons } = photoStatus({ categorization: currentPhoto.categorization, analysis: next, result });

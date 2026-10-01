@@ -17,13 +17,20 @@ as "met" follows from the metric already knowing which way is better.
 - **Views**: the two precision views, Precision prone and Precision standing (`GoalView` in
   `src/lib/domain/goals.ts`). Sight in and Confirm were dropped from Goals (owner, 2026-09-30); a URL naming one
   falls back to Precision prone.
-- **Metrics**: three of the five `trendMetrics()` computes (`analysis.md` §3, `src/lib/analysis/trend.ts`) —
-  Score/Hit rate (%), Group size (MOA), Accuracy/RMS (mm). MPI left/right and MPI up/down are **not** goal-able
-  (owner, 2026-09-30, after reviewing the shipped screen): each one plots a signed *position* along one axis, not a
-  single magnitude, so a goal Y-value doesn't read as "better" or "worse" the way it does for the other three —
-  Analysis still shows both MPI charts, only Goals narrows its set (`src/lib/domain/goals.ts`'s `GoalMetric` enum;
-  `GoalsPage.tsx` filters `trendMetrics(kind)` down to it before rendering). No new metric is added to
-  `trendMetrics()` itself (see §7 for the miss-rate idea that stays out of scope).
+- **Metrics** (`GoalMetric` in `src/lib/domain/goals.ts`; the charts are `goalMetrics(view)` in
+  `src/lib/goals/metrics.ts`), in order:
+  - Three of the five `trendMetrics()` computes (`analysis.md` §3, `src/lib/analysis/trend.ts`): Score (%), Group
+    size (MOA), Accuracy/RMS (mm). MPI left/right and MPI up/down are **not** goal-able (owner, 2026-09-30): each
+    plots a signed *position* along one axis, not a single magnitude, so a goal Y-value doesn't read as "better" or
+    "worse". Analysis still shows both MPI charts.
+  - **Biathlon hits** (`zoneHit`, %), Goals only (REV-146, owner, 2026-10-01): per session, the share of shots that
+    would hit the biathlon hit zone for the view's position — 45 mm prone, 115 mm standing — with the scoring rule's
+    touch (`hitsZone` in `src/lib/scoring/sighting.ts`: `r − h ≤ R`, h half the scoring rule's hole diameter,
+    REV-56). The same test as Observed patterns' outside-the-zone share (`shooting-issues.md`'s `q`), so the two
+    agree. The precision sheet has rings, not hit zones, so this measures the real zone sizes rather than a ring
+    (the nearest, ring 8, is 1.3 mm tighter than the prone zone; standing's zone sits between rings 4 and 3).
+    `goalTrend` adds it to each session's `TrendPoint` as `zoneHitPercent`; `trendMetrics()` is not touched, so
+    Analysis and the coach image don't chart it.
 - A goal is **not** tied to a baseline or a date range. It is measured from the moment it was set (its `setAt`)
   against the sessions shot since (§4). There is no date-range control on Goals (owner, 2026-10-01: the slider
   "is just going to confuse people").
@@ -104,6 +111,7 @@ A status line under the chart title (`goal-<metric>-status`) says whether the cu
   | `score` (Score/Hit rate, %) | higher | average ≥ goal |
   | `group` (Group size, MOA) | lower | average ≤ goal |
   | `rms` (Accuracy/RMS, mm) | lower | average ≤ goal |
+  | `zoneHit` (Biathlon hits, %) | higher | average ≥ goal |
 
 - **Text**: "No sessions since this goal was set" while the window is empty (`data-hit="pending"`); otherwise
   "Average since set: {value} over N session(s) · **Hit**" or "· **Not yet**" (`data-hit="true"|"false"`).
@@ -119,7 +127,7 @@ elsewhere in the app).
 a drag-a-star-on-the-chart gesture, then — after the owner tried the shipped drag build and asked for something
 clearer, and a cross-browser pointer-capture issue in the drag gesture turned out to need its own fix — settled on
 a plain **stepper**: two `size-11` (44 px) buttons, ▲ and ▼, stacked to the left of the chart, by the y-axis. Each
-press moves the goal line (§4) by one step (`STEP` in `GoalChart.tsx`: 1% for score, 0.1 MOA for group,
+press moves the goal line (§4) by one step (`STEP` in `GoalChart.tsx`: 1% for score, 5% for Biathlon hits, 0.1 MOA for group,
 0.5 mm for RMS) and **saves immediately** — there is no separate draft/preview state and no Save button; a press is
 the decision. Clamped to a fixed, sensible range per metric (`BOUNDS` in `GoalChart.tsx`: score 0–100%, group and
 RMS 0 and up — deliberately *not* the chart's own visible axis range, which for a single session is exactly
@@ -146,19 +154,28 @@ export async function setGoal(
 ): Promise<GoalLogEntry>;
 ```
 
-Pure helpers live in `src/lib/goals/model.ts` (no clock, no storage, unit-tested directly):
+Pure helpers live in `src/lib/goals/model.ts` and `src/lib/goals/metrics.ts` (no clock, no storage, unit-tested
+directly):
 
 ```ts
 export const GOAL_DIRECTION: Record<GoalMetric, 'higher' | 'lower'>;
 export function currentGoal(entries: readonly GoalLogEntry[], view: GoalView, metric: GoalMetric): GoalLogEntry | null;
 export interface GoalProgress { sessions: number; average: number | null; hit: boolean | null } // hit null = pending
-export function goalProgress(
+export function goalProgress<P extends Pick<TrendPoint, 'sessionStamp'>>(
   goal: Pick<GoalLogEntry, 'value' | 'setAt'>,
   metric: GoalMetric,
-  trend: readonly TrendPoint[],
-  value: (p: TrendPoint) => number | null,
+  trend: readonly P[],
+  value: (p: P) => number | null,
 ): GoalProgress;
+
+// metrics.ts
+export interface GoalPoint extends TrendPoint { zoneHitPercent: number | null }
+export function goalTrend(points: readonly PatternPoint[], view: GoalView, holeDiameterMm: number): GoalPoint[];
+export function goalMetrics(view: GoalView): GoalTrendMetric[]; // Score, Group size, Accuracy (RMS), Biathlon hits
 ```
+
+`holeDiameterMm` is the scoring rule's (`scoringDiameterFromSettings`), which `loadPatterns` now returns alongside
+`handedness`.
 
 `setGoal` reads the stored row, appends (`id: ctx.newId()`, `setAt: ctx.now().toISOString()`), writes it back — the
 same prepare-then-one-transaction shape every other write in this app follows (`data-model.md` §6 rules).
@@ -170,11 +187,10 @@ same prepare-then-one-transaction shape every other write in this app follows (`
   `TrendMetric` — the share with `zone === 'miss'` — is well-defined and cheap to add later, but `trendMetrics()`
   and its charts are shared with the already-shipped Analysis screen and the coach image's fixed three-box layout
   (`analysis.md` §5), so it is deliberately not touched in the same change that adds Goals. Until then, "no misses"
-  reads approximately as "Hit rate = 100%" on the existing Score/Hit rate chart.
-  A precision-specific "ring 8" goal (the prone-equivalent boundary `characterize-result.ts`'s `discRadiusMm` now
-  uses) is not part of this idea at all — `PatternPoint` carries no ring-8 hit/miss flag, only the scored `ring`.
+  reads approximately as "Hit rate = 100%" on the existing Score/Hit rate chart. (For the precision views this is
+  now Biathlon hits, §1.)
 - Any view of past goals (a history list or a history line on the chart). Only the current goal is shown
   (owner, 2026-10-01).
 - A date-range control on Goals.
 - Deleting or editing a past log entry. The log is append-only; a mistaken goal is corrected by setting a new one.
-- Goals for precision's ring (score already reflects ring performance) or any metric not already in `trendMetrics()`.
+- Goals for precision's ring (score already reflects ring performance) or any other metric beyond §1's four.

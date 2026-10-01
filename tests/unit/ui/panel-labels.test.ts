@@ -22,13 +22,10 @@ describe('panel labels (issue #14)', () => {
     expect(dataLabel({ sessions: 1, photos: 1 })).toBe('1 session · 1 photo');
   });
 
-  it('miss label (owner, 2026-09-30): "Outside the black" only for precision standing', () => {
-    expect(missLabel('precision', 'standing')).toBe('Outside the black');
-    expect(missLabel('precision', 'prone')).toBe('Miss on prone');
-    expect(missLabel('precision', null)).toBe('Miss on prone');
-    expect(missLabel('sighting', 'standing')).toBe('Miss on standing');
-    expect(missLabel('sighting', 'prone')).toBe('Miss on prone');
-    expect(missLabel('sighting', null)).toBe('Miss on prone');
+  it('miss label (owner, 2026-10-01): the biathlon zone for the position, the same on every template', () => {
+    expect(missLabel('standing')).toBe('Miss on standing');
+    expect(missLabel('prone')).toBe('Miss on prone');
+    expect(missLabel(null)).toBe('Miss on prone');
   });
 });
 

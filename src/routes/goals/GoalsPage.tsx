@@ -3,18 +3,13 @@ import { useSearchParams } from 'react-router';
 
 import { GoalChart } from '@/components/goals/GoalChart';
 import { ViewSwitch } from '@/components/patterns/ViewRangeControls';
-import { sessionTrend, trendMetrics, type TrendMetric } from '@/lib/analysis/trend';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import { GoalMetric, GoalView } from '@/lib/domain/goals';
+import { GoalView } from '@/lib/domain/goals';
+import { goalMetrics, goalTrend } from '@/lib/goals/metrics';
 import { PATTERN_VIEW_LABEL } from '@/lib/patterns/collect';
 import { loadPatterns } from '@/lib/services/patterns';
 import { listGoals, setGoal } from '@/lib/services/goals';
-
-const GOAL_METRIC_IDS: readonly string[] = GoalMetric.options;
-function isGoalMetric(m: TrendMetric): m is TrendMetric & { id: GoalMetric } {
-  return GOAL_METRIC_IDS.includes(m.id);
-}
 
 const GOAL_VIEWS: readonly GoalView[] = GoalView.options;
 /** Sight in and Confirm aren't goal-able (owner, 2026-09-30); a URL naming anything else falls back to this. */
@@ -24,8 +19,8 @@ const GOAL_DEFAULT_VIEW: GoalView = 'precision-prone';
  * Route `#/goals` (goals.md, issue #97): the current goal per (view, metric) on the two precision views, drawn as one
  * line on a chart of every session, with whether the sessions since it was set average out at or past it. No date
  * range and no goal history (owner, 2026-10-01): a goal is measured from when it was set, and changing it starts
- * over. Only the metrics `GoalMetric` allows (`domain/goals.ts`) — MPI's two axes plot a signed position, not a
- * magnitude a goal can usefully sit above or below.
+ * over. The charts are `goalMetrics` (`lib/goals/metrics.ts`): Score, Group size and Accuracy from Analysis, plus
+ * Biathlon hits.
  */
 export function GoalsPage() {
   const { ctx } = useServices();
@@ -39,8 +34,8 @@ export function GoalsPage() {
   const view = GoalView.safeParse(requested).data ?? GOAL_DEFAULT_VIEW;
   const setView = (v: GoalView) => setParams(new URLSearchParams({ view: v }), { replace: true });
 
-  const trend = useMemo(() => (value === undefined ? [] : sessionTrend(value.data.points[view], 'precision')), [value, view]);
-  const metrics = useMemo(() => trendMetrics('precision').filter(isGoalMetric), []);
+  const trend = useMemo(() => (value === undefined ? [] : goalTrend(value.data.points[view], view, value.holeDiameterMm)), [value, view]);
+  const metrics = useMemo(() => goalMetrics(view), [view]);
 
   async function handleSetGoal(metricId: (typeof metrics)[number]['id'], newValue: number) {
     await setGoal(ctx, { view, metric: metricId, value: newValue });

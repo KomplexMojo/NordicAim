@@ -16,9 +16,9 @@ describe('GoalLogEntry / GoalsStore (goals.md §2)', () => {
     expect(GoalLogEntry.safeParse({ ...entry, metric: 'nope' }).success).toBe(false);
   });
 
-  it('narrows what is goal-able to the precision views and score/group/rms (owner, 2026-09-30)', () => {
+  it('narrows what is goal-able to the precision views and score/group/rms/zoneHit (owner, 2026-09-30, 2026-10-01)', () => {
     expect(GoalView.options).toEqual(['precision-prone', 'precision-standing']);
-    expect(GoalMetric.options).toEqual(['score', 'group', 'rms']);
+    expect(GoalMetric.options).toEqual(['score', 'group', 'rms', 'zoneHit']);
     for (const v of ['sight-in', 'confirm']) expect(GoalView.safeParse(v).success).toBe(false);
     for (const m of ['mpiX', 'mpiY']) expect(GoalMetric.safeParse(m).success).toBe(false);
   });

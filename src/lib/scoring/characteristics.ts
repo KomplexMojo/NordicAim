@@ -4,6 +4,8 @@
 // Everything is measured in a frame where +x is the trigger side and -x the sling side, so a left-handed shooter's shots are mirrored first
 // (`x' = h * x`) and no rule ever mentions a hand.
 
+import { hitsZone } from './sighting';
+
 export type Handedness = 'right' | 'left';
 
 export interface Pt {
@@ -54,7 +56,7 @@ export interface Characteristics {
   axisDeg: number | null;
   shape: 'round' | 'horizontal string' | 'vertical string' | 'diagonal string (up to the trigger side)' | 'diagonal string (down to the trigger side)' | null;
   flyers: number;
-  /** Share of shots outside the position's zone (`CharacterizeOptions.discRadiusMm`). */
+  /** Share of shots that would miss the biathlon hit zone for the position (`CharacterizeOptions.holeDiameterMm`). */
   outsideShare: number | null;
   twoClusters: boolean;
   issues: IssueFinding[];
@@ -72,8 +74,11 @@ export interface CharacterizeOptions {
   handedness: Handedness;
   /** `prone` runs the prone-only rules; `standing` and null skip them. */
   position: 'prone' | 'standing' | null;
-  /** The "miss" zone's radius in mm, for the outside-the-zone share (`discRadiusMm` in `characterize-result.ts`). */
-  discRadiusMm: number;
+  /**
+   * The scoring rule's hole diameter (`scoringHoleDiameterMm`, REV-56), for the outside-the-zone share: a shot is
+   * outside when it would miss the biathlon hit zone for `position` (`hitsZone`; null reads prone, the tighter).
+   */
+  holeDiameterMm: number;
 }
 
 function median(values: number[]): number {
@@ -191,7 +196,8 @@ export function characterize(points: readonly Pt[], options: CharacterizeOptions
   const core = pts.filter((_, i) => !flyerIdx.includes(i));
   const esCore = core.length < 2 ? 0 : spread(core);
   const coreC = core.length === 0 ? c : centroid(core);
-  const outside = pts.filter((p) => Math.hypot(p.xMm, p.yMm) > options.discRadiusMm).length / n;
+  const zone = options.position ?? 'prone';
+  const outside = pts.filter((p) => !hitsZone(Math.hypot(p.xMm, p.yMm), zone, options.holeDiameterMm)).length / n;
   const split = twoClusterSplit(pts);
   let twoClusters = false;
   if (split) {
