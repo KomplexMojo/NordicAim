@@ -76,3 +76,65 @@ test('five prone targets make a submission; a hand correction is marked, and fla
   await page.getByTestId('target-back').click();
   await expect(page).toHaveURL(/#\/board\?view=precision-prone$/);
 });
+
+/** One "phone": five automatic prone targets, a name and club, and a stamp passphrase that signs its submission. */
+async function readyPhone(page: import('@playwright/test').Page, name: string, club: string): Promise<void> {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  for (let i = 0; i < 5; i++) await automaticDemoTarget(page);
+  await page.goto('/#/settings');
+  await page.getByTestId('athlete-name').fill(name);
+  await page.getByTestId('athlete-club').fill(club);
+  await page.getByTestId('athlete-club').blur();
+  await page.getByTestId('athlete-passphrase').fill(`${name} correct horse battery staple`);
+  await page.getByTestId('set-passphrase').click();
+  await expect(page.getByTestId('passphrase-message')).toContainText('Key set', { timeout: 30_000 });
+  // Headless Chromium has no share sheet, so a share is a download, which the test can pick up.
+  await page.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }));
+}
+
+test('two phones: one shares its signed submission, the other previews and imports it; importing twice changes nothing', async ({ browser }, testInfo) => {
+  const bob = await (await browser.newContext()).newPage();
+  await readyPhone(bob, 'Bob Berg', 'North SC');
+  await bob.goto('/#/board');
+  await bob.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }));
+  const [download] = await Promise.all([bob.waitForEvent('download'), bob.getByTestId('board-share-mine').click()]);
+  expect(download.suggestedFilename()).toMatch(/^nordic-aim-submission-bob-berg-\d{4}-\d{2}-\d{2}\.json$/);
+  const bobFile = testInfo.outputPath('bob.json');
+  await download.saveAs(bobFile);
+
+  const ann = await (await browser.newContext()).newPage();
+  await ann.goto('/#/board');
+  // Nothing to submit yet, but a board can still be imported.
+  await expect(ann.getByTestId('board-share-mine')).toBeDisabled();
+  await expect(ann.getByTestId('board-empty')).toBeVisible();
+  await ann.getByTestId('board-import-input').setInputFiles(bobFile);
+  await expect(ann.getByTestId('board-import-review')).toContainText('1 submission: 1 new shooter, 0 updated, 0 already on your board.');
+  await ann.getByTestId('board-import-apply').click();
+  await expect(ann.getByTestId('board-row')).toHaveCount(1);
+  await expect(ann.getByTestId('board-row-name')).toHaveText('Bob Berg');
+  await expect(ann.getByTestId('board-row-average')).toHaveText('66%');
+
+  await ann.getByTestId('board-import-input').setInputFiles(bobFile);
+  await expect(ann.getByTestId('board-import-review')).toContainText('0 new shooters, 0 updated, 1 already on your board');
+
+  // Only prone was submitted; Bob is not on the standing board.
+  await ann.getByTestId('board-view-precision-standing').click();
+  await expect(ann.getByTestId('board-empty')).toBeVisible();
+});
+
+test('a submission changed after signing is rejected on import', async ({ page }, testInfo) => {
+  await readyPhone(page, 'Cy Dahl', '');
+  await page.goto('/#/board');
+  await page.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }));
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('board-share-mine').click()]);
+  const original = JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(), 'utf-8')) as { name: string; publicKey: string };
+  // The same shooter's own submission is never added to their own board; send it to a fresh phone, renamed.
+  const forged = testInfo.outputPath('forged.json');
+  await (await import('node:fs/promises')).writeFile(forged, JSON.stringify({ ...original, name: 'Not Cy' }));
+  const other = await (await page.context().browser()!.newContext()).newPage();
+  await other.goto('/#/board');
+  await other.getByTestId('board-import-input').setInputFiles(forged);
+  await expect(other.getByTestId('board-import-review')).toContainText("1 rejected (signature doesn't match)");
+  await expect(other.getByTestId('board-import-apply')).toBeDisabled();
+});
