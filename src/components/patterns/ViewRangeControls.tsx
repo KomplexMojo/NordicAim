@@ -43,25 +43,25 @@ const SHORT_VIEW_LABEL: Record<PatternView, string> = {
 };
 
 /**
- * patterns.md §1: the view buttons on their own — Goals uses these without the date range (goals.md §3). Issue #90: all four
- * views fit one compact row (mark over a short name), so the chart or drawing leads the screen; two views keep full names.
+ * patterns.md §1: the view buttons on their own — Goals uses these without the date range (goals.md §3). Issue #90: each view is a
+ * compact button, its mark over a short name, so the chart or drawing leads the screen; all four fit one row on Patterns and
+ * Analysis, and Goals' two use the same look (owner, 2026-10-01).
  */
 export function ViewSwitch<V extends PatternView>({ view, onView, testIdPrefix, views }: ViewSwitchProps<V>) {
-  const compact = views.length > 2;
   return (
-    <div role="group" aria-label="Target type" className={cn('grid gap-2', compact ? 'grid-cols-4' : 'grid-cols-2')}>
+    <div role="group" aria-label="Target type" className={cn('grid gap-2', views.length > 2 ? 'grid-cols-4' : 'grid-cols-2')}>
       {views.map((id) => (
         <Button
           key={id}
           variant={id === view ? 'default' : 'outline'}
-          className={compact ? 'h-14 flex-col gap-1 px-1 text-xs' : 'h-11'}
+          className="h-14 flex-col gap-1 px-1 text-xs"
           aria-pressed={id === view}
-          aria-label={compact ? PATTERN_VIEW_LABEL[id] : undefined}
+          aria-label={PATTERN_VIEW_LABEL[id]}
           data-testid={`${testIdPrefix}-view-${id}`}
           onClick={() => onView(id)}
         >
           <ViewMark kind={id} />
-          {compact ? SHORT_VIEW_LABEL[id] : PATTERN_VIEW_LABEL[id]}
+          {SHORT_VIEW_LABEL[id]}
         </Button>
       ))}
     </div>

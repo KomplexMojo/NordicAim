@@ -80,7 +80,8 @@ a separately maintained flag. Earlier entries for a pair stay in the log but are
   `activeTab()` recognises `/goals`.
 - Route `/goals` → `GoalsPage`, inside the same `ServicesLayout`/`AppShell` every other main screen uses.
 - **View switch only** (`ViewSwitch` from `ViewRangeControls.tsx`, `testIdPrefix="goals"`, offering only the two
-  `GoalView`s): no date-range slider and no range hint (owner, 2026-10-01). The view lives in the address
+  `GoalView`s, as the same compact buttons Patterns and Analysis use: the view's mark over *Prone* / *Standing*, issue
+  #90): no date-range slider and no range hint (owner, 2026-10-01). The view lives in the address
   (`?view=`), as on Patterns and Analysis. Patterns and Analysis keep their full `ViewRangeControls`, unchanged.
 - Below it, one chart per goal-able metric for the selected view (`trendMetrics('precision')` filtered to
   `GoalMetric`), plotting **every** session for that view (`sessionTrend`, no `filterByRange`) — reusing
