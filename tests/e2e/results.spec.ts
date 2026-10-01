@@ -135,3 +135,17 @@ test('results: capture → Analyze reaches a terminal status', async ({ page }) 
     timeout: 180_000,
   });
 });
+
+test('results lead with the summary and Share; Review and Edit metadata follow on a healthy session (issue #85)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/results`);
+  await waitForIdle(page);
+  const share = page.getByTestId('summary-share');
+  const review = page.getByTestId('review-session-link');
+  await expect(share).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('review-session-star')).toHaveCount(0);
+  const [s, r, u] = [await share.boundingBox(), await review.boundingBox(), await page.getByTestId('summary-rebuild').boundingBox()];
+  expect(s!.y).toBeLessThan(r!.y);
+  expect(s!.y).toBeLessThan(u!.y); // Share before Update summary
+  await expect(page.getByTestId('edit-metadata-link')).toBeVisible();
+});

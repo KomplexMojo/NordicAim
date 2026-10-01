@@ -64,7 +64,10 @@ capture → Use photo (Stage A starts in the background) → next target → **D
   lighting on every photo, sets `session.analyzeRequestedAt`, and navigates to results.
 
 **Step 3: receive analysis** (`ResultsPage`):
-- Top: **Session summary** card with the summary image, **Share**, and the "Attach in Garmin Connect" steps (M14).
+- Top: **Session summary** card with the summary image, **Share**, then a quiet **Update summary**, and the "Attach in Garmin
+  Connect" steps (M14). Issue #85: the payoff leads. On a healthy session the **Review session** / **Edit metadata** row
+  (both outline) and the backup reminder follow the summary and the Goals card. When a target needs attention, the row sits
+  above the summary with **Review session** as the starred primary.
 - Then one **target card** per photo in capture order:
   - the `cell` diagram
   - headline (precision: `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses; sighting:
