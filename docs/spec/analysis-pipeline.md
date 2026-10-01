@@ -54,6 +54,10 @@ capture → Use photo (Stage A starts in the background) → next target → **D
   - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`, with **Season** (Winter | Spring | Summer | Fall) beside it
   - **Notes** (optional)
   - **Remove photo**.
+- **Collapsed when complete (issue #79).** A card whose type and rounds are already set (capture sets both) starts collapsed
+  to its header row: thumbnail, Stage A status, a summary (`Precision prone · 10 rounds`) and an **Edit** toggle that opens
+  the fields above. An incomplete card is always open. Opened from a target's screen (`?photo=<id>`), that target's card
+  starts open.
 - **Add more photos** → capture screen.
 - Primary button **Analyze N targets**: enabled when every photo's categorization is complete. Tapping it confirms
   lighting on every photo, sets `session.analyzeRequestedAt`, and navigates to results.

@@ -35,6 +35,12 @@ test('metadata screen: prefilled card, changing the target type resets rounds, p
 
   const card = page.getByTestId('photo-metadata-card');
   await expect(card).toHaveCount(1);
+  // Issue #79: capture set its type and rounds, so the card starts collapsed to one row; Edit opens it.
+  await expect(card).toHaveAttribute('data-expanded', 'false');
+  await expect(card.getByTestId('photo-card-summary')).toHaveText('Precision prone · 10 rounds');
+  await expect(card.getByRole('radio', { name: 'Precision prone', exact: true })).toHaveCount(0);
+  await card.getByTestId('photo-card-toggle').click();
+  await expect(card).toHaveAttribute('data-expanded', 'true');
   // One choice says what was shot (REV-79); there is no separate template, position or "Both".
   await expect(card.getByRole('radio', { name: 'Precision prone', exact: true })).toHaveAttribute('aria-checked', 'true');
   await expect(card.getByRole('radio', { name: 'Both', exact: true })).toHaveCount(0);
@@ -52,9 +58,9 @@ test('metadata screen: prefilled card, changing the target type resets rounds, p
   await page.waitForTimeout(300);
 
   await page.reload();
-  await expect(page.getByTestId('photo-metadata-card').locator('input[id$="-rounds-standing"]')).toHaveValue('3', {
-    timeout: 10000,
-  });
+  await expect(page.getByTestId('photo-card-summary')).toHaveText('Precision standing · 3 rounds', { timeout: 10000 });
+  await page.getByTestId('photo-card-toggle').click();
+  await expect(page.getByTestId('photo-metadata-card').locator('input[id$="-rounds-standing"]')).toHaveValue('3');
 
   // Step 4: Analyze navigates to results.
   await page.getByTestId('analyze-button').click();

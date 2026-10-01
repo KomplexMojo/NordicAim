@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -60,6 +60,9 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
 /** Route `#/sessions/:sid/metadata` (analysis-pipeline §1 step 2), replacing M07's stub. */
 export function MetadataPage() {
   const { sid = '' } = useParams();
+  // Issue #79: opened from a target's screen (`?photo=<id>`), that target's card starts open.
+  const [searchParams] = useSearchParams();
+  const openPhotoId = searchParams.get('photo');
   const { ctx } = useServices();
   const navigate = useNavigate();
 
@@ -215,6 +218,7 @@ export function MetadataPage() {
         {photos.map((photo) => (
           <PhotoMetadataCard
             key={photo.id}
+            initiallyOpen={photo.id === openPhotoId}
             photo={photo}
             role={roles.get(photo.id) ?? null}
             analysis={data.analyses.get(photo.id) ?? null}

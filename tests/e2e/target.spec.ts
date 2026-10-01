@@ -172,6 +172,8 @@ test('the target screen links to the metadata screen, where the target type can 
   await openPrecisionTarget(page, sessionId);
   await page.getByTestId('target-edit-metadata').click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
-  await expect(page.getByRole('radio', { name: 'Precision standing', exact: true }).first()).toBeVisible();
+  // Issue #79: the other cards start collapsed, but this target's own card opens.
+  await expect(page.getByTestId('photo-metadata-card').filter({ has: page.getByRole('radio', { name: 'Precision standing', exact: true }) })).toHaveCount(1);
+  await expect(page.getByRole('radio', { name: 'Precision standing', exact: true })).toBeVisible();
 });
 

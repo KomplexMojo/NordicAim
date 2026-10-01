@@ -205,7 +205,7 @@ export function TargetPage() {
           {back.label}
         </Link>
         <Link
-          to={`/sessions/${sid}/metadata`}
+          to={`/sessions/${sid}/metadata?photo=${pid}`}
           className="inline-flex h-11 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium"
           data-testid="target-edit-metadata"
         >

@@ -89,6 +89,7 @@ test('results: raising the declared rounds scores the extra rounds as misses (RE
   await page.goto(`/#/sessions/${sessionId}/metadata`);
   // Capture order: sighting first, precision second (analysis-pipeline §10).
   const precisionMetadataCard = page.getByTestId('photo-metadata-card').nth(1);
+  await precisionMetadataCard.getByTestId('photo-card-toggle').click(); // issue #79: complete cards start collapsed
   const roundsProne = precisionMetadataCard.locator('input[id$="-rounds-prone"]');
   await expect(roundsProne).toHaveValue('10', { timeout: 30_000 });
   await roundsProne.fill('12');
