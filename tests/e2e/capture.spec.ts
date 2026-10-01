@@ -61,7 +61,11 @@ async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'preci
 
 test('precision + prone: fake camera capture is stored with its overlay prior, then Done shows 1 photo', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
+  // Issue #83: with nothing captured Done is quiet (the shutter is the strong action), but it still works.
+  await expect(page.getByTestId('capture-done')).toHaveAttribute('data-emphasis', 'quiet');
+  await expect(page.getByTestId('capture-done')).toBeEnabled();
   await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await expect(page.getByTestId('capture-done')).toHaveAttribute('data-emphasis', 'primary');
 
   const photos = await listPhotos(page, sessionId);
   expect(photos).toHaveLength(1);

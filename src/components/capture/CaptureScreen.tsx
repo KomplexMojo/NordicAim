@@ -16,6 +16,7 @@ import type { Calibration } from '@/lib/domain/photo';
 import { clientNow } from '@/lib/media/capture-time';
 import { ingestPhoto } from '@/lib/services/ingest';
 import { maybeRequestPersistence } from '@/lib/store/persistence-browser';
+import { cn } from '@/lib/utils';
 
 import { CameraView, type CameraHandle } from './CameraView';
 import { CaptureFallbacks } from './CaptureFallbacks';
@@ -146,7 +147,15 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
         <Badge variant="secondary" className="h-7 px-3 text-sm" data-testid="capture-count">
           {count} captured
         </Badge>
-        <Button className="h-11 px-5 text-base" onClick={() => navigate(`/sessions/${sessionId}/metadata`)}>
+        {/* Issue #83: with nothing captured, Done is a quiet outline so the shutter is the one strong action; it stays
+            tappable (leaving for the metadata screen is never blocked). From the first photo on it is the solid primary. */}
+        <Button
+          variant={count === 0 ? 'outline' : 'default'}
+          className={cn('h-11 px-5 text-base', count === 0 && 'text-muted-foreground')}
+          data-testid="capture-done"
+          data-emphasis={count === 0 ? 'quiet' : 'primary'}
+          onClick={() => navigate(`/sessions/${sessionId}/metadata`)}
+        >
           Done
         </Button>
       </header>
