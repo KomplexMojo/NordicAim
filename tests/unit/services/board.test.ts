@@ -10,6 +10,11 @@ import { buildSubmission } from '@/lib/leaderboard/submission';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 import { applyImport, createBoardFile, createMySubmission, loadBoard, loadHeldSubmissions, previewImport } from '@/lib/services/board';
 import { setPassphrase } from '@/lib/services/provenance';
+import { createBackup } from '@/lib/backup/create';
+import { readBackupText } from '@/lib/backup/format';
+import { verifyBackup } from '@/lib/backup/verify';
+import { restoreBoard } from '@/lib/services/board';
+import { getBoard } from '@/lib/store/board-repo';
 import { putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { putPhotoRecord } from '@/lib/store/photos-repo';
 import { putSessionRecord } from '@/lib/store/sessions-repo';
@@ -110,5 +115,36 @@ describe('import', () => {
     expect(whole.count).toBe(2);
     expect(whole.fileName).toBe('nordic-aim-board-2026-10-01.json');
     db.close();
+  });
+});
+
+describe('backup and restore (leaderboard.md §8)', () => {
+  it('a full backup carries the received board; a restore checks each submission again and merges it; a partial backup leaves it out', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-10-01T12:00:00.000Z' });
+    const bob = await otherShooter(2, 'Bob');
+    const cy = await otherShooter(3, 'Cy');
+    await applyImport(ctx, [bob, cy]);
+
+    const full = await createBackup(db, { appBuild: 'test', nowIso: '2026-10-01T12:00:00.000Z' });
+    const verified = await verifyBackup(await readBackupText(full.blob));
+    if (!verified.ok) throw new Error(verified.problem);
+    expect(verified.backup.file.board?.submissions).toHaveLength(2);
+
+    const partial = await createBackup(db, { appBuild: 'test', nowIso: '2026-10-01T12:00:00.000Z', sessionIds: [] });
+    const partialRead = await verifyBackup(await readBackupText(partial.blob));
+    if (!partialRead.ok) throw new Error(partialRead.problem);
+    expect(partialRead.backup.file.board).toBeUndefined();
+
+    const fresh = await openTestDb();
+    const freshCtx = makeTestContext(fresh, { nowIso: '2026-10-02T12:00:00.000Z' });
+    // One submission edited inside the file is dropped on its own; the other comes back.
+    const board = verified.backup.file.board!;
+    const edited = { submissions: [board.submissions[0], { ...(board.submissions[1] as object), name: 'Changed' }] };
+    expect(await restoreBoard(freshCtx, edited)).toBe(1);
+    expect((await getBoard(fresh)).submissions).toHaveLength(1);
+    expect(await restoreBoard(freshCtx, undefined)).toBe(0);
+    db.close();
+    fresh.close();
   });
 });

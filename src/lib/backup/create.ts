@@ -31,13 +31,22 @@ export async function createBackup(
   },
 ): Promise<CreatedBackup> {
   // All reads happen before anything is built; they are plain reads, each its own transaction.
-  const [allSessions, allPhotos, allAnalyses, settings, allKeys] = await Promise.all([
+  const [allSessions, allPhotos, allAnalyses, settings, allKeys, boardRow] = await Promise.all([
     db.getAll('sessions') as Promise<unknown[]>,
     db.getAll('photos') as Promise<unknown[]>,
     db.getAll('analyses') as Promise<unknown[]>,
     db.getAll('settings') as Promise<unknown[]>,
     db.getAllKeys('blobs') as Promise<string[]>,
+    db.get('board', 'app') as Promise<{ submissions?: unknown; challenges?: unknown } | undefined>,
   ]);
+  // leaderboard.md §8: a full backup carries the received board as stored; a backup of chosen sessions leaves it out.
+  const board =
+    opts.sessionIds === undefined && boardRow !== undefined
+      ? {
+          submissions: Array.isArray(boardRow.submissions) ? boardRow.submissions : [],
+          challenges: Array.isArray(boardRow.challenges) ? boardRow.challenges : [],
+        }
+      : null;
   const { sessions, photos, analyses, keys } = scopeToSessions(
     { sessions: allSessions, photos: allPhotos, analyses: allAnalyses, keys: allKeys },
     opts.sessionIds,
@@ -91,7 +100,7 @@ export async function createBackup(
     '"blobs":[',
   ];
   blobs.forEach((b, i) => parts.push((i === 0 ? '' : ',') + JSON.stringify(b)));
-  parts.push(`],"preferences":${JSON.stringify(opts.preferences ?? [])}}`);
+  parts.push(`],"preferences":${JSON.stringify(opts.preferences ?? [])}${board === null ? '' : `,"board":${JSON.stringify(board)}`}}`);
   const json = new Blob(parts, { type: 'application/json' });
   return { blob: await gzipBlob(json), uncompressedBytes: json.size, manifest };
 }

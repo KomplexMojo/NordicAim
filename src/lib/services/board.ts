@@ -119,3 +119,15 @@ export async function applyImport(ctx: ServiceContext, accepted: readonly Submis
   await tx.done;
   return summary;
 }
+
+/**
+ * leaderboard.md §8: a full backup's board, added after the rest of a restore. Every submission is checked again (shape and signature)
+ * and merged like an import, newest per shooter winning, so there is no Keep / Replace question. Returns how many were taken in.
+ */
+export async function restoreBoard(ctx: ServiceContext, board: { submissions: unknown[] } | undefined): Promise<number> {
+  if (board === undefined || board.submissions.length === 0) return 0;
+  const { accepted } = await checkSubmissions(board.submissions);
+  if (accepted.length === 0) return 0;
+  const summary = await applyImport(ctx, accepted);
+  return summary.added + summary.updated;
+}

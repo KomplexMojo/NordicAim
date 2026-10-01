@@ -41,6 +41,11 @@ export interface BackupFile {
   blobs: BackupBlob[];
   /** Absent in a backup made before REV-115. */
   preferences?: BackupPreference[];
+  /**
+   * leaderboard.md §8 (issue #42): the submissions and challenges received from other shooters, as stored. A full backup only; absent
+   * in a backup of chosen sessions and in every earlier file. Each is checked again (signature and shape) when restored.
+   */
+  board?: { submissions: unknown[]; challenges: unknown[] };
 }
 
 const CHUNK = 0x8000;
