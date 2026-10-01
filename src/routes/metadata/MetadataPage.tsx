@@ -241,8 +241,8 @@ export function MetadataPage() {
       </Button>
       {!canAnalyze && photos.length > 0 && (
         <p className="text-center text-xs text-muted-foreground" data-testid="analyze-hint">
-          {incompleteCount} {incompleteCount === 1 ? 'photo needs' : 'photos need'} template, position, and rounds
-          before you can analyze.
+          {incompleteCount} {incompleteCount === 1 ? 'photo needs' : 'photos need'} a target type and rounds before you can
+          analyze.
         </p>
       )}
     </main>

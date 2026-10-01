@@ -4,12 +4,16 @@ import { Link } from 'react-router';
 import { MAIN_TABS, type MainTab } from '@/lib/app/nav';
 import { cn } from '@/lib/utils';
 
-/** REV-111/112: the Sessions tab's icon: a camera. */
+/** REV-149 (issue #91): the Sessions tab's icon is a list of sessions, not a camera, so it reads as history, not "take a photo". */
 function SessionsIcon({ strokeWidth = 2, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M3 8h4l1.6-2.5h6.8L17 8h4v12H3z" />
-      <circle cx="12" cy="13.5" r="3.8" />
+      <path d="M9 6h11" />
+      <path d="M9 12h11" />
+      <path d="M9 18h11" />
+      <circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none" />
     </svg>
   );
 }

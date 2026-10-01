@@ -115,7 +115,7 @@ export function PhotoMetadataCard({
           <StageAProgress stageA={analysis?.pipeline.stageA ?? 'pending'} error={analysis?.pipeline.error ?? null} />
           {!complete && (
             <span className="text-xs text-muted-foreground" data-testid="photo-incomplete-hint">
-              Set template, position, and rounds to continue.
+              Set the target type and rounds to continue.
             </span>
           )}
         </div>

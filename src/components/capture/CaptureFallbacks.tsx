@@ -120,7 +120,7 @@ export function CaptureFallbacks({ sessionId, categorization, template, outerDia
           disabled={busy}
           onClick={() => nativeRef.current?.click()}
         >
-          Native camera
+          Phone camera
         </Button>
         <Button
           variant="outline"
