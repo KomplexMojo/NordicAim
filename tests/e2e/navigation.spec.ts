@@ -38,6 +38,9 @@ test('the result card picture opens the target, where the photo is editable on t
 
   // The swipe (wipe) comparison is part of the editor, not a separate view.
   await expect(page.getByTestId('photo-view-compare')).toHaveCount(0);
+  // Issue #88: behind Compare until opened.
+  await expect(page.getByTestId('compare-slider')).toHaveCount(0);
+  await page.getByTestId('compare-toggle').click();
   await expect(page.getByTestId('compare-slider')).toBeVisible();
   await expect(page.getByTestId('fade-range')).toBeVisible();
   await expect(page.getByTestId('swipe-range')).toBeVisible();
