@@ -27,6 +27,7 @@ import { buildPayload, type ProvenanceTarget } from '@/lib/provenance/payload';
 import { makeStamp } from '@/lib/provenance/stamp';
 import { loadProvenanceKey } from '@/lib/services/provenance';
 import { photoOriginalKey } from '@/lib/store/blob-keys';
+import { goalChecksFor } from '@/lib/services/goals';
 
 const WIDTH_PX = 1440;
 const KEEP_ARTIFACTS = 3;
@@ -191,6 +192,8 @@ export async function buildComposite(
   const nowIso = now.toISOString();
   const identity = athleteIdentity(settings, (await loadProvenanceKey(ctx)) !== null);
   const provenance = await buildProvenance(ctx, session.sessionDate, settings, slots, rule, release, nowIso);
+  // REV-148: the session's own values against the goals in effect when it was created.
+  const goals = await goalChecksFor(ctx, session, photos, analyses, holeDiameterMm);
   const input: CompositeInput = {
     session,
     slots,
@@ -200,6 +203,7 @@ export async function buildComposite(
     scoring: { rule, visibleHoleDiameterMm: settings.visibleHoleDiameterMm },
     moreCount,
     ...(provenance === null ? {} : { provenance: provenance.line }),
+    ...(Object.keys(goals).length === 0 ? {} : { goals }),
   };
 
   // §5 (REV-51): the height depends on the count and on the band's content, so take it from the render.

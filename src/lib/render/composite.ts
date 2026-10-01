@@ -12,7 +12,10 @@ import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
 import { brandMotif } from './brand-mark';
+import type { SessionGoalChecks } from '@/lib/goals/session';
+
 import { layoutBand, type BandModel, type BandRow } from './composite-band';
+import { goalBandRows, goalViewOf, renderGoalsSeal } from './composite-goals';
 import { renderLightingIcon, renderSeasonIcon } from './condition-icons';
 import { PALETTE } from './palette';
 import { el, num, text } from './svg';
@@ -48,6 +51,8 @@ export interface CompositeInput {
   moreCount: number;
   /** REV-100: the athlete's identity line and, when a key is set, the stamp. Omitted when there is nothing to print. */
   provenance?: { name: string; club: string; stamp: string | null };
+  /** REV-148: whether the session met the goals in effect when it was created (`sessionGoalChecks`); omitted for none. */
+  goals?: SessionGoalChecks;
 }
 
 /**
@@ -55,7 +60,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method, REV-137 the brighter group ellipse). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 19;
+export const COMPOSITE_RENDERER_VERSION = 20; // 20: REV-148 goal seal and band rows
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'NordicAim';
@@ -275,6 +280,7 @@ function bandModel(input: CompositeInput, placed: Placed[]): BandModel {
     showMpi: rows.some((r) => r.mpi !== null),
     showRules,
     extra,
+    goals: goalBandRows(input.goals),
     notes: input.session.notes.trim().length > 0 ? input.session.notes : null,
     // Never truncated: cutting the stamp would make it unverifiable.
     athlete: input.provenance === undefined ? null : provenanceLine(input.provenance),
@@ -318,6 +324,9 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
             String(cell.index + 1), // only the clip id still needs the slot number
           );
     body += nestCellSvg(svg, cell.x, HEADER_HEIGHT + cell.y, cell.size);
+    // REV-148: the seal when the session met every goal in effect for this target's position.
+    const view = slot === null || cell.template !== 'precision' ? null : goalViewOf(slot.result.position);
+    if (view !== null && input.goals?.[view]?.allMet === true) body += renderGoalsSeal(cell.x + 664, HEADER_HEIGHT + cell.y + 198);
   }
   body += band.svg;
 

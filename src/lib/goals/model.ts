@@ -25,6 +25,24 @@ export function currentGoal(entries: readonly GoalLogEntry[], view: GoalView, me
   return latest;
 }
 
+/** Whether `value` is at or past `goal` in the metric's better direction (goals.md §4). */
+export function meetsGoal(metric: GoalMetric, value: number, goal: number): boolean {
+  return GOAL_DIRECTION[metric] === 'higher' ? value >= goal : value <= goal;
+}
+
+/**
+ * goals.md §8: the goal in effect at `atIso` — the entry for this (view, metric) with the latest `setAt` at or before
+ * it — or null when none had been set yet. A session is judged against the goals in effect when it was created
+ * (`sessionStamp`), the same boundary `goalProgress` uses.
+ */
+export function goalInEffect(entries: readonly GoalLogEntry[], view: GoalView, metric: GoalMetric, atIso: string): GoalLogEntry | null {
+  return currentGoal(
+    entries.filter((e) => e.setAt <= atIso),
+    view,
+    metric,
+  );
+}
+
 export interface GoalProgress {
   /** Sessions created at or after the goal was set that have a value for this metric. */
   sessions: number;
@@ -50,6 +68,6 @@ export function goalProgress<P extends Pick<TrendPoint, 'sessionStamp'>>(
   });
   if (values.length === 0) return { sessions: 0, average: null, hit: null };
   const average = values.reduce((a, b) => a + b, 0) / values.length;
-  const hit = GOAL_DIRECTION[metric] === 'higher' ? average >= goal.value : average <= goal.value;
+  const hit = meetsGoal(metric, average, goal.value);
   return { sessions: values.length, average, hit };
 }

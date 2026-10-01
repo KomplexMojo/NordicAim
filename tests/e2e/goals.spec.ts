@@ -267,3 +267,55 @@ test('the tab bar stays at four targets, each at least 44 px, with Goals visible
     await expect(bar.getByRole('link', { name })).toBeVisible();
   }
 });
+
+test('a session is stamped against the goals set when it was created: results, target screen and ringed chart dots (REV-148)', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  const first = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  // No goal existed when the first session was created: no Goals card.
+  await page.goto(`/#/sessions/${first}/results`);
+  await expect(page.getByTestId('target-card').first()).toBeVisible();
+  await expect(page.getByTestId('results-goals')).toHaveCount(0);
+
+  // Set a score goal just below the demo's score and a group goal just above its group size: both reachable.
+  await page.goto('/#/goals');
+  await page.getByTestId('goal-score-down').click();
+  await expect(page.getByTestId('goal-score-value')).toHaveText(/^Goal: \d+%$/);
+  await page.getByTestId('goal-group-up').click();
+  await expect(page.getByTestId('goal-group-value')).toHaveText(/^Goal: /);
+  await expect(page.getByTestId('goal-score-met')).toHaveCount(0); // the first session predates the goal
+
+  // A session created after those goals, with the same demo targets, meets both.
+  await page.goto('/#/');
+  const second = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  await page.goto(`/#/sessions/${second}/results`);
+  const prone = page.getByTestId('goal-checks-precision-prone');
+  await expect(prone).toHaveAttribute('data-all-met', 'true');
+  await expect(page.getByTestId('goal-checks-precision-prone-summary')).toHaveText('All goals met');
+  await expect(page.getByTestId('goal-check-precision-prone-score')).toHaveAttribute('data-met', 'true');
+  await expect(page.getByTestId('goal-check-precision-prone-group')).toHaveAttribute('data-met', 'true');
+
+  // The precision target's own screen shows its position's checks.
+  const precisionCard = page.getByTestId('target-card').filter({ hasText: 'Precision' }).first();
+  await precisionCard.getByTestId('view-target').click();
+  await expect(page.getByTestId('target-goals')).toBeVisible();
+  await expect(page.getByTestId('goal-checks-precision-prone')).toHaveAttribute('data-all-met', 'true');
+
+  // The earlier session still has no checks: goals set later never reach back.
+  await page.goto(`/#/sessions/${first}/results`);
+  await expect(page.getByTestId('target-card').first()).toBeVisible();
+  await expect(page.getByTestId('results-goals')).toHaveCount(0);
+
+  // On the Goals chart, only the second session's dot is ringed — and raising the goal now doesn't change that.
+  await page.goto('/#/goals');
+  await expect(page.getByTestId('goal-score-met')).toHaveCount(1);
+  await expect(page.getByTestId('goal-score-met-legend')).toBeVisible();
+  await page.getByTestId('goal-score-up').click();
+  await page.getByTestId('goal-score-up').click();
+  await expect(page.getByTestId('goal-score-status')).toHaveAttribute('data-hit', 'pending');
+  await expect(page.getByTestId('goal-score-met')).toHaveCount(1);
+});

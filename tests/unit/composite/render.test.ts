@@ -494,3 +494,34 @@ describe('render/composite band layout (REV-118)', () => {
   });
 });
 
+
+describe('render/composite goals (REV-148, goals.md §8)', () => {
+  const p1 = () => slot(precisionFixture, precisionResult);
+  const view = precisionResult.position === 'standing' ? ('precision-standing' as const) : ('precision-prone' as const);
+  const met = { metric: 'score' as const, goal: 50, value: 60, met: true };
+  const missed = { metric: 'group' as const, goal: 1, value: 2.5, met: false };
+
+  it('draws the seal on the precision target only when every goal in effect for its position was met', () => {
+    const all = renderCompositeSvg(baseInput({ slots: { sighting: [null, null], precision: [p1(), null] }, goals: { [view]: { view, checks: [met], allMet: true } } }));
+    expect(all).toContain('class="goals-seal"');
+    const some = renderCompositeSvg(baseInput({ slots: { sighting: [null, null], precision: [p1(), null] }, goals: { [view]: { view, checks: [met, missed], allMet: false } } }));
+    expect(some).not.toContain('class="goals-seal"');
+    expect(renderCompositeSvg(baseInput({ slots: { sighting: [null, null], precision: [p1(), null] } }))).not.toContain('class="goals-seal"');
+  });
+
+  it('lists each goal in the band with the session value, the goal, and a tick or a cross', () => {
+    const input = baseInput({ slots: { sighting: [null, null], precision: [p1(), null] }, goals: { [view]: { view, checks: [met, missed], allMet: false } } });
+    const svg = renderCompositeSvg(input);
+    expect(svg).toContain('>Goals<');
+    expect(svg).toContain('>This session<');
+    expect(svg).toContain('>Score<');
+    expect(svg).toContain('>60%<');
+    expect(svg).toContain('>50%<');
+    expect(svg).toContain('>2.50 MOA<');
+    expect(svg).toContain('data-met="true"');
+    expect(svg).toContain('data-met="false"');
+    // Header + two rows, 46 + 2 × 34 px taller than without goals.
+    const without = renderComposite(baseInput({ slots: { sighting: [null, null], precision: [p1(), null] } })).height;
+    expect(renderComposite(input).height).toBe(without + 46 + 2 * 34);
+  });
+});

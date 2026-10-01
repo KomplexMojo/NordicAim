@@ -22,4 +22,7 @@ export const PALETTE = {
   ellipse: '#3AA8F8',
   ellipseHalo: '#0E2A40',
   header: '#1F2630',
+  // REV-148: a goal met (the seal, the band's ✓) and missed (the band's ✗).
+  goalMet: '#1E8E4F',
+  goalMissed: '#B83A2E',
 } as const;

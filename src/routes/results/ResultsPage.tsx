@@ -2,6 +2,7 @@ import { ListChecks, PencilLine, Star } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { GoalChecksCard } from '@/components/goals/GoalChecks';
 import { BackupReminder } from '@/components/settings/BackupReminder';
 import { SummaryCard } from '@/components/results/SummaryCard';
 import { leftOutOfSummary } from '@/lib/composite/select-defaults';
@@ -14,6 +15,7 @@ import { orderedByKind } from '@/lib/domain/photo-order';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { getRecentTimings } from '@/lib/pipeline/timing';
 import { retryFailedStage } from '@/lib/pipeline/runner-browser';
+import { loadSessionGoalChecks } from '@/lib/services/goals';
 import { getSession } from '@/lib/services/sessions';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
@@ -69,6 +71,7 @@ export function ResultsPage() {
   const { sid = '' } = useParams();
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadResults(ctx, sid), [ctx, sid]);
+  const { value: goals } = useLiveQuery(() => loadSessionGoalChecks(ctx, sid), [ctx, sid]);
   const [searchParams] = useSearchParams();
   const showDebug = searchParams.get('debug') === '1';
 
@@ -150,6 +153,11 @@ export function ResultsPage() {
 
       <div className="lg:mx-auto lg:w-full lg:max-w-4xl">
         <SummaryCard sessionId={sid} sessionName={data.name} leftOut={leftOutOfSummary(data.photos)} />
+      </div>
+
+      {/* REV-148: the goals in effect when this session was created, against its own results. */}
+      <div className="lg:mx-auto lg:w-full lg:max-w-4xl">
+        <GoalChecksCard goals={goals} note="Against the goals set when this session was created." testId="results-goals" />
       </div>
 
       {data.photos.length === 0 ? (

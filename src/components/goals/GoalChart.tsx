@@ -6,7 +6,7 @@ import { chartGeometry, valueToY, type ChartBox } from '@/lib/analysis/chart';
 import type { GoalLogEntry, GoalMetric, GoalView } from '@/lib/domain/goals';
 import { cn } from '@/lib/utils';
 import type { GoalPoint, GoalTrendMetric } from '@/lib/goals/metrics';
-import { currentGoal, goalProgress } from '@/lib/goals/model';
+import { currentGoal, goalInEffect, goalProgress, meetsGoal } from '@/lib/goals/model';
 
 const BOX: ChartBox = { width: 320, height: 170, left: 44, right: 12, top: 12, bottom: 28 };
 
@@ -67,6 +67,16 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
     () => (goalNow === null ? null : goalProgress(goalNow, metric.id, trend, metric.value)),
     [goalNow, metric, trend],
   );
+  // REV-148 (goals.md §8): which sessions met the goal in effect when they were created — ringed on the chart.
+  const metAtTheTime = useMemo(
+    () =>
+      trend.map((p) => {
+        const goal = goalInEffect(entries, view, metric.id, p.sessionStamp);
+        const v = metric.value(p);
+        return goal !== null && v !== null && meetsGoal(metric.id, v, goal.value);
+      }),
+    [trend, entries, view, metric],
+  );
   const [draft, setDraft] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const lineValue = draft ?? goalNow?.value ?? null;
@@ -112,6 +122,14 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
               <line x1={0} y1={3} x2={20} y2={3} className="stroke-foreground" strokeWidth={2} strokeDasharray="5 3" />
             </svg>
             Trend: {metric.formatChange(fit.slope)}
+          </p>
+        )}
+        {metAtTheTime.some(Boolean) && (
+          <p className="text-xs text-muted-foreground" data-testid={`goal-${metric.id}-met-legend`}>
+            <svg viewBox="0 0 12 12" className="mr-1 inline-block size-3 align-middle" aria-hidden="true">
+              <circle cx={6} cy={6} r={4.5} fill="none" className="stroke-emerald-600" strokeWidth={1.5} />
+            </svg>
+            Ringed: met the goal in effect when it was shot
           </p>
         )}
         {progress !== null && (
@@ -200,7 +218,12 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
                 />
               )}
               {data.points.map((p) => (
-                <circle key={p.index} cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
+                <g key={p.index}>
+                  {metAtTheTime[p.index] === true && (
+                    <circle cx={p.x} cy={p.y} r={8} fill="none" className="stroke-emerald-600" strokeWidth={2.5} data-testid={`goal-${metric.id}-met`} />
+                  )}
+                  <circle cx={p.x} cy={p.y} r={4} className="fill-primary stroke-card" strokeWidth={2} />
+                </g>
               ))}
               {/* goals.md §4: the current goal, solid and full-width. */}
               {lineValue !== null && (

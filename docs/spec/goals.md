@@ -189,8 +189,36 @@ same prepare-then-one-transaction shape every other write in this app follows (`
   (`analysis.md` §5), so it is deliberately not touched in the same change that adds Goals. Until then, "no misses"
   reads approximately as "Hit rate = 100%" on the existing Score/Hit rate chart. (For the precision views this is
   now Biathlon hits, §1.)
-- Any view of past goals (a history list or a history line on the chart). Only the current goal is shown
-  (owner, 2026-10-01).
+- Any view of past goals (a history list or a history line on the chart). Only the current goal is drawn
+  (owner, 2026-10-01); §8's checks name the goal a session was judged against, nothing more.
 - A date-range control on Goals.
 - Deleting or editing a past log entry. The log is append-only; a mistaken goal is corrected by setting a new one.
 - Goals for precision's ring (score already reflects ring performance) or any other metric beyond §1's four.
+
+## 8. Did a session meet its goals? (REV-148)
+
+The owner (2026-10-01): "stamp the session image and data if we achieved the goals that we're set at the time of the
+session".
+
+- **Goal in effect** for a session and (view, metric): the entry with the latest `setAt` **at or before** the session's
+  `createdAt` (`goalInEffect` in `src/lib/goals/model.ts`; the same boundary as §4's window). A goal set later never
+  reaches back, so a session's checks never change when goals change; only a re-score (a scoring-rule change) can
+  change its values.
+- **Judged on the session's own value**, the point the Goals chart plots for it (`goalTrend`, from `collectPatterns`'s
+  points, so the same targets count), in the metric's better direction (`meetsGoal`). A metric with no value for the
+  session (e.g. one shot's group size) reads "—" and is not met.
+- `sessionGoalChecks(entries, points, session, holeDiameterMm)` (`src/lib/goals/session.ts`) gives, per goal view with
+  shots in the session and at least one goal in effect, the checks (`metric`, `goal`, `value`, `met`) in `goalMetrics`
+  order and `allMet` (every check met). `goalChecksFor` / `loadSessionGoalChecks` (`services/goals.ts`) load it for a
+  stored session under the scoring rule in Settings.
+- **Shown:**
+  - **Summary image** (`rendering-composite.md` §5): a green **seal** with a white tick on a precision target whose
+    position's goals were all met, and a **Goals** table in the analysis band: one row per goal in effect (view on its
+    first row, metric, *This session*, *Goal*, ✓ or ✗; "—" with no value).
+  - **Results screen**: a *Goals* card (`results-goals`) with each view's checks and "All goals met" or "N of M met".
+  - **Target screen**: a precision prone or standing target shows its position's card (`target-goals`).
+  - **Goals chart**: a session that met the goal in effect when it was created has its dot ringed in green
+    (`goal-<metric>-met`), with a one-line legend. The ring follows the goal of its own time, not the current one.
+- Nothing is stored: the checks are worked out on read, and the summary image is rebuilt like any other change
+  (`COMPOSITE_RENDERER_VERSION` 20).
+

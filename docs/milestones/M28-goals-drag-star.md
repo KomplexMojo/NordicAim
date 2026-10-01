@@ -234,3 +234,10 @@ Changes:
 - `goals/metrics.ts`: `goalTrend`/`goalMetrics`; `loadPatterns` returns the scoring hole diameter.
 - `shooting-issues.md` `q`, `goals.md` §1/§4–§7, REV-146.
 
+**Follow-up (2026-10-01): session goal stamps (REV-148).** Each session is judged against the goals in effect when it
+was created, on its own values. That shows as a seal and a Goals table on the summary image, a Goals card on the
+results and precision target screens, and ringed dots on the Goals charts. The code is `goals/session.ts`
+(`sessionGoalChecks`, `goalCheckLabel`), `goalInEffect`/`meetsGoal` in `goals/model.ts`, `goalChecksFor` and
+`loadSessionGoalChecks` in `services/goals.ts`, `render/composite-goals.ts` and `components/goals/GoalChecks.tsx`.
+`COMPOSITE_RENDERER_VERSION` is 20, and `goals.md` §8 is the spec.
+

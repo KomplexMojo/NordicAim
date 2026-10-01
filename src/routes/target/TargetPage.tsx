@@ -14,6 +14,8 @@ import { StatusChip } from '@/components/results/StatusChip';
 import { ZoomFrame } from '@/components/ui/zoom-frame';
 import { Card, CardContent } from '@/components/ui/card';
 import { useServices } from '@/lib/app/services';
+import { GoalChecksCard } from '@/components/goals/GoalChecks';
+import { loadSessionGoalChecks } from '@/lib/services/goals';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { AnalysisResult, SubsetResult, TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
@@ -168,6 +170,7 @@ export function TargetPage() {
   const back = backToFrom(location.state, sid);
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadTarget(ctx, pid), [ctx, pid]);
+  const { value: goals } = useLiveQuery(() => loadSessionGoalChecks(ctx, sid), [ctx, sid]);
 
   if (data === undefined) {
     return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
@@ -192,6 +195,8 @@ export function TargetPage() {
   // Matches `withCharacteristics`'s own resolution for the `all` subset: a `both` target's combined subset is
   // judged by neither position, same as unset.
   const allSubsetPosition = position === 'prone' || position === 'standing' ? position : null;
+  // REV-148: a precision target shows its position's goal checks (the session's own result there).
+  const goalView = template === 'precision' && allSubsetPosition !== null ? (`precision-${allSubsetPosition}` as const) : null;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
@@ -257,6 +262,10 @@ export function TargetPage() {
           scope="Worked out from this target's shots when its analysis was saved."
           missLabel={missLabel(allSubsetPosition)}
         />
+      )}
+
+      {goalView !== null && (
+        <GoalChecksCard goals={goals} views={[goalView]} note="This session's result against the goals set when it was created." testId="target-goals" />
       )}
 
       {result !== null && (
