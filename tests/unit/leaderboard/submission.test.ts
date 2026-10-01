@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Shot } from '@/lib/domain/analysis';
-import { boardFileText, checkSubmissions, rawSubmissions, submissionFileName } from '@/lib/leaderboard/file';
+import { boardFileText, checkSubmissions, readBoardFile, submissionFileName } from '@/lib/leaderboard/file';
 import { boardIdentity, signText, verifyText } from '@/lib/leaderboard/identity';
 import { BOARD_CAP, mergeSubmissions, rankRows } from '@/lib/leaderboard/merge';
 import { previewSubmission, type MyBoardTarget } from '@/lib/leaderboard/select';
@@ -130,16 +130,18 @@ describe('mergeSubmissions', () => {
 describe('files', () => {
   it('reads a board file or a single submission, and rejects anything else', async () => {
     const ann = await submissionFor(1, 'Ann', [0, 0, 0, 0, 0]);
-    expect(rawSubmissions(boardFileText([ann], '2026-10-01T10:00:00.000Z'))).toHaveLength(1);
-    expect(rawSubmissions(JSON.stringify(ann))).toHaveLength(1);
-    expect(rawSubmissions('{"format":"nordic-aim-backup"}')).toBeNull();
-    expect(rawSubmissions('not json')).toBeNull();
+    expect(readBoardFile(boardFileText([ann], '2026-10-01T10:00:00.000Z'))).toMatchObject({ submissions: [ann], challenges: [] });
+    expect(readBoardFile(JSON.stringify(ann))?.submissions).toHaveLength(1);
+    // A board file from before challenges existed reads as having none.
+    expect(readBoardFile(JSON.stringify({ format: 'nordic-aim-board', version: 1, submissions: [] }))?.challenges).toEqual([]);
+    expect(readBoardFile('{"format":"nordic-aim-backup"}')).toBeNull();
+    expect(readBoardFile('not json')).toBeNull();
   });
 
   it('a tampered submission is rejected on its own, never the whole file', async () => {
     const ann = await submissionFor(1, 'Ann', [0, 0, 0, 0, 0]);
     const bob = await submissionFor(2, 'Bob', [10, 10, 10, 10, 10]);
-    const raws = rawSubmissions(boardFileText([ann, { ...bob, name: 'Bobby' }], '2026-10-01T10:00:00.000Z'))!;
+    const raws = readBoardFile(boardFileText([ann, { ...bob, name: 'Bobby' }], '2026-10-01T10:00:00.000Z'))!.submissions;
     const checked = await checkSubmissions([...raws, { junk: true }]);
     expect(checked.accepted.map((s) => s.name)).toEqual(['Ann']);
     expect(checked.rejected).toBe(2);

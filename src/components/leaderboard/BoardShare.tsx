@@ -17,13 +17,14 @@ interface BoardShareProps {
   onImported(): void;
 }
 
-function summaryText(s: MergeSummary, rejected: number): string {
+function summaryText(s: MergeSummary, rejected: number, challenges = 0): string {
   const parts = [
     `${s.added} new ${s.added === 1 ? 'shooter' : 'shooters'}`,
     `${s.updated} updated`,
     `${s.unchanged} already on your board`,
     ...(s.overCap > 0 ? [`${s.overCap} below the top 100`] : []),
     ...(rejected > 0 ? [`${rejected} rejected (signature doesn't match)`] : []),
+    ...(challenges > 0 ? [`${challenges} ${challenges === 1 ? 'challenge' : 'challenges'}`] : []),
   ];
   return parts.join(', ');
 }
@@ -74,9 +75,9 @@ export function BoardShare({ identity, hasName, canSubmit, onImported }: BoardSh
 
   async function addToBoard() {
     if (pending === null) return;
-    const summary = await applyImport(ctx, pending.accepted);
+    const result = await applyImport(ctx, pending.accepted, pending.challenges.accepted);
     setPending(null);
-    setMessage(`Added to your board: ${summaryText(summary, 0)}.`);
+    setMessage(`Added to your board: ${summaryText(result, 0, result.challengesAdded)}.`);
     onImported();
   }
 
@@ -119,10 +120,15 @@ export function BoardShare({ identity, hasName, canSubmit, onImported }: BoardSh
         <div className="flex flex-col gap-2 rounded-md border border-primary p-3 text-sm" role="dialog" aria-label="Import" data-testid="board-import-review">
           <p>
             {pending.accepted.length + pending.rejected} {pending.accepted.length + pending.rejected === 1 ? 'submission' : 'submissions'}:{' '}
-            {summaryText(pending.summary, pending.rejected)}.
+            {summaryText(pending.summary, pending.rejected + pending.challenges.rejected, pending.challenges.accepted.length)}.
           </p>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="h-11" onClick={() => void addToBoard()} disabled={pending.accepted.length === 0} data-testid="board-import-apply">
+            <Button
+              className="h-11"
+              onClick={() => void addToBoard()}
+              disabled={pending.accepted.length === 0 && pending.challenges.accepted.length === 0}
+              data-testid="board-import-apply"
+            >
               Add to my board
             </Button>
             <Button variant="outline" className="h-11" onClick={() => setPending(null)}>
