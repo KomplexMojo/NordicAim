@@ -134,7 +134,8 @@ export function AthleteSettings({ name, club, handedness, onHandednessChange, fi
           aria-describedby="athlete-passphrase-help"
         />
         <p id="athlete-passphrase-help" className="text-xs text-muted-foreground">
-          At least {MIN_PASSPHRASE_LENGTH} characters. A short or common phrase can be guessed from a stamp: use a sentence.
+          At least {MIN_PASSPHRASE_LENGTH} characters. Anyone holding a stamp or a backup file can try guesses offline, so use a
+          sentence of four or more words nobody would guess. It also protects backups when you choose to.
         </p>
       </div>
       <div className="flex gap-2">

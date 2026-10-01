@@ -36,6 +36,29 @@ worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; f
 object-src 'none'; base-uri 'self'; form-action 'self'
 ```
 
+**Trade-offs (issue #48, reviewed 2026-09-21 and 2026-10-01).** Two directives are looser than the strictest policy, and
+both are kept on purpose:
+
+- `style-src 'unsafe-inline'`: React `style={…}` attributes (blend layers, slider ticks, chart geometry) and Tailwind's
+  injected styles need it. A nonce or hash can't be used: the CSP is a `<meta>` tag baked into a static build on GitHub
+  Pages, so there is no server to mint a per-response nonce, and inline style attributes can't be hashed. Inline **styles**
+  can't run code. The risk is limited to CSS-based tricks on content the app itself renders, and the app never renders
+  untrusted HTML (backup SVGs are checked, REV-142).
+- `img-src data:`: the SVG-raster fallback and a few drawn marks use `data:` image URLs. Images can't run script.
+- What makes these safe: `script-src` has neither `'unsafe-inline'` nor `'unsafe-eval'`, only `'self'` and
+  `'wasm-unsafe-eval'` for OpenCV's WebAssembly. Also `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` and
+  `connect-src 'self'` (no network beyond the app's own files).
+- Revisit `style-src` if the app ever gets a server that can send headers.
+
+## 3a. Being framed (issue #47)
+
+A `<meta>` CSP can't set `frame-ancestors`, and GitHub Pages can't send `X-Frame-Options`, so another site could put the
+app in a frame and disguise a tap on **Share** or **Back up now**. At start-up the app checks whether it is framed
+(`isFramed`, `src/lib/app/framing-browser.ts`: `window.self !== window.top`, or the check is blocked). Framed, it starts
+nothing (no services, pipeline or test hooks) and renders only a notice, "NordicAim can't run inside another page.", with a
+link that opens it on its own (`target="_top"`). Following that link is the owner's own tap, which browsers allow to leave
+the frame. No controls exist in the framed copy, so there is nothing to trick a tap onto.
+
 **OpenCV and the CSP (investigated 2026-09-15).** OpenCV.js (Emscripten embind) calls `new Function()` while initialising,
 so it cannot run on the **page** under this CSP. It runs in the **module Web Worker** (`src/workers/cv.worker.ts`), which this
 page-level meta CSP does not govern. That is verified on the production build in WebKit and Chromium with and without

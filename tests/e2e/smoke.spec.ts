@@ -41,3 +41,20 @@ test('diagnostics page runs every check', async ({ page }) => {
 
   await expect(page.locator('tr[data-check-id="heic-decode"]')).toBeVisible();
 });
+
+test('framed by another page, the app shows only a notice and none of its controls (issue #47)', async ({ page, baseURL }) => {
+  // A page served on the same origin frames it (Chromium won't let about:blank frame a local address); framing is framing either way.
+  await page.route(`${baseURL}/framing-test.html`, (route) =>
+    route.fulfill({ contentType: 'text/html', body: `<iframe id="f" src="${baseURL}/#/settings" style="width:400px;height:600px"></iframe>` }),
+  );
+  await page.goto('/framing-test.html');
+  const frame = page.frameLocator('#f');
+  await expect(frame.getByTestId('framed-notice')).toBeVisible({ timeout: 30_000 });
+  await expect(frame.getByRole('link', { name: 'Open NordicAim on its own' })).toHaveAttribute('target', '_top');
+  await expect(frame.getByTestId('backup-now')).toHaveCount(0);
+  await expect(frame.getByTestId('tab-bar')).toHaveCount(0);
+  // On its own, the app is untouched.
+  await page.goto('/#/settings');
+  await expect(page.getByTestId('backup-now')).toBeVisible();
+  await expect(page.getByTestId('framed-notice')).toHaveCount(0);
+});
