@@ -34,21 +34,34 @@ interface ViewSwitchProps<V extends PatternView> {
   views: readonly V[];
 }
 
-/** patterns.md §1: the view buttons on their own — Goals uses these without the date range (goals.md §3). */
+/** Issue #90: the four-view row's short names; the full name stays the accessible name. */
+const SHORT_VIEW_LABEL: Record<PatternView, string> = {
+  'sight-in': 'Sight in',
+  confirm: 'Confirm',
+  'precision-prone': 'Prone',
+  'precision-standing': 'Standing',
+};
+
+/**
+ * patterns.md §1: the view buttons on their own — Goals uses these without the date range (goals.md §3). Issue #90: all four
+ * views fit one compact row (mark over a short name), so the chart or drawing leads the screen; two views keep full names.
+ */
 export function ViewSwitch<V extends PatternView>({ view, onView, testIdPrefix, views }: ViewSwitchProps<V>) {
+  const compact = views.length > 2;
   return (
-    <div role="group" aria-label="Target type" className={cn('grid grid-cols-2 gap-2', views.length > 2 && 'sm:grid-cols-4')}>
+    <div role="group" aria-label="Target type" className={cn('grid gap-2', compact ? 'grid-cols-4' : 'grid-cols-2')}>
       {views.map((id) => (
         <Button
           key={id}
           variant={id === view ? 'default' : 'outline'}
-          className="h-11"
+          className={compact ? 'h-14 flex-col gap-1 px-1 text-xs' : 'h-11'}
           aria-pressed={id === view}
+          aria-label={compact ? PATTERN_VIEW_LABEL[id] : undefined}
           data-testid={`${testIdPrefix}-view-${id}`}
           onClick={() => onView(id)}
         >
           <ViewMark kind={id} />
-          {PATTERN_VIEW_LABEL[id]}
+          {compact ? SHORT_VIEW_LABEL[id] : PATTERN_VIEW_LABEL[id]}
         </Button>
       ))}
     </div>
