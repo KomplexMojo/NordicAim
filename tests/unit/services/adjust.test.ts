@@ -159,6 +159,23 @@ describe('markManualShots (M13 step 4)', () => {
 });
 
 describe('saveAdjustments (analysis-pipeline §8)', () => {
+  it('leaderboard.md §3: the first correction of a scored target keeps its automatic shots, and later ones keep that snapshot', async () => {
+    const stored = autoShot('auto-1', 1.4, -0.8);
+    const { ctx, photoId } = await seed({ shots: [stored] });
+    const scored = (await getAnalysisRecord(ctx.db, photoId))!;
+    const result = { engineVersion: '1', template: 'precision' as const, position: 'prone' as const, subsets: [], all: {} as never };
+    await putAnalysisRecord(ctx.db, { ...scored, computed: { engineVersion: '1', result } });
+
+    await saveAdjustments(ctx, photoId, { shots: [{ ...stored, xMm: 0 }] });
+    const first = await getAnalysisRecord(ctx.db, photoId);
+    expect(first?.autoBaseline?.shots).toEqual([stored]);
+
+    await saveAdjustments(ctx, photoId, { calibration: MOVED_CAL });
+    const second = await getAnalysisRecord(ctx.db, photoId);
+    expect(second?.autoBaseline).toEqual(first?.autoBaseline);
+    ctx.db.close();
+  });
+
   it('saves a moved calibration as manual, with alignment method manual and stageB pending', async () => {
     const { ctx, photoId } = await seed();
 

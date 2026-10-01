@@ -194,6 +194,10 @@ export const TargetAnalysis = z.object({
     (c) => ((c as { result?: { position?: unknown } } | null)?.result?.position === 'both' ? null : c),
     z.object({ engineVersion: z.string(), result: AnalysisResultSchema }).nullable(),
   ),
+  // leaderboard.md §3 (issue #42): the automatic shots, kept the first time the owner corrects an automatically scored target,
+  // so a correction can be compared with what the app found. Absent while nothing was corrected (the shots are then the
+  // baseline themselves) and on targets corrected before it was kept.
+  autoBaseline: z.object({ shots: z.array(Shot), recordedAt: UtcIso }).nullable().optional(),
 });
 export type TargetAnalysis = z.infer<typeof TargetAnalysis>;
 

@@ -13,6 +13,8 @@ import { ZoomFrame } from '@/components/ui/zoom-frame';
 import { Card, CardContent } from '@/components/ui/card';
 import { useServices } from '@/lib/app/services';
 import { GoalChecksCard } from '@/components/goals/GoalChecks';
+import { CorrectionNote } from '@/components/leaderboard/CorrectionNote';
+import { boardTarget } from '@/lib/leaderboard/target';
 import { loadSessionGoalChecks } from '@/lib/services/goals';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import type { AnalysisResult, TargetAnalysis } from '@/lib/domain/analysis';
@@ -79,6 +81,8 @@ export function TargetPage() {
   const allSubsetPosition = position === 'prone' || position === 'standing' ? position : null;
   // REV-148: a precision target shows its position's goal checks (the session's own result there).
   const goalView = template === 'precision' && allSubsetPosition !== null ? (`precision-${allSubsetPosition}` as const) : null;
+  // leaderboard.md §3: a hand-corrected precision target shows its automatic score beside the owner's.
+  const board = boardTarget(photo, analysis);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
@@ -114,6 +118,7 @@ export function TargetPage() {
               {plainLine(result)}
             </p>
           )}
+          {board !== null && <CorrectionNote check={board.check} />}
         </>
       )}
 
