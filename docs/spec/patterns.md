@@ -35,6 +35,17 @@ Shots are the located **units** of `computed.result.all.units`, in mm from the t
 By `session.sessionDate` (`YYYY-MM-DD`): **Latest session** (default, owner, 2026-09-30: one session, the latest date that has shots in the view, then the latest session creation time, all its shots), **7 days**, **14 days**, **30 days**, **90 days**, **All time**. "Days" count back from today (the
 service supplies today; `patterns/` never reads the clock). The dots and the summary change together.
 
+### 3a. Season (REV-154, issue #29)
+
+Under the range, one row of five small buttons (`components/patterns/SeasonFilter.tsx`, `testIdPrefix-season-<id>`):
+**All** (default), then **Winter**, **Spring**, **Summer**, **Fall** as the summary image's season pictograms (REV-108,
+`renderSeasonGlyph`). A shot's season is its target's (`targetSeason`): the season chosen on the photo (REV-79), else
+its capture date's (`suggestSeason`), else the session date's. `filterBySeason` runs **before** the range, so
+*Latest session* under Winter is the latest winter session. The choice lives in the address (`season=`, absent = All)
+with the view and range. The same row, with the same rule, is on Analysis (`analysis.md` §1), Goals (`goals.md` §3)
+and Home, where a session shows under a season when any of its targets counts in it (a target with no season of its
+own, or a session with no targets, goes by the session date; `sessions/seasons.ts`).
+
 ## 4. Summary (per view, over the shown points)
 
 `shots`, `targets`, `sessions`; the mean point of impact (mm and MOA via `mpiOffset`, at 50 m); the group ellipse

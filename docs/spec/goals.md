@@ -83,6 +83,9 @@ a separately maintained flag. Earlier entries for a pair stay in the log but are
   `GoalView`s, as the same compact buttons Patterns and Analysis use: the view's mark over *Prone* / *Standing*, issue
   #90): no date-range slider and no range hint (owner, 2026-10-01). The view lives in the address
   (`?view=`), as on Patterns and Analysis. Patterns and Analysis keep their full `ViewRangeControls`, unchanged.
+- **Season row** (REV-154, issue #29; `patterns.md` §3a), under the view switch: a season narrows the charts **and** each
+  goal's "average since set" (§4) to that season's sessions; `?season=` in the address. A session's own goal checks
+  (§8) are not filtered.
 - Below it, one chart per goal-able metric for the selected view (`trendMetrics('precision')` filtered to
   `GoalMetric`), plotting **every** session for that view (`sessionTrend`, no `filterByRange`) — reusing
   `analysis.md` §4's geometry (`chartGeometry`) plus its least-squares trend line, the current goal line and status

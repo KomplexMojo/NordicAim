@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { BUILD_SHA } from '@/lib/app/build-info';
+import { SeasonFilter } from '@/components/patterns/SeasonFilter';
 import { DeleteSessionDialog } from '@/components/sessions/DeleteSessionDialog';
 import { SessionList } from '@/components/sessions/SessionList';
 import { QuickStartButton } from '@/components/sessions/QuickStartButton';
@@ -11,8 +12,10 @@ import { BackupReminder } from '@/components/settings/BackupReminder';
 import { Button } from '@/components/ui/button';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import { listSessionKinds, listSessionsWithProblems } from '@/lib/services/sessions';
+import { parseSeasonFilter, SEASON_LABEL, type SeasonFilter as SeasonFilterValue } from '@/lib/domain/season';
+import { listSessionKinds, listSessionSeasons, listSessionsWithProblems } from '@/lib/services/sessions';
 import { sortSessions, type SessionSortDirection } from '@/lib/sessions/list-view';
+import { sessionInSeason } from '@/lib/sessions/seasons';
 
 /**
  * Route `#/` (analysis-pipeline §1). REV-72: the one screen that lists every session, and the one place a session is
@@ -22,11 +25,19 @@ export function HomePage() {
   const { ctx } = useServices();
   const { value, loading } = useLiveQuery(() => listSessionsWithProblems(ctx), [ctx]);
   const { value: kinds } = useLiveQuery(() => listSessionKinds(ctx), [ctx]);
+  const { value: seasons } = useLiveQuery(() => listSessionSeasons(ctx), [ctx]);
+  // REV-154 (issue #29): the season filter lives in the address, so Back from a session returns to it.
+  const [params, setParams] = useSearchParams();
+  const season = parseSeasonFilter(params.get('season'));
+  const setSeason = (s: SeasonFilterValue) => setParams(s === 'all' ? {} : { season: s }, { replace: true });
   const [deleting, setDeleting] = useState<string | null>(null);
   // Newest session date first by default; the toggle beside the heading flips it.
   const [sortDirection, setSortDirection] = useState<SessionSortDirection>('desc');
   const sessions = value?.sessions;
-  const sorted = useMemo(() => sortSessions(sessions ?? [], sortDirection), [sessions, sortDirection]);
+  const sorted = useMemo(
+    () => sortSessions((sessions ?? []).filter((s) => sessionInSeason(s, seasons, season)), sortDirection),
+    [sessions, seasons, season, sortDirection],
+  );
   const unreadable = value?.unreadable ?? [];
 
   return (
@@ -60,13 +71,18 @@ export function HomePage() {
             {sortDirection === 'desc' ? <ArrowDown className="size-4" aria-hidden /> : <ArrowUp className="size-4" aria-hidden />}
           </Button>
         </div>
+        {sessions !== undefined && sessions.length > 0 && <SeasonFilter season={season} onSeason={setSeason} testIdPrefix="home" />}
         {loading && sessions === undefined ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <SessionList
             sessions={sorted}
             kinds={kinds}
-            emptyMessage="No sessions yet. Quick start to take your first photo."
+            emptyMessage={
+              season !== 'all' && (sessions ?? []).length > 0
+                ? `No ${SEASON_LABEL[season].toLowerCase()} sessions.`
+                : 'No sessions yet. Quick start to take your first photo.'
+            }
             onDelete={(session) => setDeleting(session.id)}
           />
         )}

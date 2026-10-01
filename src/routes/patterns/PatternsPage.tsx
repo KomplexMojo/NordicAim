@@ -4,12 +4,14 @@ import { useSearchParams } from 'react-router';
 import { ObservedPatterns } from '@/components/results/ObservedPatterns';
 import { PatternHeader } from '@/components/patterns/PatternHeader';
 import { TargetLinks } from '@/components/patterns/TargetLinks';
+import { SeasonFilter } from '@/components/patterns/SeasonFilter';
 import { ViewRangeControls } from '@/components/patterns/ViewRangeControls';
 import { Card, CardContent } from '@/components/ui/card';
 import { ZoomFrame } from '@/components/ui/zoom-frame';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import { PATTERN_VIEWS, PATTERN_VIEW_LABEL, filterByRange, type PatternRange, type PatternView } from '@/lib/patterns/collect';
+import type { SeasonFilter as SeasonFilterValue } from '@/lib/domain/season';
+import { PATTERN_VIEWS, PATTERN_VIEW_LABEL, filterByRange, filterBySeason, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 import { characterize } from '@/lib/scoring/characteristics';
 import { summarizePatterns, THIN_SHOT_COUNT } from '@/lib/patterns/summarize';
 import { PATTERNS_SIZE, patternsPxToMm, patternsScale, patternsSizeFactor, renderPatternsSvg } from '@/lib/render/patterns';
@@ -29,19 +31,21 @@ export function PatternsPage() {
   const { value, loading } = useLiveQuery(() => loadPatterns(ctx), [ctx]);
   // Issue #72: the view and range live in the address, so Back from a target opened here returns to them.
   const [params, setParams] = useSearchParams();
-  const { view, range } = parseViewRange(params);
+  const { view, range, season } = parseViewRange(params);
   // The targets under the last tap on the drawing (null: nothing tapped), cleared when the view or range changes.
   const [picked, setPicked] = useState<{ key: string; refs: TargetRef[] } | null>(null);
-  const viewKey = viewRangeSearch(view, range);
-  const setView = (v: PatternView) => setParams(viewRangeSearch(v, range), { replace: true });
-  const setRange = (r: PatternRange) => setParams(viewRangeSearch(view, r), { replace: true });
+  const viewKey = viewRangeSearch(view, range, season);
+  const setView = (v: PatternView) => setParams(viewRangeSearch(v, range, season), { replace: true });
+  const setRange = (r: PatternRange) => setParams(viewRangeSearch(view, r, season), { replace: true });
+  const setSeason = (s: SeasonFilterValue) => setParams(viewRangeSearch(view, range, s), { replace: true });
   const from = { path: `/patterns?${viewKey}`, label: 'Back to Patterns' };
 
   const kind = view.startsWith('precision') ? 'precision' : 'sighting';
   const position = view === 'precision-standing' ? 'standing' : 'prone';
   const shown = useMemo(
-    () => (value === undefined ? [] : filterByRange(value.data.points[view], range, value.today)),
-    [value, view, range],
+    // REV-154: the season first, so "Latest session" under Winter is the latest winter session.
+    () => (value === undefined ? [] : filterByRange(filterBySeason(value.data.points[view], season), range, value.today)),
+    [value, view, range, season],
   );
   const summary = useMemo(() => summarizePatterns(shown, kind), [shown, kind]);
   // REV-88: the observed patterns are worked out over the whole set of shots on screen, as one group.
@@ -85,6 +89,7 @@ export function PatternsPage() {
       <h1 className="text-xl font-semibold">Patterns</h1>
 
       <ViewRangeControls view={view} range={range} onView={setView} onRange={setRange} testIdPrefix="pattern" />
+      <SeasonFilter season={season} onSeason={setSeason} testIdPrefix="pattern" />
 
       {loading && value === undefined ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

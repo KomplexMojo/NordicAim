@@ -6,6 +6,8 @@ import { deleteByPrefix } from '@/lib/store/blobs-repo';
 import { deleteAnalysisRecord } from '@/lib/store/analyses-repo';
 import { deletePhotoRecord, listPhotoIdsBySession, listPhotoRecords } from '@/lib/store/photos-repo';
 import { kindsBySession, type SessionKinds } from '@/lib/sessions/kinds';
+import { seasonsBySession } from '@/lib/sessions/seasons';
+import type { Season } from '@/lib/domain/enums';
 import {
   deleteSessionRecord,
   getRawSessionRecord,
@@ -81,6 +83,11 @@ export async function listSessionsWithProblems(
  */
 export async function listSessionKinds(ctx: ServiceContext): Promise<Map<string, SessionKinds>> {
   return kindsBySession(await listPhotoRecords(ctx.db));
+}
+
+/** REV-154 (issue #29): each session's target seasons, for Home's season filter (`sessionInSeason`). */
+export async function listSessionSeasons(ctx: ServiceContext): Promise<Map<string, Array<Season | null>>> {
+  return seasonsBySession(await listPhotoRecords(ctx.db));
 }
 
 /** The phone's local date today, `YYYY-MM-DD` (the date quick start gives a new session). */

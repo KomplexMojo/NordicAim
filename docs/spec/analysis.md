@@ -13,6 +13,8 @@ Code: `src/lib/analysis/trend.ts` and `chart.ts` (pure), `src/routes/analysis/An
 - The same four views as Patterns (`patterns.md` §1): **Sight in**, **Confirm**, **Precision prone**, **Precision
   standing**. They use the same buttons (`ViewRangeControls`).
 - The same date ranges and slider as Patterns (`patterns.md` §3): latest session, 7 days, 14 days, 30 days, 90 days, all time.
+- The same season row as Patterns (`patterns.md` §3a, REV-154); the counts line names the season when one is chosen. The coach
+  image (§5) is unchanged: it follows the range only.
 
 ## 2. Which shots, and one point per session
 

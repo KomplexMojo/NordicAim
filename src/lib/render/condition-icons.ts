@@ -34,8 +34,13 @@ function rays(cx: number, cy: number, r0: number, r1: number, count: number, fro
 const stroke = (inner: string, colour = LINE, width = 2): string =>
   `<g stroke="${colour}" stroke-width="${width}" stroke-linecap="round" fill="none">${inner}</g>`;
 
-const SEASON_GLYPH: Record<Season, string> = {
-  winter: stroke(rays(22, 22, 0, 12, 6, 90)) + stroke(rays(22, 22, 7, 10, 6, 60)),
+/** The season pictogram alone, on a 44 × 44 box; `line` is its line colour (REV-154: `currentColor` on the app's filter buttons). */
+export function renderSeasonGlyph(season: Season, line = LINE): string {
+  return seasonGlyphs(line)[season];
+}
+
+const seasonGlyphs = (line: string): Record<Season, string> => ({
+  winter: stroke(rays(22, 22, 0, 12, 6, 90), line) + stroke(rays(22, 22, 7, 10, 6, 60), line),
   spring:
     stroke('<line x1="22" y1="33" x2="22" y2="21" />', SPROUT) +
     `<path d="M22 22 C13 23 11 16 11 13 C19 12 22 16 22 22 Z" fill="${SPROUT}" />` +
@@ -43,9 +48,12 @@ const SEASON_GLYPH: Record<Season, string> = {
   summer:
     `<path d="M13 27 A9 9 0 0 1 31 27 Z" fill="${SUN}" />` +
     stroke(rays(22, 27, 12, 15.5, 5, 210, 30), SUN) +
-    stroke('<path d="M10 31 q3 -3 6 0 t6 0 t6 0 t6 0" />'),
-  fall: `<path d="M22 10 C32 15 32 27 22 34 C12 27 12 15 22 10 Z" fill="${LEAF}" />` + stroke('<line x1="22" y1="14" x2="22" y2="36" />', '#5A3410', 1.6),
-};
+    stroke('<path d="M10 31 q3 -3 6 0 t6 0 t6 0 t6 0" />', line),
+  // REV-154 (owner, 2026-10-01): a maple leaf, so fall reads as a leaf and not a bean.
+  fall:
+    `<path d="M22 6 L25 12 L28 10 L27.5 16.5 L33 13.5 L31.5 19.5 L37 21 L31 25 L32.5 28.5 L25.5 27.5 L22.8 31 L21.2 31 L18.5 27.5 L11.5 28.5 L13 25 L7 21 L12.5 19.5 L11 13.5 L16.5 16.5 L16 10 L19 12 Z" fill="${LEAF}" stroke="${LEAF}" stroke-width="1" stroke-linejoin="round" />` +
+    stroke('<line x1="22" y1="13" x2="22" y2="38" /><line x1="22" y1="24" x2="29" y2="19" /><line x1="22" y1="24" x2="15" y2="19" />', '#5A3410', 1.4),
+});
 
 const LIGHTING_GLYPH: Record<Exclude<Lighting, 'unknown'>, string> = {
   daylight: `<circle cx="22" cy="22" r="5.5" fill="${SUN}" />` + stroke(rays(22, 22, 9, 13, 8, 0), SUN),
@@ -57,7 +65,7 @@ const LIGHTING_GLYPH: Record<Exclude<Lighting, 'unknown'>, string> = {
 
 /** The season badge at (x, y), 44 px. */
 export function renderSeasonIcon(season: Season, x: number, y: number): string {
-  return badge('season', season, SEASON_LABEL[season], x, y, SEASON_GLYPH[season]);
+  return badge('season', season, SEASON_LABEL[season], x, y, renderSeasonGlyph(season));
 }
 
 /** The lighting badge at (x, y), 44 px; `unknown` has none. */

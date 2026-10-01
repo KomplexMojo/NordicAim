@@ -47,7 +47,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method, REV-137 the brighter group ellipse). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 20; // 20: REV-148 goal seal and band rows
+export const COMPOSITE_RENDERER_VERSION = 21; // 21: REV-154 maple-leaf fall badge; 20: REV-148 goal seal and band rows
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'NordicAim';

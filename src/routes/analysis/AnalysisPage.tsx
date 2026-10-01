@@ -3,11 +3,13 @@ import { useSearchParams } from 'react-router';
 
 import { TrendChart } from '@/components/analysis/TrendChart';
 import { TrendsImageCard } from '@/components/analysis/TrendsImageCard';
+import { SeasonFilter } from '@/components/patterns/SeasonFilter';
 import { ViewRangeControls } from '@/components/patterns/ViewRangeControls';
 import { sessionTrend, trendMetrics } from '@/lib/analysis/trend';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import { PATTERN_VIEW_LABEL, filterByRange, type PatternRange, type PatternView } from '@/lib/patterns/collect';
+import { SEASON_LABEL, type SeasonFilter as SeasonFilterValue } from '@/lib/domain/season';
+import { PATTERN_VIEW_LABEL, filterByRange, filterBySeason, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 import { loadPatterns } from '@/lib/services/patterns';
 import { parseViewRange, viewRangeSearch } from '@/lib/patterns/url';
 
@@ -20,15 +22,16 @@ export function AnalysisPage() {
   const { value, loading } = useLiveQuery(() => loadPatterns(ctx), [ctx]);
   // Issue #72: the view and range live in the address, so Back from a target opened here returns to them.
   const [params, setParams] = useSearchParams();
-  const { view, range } = parseViewRange(params);
-  const setView = (v: PatternView) => setParams(viewRangeSearch(v, range), { replace: true });
-  const setRange = (r: PatternRange) => setParams(viewRangeSearch(view, r), { replace: true });
-  const from = { path: `/analysis?${viewRangeSearch(view, range)}`, label: 'Back to Analysis' };
+  const { view, range, season } = parseViewRange(params);
+  const setView = (v: PatternView) => setParams(viewRangeSearch(v, range, season), { replace: true });
+  const setRange = (r: PatternRange) => setParams(viewRangeSearch(view, r, season), { replace: true });
+  const setSeason = (s: SeasonFilterValue) => setParams(viewRangeSearch(view, range, s), { replace: true });
+  const from = { path: `/analysis?${viewRangeSearch(view, range, season)}`, label: 'Back to Analysis' };
 
   const kind = view.startsWith('precision') ? 'precision' : 'sighting';
   const trend = useMemo(
-    () => (value === undefined ? [] : sessionTrend(filterByRange(value.data.points[view], range, value.today), kind)),
-    [value, view, range, kind],
+    () => (value === undefined ? [] : sessionTrend(filterByRange(filterBySeason(value.data.points[view], season), range, value.today), kind)),
+    [value, view, range, season, kind],
   );
   const metrics = useMemo(() => trendMetrics(kind), [kind]);
   const targets = trend.reduce((n, t) => n + t.targets, 0);
@@ -39,13 +42,15 @@ export function AnalysisPage() {
       <h1 className="text-xl font-semibold">Analysis</h1>
 
       <ViewRangeControls view={view} range={range} onView={setView} onRange={setRange} testIdPrefix="analysis" />
+      <SeasonFilter season={season} onSeason={setSeason} testIdPrefix="analysis" />
 
       {loading && value === undefined ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <>
           <p className="text-sm font-medium" data-testid="analysis-counts">
-            {PATTERN_VIEW_LABEL[view]}: {trend.length} {trend.length === 1 ? 'session' : 'sessions'} · {targets}{' '}
+            {PATTERN_VIEW_LABEL[view]}
+            {season === 'all' ? '' : ` · ${SEASON_LABEL[season]}`}: {trend.length} {trend.length === 1 ? 'session' : 'sessions'} · {targets}{' '}
             {targets === 1 ? 'target' : 'targets'}
           </p>
           {trend.length === 0 ? (
@@ -59,7 +64,7 @@ export function AnalysisPage() {
               )}
               <div className="grid gap-4 lg:grid-cols-2">
                 {metrics.map((m) => (
-                  <TrendChart key={`${view}-${range}-${m.id}`} metric={m} trend={trend} from={from} />
+                  <TrendChart key={`${view}-${range}-${season}-${m.id}`} metric={m} trend={trend} from={from} />
                 ))}
               </div>
               <details className="text-sm" data-testid="analysis-table">

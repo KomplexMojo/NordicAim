@@ -1,7 +1,9 @@
 // patterns.md §1–§3: which recorded shots belong to which Patterns view. Pure: no clock, no storage.
 
 import type { TargetAnalysis, UnitResult } from '../domain/analysis';
+import type { Season } from '../domain/enums';
 import type { TargetPhoto } from '../domain/photo';
+import { seasonMatches, targetSeason, type SeasonFilter } from '../domain/season';
 import { sightingRoles } from '../domain/sighting-role';
 
 export const PATTERN_VIEWS = ['sight-in', 'confirm', 'precision-prone', 'precision-standing'] as const;
@@ -33,7 +35,7 @@ export interface PatternSource {
   sessionDate: string;
   /** When the session was created (ISO), to tell two sessions on the same day apart. */
   sessionStamp: string;
-  photo: Pick<TargetPhoto, 'id' | 'sessionId' | 'status' | 'captureTime' | 'importedAt'> & {
+  photo: Pick<TargetPhoto, 'id' | 'sessionId' | 'status' | 'captureTime' | 'importedAt' | 'season'> & {
     categorization: Pick<TargetPhoto['categorization'], 'template' | 'sightingRole'>;
   };
   analysis: Pick<TargetAnalysis, 'computed' | 'pipeline'> | null;
@@ -49,6 +51,8 @@ export interface PatternPoint {
   sessionId: string;
   sessionDate: string;
   sessionStamp: string;
+  /** REV-154: the season its target counts in (`targetSeason`); absent or null = no season, shown only under All. */
+  season?: Season | null;
 }
 
 export interface PatternData {
@@ -76,6 +80,7 @@ function toPoint(unit: UnitResult, source: PatternSource): PatternPoint {
     sessionId: source.sessionId,
     sessionDate: source.sessionDate,
     sessionStamp: source.sessionStamp,
+    season: targetSeason(source.photo.season, source.photo.captureTime.local, source.sessionDate),
   };
 }
 
@@ -137,4 +142,9 @@ export function filterByRange(points: PatternPoint[], range: PatternRange, today
   cutoff.setUTCDate(cutoff.getUTCDate() - Number(range));
   const cutoffDate = cutoff.toISOString().slice(0, 10);
   return points.filter((p) => p.sessionDate >= cutoffDate);
+}
+
+/** REV-154 (issue #29): only the shots whose target counts in `season`; `all` keeps everything. Applied before the date range. */
+export function filterBySeason(points: PatternPoint[], season: SeasonFilter): PatternPoint[] {
+  return season === 'all' ? points : points.filter((p) => seasonMatches(p.season, season));
 }
