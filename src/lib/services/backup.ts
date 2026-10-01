@@ -1,5 +1,6 @@
 // backup.md: the owner's explicit backup and restore. Nothing here runs by itself.
 
+import { encryptBackup, ENCRYPTED_SUFFIX } from '@/lib/backup/encrypt';
 import { backupFileName } from '@/lib/backup/format';
 import { createBackup, type CreatedBackup } from '@/lib/backup/create';
 import { isValidReminderDays } from '@/lib/backup/due';
@@ -7,7 +8,7 @@ import { applyRestore, planRestore, type ConflictPolicy, type RestorePlan, type 
 import type { RebuildTools } from '@/lib/backup/rebuild';
 import type { VerifiedBackup } from '@/lib/backup/verify';
 import { applyPreferences, collectPreferences } from '@/lib/backup/preferences-browser';
-import { loadProvenanceKey } from '@/lib/services/provenance';
+import { isStampPassphrase, loadProvenanceKey, WrongPassphraseError } from '@/lib/services/provenance';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 import { getSettings, putSettings } from '@/lib/store/settings-repo';
@@ -16,13 +17,25 @@ import type { ServiceContext } from './context';
 
 export interface BackupFileToShare extends CreatedBackup {
   fileName: string;
+  /** REV-151: encrypted with the stamp passphrase (backup.md §2d). */
+  protected: boolean;
 }
 
-/** `sessionIds` (REV-143, backup.md §2c): back up only those sessions; absent, everything. */
-export async function buildBackupFile(ctx: ServiceContext, appBuild: string, sessionIds?: string[]): Promise<BackupFileToShare> {
+/**
+ * `sessionIds` (REV-143, backup.md §2c): back up only those sessions; absent, everything. `protect` (REV-151, §2d): encrypt the file
+ * with the athlete's stamp passphrase, which must match this phone's stamp key (`WrongPassphraseError` otherwise, before anything
+ * is built). `iterations` is for tests.
+ */
+export async function buildBackupFile(
+  ctx: ServiceContext,
+  appBuild: string,
+  sessionIds?: string[],
+  protect?: { passphrase: string; iterations?: number },
+): Promise<BackupFileToShare> {
   const now = ctx.now();
   const nowIso = now.toISOString();
   const settings = await getSettings(ctx.db);
+  if (protect !== undefined && !(await isStampPassphrase(ctx, protect.passphrase, protect.iterations))) throw new WrongPassphraseError();
   const created = await createBackup(ctx.db, { appBuild, nowIso, preferences: collectPreferences(), sessionIds });
   const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const fileName = backupFileName({
@@ -31,7 +44,9 @@ export async function buildBackupFile(ctx: ServiceContext, appBuild: string, ses
     keyFingerprint: settings.keyFingerprint,
     sessions: sessionIds === undefined ? undefined : created.manifest.counts.sessions,
   });
-  return { ...created, fileName };
+  if (protect === undefined) return { ...created, fileName, protected: false };
+  const blob = await encryptBackup(created.blob, protect.passphrase, { keyFingerprint: settings.keyFingerprint, iterations: protect.iterations });
+  return { ...created, blob, fileName: fileName + ENCRYPTED_SUFFIX, protected: true };
 }
 
 /**

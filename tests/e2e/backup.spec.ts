@@ -244,3 +244,56 @@ test('the backup reminder can be dismissed, and comes back once a new session is
   await page.goto('/#/settings');
   await expect(page.getByTestId('backup-now')).toBeVisible();
 });
+
+test('a backup protected with the stamp passphrase is encrypted and opens only with it (issue #44)', async ({ page }, testInfo) => {
+  const PASS = 'correct horse battery';
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  // Without a stamp passphrase the switch is there but off and unavailable.
+  await page.goto('/#/settings');
+  await page.getByTestId('backup-now').click();
+  await expect(page.getByTestId('backup-protect-toggle')).toBeDisabled();
+  await expect(page.getByTestId('backup-protect')).toContainText('Set up an athlete stamp passphrase');
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('athlete-passphrase').fill(PASS);
+  await page.getByTestId('set-passphrase').click();
+  await expect(page.getByTestId('passphrase-message')).toContainText('Key set', { timeout: 30_000 });
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
+  });
+  await page.getByTestId('backup-now').click();
+  await expect(page.getByTestId('backup-protect-toggle')).not.toBeChecked(); // off by default
+  await page.getByTestId('backup-protect-toggle').check();
+  await expect(page.getByTestId('backup-confirm')).toBeDisabled();
+  // A passphrase that isn't the stamp passphrase is caught before anything is made.
+  await page.getByTestId('backup-protect-passphrase').fill('not my stamp passphrase');
+  await page.getByTestId('backup-confirm').click();
+  await expect(page.getByTestId('backup-protect-error')).toContainText("isn't your stamp passphrase", { timeout: 30_000 });
+  await page.getByTestId('backup-protect-passphrase').fill(PASS);
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
+  expect(download.suggestedFilename()).toMatch(/\.json\.gz\.enc$/);
+  const path = testInfo.outputPath('protected.enc');
+  await download.saveAs(path);
+  await expect(page.getByTestId('backup-message')).toContainText('Protected with your stamp passphrase');
+  // Nothing readable inside: not gzip, not JSON.
+  const bytes = readFileSync(path);
+  expect(bytes.subarray(0, 4).toString('latin1')).toBe('NAEB');
+  expect(bytes.toString('latin1')).not.toContain('nordic-aim-backup"');
+
+  // Restore asks for the passphrase; a wrong one opens nothing, the right one shows the usual check.
+  await page.getByTestId('restore-file').setInputFiles(path);
+  await expect(page.getByTestId('restore-unlock')).toBeVisible();
+  await expect(page.getByTestId('restore-preview')).toHaveCount(0);
+  await page.getByTestId('restore-passphrase').fill('the wrong passphrase');
+  await page.getByTestId('restore-unlock-go').click();
+  await expect(page.getByTestId('restore-problem')).toContainText('does not open this backup', { timeout: 30_000 });
+  await page.getByTestId('restore-passphrase').fill(PASS);
+  await page.getByTestId('restore-unlock-go').click();
+  await expect(page.getByTestId('restore-preview')).toContainText('This backup checks out', { timeout: 30_000 });
+  await expect(page.getByTestId('restore-unlock')).toHaveCount(0);
+});

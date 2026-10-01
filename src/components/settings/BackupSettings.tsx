@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useServices } from '@/lib/app/services';
@@ -10,19 +9,19 @@ import { useLiveQuery } from '@/lib/app/use-live-query';
 import { getAppSettings } from '@/lib/services/settings';
 import { BUILD_SHA } from '@/lib/app/build-info';
 import { MAX_BACKUP_REMINDER_DAYS, MIN_BACKUP_REMINDER_DAYS } from '@/lib/backup/due';
-import type { ConflictPolicy, RestorePlan } from '@/lib/backup/restore';
-import { verifyBackupFile, type VerifiedBackup } from '@/lib/backup/verify';
+import type { ConflictPolicy } from '@/lib/backup/restore';
+import { decryptBackup, encryptedBackupHeader, isEncryptedBackup, WrongBackupPassphraseError } from '@/lib/backup/encrypt';
+import { verifyBackupFile } from '@/lib/backup/verify';
 import type { AppSettings } from '@/lib/domain/settings';
 import { buildBackupFile, planBackupRestore, recordBackupMade, restoreBackup, setBackupReminderDays } from '@/lib/services/backup';
 import { shareBackup } from '@/lib/share/share-browser';
+import { isStampPassphrase } from '@/lib/services/provenance';
 import { listSessions } from '@/lib/services/sessions';
 
-import { BackupScopePicker, type BackupScope } from './BackupScopePicker';
-
-interface Loaded {
-  backup: VerifiedBackup;
-  plan: RestorePlan;
-}
+import { BackupConfirmDialog } from './BackupConfirmDialog';
+import { UnlockBackupForm } from './BackupProtect';
+import { RestorePreview, type Loaded } from './RestorePreview';
+import type { BackupScope } from './BackupScopePicker';
 
 /**
  * backup.md (REV-63, issue #13): Settings → **Backup**. Everything here is an explicit tap: creating a file, choosing a
@@ -48,14 +47,24 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
   const sessionList = [...(sessions ?? [])].sort((a, b) => b.sessionDate.localeCompare(a.sessionDate) || b.createdAt.localeCompare(a.createdAt));
   const chosenIds = sessionList.filter((s) => chosen.has(s.id)).map((s) => s.id);
   const fileInput = useRef<HTMLInputElement>(null);
+  // REV-151 (issue #44): protect the file with the stamp passphrase (off by default); a protected file to restore waits here.
+  const [protectOn, setProtectOn] = useState(false);
+  const [protectPass, setProtectPass] = useState('');
+  const [protectError, setProtectError] = useState<string | null>(null);
+  const [locked, setLocked] = useState<{ file: File; fingerprint: string | null } | null>(null);
 
   async function onCreate() {
+    const protect = protectOn && settings.keyFingerprint !== null ? { passphrase: protectPass } : undefined;
+    if (protect !== undefined && !(await isStampPassphrase(ctx, protect.passphrase))) {
+      setProtectError("That isn't your stamp passphrase.");
+      return;
+    }
     setConfirming(false);
     setBusy(true);
     setMessage(null);
     try {
       const started = performance.now();
-      const made = await buildBackupFile(ctx, BUILD_SHA, scope === 'chosen' ? chosenIds : undefined);
+      const made = await buildBackupFile(ctx, BUILD_SHA, scope === 'chosen' ? chosenIds : undefined, protect);
       const outcome = await shareBackup(made.blob, made.fileName);
       if (outcome === 'cancelled') {
         setMessage('Backup cancelled. Nothing was saved.');
@@ -67,6 +76,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
         const n = made.manifest.counts.sessions;
         setMessage(
           `Backup made: ${n} ${n === 1 ? 'session' : 'sessions'}, ${made.manifest.counts.photos} photos, ${mb} MB (${rawMb} MB before compression) in ${secs} s.` +
+            (made.protected ? ' Protected with your stamp passphrase.' : '') +
             (made.manifest.scope !== undefined ? ' Only the chosen sessions: this does not count as your backup.' : ''),
         );
       }
@@ -83,21 +93,45 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
     setBusy(true);
     setProblem(null);
     setLoaded(null);
+    setLocked(null);
     setMessage(null);
     try {
-      const result = await verifyBackupFile(file);
-      if (!result.ok) {
-        setProblem(result.problem);
+      if (await isEncryptedBackup(file)) {
+        setLocked({ file, fingerprint: (await encryptedBackupHeader(file)).keyFingerprint });
         return;
       }
-      setLoaded({ backup: result.backup, plan: await planBackupRestore(ctx, result.backup) });
-      setPolicy('keep');
+      await loadVerified(file);
     } catch (err) {
       setProblem(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = '';
     }
+  }
+
+  /** REV-151: open a protected backup with the stamp passphrase, then check it like any other. */
+  async function onUnlock(passphrase: string) {
+    if (locked === null) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      await loadVerified(await decryptBackup(locked.file, passphrase));
+      setLocked(null);
+    } catch (err) {
+      setProblem(err instanceof WrongBackupPassphraseError ? err.message : err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loadVerified(file: Blob) {
+    const result = await verifyBackupFile(file);
+    if (!result.ok) {
+      setProblem(result.problem);
+      return;
+    }
+    setLoaded({ backup: result.backup, plan: await planBackupRestore(ctx, result.backup) });
+    setPolicy('keep');
   }
 
   async function onRestore() {
@@ -159,6 +193,9 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
         onClick={() => {
           setScope('all');
           setChosen(new Set());
+          setProtectOn(false);
+          setProtectPass('');
+          setProtectError(null);
           setConfirming(true);
         }}
         data-testid="backup-now"
@@ -185,7 +222,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
       <div className="flex flex-col gap-2 border-t pt-3">
         <h3 className="text-sm font-medium">Restore from a backup</h3>
         <p className="text-xs text-muted-foreground">
-          Pick a NordicAim backup file (.json.gz or .json) from Files or iCloud Drive. Nothing changes until you check what is in it and
+          Pick a NordicAim backup file (.json.gz, .json, or a protected .enc) from Files or iCloud Drive. Nothing changes until you check what is in it and
           tap Restore.
         </p>
         <Button variant="outline" className="h-11" disabled={busy} onClick={() => fileInput.current?.click()} data-testid="restore-choose">
@@ -196,7 +233,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
           ref={fileInput}
           data-testid="restore-file"
           type="file"
-          accept="application/json,.json,application/gzip,.gz"
+          accept="application/json,.json,application/gzip,.gz,application/octet-stream,.enc"
           disabled={busy}
           onChange={(e) => void onChooseFile(e.currentTarget.files?.[0])}
           className="hidden"
@@ -212,41 +249,9 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
             {problem}
           </p>
         )}
+        {locked !== null && <UnlockBackupForm fingerprint={locked.fingerprint} busy={busy} onUnlock={(p) => void onUnlock(p)} />}
         {loaded !== null && (
-          <div className="flex flex-col gap-2" data-testid="restore-preview">
-            <p className="text-sm font-medium">
-              This backup checks out. It holds {loaded.backup.file.manifest.counts.sessions} sessions and{' '}
-              {loaded.backup.file.manifest.counts.photos} photos.
-              {loaded.backup.file.manifest.scope !== undefined && ' It is a backup of chosen sessions, not everything.'}
-            </p>
-            <ul className="text-xs text-muted-foreground">
-              {loaded.backup.file.manifest.sessions.map((s) => (
-                <li key={s.id}>
-                  {s.name?.trim() ? s.name : '(unnamed)'} · {s.sessionDate ?? '—'} · {s.photos} photos
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs" data-testid="restore-counts">
-              New: {loaded.plan.sessions.new} sessions · Already here, identical: {loaded.plan.sessions.same} · Different:{' '}
-              {loaded.plan.sessions.different}
-            </p>
-            {different > 0 && (
-              <fieldset className="flex flex-col gap-1 text-sm">
-                <legend className="sr-only">When a session or photo is different on this phone</legend>
-                <label className="flex min-h-11 items-center gap-2">
-                  <input type="radio" name="restore-policy" checked={policy === 'keep'} onChange={() => setPolicy('keep')} data-testid="restore-keep" />
-                  Keep what is on this phone
-                </label>
-                <label className="flex min-h-11 items-center gap-2">
-                  <input type="radio" name="restore-policy" checked={policy === 'replace'} onChange={() => setPolicy('replace')} data-testid="restore-replace" />
-                  Replace with the backup
-                </label>
-              </fieldset>
-            )}
-            <Button className="h-11" disabled={busy} onClick={() => void onRestore()} data-testid="restore-go">
-              Restore
-            </Button>
-          </div>
+          <RestorePreview loaded={loaded} different={different} policy={policy} busy={busy} onPolicy={setPolicy} onRestore={() => void onRestore()} />
         )}
       </div>
       {message !== null && (
@@ -255,31 +260,31 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
         </p>
       )}
 
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent data-testid="backup-confirm-dialog">
-          <DialogHeader>
-            <DialogTitle>Make a backup</DialogTitle>
-            <DialogDescription>
-              The backup file contains your original photos, and photos keep the exact GPS location where they were taken. Keep the
-              file in your own Files or iCloud Drive and do not share it. Nothing is sent anywhere by the app.
-            </DialogDescription>
-          </DialogHeader>
-          <BackupScopePicker sessions={sessionList} scope={scope} chosen={chosen} onScope={setScope} onChosen={setChosen} />
-          <DialogFooter>
-            <Button variant="outline" className="h-11" onClick={() => setConfirming(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="h-11"
-              disabled={scope === 'chosen' && chosenIds.length === 0}
-              onClick={() => void onCreate()}
-              data-testid="backup-confirm"
-            >
-              {scope === 'all' ? 'Create backup' : `Back up ${chosenIds.length} ${chosenIds.length === 1 ? 'session' : 'sessions'}`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BackupConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        sessions={sessionList}
+        scope={scope}
+        chosen={chosen}
+        chosenCount={chosenIds.length}
+        onScope={setScope}
+        onChosen={setChosen}
+        protect={{
+          available: settings.keyFingerprint !== null,
+          on: protectOn,
+          passphrase: protectPass,
+          error: protectError,
+          onOn: (on) => {
+            setProtectOn(on);
+            setProtectError(null);
+          },
+          onPassphrase: (p) => {
+            setProtectPass(p);
+            setProtectError(null);
+          },
+        }}
+        onCreate={() => void onCreate()}
+      />
     </section>
   );
 }

@@ -1,7 +1,8 @@
 # Backup and restore (REV-63, issue #13)
 
 Source of truth for the backup file, its verification, restore, and reminders. Owner decisions 2026-09-19: one JSON file,
-images base64, no password; the file holds photo GPS and the app says so.
+images base64, no password; the file holds photo GPS and the app says so. REV-151 (2026-10-01): a backup can optionally be
+protected with the athlete's stamp passphrase (§2d); unprotected stays the default.
 
 ## 1. Rule
 
@@ -82,6 +83,26 @@ row always come along, so a restore never meets a record pointing at something m
 `scope: { kind: 'sessions', sessionIds }` (absent for a full backup, and in every earlier file; the format version is unchanged). The
 file name ends `-<n>-session(s)` (§2). Such a backup **does not count as the backup**: `lastBackupAt` and the reminder are left as
 they were, and the message says so. Restoring one works like any restore (§4); the preview says it is a backup of chosen sessions.
+
+## 2d. A protected backup (REV-151, issue #44)
+
+**Make a backup** has a **Protect with my stamp passphrase** switch, **off by default**. It needs the athlete-stamp
+passphrase set up (`provenance.md` §1); without one the switch is disabled and says so. Turned on, the owner types the stamp
+passphrase, which is checked against this phone's salt and fingerprint (`isStampPassphrase`) before anything is built, and the
+finished file (the gzip of §2a) is encrypted (`src/lib/backup/encrypt.ts`):
+
+- **Key:** PBKDF2-SHA-256 over the passphrase (NFKC) with a **fresh 16-byte salt for this file** and 310,000 rounds, giving a
+  256-bit AES key. That key is separate from the stamp key, which never leaves the phone.
+- **Cipher:** AES-GCM with a fresh 12-byte IV. The header is bound as additional data, so editing it breaks decryption.
+- **File:** `NAEB` · version byte `1` · header length (4 bytes, big-endian) · header JSON
+  `{ kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations, salt }, cipher: { name: 'AES-GCM', iv }, keyFingerprint }` · ciphertext.
+  The name gains `.enc` (`…-YYYY-MM-DD.json.gz.enc`); the content type is `application/octet-stream`.
+- **Restore:** a file starting with `NAEB` asks for the stamp passphrase (naming the key fingerprint from the header) before
+  anything is checked. A wrong passphrase or an altered file is refused with "That passphrase does not open this backup."
+  and nothing is read. Decrypted, the file goes through §3 and §4 unchanged. A header asking for more than 10,000,000 rounds
+  is refused as damaged.
+- Everything else is as for any backup: protecting doesn't change what is in the file, whether it counts as the backup (§2c,
+  §5), or the GPS warning. If the passphrase is forgotten, a protected backup can't be restored; the dialog says so.
 
 ## 3. Verify (before anything is written)
 
