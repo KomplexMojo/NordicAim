@@ -22,12 +22,12 @@ async function storeNames(name: string): Promise<string[]> {
 }
 
 describe('openAppDb migration (data-model.md §6)', () => {
-  it('a fresh install gets every store, including goals', async () => {
+  it('a fresh install gets every store, including goals and board', async () => {
     const name = dbName();
-    expect(await storeNames(name)).toEqual(['analyses', 'blobs', 'goals', 'photos', 'secrets', 'sessions', 'settings']);
+    expect(await storeNames(name)).toEqual(['analyses', 'blobs', 'board', 'goals', 'photos', 'secrets', 'sessions', 'settings']);
   });
 
-  it('a v1-only database (before secrets existed) gets both secrets and goals in one upgrade', async () => {
+  it('a v1-only database (before secrets existed) gets secrets, goals and board in one upgrade', async () => {
     const name = dbName();
     const v1 = await openDB(name, 1, {
       upgrade(db) {
@@ -40,10 +40,10 @@ describe('openAppDb migration (data-model.md §6)', () => {
     });
     v1.close();
 
-    expect(await storeNames(name)).toEqual(['analyses', 'blobs', 'goals', 'photos', 'secrets', 'sessions', 'settings']);
+    expect(await storeNames(name)).toEqual(['analyses', 'blobs', 'board', 'goals', 'photos', 'secrets', 'sessions', 'settings']);
   });
 
-  it('a v2 database (secrets already added) gets only goals', async () => {
+  it('a v2 database (secrets already added) gets goals and board', async () => {
     const name = dbName();
     const v2 = await openDB(name, 2, {
       upgrade(db) {
@@ -57,6 +57,6 @@ describe('openAppDb migration (data-model.md §6)', () => {
     });
     v2.close();
 
-    expect(await storeNames(name)).toEqual(['analyses', 'blobs', 'goals', 'photos', 'secrets', 'sessions', 'settings']);
+    expect(await storeNames(name)).toEqual(['analyses', 'blobs', 'board', 'goals', 'photos', 'secrets', 'sessions', 'settings']);
   });
 });
