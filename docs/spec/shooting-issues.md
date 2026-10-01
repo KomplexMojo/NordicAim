@@ -41,6 +41,11 @@
 Named shapes: **horizontal string** `a ≤ 0.5 ∧ θ ≤ 25° ∨ θ ≥ 155°`; **vertical string** `a ≤ 0.5 ∧ |θ − 90°| ≤ 20°`;
 **diagonal up-trigger** `a ≤ 0.6 ∧ 30° ≤ θ ≤ 60°` (low sling side to high trigger side); **diagonal down-trigger**
 `a ≤ 0.6 ∧ 120° ≤ θ ≤ 150°` (high sling side to low trigger side). *(Shape tests are hand-free: the mirror is already applied.)*
+Otherwise, **round** only when `a > 0.6`; a group with `a ≤ 0.6` that is none of the named strings (an angle between
+the bands, or a horizontal/vertical one with `0.5 < a ≤ 0.6`) reads **elongated**, by the nearest of four directions:
+*roughly horizontal* (`θ < 22.5°` or `θ ≥ 157.5°`), *rising to the trigger side* (`< 67.5°`), *roughly vertical*
+(`< 112.5°`), *rising to the sling side*. It is a description only: no issue rule reads it (REV-147, owner,
+2026-10-01: a 2:1 group at 117° read "round").
 
 ## 3. Definition table
 

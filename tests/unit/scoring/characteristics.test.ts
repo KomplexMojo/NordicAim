@@ -115,6 +115,46 @@ describe('characterize: the rules (spec §3)', () => {
   });
 });
 
+/** Eight shots evenly round an ellipse centred on the bullseye: semi-axes `major` and `minor` (aspect = minor / major), major axis at `deg`. */
+function ellipse(deg: number, major: number, minor: number): Pt[] {
+  const a = (deg * Math.PI) / 180;
+  return Array.from({ length: 8 }, (_, i) => {
+    const t = (i * Math.PI) / 4;
+    const u = major * Math.cos(t);
+    const v = minor * Math.sin(t);
+    return { xMm: u * Math.cos(a) - v * Math.sin(a), yMm: u * Math.sin(a) + v * Math.cos(a) };
+  });
+}
+
+describe('characterize: shape (spec §2, owner 2026-10-01)', () => {
+  const shape = (pts: Pt[]) => characterize(pts, opts).shape;
+
+  it('is round only when the aspect is over 0.6', () => {
+    expect(shape(ellipse(117, 30, 30))).toBe('round');
+    expect(shape(ellipse(117, 30, 18.3))).toBe('round'); // aspect 0.61
+  });
+
+  it('an elongated group between the named bands is elongated, not round (the owner\'s 2:1 group at 117°)', () => {
+    expect(characterize(ellipse(117, 60, 30), opts).aspect).toBeCloseTo(0.5, 9);
+    expect(shape(ellipse(117, 60, 30))).toBe('elongated (rising to the sling side)');
+    expect(shape(ellipse(65, 60, 30))).toBe('elongated (rising to the trigger side)');
+    expect(shape(ellipse(27, 60, 30))).toBe('elongated (rising to the trigger side)');
+    expect(shape(ellipse(153, 60, 30))).toBe('elongated (rising to the sling side)');
+  });
+
+  it('a horizontal or vertical group just over a string\'s aspect (0.5 < a <= 0.6) is elongated in that direction', () => {
+    expect(shape(ellipse(90, 50, 27.5))).toBe('elongated (roughly vertical)'); // aspect 0.55
+    expect(shape(ellipse(0, 50, 27.5))).toBe('elongated (roughly horizontal)');
+  });
+
+  it('the named strings are unchanged', () => {
+    expect(shape(ellipse(90, 50, 20))).toBe('vertical string');
+    expect(shape(ellipse(0, 50, 20))).toBe('horizontal string');
+    expect(shape(ellipse(45, 50, 25))).toBe('diagonal string (up to the trigger side)');
+    expect(shape(ellipse(135, 50, 25))).toBe('diagonal string (down to the trigger side)');
+  });
+});
+
 describe('characterize: handedness mirrors every rule (spec §1)', () => {
   it('a sling-arm elbow group is to the left for a right-hander and to the right for a left-hander', () => {
     const rightHanderGroup = line(-25, 0, 0, 25); // centred 25 mm on the left, a horizontal string

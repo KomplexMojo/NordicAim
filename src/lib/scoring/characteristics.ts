@@ -54,12 +54,34 @@ export interface Characteristics {
   /** Shape: principal-axis aspect (0 a line, 1 round) and angle CCW from +x' in [0, 180). */
   aspect: number | null;
   axisDeg: number | null;
-  shape: 'round' | 'horizontal string' | 'vertical string' | 'diagonal string (up to the trigger side)' | 'diagonal string (down to the trigger side)' | null;
+  shape:
+    | 'round'
+    | 'horizontal string'
+    | 'vertical string'
+    | 'diagonal string (up to the trigger side)'
+    | 'diagonal string (down to the trigger side)'
+    | ElongatedShape
+    | null;
   flyers: number;
   /** Share of shots that would miss the biathlon hit zone for the position (`CharacterizeOptions.holeDiameterMm`). */
   outsideShare: number | null;
   twoClusters: boolean;
   issues: IssueFinding[];
+}
+
+/** Spec §2 (owner, 2026-10-01): an elongated group that is none of the named strings, by its nearest direction. */
+export type ElongatedShape =
+  | 'elongated (roughly horizontal)'
+  | 'elongated (roughly vertical)'
+  | 'elongated (rising to the trigger side)'
+  | 'elongated (rising to the sling side)';
+
+/** The nearest of the four directions to the principal axis (`axisDeg`, CCW from +x′ in [0, 180)). */
+function elongatedShape(axisDeg: number): ElongatedShape {
+  if (axisDeg < 22.5 || axisDeg >= 157.5) return 'elongated (roughly horizontal)';
+  if (axisDeg < 67.5) return 'elongated (rising to the trigger side)';
+  if (axisDeg < 112.5) return 'elongated (roughly vertical)';
+  return 'elongated (rising to the sling side)';
 }
 
 export interface IssueFinding {
@@ -190,7 +212,11 @@ export function characterize(points: readonly Pt[], options: CharacterizeOptions
         ? 'diagonal string (up to the trigger side)'
         : diagDown
           ? 'diagonal string (down to the trigger side)'
-          : 'round';
+          : // "Round" only when it is: an elongated group outside every named band (or just over a string's aspect)
+            // used to fall through to "round" (owner, 2026-10-01, a 2:1 group at 117° read "round").
+            aspect <= T.diagonalAspect
+            ? elongatedShape(axis)
+            : 'round';
 
   const flyerIdx = med > 0 ? d.map((v, i) => (v >= T.flyerFactor * med ? i : -1)).filter((i) => i >= 0) : [];
   const core = pts.filter((_, i) => !flyerIdx.includes(i));
