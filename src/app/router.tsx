@@ -14,6 +14,7 @@ import { ReviewPage } from '@/routes/review/ReviewPage';
 import { PatternsPage } from '@/routes/patterns/PatternsPage';
 import { AnalysisPage } from '@/routes/analysis/AnalysisPage';
 import { GoalsPage } from '@/routes/goals/GoalsPage';
+import { BoardPage } from '@/routes/board/BoardPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
 import { TemplateSheetPage } from '@/routes/settings/TemplateSheetPage';
@@ -71,6 +72,8 @@ const router = createHashRouter([
           { path: '/analysis', element: <AnalysisPage /> },
           // M27 (goals.md): a target value per (view, metric), drawn on the same charts as Analysis.
           { path: '/goals', element: <GoalsPage /> },
+          // Issue #42 (leaderboard.md): your top 5 per position, and the shooters received from others.
+          { path: '/board', element: <BoardPage /> },
           { path: '/sessions/:sid', element: <SessionRedirect /> },
           { path: '/sessions/:sid/capture', element: <CapturePage /> },
           { path: '/sessions/:sid/metadata', element: <MetadataPage /> },

@@ -1,13 +1,14 @@
 // REV-47 (analysis-pipeline §1), REV-136: the main screens on the tab bar, which one a route belongs to, and the header's
-// Settings control. Pure. M27 (goals.md): Goals is the fourth tab.
+// Settings control. Pure. M27 (goals.md): Goals is the fourth tab. Issue #42 (leaderboard.md): Board is the fifth and last.
 
-export type MainTab = 'shooting' | 'analysis' | 'patterns' | 'goals';
+export type MainTab = 'shooting' | 'analysis' | 'patterns' | 'goals' | 'board';
 
 export const MAIN_TABS: ReadonlyArray<{ id: MainTab; label: string; to: string }> = [
   { id: 'shooting', label: 'Sessions', to: '/' },
   { id: 'analysis', label: 'Analysis', to: '/analysis' },
   { id: 'patterns', label: 'Patterns', to: '/patterns' },
   { id: 'goals', label: 'Goals', to: '/goals' },
+  { id: 'board', label: 'Board', to: '/board' },
 ];
 
 /** Settings and the Diagnostics screen reached from it (REV-136): the header's gear is marked there, and no tab is. */
@@ -16,7 +17,7 @@ export function inSettings(pathname: string): boolean {
 }
 
 /**
- * The tab a hash-router pathname belongs to: Analysis, Patterns, Goals, none on Settings and Diagnostics, else
+ * The tab a hash-router pathname belongs to: Analysis, Patterns, Goals, Board, none on Settings and Diagnostics, else
  * Sessions (`/`, `/sessions/...`, `/review/...`).
  */
 export function activeTab(pathname: string): MainTab | null {
@@ -24,6 +25,7 @@ export function activeTab(pathname: string): MainTab | null {
   if (pathname === '/analysis' || pathname.startsWith('/analysis/')) return 'analysis';
   if (pathname === '/patterns' || pathname.startsWith('/patterns/')) return 'patterns';
   if (pathname === '/goals' || pathname.startsWith('/goals/')) return 'goals';
+  if (pathname === '/board' || pathname.startsWith('/board/')) return 'board';
   return 'shooting';
 }
 
@@ -39,7 +41,7 @@ export function showsTabBar(pathname: string): boolean {
 }
 
 /**
- * Issue #72 (REV-140): where a target screen opened from Patterns or Analysis goes back to. Carried in the navigation state
+ * Issue #72 (REV-140): where a target screen opened from Patterns, Analysis or the Board goes back to. Carried in the navigation state
  * as `{ from: { path, label } }`; anything else (or no state) means the session's results, as before.
  */
 export interface BackTo {
@@ -51,7 +53,7 @@ export function backToFrom(state: unknown, sessionId: string): BackTo {
   const from = typeof state === 'object' && state !== null ? (state as { from?: unknown }).from : undefined;
   if (typeof from === 'object' && from !== null) {
     const { path, label } = from as { path?: unknown; label?: unknown };
-    if (typeof path === 'string' && /^\/(patterns|analysis)(\?|$)/.test(path) && typeof label === 'string' && label.length > 0) {
+    if (typeof path === 'string' && /^\/(patterns|analysis|board)(\?|$)/.test(path) && typeof label === 'string' && label.length > 0) {
       return { path, label };
     }
   }

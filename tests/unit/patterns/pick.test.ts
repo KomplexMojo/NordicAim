@@ -65,6 +65,13 @@ describe('backToFrom', () => {
     });
   });
 
+  it('returns to the Board too (issue #42)', () => {
+    expect(backToFrom({ from: { path: '/board?view=precision-standing', label: 'Back to Board' } }, 'S')).toEqual({
+      path: '/board?view=precision-standing',
+      label: 'Back to Board',
+    });
+  });
+
   it("otherwise goes to the session's results, and ignores any other path", () => {
     const results = { path: '/sessions/S/results', label: 'Back to results' };
     expect(backToFrom(null, 'S')).toEqual(results);
