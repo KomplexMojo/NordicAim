@@ -8,6 +8,7 @@ import { applyRestore, planRestore, type ConflictPolicy, type RestorePlan, type 
 import type { RebuildTools } from '@/lib/backup/rebuild';
 import type { VerifiedBackup } from '@/lib/backup/verify';
 import { applyPreferences, collectPreferences } from '@/lib/backup/preferences-browser';
+import { restoreBoard } from '@/lib/services/board';
 import { isStampPassphrase, loadProvenanceKey, WrongPassphraseError } from '@/lib/services/provenance';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
@@ -82,13 +83,15 @@ export async function restoreBackup(
   plan: RestorePlan,
   policy: ConflictPolicy,
   tools: RebuildTools,
-): Promise<RestoreReport & { preferences: number; needsUnlock: boolean }> {
+): Promise<RestoreReport & { preferences: number; needsUnlock: boolean; boardShooters: number }> {
   const report = await applyRestore(ctx.db, backup, plan, policy, tools);
   const preferences = applyPreferences(backup.file.preferences ?? []);
+  // leaderboard.md §8: received submissions are checked again and merged, newest per shooter winning.
+  const boardShooters = await restoreBoard(ctx, backup.file.board);
   // The provenance key is never in a backup (docs/spec/provenance.md §1): after a restore the athlete enters the passphrase once more.
   const settings = await getSettings(ctx.db);
   const needsUnlock = settings.keyFingerprint !== null && (await loadProvenanceKey(ctx)) === null;
   emitPipelineChanged({ sessionId: '' });
   pipelineHooks.notify();
-  return { ...report, preferences, needsUnlock };
+  return { ...report, preferences, needsUnlock, boardShooters };
 }

@@ -146,7 +146,8 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
         `Restored. ${report.written} items written, ${report.skipped} left as they were.` +
           (report.rebuilt > 0 ? ` ${report.rebuilt} photo copies and drawings were made again from the originals.` : '') +
           ' Your settings and preferences came back too.' +
-          (report.needsUnlock ? ' Enter your passphrase in Settings → Athlete to keep stamping images.' : ''),
+          (report.boardShooters > 0 ? ` ${report.boardShooters} ${report.boardShooters === 1 ? 'shooter' : 'shooters'} came back to your board.` : '') +
+          (report.needsUnlock ? ' Enter your passphrase in Settings → Athlete to keep stamping images and to share on the board as yourself.' : ''),
       );
       onRestored();
       setLoaded(null);

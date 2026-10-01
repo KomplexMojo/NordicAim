@@ -102,5 +102,13 @@ export async function verifyBackup(text: string): Promise<VerifyResult> {
         isRecord(p) && typeof p.key === 'string' && p.key.startsWith(PREFERENCE_PREFIX) && typeof p.value === 'string' ? [{ key: p.key, value: p.value }] : [],
       )
     : [];
-  return { ok: true, backup: { file: { ...(raw as unknown as BackupFile), preferences: prefs }, bytes } };
+  // leaderboard.md §8: the board is optional and read loosely here; each submission is checked on its own when restored.
+  const rawBoard = isRecord(raw.board) ? raw.board : null;
+  const board =
+    rawBoard === null
+      ? undefined
+      : { submissions: Array.isArray(rawBoard.submissions) ? rawBoard.submissions : [], challenges: Array.isArray(rawBoard.challenges) ? rawBoard.challenges : [] };
+  const file = { ...(raw as unknown as BackupFile), preferences: prefs };
+  delete file.board;
+  return { ok: true, backup: { file: board === undefined ? file : { ...file, board }, bytes } };
 }
