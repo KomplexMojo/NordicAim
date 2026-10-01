@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { BoardShare } from '@/components/leaderboard/BoardShare';
-import { BoardTable } from '@/components/leaderboard/BoardTable';
+import { BoardTable, type ShownRow } from '@/components/leaderboard/BoardTable';
 import { SubmissionPreviewCard } from '@/components/leaderboard/SubmissionPreviewCard';
 import { ViewSwitch } from '@/components/patterns/ViewRangeControls';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
+import { challengesFor } from '@/lib/leaderboard/challenge';
 import { boardRows, ownRow } from '@/lib/leaderboard/merge';
 import { previewSubmission } from '@/lib/leaderboard/select';
 import { loadBoard } from '@/lib/services/board';
@@ -34,11 +35,17 @@ export function BoardPage() {
     [data],
   );
   const preview = previews[position];
-  const rows = useMemo(() => {
+  // leaderboard.md §9: each phone may hide flagged or challenged entries; the owner's own row always shows.
+  const [hideFlagged, setHideFlagged] = useState(false);
+  const [hideChallenged, setHideChallenged] = useState(false);
+  const ownKey = data?.ownKey ?? 'this-phone';
+  const rows = useMemo((): ShownRow[] => {
     if (data === undefined) return [];
     const me = { publicKey: data.ownKey, name: data.athleteName, club: data.athleteClub };
-    return boardRows(data.held, ownRow(preview, me), position);
-  }, [data, preview, position]);
+    return boardRows(data.held, ownRow(preview, me), position)
+      .map((row) => ({ row, challenges: challengesFor(data.challenges, row.publicKey, position, row.publicKey === ownKey ? null : row.signedAt) }))
+      .filter(({ row, challenges }) => row.publicKey === ownKey || ((!hideFlagged || !row.flagged) && (!hideChallenged || challenges.length === 0)));
+  }, [data, preview, position, ownKey, hideFlagged, hideChallenged]);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 lg:max-w-3xl">
@@ -57,7 +64,17 @@ export function BoardPage() {
           />
           <section className="flex flex-col gap-2" aria-label="Board">
             <h2 className="text-sm font-medium text-muted-foreground">Board · best 5 average</h2>
-            <BoardTable rows={rows} ownKey={data.ownKey ?? 'this-phone'} />
+            <div className="flex flex-wrap gap-x-4 text-sm">
+              <label className="flex min-h-11 items-center gap-2">
+                <input type="checkbox" className="size-5" checked={hideFlagged} onChange={(e) => setHideFlagged(e.target.checked)} data-testid="board-hide-flagged" />
+                Hide flagged
+              </label>
+              <label className="flex min-h-11 items-center gap-2">
+                <input type="checkbox" className="size-5" checked={hideChallenged} onChange={(e) => setHideChallenged(e.target.checked)} data-testid="board-hide-challenged" />
+                Hide challenged
+              </label>
+            </div>
+            <BoardTable rows={rows} ownKey={ownKey} onChallenged={() => setRefreshKey((k) => k + 1)} />
           </section>
         </>
       )}

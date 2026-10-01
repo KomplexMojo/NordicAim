@@ -102,7 +102,7 @@ describe('import', () => {
     expect(preview.summary).toEqual({ added: 1, updated: 0, unchanged: 1, overCap: 0 });
     expect(await loadHeldSubmissions(ctx)).toHaveLength(0); // nothing saved by a preview
 
-    expect(await applyImport(ctx, preview.accepted)).toEqual({ added: 1, updated: 0, unchanged: 1, overCap: 0 });
+    expect(await applyImport(ctx, preview.accepted)).toEqual({ added: 1, updated: 0, unchanged: 1, overCap: 0, challengesAdded: 0 });
     expect((await loadHeldSubmissions(ctx)).map((s) => s.name)).toEqual(['Bob']);
     expect((await applyImport(ctx, preview.accepted)).unchanged).toBe(2);
 

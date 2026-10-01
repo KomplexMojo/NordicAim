@@ -2,6 +2,7 @@
 // either back. Every submission is checked on its own (its shape and its signature); a bad one is rejected without the rest.
 
 import { fileNameSlug } from '../backup/format';
+import type { Challenge } from './challenge';
 import { Submission, verifySubmission } from './submission';
 
 export const BOARD_FILE_FORMAT = 'nordic-aim-board';
@@ -11,11 +12,16 @@ export interface BoardFile {
   version: 1;
   exportedAt: string;
   submissions: Submission[];
+  /** leaderboard.md §9: the challenges this board holds; a file without the list reads as none. */
+  challenges: Challenge[];
 }
 
-/** A whole board: this phone's own submission (when it has one) and every submission it holds, from every club (decision 44). */
-export function boardFileText(submissions: readonly Submission[], exportedAt: string): string {
-  const file: BoardFile = { format: BOARD_FILE_FORMAT, version: 1, exportedAt, submissions: [...submissions] };
+/**
+ * A whole board: this phone's own submission (when it has one), every submission it holds, from every club (decision 44), and the
+ * challenges it holds. Also the file a single new challenge travels in (no submissions, one challenge).
+ */
+export function boardFileText(submissions: readonly Submission[], exportedAt: string, challenges: readonly Challenge[] = []): string {
+  const file: BoardFile = { format: BOARD_FILE_FORMAT, version: 1, exportedAt, submissions: [...submissions], challenges: [...challenges] };
   return JSON.stringify(file);
 }
 
@@ -32,8 +38,13 @@ export function boardFileName(localDate: string): string {
   return `nordic-aim-board-${localDate}.json`;
 }
 
-/** The submissions a file holds, unchecked: a board file's list, or a single submission. Null when it is neither. */
-export function rawSubmissions(text: string): unknown[] | null {
+export interface RawBoardContents {
+  submissions: unknown[];
+  challenges: unknown[];
+}
+
+/** What a file holds, unchecked: a board file's lists, or a single submission. Null when it is neither. */
+export function readBoardFile(text: string): RawBoardContents | null {
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -43,10 +54,11 @@ export function rawSubmissions(text: string): unknown[] | null {
   if (typeof data !== 'object' || data === null) return null;
   const format = (data as { format?: unknown }).format;
   if (format === BOARD_FILE_FORMAT) {
-    const list = (data as { submissions?: unknown }).submissions;
-    return Array.isArray(list) ? list : null;
+    const { submissions, challenges } = data as { submissions?: unknown; challenges?: unknown };
+    if (!Array.isArray(submissions)) return null;
+    return { submissions, challenges: Array.isArray(challenges) ? challenges : [] };
   }
-  if (format === 'nordic-aim-board-submission') return [data];
+  if (format === 'nordic-aim-board-submission') return { submissions: [data], challenges: [] };
   return null;
 }
 

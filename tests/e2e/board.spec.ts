@@ -82,6 +82,11 @@ async function readyPhone(page: import('@playwright/test').Page, name: string, c
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   for (let i = 0; i < 5; i++) await automaticDemoTarget(page);
+  await identify(page, name, club);
+}
+
+/** A name, a club and a stamp passphrase, with no targets. */
+async function identify(page: import('@playwright/test').Page, name: string, club: string): Promise<void> {
   await page.goto('/#/settings');
   await page.getByTestId('athlete-name').fill(name);
   await page.getByTestId('athlete-club').fill(club);
@@ -137,4 +142,51 @@ test('a submission changed after signing is rejected on import', async ({ page }
   await other.getByTestId('board-import-input').setInputFiles(forged);
   await expect(other.getByTestId('board-import-review')).toContainText("1 rejected (signature doesn't match)");
   await expect(other.getByTestId('board-import-apply')).toBeDisabled();
+});
+
+test('a challenge: signed with a reason, marks the entry, can be hidden, and reaches the challenged shooter', async ({ browser }, testInfo) => {
+  const bob = await (await browser.newContext()).newPage();
+  await readyPhone(bob, 'Bob Berg', 'North SC');
+  await bob.goto('/#/board');
+  await bob.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }));
+  const [bobDownload] = await Promise.all([bob.waitForEvent('download'), bob.getByTestId('board-share-mine').click()]);
+  const bobFile = testInfo.outputPath('bob.json');
+  await bobDownload.saveAs(bobFile);
+
+  const ann = await (await browser.newContext()).newPage();
+  await ann.goto('/#/');
+  await identify(ann, 'Ann Lee', 'South SC');
+  await ann.goto('/#/board');
+  await ann.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }));
+  await ann.getByTestId('board-import-input').setInputFiles(bobFile);
+  await ann.getByTestId('board-import-apply').click();
+
+  const row = ann.getByTestId('board-row').first();
+  await row.locator('summary').click();
+  await row.getByTestId('challenge-open').nth(2).click();
+  await ann.getByTestId('challenge-reason').fill("The hole at 4 o'clock is a neighbour's shot");
+  await ann.getByTestId('challenge-save').click();
+  await expect(ann.getByTestId('challenge-saved')).toBeVisible();
+  await expect(row.getByTestId('mark-challenged')).toBeVisible();
+  await expect(row.getByTestId('challenge-reason-shown')).toHaveText("Challenged by Ann Lee: \u201cThe hole at 4 o'clock is a neighbour's shot\u201d");
+  const [challengeDownload] = await Promise.all([ann.waitForEvent('download'), ann.getByTestId('challenge-share').click()]);
+  const challengeFile = testInfo.outputPath('challenge.json');
+  await challengeDownload.saveAs(challengeFile);
+
+  // Each phone may hide challenged entries.
+  await ann.getByTestId('board-hide-challenged').check();
+  await expect(ann.getByTestId('board-empty')).toBeVisible();
+  await ann.getByTestId('board-hide-challenged').uncheck();
+  await expect(ann.getByTestId('board-row')).toHaveCount(1);
+
+  // Bob imports the challenge and sees it on his own row.
+  await bob.getByTestId('board-import-input').setInputFiles(challengeFile);
+  await expect(bob.getByTestId('board-import-review')).toContainText('1 challenge');
+  await bob.getByTestId('board-import-apply').click();
+  const own = bob.locator('[data-testid="board-row"][data-own="true"]');
+  await expect(own.getByTestId('mark-challenged')).toBeVisible();
+  await own.locator('summary').click();
+  await expect(own.getByTestId('challenge-reason-shown')).toContainText('Challenged by Ann Lee');
+  // Nobody challenges their own entry.
+  await expect(own.getByTestId('challenge-open')).toHaveCount(0);
 });
