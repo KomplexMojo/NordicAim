@@ -30,8 +30,8 @@ as "met" follows from the metric already knowing which way is better.
 ```ts
 export const GoalLogEntry = z.object({
   id: z.string(),
-  view: z.enum(['sight-in', 'confirm', 'precision-prone', 'precision-standing']),
-  metric: z.enum(['score', 'group', 'rms']),
+  view: z.enum(['sight-in', 'confirm', 'precision-prone', 'precision-standing']),   // every view ever written
+  metric: z.enum(['score', 'group', 'rms', 'mpiX', 'mpiY']),                       // every metric ever written
   value: z.number(),     // the metric's own unit: %, MOA or mm
   setAt: z.string(),     // UtcIso
 });
@@ -51,6 +51,12 @@ needed. **Setting a goal never edits or deletes a row**: it appends a new `GoalL
 `achievedAt`, no `baselineValue`, no `amountKind` — achievement and history both fall out of reading the log, never
 out of a separately maintained flag (see §4).
 
+- **Stored vs goal-able.** The stored entry schema accepts every view and metric an entry has ever been written
+  with; the narrower `GoalView` (the two precision views) and `GoalMetric` (score, group, rms) only limit what the
+  screen offers and what `setGoal` (§6) will write. Entries saved before the narrowing (Sight in, Confirm, MPI) stay
+  in the log, readable but never shown. Validating stored rows against the narrowed sets instead made a single old
+  entry fail the whole row, so every read and write threw and the arrow buttons silently did nothing (owner's
+  phone, 2026-10-01). Any future narrowing must keep the stored enums wide.
 - **Current goal** for a (view, metric) pair: the entry with that (view, metric) and the latest `setAt`.
 - **Goal as of a date**: the entry with that (view, metric) and the latest `setAt` **at or before** that date; `null`
   before the first entry for that pair.

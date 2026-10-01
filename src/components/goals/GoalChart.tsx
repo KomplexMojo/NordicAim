@@ -61,15 +61,18 @@ interface GoalChartProps {
 export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChartProps) {
   const dataValues = useMemo(() => trend.map((p) => metric.value(p)), [trend, metric]);
   const goalValues = useMemo(() => goalSeries(entries, view, metric.id, trend), [entries, view, metric.id, trend]);
-  const domainFrom = useMemo(() => [...dataValues, ...goalValues], [dataValues, goalValues]);
+  const goalNow = useMemo(() => currentGoal(entries, view, metric.id), [entries, view, metric.id]);
+  const [draft, setDraft] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const lineValue = draft ?? goalNow?.value ?? null;
+
+  // The live value joins the axis too: `goalValues` only counts a goal from sessions on or after the day it was set,
+  // so a goal set today against older sessions would otherwise sit off the chart once it leaves the data's range.
+  const domainFrom = useMemo(() => [...dataValues, ...goalValues, lineValue], [dataValues, goalValues, lineValue]);
   const data = useMemo(() => chartGeometry(dataValues, BOX, metric.zeroLine, 4, domainFrom), [dataValues, metric.zeroLine, domainFrom]);
   const goal = useMemo(() => chartGeometry(goalValues, BOX, metric.zeroLine, 4, domainFrom), [goalValues, metric.zeroLine, domainFrom]);
   // REV-133/analysis.md §4a: the same least-squares trend line Analysis draws for this metric, carried over here too.
   const fit = metric.trendLine ? data.trend : null;
-
-  const goalNow = currentGoal(entries, view, metric.id);
-  const [draft, setDraft] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
 
   async function step(direction: 1 | -1) {
     if (saving) return;
@@ -86,7 +89,6 @@ export function GoalChart({ view, metric, trend, entries, onSetGoal }: GoalChart
     }
   }
 
-  const lineValue = draft ?? goalNow?.value ?? null;
   const [lo, hi] = BOUNDS[metric.id];
   const atUpBound = lineValue !== null && lineValue >= hi;
   const atLowBound = lineValue !== null && lineValue <= lo;

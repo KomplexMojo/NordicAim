@@ -20,14 +20,22 @@ export type GoalView = z.infer<typeof GoalView>;
 export const GoalMetric = z.enum(['score', 'group', 'rms']);
 export type GoalMetric = z.infer<typeof GoalMetric>;
 
+// Every view and metric an entry has ever been written with. The log is append-only, so entries saved before Goals
+// narrowed to `GoalView`/`GoalMetric` (Sight in, Confirm, MPI) are still stored and must still parse; validating
+// stored rows against the narrowed sets made one old entry fail the whole row, so every read and write threw.
+// They stay readable and inert: nothing on the Goals screen asks for those pairs.
+const StoredGoalView = z.enum(['sight-in', 'confirm', 'precision-prone', 'precision-standing']);
+const StoredGoalMetric = z.enum(['score', 'group', 'rms', 'mpiX', 'mpiY']);
+
 /**
  * One goal-setting event. Never edited or deleted: setting a new goal for the same (view, metric) appends another
- * entry rather than changing this one (goals.md §2, §4 — the log itself is the history).
+ * entry rather than changing this one (goals.md §2, §4 — the log itself is the history). New entries are written
+ * only for `GoalView` × `GoalMetric` (`services/goals.ts`).
  */
 export const GoalLogEntry = z.object({
   id: Id,
-  view: GoalView,
-  metric: GoalMetric,
+  view: StoredGoalView,
+  metric: StoredGoalMetric,
   /** The metric's own unit: %, MOA or mm (whatever `TrendMetric.unit` says for this `metric`). */
   value: z.number(),
   setAt: UtcIso,

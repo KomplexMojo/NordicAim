@@ -34,6 +34,25 @@ describe('goals service (goals.md §6)', () => {
     db.close();
   });
 
+  it('refuses to write a view or metric that is not goal-able, but keeps reading old ones', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db);
+    await db.put('goals', {
+      schemaVersion: 1,
+      key: 'app',
+      entries: [{ id: '11111111-1111-4111-8111-111111111111', view: 'confirm', metric: 'mpiX', value: 1, setAt: '2026-09-29T12:00:00.000Z' }],
+    });
+
+    // @ts-expect-error -- Confirm is not a GoalView; the runtime check matters for any untyped caller.
+    await expect(setGoal(ctx, { view: 'confirm', metric: 'score', value: 70 })).rejects.toThrow();
+    // @ts-expect-error -- MPI is not a GoalMetric.
+    await expect(setGoal(ctx, { view: 'precision-prone', metric: 'mpiX', value: 1 })).rejects.toThrow();
+
+    await setGoal(ctx, { view: 'precision-prone', metric: 'score', value: 70 });
+    expect(await listGoals(ctx)).toHaveLength(2);
+    db.close();
+  });
+
   it('writes in one transaction over the goals store only', async () => {
     const db = await openTestDb();
     const ctx = makeTestContext(db);

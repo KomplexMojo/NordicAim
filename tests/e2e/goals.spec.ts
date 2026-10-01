@@ -100,6 +100,46 @@ test('the up/down buttons set a goal that persists across reload and draws a hor
   await expect(page.getByTestId('goal-score-value')).not.toHaveText(beforeDown!);
 });
 
+test('goals saved by earlier builds (Confirm, Sight in, MPI) do not break reading or setting goals', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  // The owner's own phone holds entries like these, written before Goals narrowed its views and metrics.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('asa');
+        open.onsuccess = () => {
+          const tx = open.result.transaction('goals', 'readwrite');
+          tx.objectStore('goals').put({
+            schemaVersion: 1,
+            key: 'app',
+            entries: [
+              { id: '11111111-1111-4111-8111-111111111111', view: 'confirm', metric: 'score', value: 90, setAt: '2026-09-29T12:00:00.000Z' },
+              { id: '22222222-2222-4222-8222-222222222222', view: 'sight-in', metric: 'mpiX', value: 1, setAt: '2026-09-29T12:00:00.000Z' },
+            ],
+          });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        };
+        open.onerror = () => reject(open.error);
+      }),
+  );
+
+  await page.goto('/#/goals');
+  await page.getByTestId('goals-range-all').click();
+  await page.getByTestId('goals-view-precision-prone').click();
+  await expect(page.getByTestId('goal-score-value')).toHaveText('No goal');
+  await page.getByTestId('goal-score-up').click();
+  await expect(page.getByTestId('goal-score-value')).toHaveText(/^Goal: \d+%$/);
+  await expect(page.getByTestId('goal-score-indicator')).toHaveCount(1);
+
+  // The old entries are kept (the log is append-only), just never shown.
+  const entries = await page.evaluate(() => (window as HookWindow).__asaTest!.listGoals());
+  expect(entries).toHaveLength(3);
+});
+
 test('the buttons are plain, native buttons: Tab and Enter/Space work with no custom keyboard code', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
