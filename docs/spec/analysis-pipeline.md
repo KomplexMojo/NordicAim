@@ -14,7 +14,7 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 
 | Route (hash) | Screen | Milestone |
 |---|---|---|
-| `#/` | Home: quick-start button + **every** session (REV-72) | M09 |
+| `#/` | Home: quick-start button + **every** session (REV-72). With no sessions yet, one line under the button: "Photograph your targets, confirm what you shot, then read the analysis." (issue #93) | M09 |
 | `#/sessions` | Redirects to `#/` (REV-72). Home lists **every** session (name, date, and its targets' kinds as marks, REV-139) and is the one place a session is deleted | M09 |
 | `#/sessions/:sid` | Redirect: to `metadata` if any photo is `needs-metadata`, else to `results` | M09 |
 | `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |

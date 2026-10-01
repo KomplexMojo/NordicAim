@@ -37,6 +37,12 @@ export function HomePage() {
       <UpdateBanner />
 
       <QuickStartButton sessions={sessions ?? []} className="h-14 w-full text-lg" />
+      {/* Issue #93: before the first session, one line of the three-step promise; it goes once a session exists. */}
+      {sessions !== undefined && sessions.length === 0 && (
+        <p className="-mt-3 text-center text-sm text-muted-foreground" data-testid="home-promise">
+          Photograph your targets, confirm what you shot, then read the analysis.
+        </p>
+      )}
 
       <BackupReminder />
 

@@ -90,3 +90,13 @@ test('the NordicAim mark and name in the header take you to the sessions screen 
   await expect(page.getByTestId('tab-shooting')).toHaveAttribute('aria-current', 'page');
 });
 
+
+test('the empty Home states the three steps in one line, and drops it once a session exists (issue #93)', async ({ page }) => {
+  await page.goto('/#/');
+  await expect(page.getByTestId('home-promise')).toHaveText('Photograph your targets, confirm what you shot, then read the analysis.');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.reload();
+  await expect(page.getByTestId('session-list').first()).toBeVisible();
+  await expect(page.getByTestId('home-promise')).toHaveCount(0);
+});
