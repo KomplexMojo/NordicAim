@@ -51,13 +51,18 @@ export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
                     {own ? ' (you)' : ''}
                   </span>
                   {row.club !== '' && <span className="truncate text-xs text-muted-foreground">{row.club}</span>}
+                  {(challenges.length > 0 || row.edited) && (
+                    // Marks get their own line, so a name is never cut short to make room for them.
+                    <span className="mt-1 flex flex-wrap gap-1">
+                      {challenges.length > 0 && (
+                        <span className="rounded border border-destructive/50 px-1.5 py-0.5 text-xs" data-testid="mark-challenged">
+                          Challenged
+                        </span>
+                      )}
+                      <TargetMarks check={row} />
+                    </span>
+                  )}
                 </span>
-                {challenges.length > 0 && (
-                  <span className="rounded border border-destructive/50 px-1.5 py-0.5 text-xs" data-testid="mark-challenged">
-                    Challenged
-                  </span>
-                )}
-                <TargetMarks check={row} />
                 <span className="text-lg font-semibold tabular-nums" data-testid="board-row-average">
                   {formatPercent(row.average)}
                 </span>
@@ -75,12 +80,14 @@ export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
                         {t.check.edited && t.check.auto !== null && (
                           <span className="text-xs text-muted-foreground">automatic {formatPercent(t.check.auto.percent)}</span>
                         )}
-                        <TargetMarks check={t.check} className="ml-auto" />
-                        {!own && !open && (
-                          <Button variant="ghost" className="h-11 px-2 text-xs" onClick={() => setChallenging({ key: row.publicKey, index: j })} data-testid="challenge-open">
-                            Challenge
-                          </Button>
-                        )}
+                        <span className="ml-auto flex items-center gap-1">
+                          <TargetMarks check={t.check} />
+                          {!own && !open && (
+                            <Button variant="ghost" className="h-11 px-2 text-xs" onClick={() => setChallenging({ key: row.publicKey, index: j })} data-testid="challenge-open">
+                              Challenge
+                            </Button>
+                          )}
+                        </span>
                       </div>
                       {against.map((c) => (
                         <p key={c.challenger} className="text-xs text-muted-foreground" data-testid="challenge-reason-shown">
