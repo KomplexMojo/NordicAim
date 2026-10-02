@@ -45,7 +45,11 @@ export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
           <li key={row.publicKey} data-testid="board-row" data-own={own}>
             <details className={cn('rounded-md border px-3 py-2', own ? 'border-primary bg-primary/5' : 'border-border')}>
               <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3">
-                <span className="w-6 text-right text-sm text-muted-foreground tabular-nums">{i + 1}</span>
+                {i === 0 ? (
+                  <TopTrophy />
+                ) : (
+                  <span className="w-6 text-right text-sm text-muted-foreground tabular-nums">{i + 1}</span>
+                )}
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-medium" data-testid="board-row-name">
                     {row.name}
@@ -109,5 +113,17 @@ export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
         );
       })}
     </ol>
+  );
+}
+
+/** The top scorer's place: the Board tab's trophy, filled in the score star's gold. */
+function TopTrophy() {
+  return (
+    <span className="flex w-6 justify-end" role="img" aria-label="1, top scorer" data-testid="board-top-trophy">
+      <svg viewBox="0 0 24 24" className="size-6" fill="#F2B705" stroke="#B58500" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z" />
+        <path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" fill="none" />
+      </svg>
+    </span>
   );
 }

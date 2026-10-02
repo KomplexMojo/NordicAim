@@ -119,6 +119,8 @@ test('two phones: one shares its signed submission, the other previews and impor
   await expect(ann.getByTestId('board-row')).toHaveCount(1);
   await expect(ann.getByTestId('board-row-name')).toHaveText('Bob Berg');
   await expect(ann.getByTestId('board-row-average')).toHaveAttribute('aria-label', 'Average 66%');
+  // The top scorer's place is the trophy.
+  await expect(ann.getByTestId('board-row').first().getByTestId('board-top-trophy')).toBeVisible();
 
   await ann.getByTestId('board-import-input').setInputFiles(bobFile);
   await expect(ann.getByTestId('board-import-review')).toContainText('0 new shooters, 0 updated, 1 already on your board');
