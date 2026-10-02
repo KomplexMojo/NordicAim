@@ -156,7 +156,7 @@ Tap **Patterns** on the bottom bar.
 Patterns lays every shot you have recorded over the printed target, one view for each kind of target: **Sight in**, **Confirm**, **Precision prone** and **Precision standing**. Dots are translucent, so where they pile up they darken. Choose **Latest session**, **This week**, **30 days**, **90 days** or **All time**.
 
 <p align="center">
-  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen with every precision prone shot laid over the printed target and the observed patterns below">
+  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the date slider and the season row above every precision prone shot laid over the printed target">
 </p>
 
 Under the drawing you get the number of shots, targets and sessions, your mean point of impact, the group ellipse, and either the share of shots in each ring (precision) or the share landing in the hit zone (sighting).
