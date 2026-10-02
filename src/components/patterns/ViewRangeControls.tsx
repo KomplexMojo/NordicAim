@@ -113,6 +113,26 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
     <>
       <ViewSwitch view={view} onView={onView} testIdPrefix={testIdPrefix} views={PATTERN_VIEWS} />
       <div className="flex flex-col gap-1">
+        {/* The stop labels sit above the track (owner, 2026-10-02), so a thumb under the finger never hides them. */}
+        <div role="group" aria-label="Date range" className="relative h-11">
+          {RANGE_STEPS.map((step, i) => (
+            <button
+              key={step.id}
+              type="button"
+              aria-pressed={i === index}
+              aria-label={step.label}
+              data-testid={`${testIdPrefix}-range-${step.id}`}
+              onClick={() => moveTo(i)}
+              className={cn(
+                'absolute top-0 flex h-11 w-10 items-center justify-center text-sm tabular-nums',
+                i === index ? 'font-semibold text-primary' : 'text-muted-foreground',
+              )}
+              style={{ left: thumbCenterX(i / LAST_STEP), transform: 'translateX(-50%)' }}
+            >
+              {step.tick}
+            </button>
+          ))}
+        </div>
         <div className="relative h-11">
           <div className="pointer-events-none absolute inset-x-4 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-muted" />
           <div
@@ -136,25 +156,6 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
               '[&::-moz-range-thumb]:size-9 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow-md',
             )}
           />
-        </div>
-        <div role="group" aria-label="Date range" className="relative h-11">
-          {RANGE_STEPS.map((step, i) => (
-            <button
-              key={step.id}
-              type="button"
-              aria-pressed={i === index}
-              aria-label={step.label}
-              data-testid={`${testIdPrefix}-range-${step.id}`}
-              onClick={() => moveTo(i)}
-              className={cn(
-                'absolute top-0 flex h-11 w-10 items-center justify-center text-sm tabular-nums',
-                i === index ? 'font-semibold text-primary' : 'text-muted-foreground',
-              )}
-              style={{ left: thumbCenterX(i / LAST_STEP), transform: 'translateX(-50%)' }}
-            >
-              {step.tick}
-            </button>
-          ))}
         </div>
       </div>
     </>
