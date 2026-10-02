@@ -119,7 +119,7 @@ You choose what to share and when. NordicAim does not connect to Strava or Garmi
 
 ### Your trends, and one image for your coach
 
-The **Analysis** screen, at the top beside **Patterns**, shows how you are moving with one point per session: score or hit rate, group size, accuracy and point of impact, with a dashed trend line from three sessions on the score, group size and accuracy.
+The **Analysis** screen, on the bottom bar beside **Patterns**, shows how you are moving with one point per session: score or hit rate, group size, accuracy and point of impact, with a dashed trend line from three sessions on the score, group size and accuracy.
 
 <table>
   <tr>
@@ -132,9 +132,28 @@ The **Analysis** screen, at the top beside **Patterns**, shows how you are movin
   </tr>
 </table>
 
+### Goals, and a board to compare with other shooters
+
+**Goals** lets you set where you want your prone and standing score, group size, accuracy and biathlon hits to be, draws each goal on its chart, and says whether the sessions since have hit it. Each session's results and summary image show whether it met the goals you had at the time.
+
+The **Board** ranks shooters by the average of their best 5 precision targets, one board for prone and one for standing. There is no server: you share your signed submission as a file and import other shooters', so each phone keeps its own board. Every target is scored again on the phone that receives it, targets corrected by hand are marked (and flagged when the correction moved the score more than 10 points), and anyone can challenge a target with a reason.
+
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="docs/assets/screens/goals.png" alt="The Goals screen on Prone: the season row, then the Score chart with its goal line at 85% and the Group size chart below" width="300"></td>
+    <td align="center" width="50%"><img src="docs/assets/screens/board-list.png" alt="A board of fictional shooters: a gold trophy in place of first, each average in a gold or silver star, and Edited and Challenged marks" width="300"></td>
+  </tr>
+  <tr>
+    <td valign="top"><b>Goals.</b> Tap ▲ or ▼ beside a chart to move its goal line. Every session since is counted against it.</td>
+    <td valign="top"><b>The Board.</b> A sample board of fictional shooters. Your best 5 are picked for you; nothing is sent until you tap Share.</td>
+  </tr>
+</table>
+
+Sessions, Patterns, Analysis and Goals can each be narrowed to one **season**: winter, spring, summer or fall.
+
 Want the whole routine, from installing to comparing against your history? See the **[workflow, step by step](docs/guide/workflow.md)**.
 
-New to it? The **[guide](docs/guide/README.md)** covers getting good photos, reading the results, corrections, patterns and backup in more detail.
+New to it? The **[guide](docs/guide/README.md)** covers getting good photos, reading the results, corrections, patterns, goals, the Board and backup in more detail.
 
 ## Security and code review
 

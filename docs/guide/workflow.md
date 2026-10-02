@@ -27,11 +27,11 @@ Do this on Wi-Fi. The first load downloads the image analysis engine. After that
 
 ## 2. Set up your athlete details
 
-Open **Settings** on the bottom bar. Under **Athlete**, fill in:
+Open **Settings**, the gear at the top right. Under **Athlete**, fill in:
 
 - **Name** and **Ski club**, which appear on the summary and coach images you share, and name your backup files.
 - **Handedness**, right-handed or left-handed.
-- **Passphrase**, at least 12 characters. It creates the stamp that lets anyone check a summary image really came from you and was not edited, and the key fingerprint in your backup file names. The passphrase itself is never stored and never leaves the phone, so keep a note of it somewhere safe.
+- **Passphrase**, at least 12 characters. It creates the stamp that lets anyone check a summary image really came from you and was not edited, the key fingerprint in your backup file names, and the signature on your Board submission. The passphrase itself is never stored and never leaves the phone, so keep a note of it somewhere safe.
 
 <p align="center">
   <img src="../assets/screens/settings.png" width="300" alt="The Settings screen with the Athlete section: name, ski club, handedness and passphrase">
@@ -97,7 +97,7 @@ Tap **Update summary** if you changed anything, then **Share** to send the image
 
 ## 8. Review the session against your patterns and trends
 
-Tap **Patterns** at the top of the screen. Choose the kind of target (**Sight in**, **Confirm**, **Precision prone** or **Precision standing**) and **Latest session**, then compare it with **30 days**, **90 days** or **All time**.
+Tap **Patterns** on the bottom bar. Choose the kind of target (**Sight in**, **Confirm**, **Precision prone** or **Precision standing**) and slide to **1**, the latest session, then compare it with **-30**, **-90** or **-∞** (all time). The season row below narrows any of these to one season.
 
 Every shot is laid over the printed target. Where they pile up they darken, so you can see whether today's group sits where your usual group does, and whether your misses have a habit. The **Observed patterns** panel gives the group size, mean radius and how far the group sits from centre.
 
@@ -112,6 +112,8 @@ Then tap **Analysis** beside it. The same kinds of target and ranges, but one po
 </p>
 
 For a coach, tap **Make coach image**, then **Share**: one picture with the Patterns drawings and your averages for the range, each with a small arrow for its trend.
+
+Then check **Goals**: whether the session met the goals you had set, and how the sessions since each goal was set average out. When a precision target makes your best 5, it changes your submission on the **Board**. Share it again so the other shooters' boards stay current.
 
 ## Keep a backup
 
