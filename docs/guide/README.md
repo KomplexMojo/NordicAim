@@ -249,18 +249,18 @@ The Board ranks shooters by the **average of their best 5 precision targets**, o
 A newer submission from the same shooter replaces the older one, and importing the same file twice changes nothing. A board keeps the best 100 shooters.
 
 <p align="center">
-  <img src="../assets/screens/board-list.png" width="300" alt="A board of fictional shooters: a gold trophy in place of first, each average in a gold or silver star, and Edited and Challenged marks">
+  <img src="../assets/screens/board-list.png" width="300" alt="A board of fictional shooters: a gold trophy in place of first, each average in a gold or silver star, and an Edited mark">
   &nbsp;
-  <img src="../assets/screens/board-entry.png" width="300" alt="One fictional shooter's entry opened: five targets with date, score and X count, one marked Edited and Flagged with its automatic score, and a challenge with its reason">
+  <img src="../assets/screens/board-entry.png" width="300" alt="One fictional shooter's entry opened: five targets with date, score and X count, one marked Edited and Flagged with its automatic score">
 </p>
 
 **Reading the board.** Each row shows the shooter, their club, their marks and their average in the same star as a session's score: gold above 90, silver from 80, bronze from 70, a plain circle below. The top scorer has a **trophy** in place of *1*. Ties go to more Xs, then the smaller group, then the earlier date. Once you have five targets for a position, your own row joins the board: highlighted, marked *(you)*, and always showing your current best 5. Tap a row to open its five targets: the date, the score and the X count, and for a corrected target, its automatic score too.
 
-**Challenges.** If a target looks wrong to you, say a hole from the next lane, tap **Challenge** beside it and write why. Your challenge is signed with your passphrase and saved on your board. Share it so the shooter and others see it. The entry is then marked **Challenged**, with each reason under its target. When the shooter shares a newer submission, it answers the challenge, and the challenge is dropped. **Hide flagged** and **Hide challenged** take those entries off your view of the board. Your own row always shows.
+**Hide flagged** takes flagged entries off your view of the board. Your own row always shows.
 
-**Clear board.** To start over, say for a new season or a different group of shooters, tap **Clear board** under the board, then **Clear board** again to confirm. It removes every shooter and challenge you received, for prone and standing. Your own entry stays. Import the files again to bring shooters back.
+**Clear board.** To start over, say for a new season or a different group of shooters, tap **Clear board** under the board, then **Clear board** again to confirm. It removes every shooter you received, for prone and standing. Your own entry stays. Import the files again to bring shooters back.
 
-What a submission holds: your name, club, the dates, rounds, marks and shot positions of five targets. Never a photo, never a location. A full backup keeps the boards and challenges you received (see [section 15](#15-back-up-and-restore)).
+What a submission holds: your name, club, the dates, rounds, marks and shot positions of five targets. Never a photo, never a location. A full backup keeps the boards you received (see [section 15](#15-back-up-and-restore)).
 
 ## 14. Settings
 
@@ -299,7 +299,7 @@ Changing the rule **re-scores every session you have stored**. Your shots and al
 Your sessions are stored only on your phone. If you delete the Home Screen app or clear Safari's website data, they are gone.
 
 - In **Settings**, tap **Back up now** to save everything to one file. Use the share sheet to save it to Files or send it to yourself.
-- A backup of everything also keeps the board submissions and challenges you received. A backup of chosen sessions leaves them out.
+- A backup of everything also keeps the board submissions you received. A backup of chosen sessions leaves them out.
 - To save or send just some sessions (one range day, say), choose **Choose sessions** in the same dialog and tick the ones you want. The file is much smaller and its name ends with how many sessions it holds, for example `…-2026-09-30-1-session.json.gz`. It doesn't count as your backup, so the reminder still waits for a backup of everything.
 - The file is compressed and named after you and the day, for example `nordic-aim-backup-jane-doe-3FA91C07-2026-09-27.json.gz`: your name, your key fingerprint if you set a passphrase, and the date. To keep it small, it holds each original photo once; the smaller copies NordicAim works from are made again when you restore. When it is done, Settings tells you the size, and the size before compression.
 - NordicAim reminds you when you have never backed up, or when the last backup is more than 14 days old (you can change the number of days).
@@ -346,4 +346,3 @@ Found a bug or a score that looks wrong? [Open an issue](https://github.com/Komp
 | **Board** | Shooters ranked by the average of their best 5 precision targets, shared as signed files. |
 | **Edited** | A target corrected by hand: a shot or the alignment. |
 | **Flagged** | A correction that moved a target's score by more than 10 points. It still counts. |
-| **Challenge** | A signed note from another shooter saying a board target looks wrong, and why. |

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import type { Challenge } from '@/lib/leaderboard/challenge';
+import { CHALLENGES_ENABLED, type Challenge } from '@/lib/leaderboard/challenge';
 import { formatPercent } from '@/lib/leaderboard/score';
 import type { BoardRow } from '@/lib/leaderboard/submission';
 import { cn } from '@/lib/utils';
@@ -85,7 +85,7 @@ export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
                         )}
                         <span className="ml-auto flex items-center gap-1">
                           <TargetMarks check={t.check} />
-                          {!own && !open && (
+                          {CHALLENGES_ENABLED && !own && !open && (
                             <Button variant="ghost" className="h-11 px-2 text-xs" onClick={() => setChallenging({ key: row.publicKey, index: j })} data-testid="challenge-open">
                               Challenge
                             </Button>

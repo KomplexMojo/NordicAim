@@ -1,7 +1,7 @@
 // leaderboard.md §5–§9 (issue #42): this phone's board — its own signed submission, the submissions and challenges it has received,
 // importing more, and challenging an entry. Nothing here sends anything anywhere; sharing is the owner's tap on the Board screen.
 
-import { Challenge, checkChallenges, mergeChallenges, signChallenge, type ChallengeTarget } from '@/lib/leaderboard/challenge';
+import { Challenge, CHALLENGES_ENABLED, checkChallenges, mergeChallenges, signChallenge, type ChallengeTarget } from '@/lib/leaderboard/challenge';
 import { boardFileName, boardFileText, checkSubmissions, readBoardFile, submissionFileName, submissionFileText } from '@/lib/leaderboard/file';
 import { boardIdentity, type BoardIdentity } from '@/lib/leaderboard/identity';
 import { BOARD_CAP, mergeSubmissions, type MergeSummary } from '@/lib/leaderboard/merge';
@@ -60,7 +60,7 @@ export async function loadBoard(ctx: ServiceContext): Promise<BoardData> {
   return {
     mine,
     held: submissions,
-    challenges,
+    challenges: CHALLENGES_ENABLED ? challenges : [],
     ownKey: identity?.publicKey ?? null,
     identity: identity !== null ? 'ready' : settings.athleteSalt === null ? 'no-passphrase' : 'locked',
     athleteName: settings.athleteName.trim(),
@@ -95,7 +95,7 @@ export async function createBoardFile(ctx: ServiceContext): Promise<{ text: stri
   const own = await createMySubmission(ctx);
   const { submissions: held, challenges } = readStore(await getBoard(ctx.db));
   const submissions = own.status === 'ok' ? [own.submission, ...held] : held;
-  return { text: boardFileText(submissions, ctx.now().toISOString(), challenges), fileName: boardFileName(localToday(ctx)), count: submissions.length };
+  return { text: boardFileText(submissions, ctx.now().toISOString(), CHALLENGES_ENABLED ? challenges : []), fileName: boardFileName(localToday(ctx)), count: submissions.length };
 }
 
 export interface ImportPreview {
@@ -109,7 +109,10 @@ export interface ImportPreview {
 export async function previewImport(ctx: ServiceContext, text: string): Promise<ImportPreview | null> {
   const contents = readBoardFile(text);
   if (contents === null) return null;
-  const [{ accepted, rejected }, challenges] = await Promise.all([checkSubmissions(contents.submissions), checkChallenges(contents.challenges)]);
+  const [{ accepted, rejected }, challenges] = await Promise.all([
+    checkSubmissions(contents.submissions),
+    checkChallenges(CHALLENGES_ENABLED ? contents.challenges : []),
+  ]);
   const [held, identity] = await Promise.all([loadHeldSubmissions(ctx), ownIdentity(ctx)]);
   const { summary } = mergeSubmissions(held, accepted, identity?.publicKey ?? null);
   return { accepted, rejected, summary, challenges };

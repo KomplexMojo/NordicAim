@@ -34,7 +34,7 @@ export function ClearBoard({ shooters, onCleared }: { shooters: number; onCleare
   return (
     <div className="flex flex-col gap-2 rounded-md border border-destructive/50 p-3 text-sm" role="dialog" aria-label="Clear board" data-testid="board-clear-confirm">
       <p>
-        Remove {shooters === 1 ? 'the 1 shooter' : `all ${shooters} shooters`} and every challenge you received, prone and standing? Your own
+        Remove {shooters === 1 ? 'the 1 shooter' : `all ${shooters} shooters`} you received, prone and standing? Your own
         entry stays. To get the others back, import the files again.
       </p>
       <div className="grid grid-cols-2 gap-2">

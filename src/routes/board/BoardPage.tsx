@@ -8,7 +8,7 @@ import { SubmissionPreviewCard } from '@/components/leaderboard/SubmissionPrevie
 import { ViewSwitch } from '@/components/patterns/ViewRangeControls';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
-import { challengesFor } from '@/lib/leaderboard/challenge';
+import { CHALLENGES_ENABLED, challengesFor } from '@/lib/leaderboard/challenge';
 import { boardRows, ownRow } from '@/lib/leaderboard/merge';
 import { previewSubmission } from '@/lib/leaderboard/select';
 import { loadBoard } from '@/lib/services/board';
@@ -70,13 +70,15 @@ export function BoardPage() {
                 <input type="checkbox" className="size-5" checked={hideFlagged} onChange={(e) => setHideFlagged(e.target.checked)} data-testid="board-hide-flagged" />
                 Hide flagged
               </label>
-              <label className="flex min-h-11 items-center gap-2">
-                <input type="checkbox" className="size-5" checked={hideChallenged} onChange={(e) => setHideChallenged(e.target.checked)} data-testid="board-hide-challenged" />
-                Hide challenged
-              </label>
+              {CHALLENGES_ENABLED && (
+                <label className="flex min-h-11 items-center gap-2">
+                  <input type="checkbox" className="size-5" checked={hideChallenged} onChange={(e) => setHideChallenged(e.target.checked)} data-testid="board-hide-challenged" />
+                  Hide challenged
+                </label>
+              )}
             </div>
             <BoardTable rows={rows} ownKey={ownKey} onChallenged={() => setRefreshKey((k) => k + 1)} />
-            {(data.held.length > 0 || data.challenges.length > 0) && (
+            {data.held.length > 0 && (
               <ClearBoard shooters={data.held.length} onCleared={() => setRefreshKey((k) => k + 1)} />
             )}
           </section>

@@ -9,6 +9,13 @@ import { signText, verifyText, type BoardIdentity } from './identity';
 import type { BoardPosition } from './score';
 import { SUBMISSION_SIZE } from './select';
 
+/**
+ * Challenges are hidden for now (owner, 2026-10-02): a shooter on another phone sees shot positions, never the paper, so they
+ * cannot tell a neighbour's hole from a real one. Nothing is shown, imported or shared while this is false; the code stays so
+ * the feature can come back by setting it to true.
+ */
+export const CHALLENGES_ENABLED = false;
+
 export const CHALLENGE_FORMAT = 'nordic-aim-board-challenge';
 export const MAX_CHALLENGE_REASON = 200;
 /** At most this many challenges are kept against one submission. */

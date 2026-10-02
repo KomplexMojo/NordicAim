@@ -92,11 +92,18 @@ owner's words are in issue #42.
   and challenge is checked again and merged like an import (no Keep / Replace question). The automatic baseline travels inside each
   analysis. The signing key never travels: it is derived again from the stamp passphrase.
 - **Clear board** (owner, 2026-10-02; `clearBoard` in `services/board.ts`, `ClearBoard.tsx`): under the board, shown while anything
-  was received. A second tap confirms ("Remove all N shooters and every challenge you received, prone and standing?"); it writes
+  was received. A second tap confirms ("Remove all N shooters you received, prone and standing?"); it writes
   the empty row, so every received submission and challenge goes, for both positions. The owner's own row is worked out live from
   their targets, so it stays. Nothing is sent; importing the files again brings the shooters back.
 
 ## 9. Challenges
+
+**Hidden for now** (owner, 2026-10-02: "The challenging user can't see the originals so how can they challenge?"). A submission
+carries shot positions, never the paper, so a shooter on another phone cannot tell a neighbour's hole from a real one.
+`CHALLENGES_ENABLED` (`leaderboard/challenge.ts`) is `false`: no Challenge button, no challenged mark or reason, no *Hide
+challenged*; an imported file's challenges are ignored (`previewImport`), a shared board carries none (`createBoardFile`), and
+`loadBoard` shows none, including any stored by an earlier build. The code and its unit tests stay, so the feature can come
+back by setting the flag. What follows describes it as built.
 
 - A **challenge** (`leaderboard/challenge.ts`, format `nordic-aim-board-challenge`) names the shooter, the submission
   (`submissionSignedAt`), the position and the target (0–4), with a **reason** of up to 200 characters, signed by the challenger.

@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import type { Shot } from '@/lib/domain/analysis';
 import { boardIdentity } from '@/lib/leaderboard/identity';
 import { previewSubmission } from '@/lib/leaderboard/select';
-import { boardFileText } from '@/lib/leaderboard/file';
+import { boardFileText, readBoardFile } from '@/lib/leaderboard/file';
+import { CHALLENGES_ENABLED, signChallenge } from '@/lib/leaderboard/challenge';
 import { buildSubmission } from '@/lib/leaderboard/submission';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 import { applyImport, clearBoard, createBoardFile, createChallenge, createMySubmission, loadBoard, loadHeldSubmissions, previewImport } from '@/lib/services/board';
@@ -118,6 +119,24 @@ describe('import', () => {
   });
 });
 
+describe('challenges are hidden (leaderboard.md §9)', () => {
+  it('an imported file\'s challenges are ignored, and a shared board carries none', async () => {
+    expect(CHALLENGES_ENABLED).toBe(false);
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-10-01T12:00:00.000Z' });
+    const bob = await otherShooter(2, 'Bob');
+    const challenger = await boardIdentity(new Uint8Array(32).fill(4));
+    const challenge = await signChallenge(challenger, 'Dee', { shooter: bob.publicKey, submissionSignedAt: bob.signedAt, position: 'prone', index: 0 }, 'A neighbour’s hole', '2026-10-01T12:00:00.000Z');
+    const preview = (await previewImport(ctx, boardFileText([bob], '2026-10-01T12:00:00.000Z', [challenge])))!;
+    expect(preview.accepted).toHaveLength(1);
+    expect(preview.challenges).toEqual({ accepted: [], rejected: 0 });
+    await applyImport(ctx, preview.accepted, [challenge]); // stored by an older build, say
+    expect((await loadBoard(ctx)).challenges).toEqual([]);
+    expect(readBoardFile((await createBoardFile(ctx)).text)?.challenges).toEqual([]);
+    db.close();
+  });
+});
+
 describe('clearBoard (leaderboard.md §8)', () => {
   it('removes every received shooter and challenge; our own row is live, so it is untouched', async () => {
     const db = await openTestDb();
@@ -129,12 +148,12 @@ describe('clearBoard (leaderboard.md §8)', () => {
     await applyImport(ctx, [bob, await otherShooter(3, 'Cy')]);
     const challenge = await createChallenge(ctx, { shooter: bob.publicKey, submissionSignedAt: bob.signedAt, position: 'prone', index: 0 }, 'A neighbour’s hole');
     expect(challenge.status).toBe('ok');
-    expect((await loadBoard(ctx)).challenges).toHaveLength(1);
+    expect((await getBoard(db)).challenges).toHaveLength(1);
 
     expect(await clearBoard(ctx)).toBe(2);
     const board = await loadBoard(ctx);
     expect(board.held).toEqual([]);
-    expect(board.challenges).toEqual([]);
+    expect((await getBoard(db)).challenges).toEqual([]);
     expect(previewSubmission(board.mine, 'prone').complete).toBe(true);
     expect(await clearBoard(ctx)).toBe(0);
     db.close();

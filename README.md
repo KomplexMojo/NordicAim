@@ -136,12 +136,12 @@ The **Analysis** screen, on the bottom bar beside **Patterns**, shows how you ar
 
 **Goals** lets you set where you want your prone and standing score, group size, accuracy and biathlon hits to be, draws each goal on its chart, and says whether the sessions since have hit it. Each session's results and summary image show whether it met the goals you had at the time.
 
-The **Board** ranks shooters by the average of their best 5 precision targets, one board for prone and one for standing. There is no server: you share your signed submission as a file and import other shooters', so each phone keeps its own board. Every target is scored again on the phone that receives it, targets corrected by hand are marked (and flagged when the correction moved the score more than 10 points), and anyone can challenge a target with a reason.
+The **Board** ranks shooters by the average of their best 5 precision targets, one board for prone and one for standing. There is no server: you share your signed submission as a file and import other shooters', so each phone keeps its own board. Every target is scored again on the phone that receives it, targets corrected by hand are marked (and flagged when the correction moved the score more than 10 points). Anyone can open a target to see its automatic score beside a corrected one.
 
 <table>
   <tr>
     <td align="center" width="50%"><img src="docs/assets/screens/goals.png" alt="The Goals screen on Prone: the season row, then the Score chart with its goal line at 85% and the Group size chart below" width="300"></td>
-    <td align="center" width="50%"><img src="docs/assets/screens/board-list.png" alt="A board of fictional shooters: a gold trophy in place of first, each average in a gold or silver star, and Edited and Challenged marks" width="300"></td>
+    <td align="center" width="50%"><img src="docs/assets/screens/board-list.png" alt="A board of fictional shooters: a gold trophy in place of first, each average in a gold or silver star, and an Edited mark" width="300"></td>
   </tr>
   <tr>
     <td valign="top"><b>Goals.</b> Tap ▲ or ▼ beside a chart to move its goal line. Every session since is counted against it.</td>
