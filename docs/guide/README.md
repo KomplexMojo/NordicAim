@@ -168,10 +168,10 @@ Tap **Patterns** on the bottom bar.
 
 Patterns lays every shot you have recorded over the printed target, one view for each kind of target: **Sight in**, **Confirm**, **Precision prone** and **Precision standing**. Dots are translucent, so where they pile up they darken.
 
-The slider under the views picks how far back to look. From left to right: **All** (all time), **-90**, **-30**, **-14** and **-7** days, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)).
+The slider under the views picks how many of your most recent sessions to show. From left to right: **All** your sessions, the last **20**, **10**, **5** or **3**, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)). A sentence under the season row says what you are looking at, for example *Showing your last 5 winter sessions.*
 
 <p align="center">
-  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the date slider and the season row above every precision prone shot laid over the printed target">
+  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the session slider and the season row above every precision prone shot laid over the printed target">
 </p>
 
 Under the drawing you get the number of shots, targets and sessions, your mean point of impact, the group ellipse, and either the share of shots in each ring (precision) or the share landing in the hit zone (sighting).
@@ -182,7 +182,7 @@ Tap a dot to see which target it came from: a list opens under the drawing with 
 
 ## 10. Trends and the coach image
 
-Tap **Analysis** on the bottom bar. It uses the same kinds of target and the same date ranges as Patterns, but where Patterns shows *where* your shots land, Analysis shows *how your numbers move*, with **one point per session**. Tap a point to read its value; under the chart you can then open that session's target, and **Back to Analysis** brings you back to the same view.
+Tap **Analysis** on the bottom bar. It uses the same kinds of target and the same ranges as Patterns, but where Patterns shows *where* your shots land, Analysis shows *how your numbers move*, with **one point per session**. Tap a point to read its value; under the chart you can then open that session's target, and **Back to Analysis** brings you back to the same view.
 
 <p align="center">
   <img src="../assets/screens/analysis.png" width="300" alt="The Analysis screen with Precision prone and All time chosen, and the Score chart below">
@@ -211,7 +211,7 @@ From three sessions, the Score (or Hit rate), Group size and Accuracy charts dra
 Sessions, Patterns, Analysis and Goals each have a row of five buttons: **All**, then **Winter** (a snowflake), **Spring** (a sprout), **Summer** (the sun on the water) and **Fall** (a maple leaf). Tap one to see only that season. **All** shows everything again.
 
 - A target's season is the one you chose for its photo in **Add metadata**. Without one, it follows the day the photo was taken, then the session date.
-- On Patterns and Analysis the season works with the date slider: the season is chosen first, then the range. **Last** under Winter is your latest winter session, and **-30** under Summer is the summer sessions of the last 30 days.
+- On Patterns and Analysis the season works with the slider: the season is chosen first, then the slider counts sessions within it. **Last** under Winter is your latest winter session, and **5** under Summer is your last 5 summer sessions, whenever they were. The sentence under the season row says it in words. If a season has no sessions for that kind of target, it says so and offers **Show every season**.
 - On the Sessions screen, a session shows under a season when any of its targets belongs to it.
 
 ## 12. Goals
@@ -338,7 +338,7 @@ Found a bug or a score that looks wrong? [Open an issue](https://github.com/Komp
 | **MOA** | Minute of angle. At 50 m, one MOA is about 14.5 mm. |
 | **Accuracy (RMS)** | Root-mean-square distance of your shots from the centre of the target: one number for how close they land. |
 | **Trend line** | On the Analysis charts, the straight line that best fits your sessions, from three sessions. |
-| **Coach image** | One image of a date range: the Patterns drawings and your averages, with trend arrows. |
+| **Coach image** | One image of your recent sessions: the Patterns drawings and your averages, with trend arrows. |
 | **Group ellipse** | The oval that best fits your group, drawn on the diagram. |
 | **Alignment** | How the drawn target sits on your photo. |
 | **Season** | Winter, Spring, Summer or Fall: a filter on Sessions, Patterns, Analysis and Goals. |

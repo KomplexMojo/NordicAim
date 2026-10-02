@@ -37,9 +37,9 @@ You always have the last word. Every hole and the alignment can be corrected by 
 - **Group size and point of impact.** Extreme spread in millimetres and MOA, and the mean point of impact: how far, and which way, your group sits from centre. That is the number your sight adjustment starts from.
 - **One summary image.** Sight in, confirm and the precision targets side by side, each drawn at the same scale so you can compare them by eye. Share it from the iPhone share sheet.
 - **Your rule, your call.** Choose official gauge touch, centre in ring, or visible hole touch. Changing it re-scores every session you have stored, so old and new results stay comparable.
-- **Patterns over time.** Every shot from every session, laid over the printed target for sight in, confirm, precision prone and precision standing. Filter to the latest session, this week, 30 days, 90 days or all time and see whether your misses have a habit.
+- **Patterns over time.** Every shot from every session, laid over the printed target for sight in, confirm, precision prone and precision standing. Show your latest session, your last 3 to 20, or all of them, for any season, and see whether your misses have a habit.
 - **Trends, session by session.** The Analysis screen charts your score or hit rate, group size, accuracy (RMS distance from the centre) and point of impact with one point per session, and from three sessions draws a trend line on the score, group size and accuracy that says how much you are changing per session.
-- **A coach image.** One picture of any date range: the pattern drawings, then your averages in small boxes, each with an arrow showing which way it is trending, and a small bullseye showing where your average shot lands. Share it with your coach.
+- **A coach image.** One picture of your recent sessions: the pattern drawings, then your averages in small boxes, each with an arrow showing which way it is trending, and a small bullseye showing where your average shot lands. Share it with your coach.
 - **A review pass.** Step through a session photo by photo, targets that need attention first.
 - **Backup and restore.** One compressed file, named with your name and the date, holds all your sessions. Restore it on a new phone.
 
@@ -63,7 +63,7 @@ It is not perfect, and it does not pretend to be. Suggested holes score nothing 
 
 Each athlete installs NordicAim on their own phone in about ten seconds. There is no account to create and nothing to set up for the squad.
 
-Results move between athletes and coaches as summary images, and as coach images that sum up a whole date range. Every image states which scoring rule was used and how many shots were found, so a coach reading it knows exactly what the numbers mean. If the squad compares scores, agree on one scoring rule in Settings first.
+Results move between athletes and coaches as summary images, and as coach images that sum up your recent sessions. Every image states which scoring rule was used and how many shots were found, so a coach reading it knows exactly what the numbers mean. If the squad compares scores, agree on one scoring rule in Settings first.
 
 There is no shared team account or dashboard. Each phone keeps its own history.
 

@@ -88,8 +88,8 @@ describe('buildTrendsImage (analysis.md §5)', () => {
   it('uses the range: a session outside it is not drawn', async () => {
     const db = await seed(['2026-01-01', '2026-09-18']);
     const render = stubRenderTools();
-    await buildTrendsImage(makeTestContext(db, { nowIso: '2026-09-20T12:00:00.000Z' }), '30', render);
+    await buildTrendsImage(makeTestContext(db, { nowIso: '2026-09-20T12:00:00.000Z' }), 'last', render);
     expect(render.calls[0]!.svg).toContain('1 session ·');
-    expect(render.calls[0]!.svg).toContain('30 days');
+    expect(render.calls[0]!.svg).toContain('Latest session');
   });
 });

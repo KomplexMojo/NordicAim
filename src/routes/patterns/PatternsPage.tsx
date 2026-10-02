@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 
 import { ObservedPatterns } from '@/components/results/ObservedPatterns';
 import { PatternHeader } from '@/components/patterns/PatternHeader';
+import { RangeShowing } from '@/components/patterns/RangeShowing';
 import { TargetLinks } from '@/components/patterns/TargetLinks';
 import { SeasonFilter } from '@/components/patterns/SeasonFilter';
 import { ViewRangeControls } from '@/components/patterns/ViewRangeControls';
@@ -43,8 +44,8 @@ export function PatternsPage() {
   const kind = view.startsWith('precision') ? 'precision' : 'sighting';
   const position = view === 'precision-standing' ? 'standing' : 'prone';
   const shown = useMemo(
-    // REV-154: the season first, so "Latest session" under Winter is the latest winter session.
-    () => (value === undefined ? [] : filterByRange(filterBySeason(value.data.points[view], season), range, value.today)),
+    // REV-154/156: the season first, so "Last 5" under Winter is the last five winter sessions.
+    () => (value === undefined ? [] : filterByRange(filterBySeason(value.data.points[view], season), range)),
     [value, view, range, season],
   );
   const summary = useMemo(() => summarizePatterns(shown, kind), [shown, kind]);
@@ -90,6 +91,7 @@ export function PatternsPage() {
 
       <ViewRangeControls view={view} range={range} onView={setView} onRange={setRange} testIdPrefix="pattern" />
       <SeasonFilter season={season} onSeason={setSeason} testIdPrefix="pattern" />
+      {value !== undefined && <RangeShowing range={range} season={season} sessions={summary.sessions} onSeason={setSeason} testIdPrefix="pattern" />}
 
       {loading && value === undefined ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

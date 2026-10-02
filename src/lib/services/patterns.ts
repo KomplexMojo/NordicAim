@@ -14,8 +14,6 @@ import type { ServiceContext } from './context';
 
 export interface PatternsLoaded {
   data: PatternData;
-  /** `YYYY-MM-DD`, for the date ranges. */
-  today: string;
   /** The shooter's trigger hand (Settings), which the observed shooting issues follow. */
   handedness: Handedness;
   /** The scoring rule's hole diameter (REV-56): whether a shot would hit the biathlon zone follows the same touch rule. */
@@ -52,7 +50,6 @@ export async function loadPatterns(ctx: ServiceContext): Promise<PatternsLoaded>
   const settings = await getSettings(ctx.db);
   return {
     data: collectPatterns(sources),
-    today: ctx.now().toISOString().slice(0, 10),
     handedness: settings.handedness,
     holeDiameterMm: scoringDiameterFromSettings(settings),
   };

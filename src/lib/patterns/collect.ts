@@ -16,17 +16,18 @@ export const PATTERN_VIEW_LABEL: Record<PatternView, string> = {
   'precision-standing': 'Precision standing',
 };
 
-export type PatternRange = 'last' | '7' | '14' | '30' | '90' | 'all';
+/** REV-156: how many of the most recent sessions to show, broadest last; `last` is one, `all` is every session. */
+export type PatternRange = 'last' | '3' | '5' | '10' | '20' | 'all';
 
 /** patterns.md §3: each range as read in a sentence (the coach image's subtitle, analysis.md §5, and `ViewRangeControls`'s
  * accessible label — its visible tick text is its own, shorter set). */
 export const PATTERN_RANGE_LABEL: Record<PatternRange, string> = {
   last: 'Latest session',
-  '7': '7 days',
-  '14': '14 days',
-  '30': '30 days',
-  '90': '90 days',
-  all: 'All time',
+  '3': 'Last 3 sessions',
+  '5': 'Last 5 sessions',
+  '10': 'Last 10 sessions',
+  '20': 'Last 20 sessions',
+  all: 'All sessions',
 };
 
 export interface PatternSource {
@@ -123,28 +124,28 @@ export function collectPatterns(sources: PatternSource[]): PatternData {
   return { points, leftOut };
 }
 
+/** How many sessions each range keeps; `null` keeps every one. */
+export const RANGE_SESSIONS: Record<PatternRange, number | null> = { last: 1, '3': 3, '5': 5, '10': 10, '20': 20, all: null };
+
 /**
- * patterns.md §3: `today` is `YYYY-MM-DD`, supplied by the caller. `last` is the most recent session that has points here
- * (latest session date, then latest creation time); `7`, `14`, `30` and `90` count back that many days from today.
+ * patterns.md §3 (REV-156): the points of the most recent N sessions that have points here, newest by session date, then
+ * by creation time. Counting sessions, not days, means a season (filtered first) never empties a range by itself.
  */
-export function filterByRange(points: PatternPoint[], range: PatternRange, today: string): PatternPoint[] {
-  if (range === 'all') return points;
-  if (range === 'last') {
-    let latest: PatternPoint | null = null;
-    for (const p of points) {
-      if (latest === null || p.sessionDate > latest.sessionDate || (p.sessionDate === latest.sessionDate && p.sessionStamp > latest.sessionStamp)) {
-        latest = p;
-      }
-    }
-    return latest === null ? [] : points.filter((p) => p.sessionId === latest.sessionId);
-  }
-  const cutoff = new Date(`${today}T00:00:00Z`);
-  cutoff.setUTCDate(cutoff.getUTCDate() - Number(range));
-  const cutoffDate = cutoff.toISOString().slice(0, 10);
-  return points.filter((p) => p.sessionDate >= cutoffDate);
+export function filterByRange(points: PatternPoint[], range: PatternRange): PatternPoint[] {
+  const keep = RANGE_SESSIONS[range];
+  if (keep === null) return points;
+  const newest = new Map<string, { date: string; stamp: string }>();
+  for (const p of points) if (!newest.has(p.sessionId)) newest.set(p.sessionId, { date: p.sessionDate, stamp: p.sessionStamp });
+  const kept = new Set(
+    [...newest.entries()]
+      .sort(([, a], [, b]) => (a.date === b.date ? (a.stamp < b.stamp ? 1 : a.stamp > b.stamp ? -1 : 0) : a.date < b.date ? 1 : -1))
+      .slice(0, keep)
+      .map(([id]) => id),
+  );
+  return points.filter((p) => kept.has(p.sessionId));
 }
 
-/** REV-154 (issue #29): only the shots whose target counts in `season`; `all` keeps everything. Applied before the date range. */
+/** REV-154 (issue #29): only the shots whose target counts in `season`; `all` keeps everything. Applied before the range. */
 export function filterBySeason(points: PatternPoint[], season: SeasonFilter): PatternPoint[] {
   return season === 'all' ? points : points.filter((p) => seasonMatches(p.season, season));
 }

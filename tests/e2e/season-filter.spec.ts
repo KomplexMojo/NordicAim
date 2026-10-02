@@ -42,7 +42,10 @@ test('one season row on every screen; a season with nothing recorded empties it,
   await page.goto(`/#/patterns?view=precision-prone&range=all&season=${other}`);
   await expect(page.getByTestId(`pattern-season-${other}`)).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('patterns-drawing')).toHaveAttribute('data-shots', '0');
-  await page.getByTestId('pattern-season-all').click();
+  // REV-156: an empty season says so and offers every season back.
+  await expect(page.getByTestId('pattern-showing')).toContainText('sessions here yet.');
+  await page.getByTestId('pattern-showing-all-seasons').click();
+  await expect(page.getByTestId('pattern-season-all')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('patterns-drawing')).not.toHaveAttribute('data-shots', '0');
   // Changing the view keeps the season.
   await page.getByTestId(`pattern-season-${season}`).click();

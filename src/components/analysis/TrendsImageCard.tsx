@@ -56,7 +56,7 @@ export function TrendsImageCard({ range }: TrendsImageCardProps) {
       <CardHeader>
         <CardTitle className="text-base">Coach image</CardTitle>
         <p className="text-xs text-muted-foreground">
-          One image with the four Patterns drawings and these trends for {PATTERN_RANGE_LABEL[range].toLowerCase()}, stamped with
+          One image with the four Patterns drawings and these trends for {range === 'all' ? 'all your sessions' : `your ${PATTERN_RANGE_LABEL[range].toLowerCase()}`}, stamped with
           your athlete details. Nothing is sent anywhere until you share it.
         </p>
       </CardHeader>

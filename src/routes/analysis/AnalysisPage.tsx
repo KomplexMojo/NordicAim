@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 
 import { TrendChart } from '@/components/analysis/TrendChart';
 import { TrendsImageCard } from '@/components/analysis/TrendsImageCard';
+import { RangeShowing } from '@/components/patterns/RangeShowing';
 import { SeasonFilter } from '@/components/patterns/SeasonFilter';
 import { ViewRangeControls } from '@/components/patterns/ViewRangeControls';
 import { sessionTrend, trendMetrics } from '@/lib/analysis/trend';
@@ -15,7 +16,7 @@ import { parseViewRange, viewRangeSearch } from '@/lib/patterns/url';
 
 /**
  * Route `#/analysis` (analysis.md, REV-123, issue #57): how each kind of target trends over time — the same shots, views and
- * date ranges as Patterns, one data point per session. View-only.
+ * ranges as Patterns, one data point per session. View-only.
  */
 export function AnalysisPage() {
   const { ctx } = useServices();
@@ -30,7 +31,7 @@ export function AnalysisPage() {
 
   const kind = view.startsWith('precision') ? 'precision' : 'sighting';
   const trend = useMemo(
-    () => (value === undefined ? [] : sessionTrend(filterByRange(filterBySeason(value.data.points[view], season), range, value.today), kind)),
+    () => (value === undefined ? [] : sessionTrend(filterByRange(filterBySeason(value.data.points[view], season), range), kind)),
     [value, view, range, season, kind],
   );
   const metrics = useMemo(() => trendMetrics(kind), [kind]);
@@ -43,6 +44,7 @@ export function AnalysisPage() {
 
       <ViewRangeControls view={view} range={range} onView={setView} onRange={setRange} testIdPrefix="analysis" />
       <SeasonFilter season={season} onSeason={setSeason} testIdPrefix="analysis" />
+      {value !== undefined && <RangeShowing range={range} season={season} sessions={trend.length} onSeason={setSeason} testIdPrefix="analysis" />}
 
       {loading && value === undefined ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -54,7 +56,8 @@ export function AnalysisPage() {
             {targets === 1 ? 'target' : 'targets'}
           </p>
           {trend.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No sessions here yet.</p>
+            // With a season chosen, the sentence above already says none were found and offers every season back.
+            season === 'all' && <p className="text-sm text-muted-foreground">No sessions here yet.</p>
           ) : (
             <>
               {trend.length === 1 && (

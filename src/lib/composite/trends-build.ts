@@ -90,7 +90,7 @@ export async function buildTrendsImage(
   release = 'dev',
 ): Promise<{ artifact: TrendsArtifact; png: Blob }> {
   const loaded = await loadPatterns(ctx);
-  const byView = Object.fromEntries(PATTERN_VIEWS.map((v) => [v, filterByRange(loaded.data.points[v], range, loaded.today)])) as Record<
+  const byView = Object.fromEntries(PATTERN_VIEWS.map((v) => [v, filterByRange(loaded.data.points[v], range)])) as Record<
     PatternView,
     ReturnType<typeof filterByRange>
   >;

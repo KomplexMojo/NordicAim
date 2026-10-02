@@ -1,4 +1,4 @@
-// Issue #72 (REV-140): the view and date range of Patterns and Analysis live in the address (`?view=confirm&range=90`), so
+// Issue #72 (REV-140): the view and date range of Patterns and Analysis live in the address (`?view=confirm&range=10`), so
 // Back from a target opened there returns to the same view. REV-154 adds `season=` (absent = every season). Pure.
 
 import { parseSeasonFilter, type SeasonFilter } from '../domain/season';

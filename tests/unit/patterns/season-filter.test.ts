@@ -64,22 +64,23 @@ describe('Patterns points carry their season', () => {
     expect(filterBySeason(prone, 'all')).toBe(prone);
   });
 
-  it('applied before the date range, so Latest session under a season is that season\'s latest session', () => {
+  it('applied before the range, so a session count under a season counts that season\'s sessions', () => {
     const at = (id: string, date: string, season: 'winter' | 'summer'): PatternPoint => ({
       xMm: 0, yMm: 0, ring: null, isX: null, zone: null, photoId: id, sessionId: id, sessionDate: date, sessionStamp: `${date}T08:00:00.000Z`, season,
     });
     const points = [at('w1', '2026-01-10', 'winter'), at('w2', '2026-02-10', 'winter'), at('s1', '2026-07-10', 'summer')];
-    expect(filterByRange(filterBySeason(points, 'winter'), 'last', '2026-10-01').map((p) => p.photoId)).toEqual(['w2']);
+    expect(filterByRange(filterBySeason(points, 'winter'), 'last').map((p) => p.photoId)).toEqual(['w2']);
+    expect(filterByRange(filterBySeason(points, 'winter'), '3').map((p) => p.photoId)).toEqual(['w1', 'w2']);
   });
 });
 
 describe('the season in the address', () => {
   it('is left out for All and round-trips otherwise', () => {
-    expect(viewRangeSearch('confirm', '90')).toBe('view=confirm&range=90');
-    expect(viewRangeSearch('confirm', '90', 'all')).toBe('view=confirm&range=90');
-    const search = viewRangeSearch('confirm', '90', 'spring');
-    expect(search).toBe('view=confirm&range=90&season=spring');
-    expect(parseViewRange(new URLSearchParams(search))).toEqual({ view: 'confirm', range: '90', season: 'spring' });
+    expect(viewRangeSearch('confirm', '10')).toBe('view=confirm&range=10');
+    expect(viewRangeSearch('confirm', '10', 'all')).toBe('view=confirm&range=10');
+    const search = viewRangeSearch('confirm', '10', 'spring');
+    expect(search).toBe('view=confirm&range=10&season=spring');
+    expect(parseViewRange(new URLSearchParams(search))).toEqual({ view: 'confirm', range: '10', season: 'spring' });
   });
 });
 

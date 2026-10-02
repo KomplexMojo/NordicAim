@@ -97,6 +97,6 @@ test('the coach image: made from the range, previewed, then shared as one PNG', 
   expect(download.suggestedFilename()).toMatch(/^nordicaim-trends-\d{4}-\d{2}-\d{2}\.png$/);
 
   // A different range starts a fresh card: the old preview does not carry over.
-  await page.getByTestId('analysis-range-30').click();
+  await page.getByTestId('analysis-range-10').click();
   await expect(page.getByTestId('trends-image-preview')).toHaveCount(0);
 });

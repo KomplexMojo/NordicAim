@@ -21,8 +21,8 @@ async function twoDemoSessions(page: Page): Promise<void> {
 test('Analysis: a tapped point offers its session’s target, which opens and comes back to the same view', async ({ page }) => {
   await twoDemoSessions(page);
   await page.goto('/#/analysis');
-  await page.getByTestId('analysis-range-90').click();
-  await expect(page).toHaveURL(/#\/analysis\?view=sight-in&range=90$/);
+  await page.getByTestId('analysis-range-10').click();
+  await expect(page).toHaveURL(/#\/analysis\?view=sight-in&range=10$/);
 
   await page.getByTestId('trend-score-point').first().click();
   const panel = page.getByTestId('trend-score-targets');
@@ -33,8 +33,8 @@ test('Analysis: a tapped point offers its session’s target, which opens and co
   await expect(page).toHaveURL(/#\/sessions\/[^/]+\/photos\/[^/?]+$/);
   await expect(page.getByTestId('target-back')).toHaveText('Back to Analysis');
   await page.getByTestId('target-back').click();
-  await expect(page).toHaveURL(/#\/analysis\?view=sight-in&range=90$/);
-  await expect(page.getByTestId('analysis-range-90')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveURL(/#\/analysis\?view=sight-in&range=10$/);
+  await expect(page.getByTestId('analysis-range-10')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('Patterns: tapping a dot lists its target; Open target goes there and Back returns to Patterns', async ({ page }) => {

@@ -12,7 +12,8 @@ Code: `src/lib/analysis/trend.ts` and `chart.ts` (pure), `src/routes/analysis/An
 - Route **`#/analysis`**, reached from the **Analysis** tab (a small line chart) on the bottom tab bar, beside **Patterns** (REV-136; it was a header icon until then).
 - The same four views as Patterns (`patterns.md` §1): **Sight in**, **Confirm**, **Precision prone**, **Precision
   standing**. They use the same buttons (`ViewRangeControls`).
-- The same date ranges and slider as Patterns (`patterns.md` §3): latest session, 7 days, 14 days, 30 days, 90 days, all time.
+- The same ranges and slider as Patterns (`patterns.md` §3, REV-156): the latest session, the last 3, 5, 10 or 20 sessions, or all
+  sessions, with the same *Showing …* sentence.
 - The same season row as Patterns (`patterns.md` §3a, REV-154); the counts line names the season when one is chosen. The coach
   image (§5) is unchanged: it follows the range only.
 
@@ -84,7 +85,7 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
   **Share** then hands the stored PNG to the share sheet (`shareArtifact`). There are two taps because iOS opens the share
   sheet only directly inside a tap, and building the image takes longer than that allows. Nothing leaves the phone
   until Share. The card is shown when any view has shots, and it resets when the range changes.
-- **Covers:** the screen's **date range** (§1), for every view. The Patterns drawings use every recorded shot's size
+- **Covers:** the screen's **range** (§1), for every view: each view's own most recent sessions. The Patterns drawings use every recorded shot's size
   factor, so they match the Patterns screen.
 - **Layout** (`render/trends-sheet.ts`, `render/trends-averages.ts`), 1440 wide, drawn at exactly the size it is rasterised:
   - **Header** (120): `Shooting trends`, the range and generation time, and the NordicAim wordmark and mark.
