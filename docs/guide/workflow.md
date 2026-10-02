@@ -97,7 +97,7 @@ Tap **Update summary** if you changed anything, then **Share** to send the image
 
 ## 8. Review the session against your patterns and trends
 
-Tap **Patterns** on the bottom bar. Choose the kind of target (**Sight in**, **Confirm**, **Precision prone** or **Precision standing**) and slide to **Last**, the latest session, then compare it with **-30**, **-90** or **-∞** (all time). The season row below narrows any of these to one season.
+Tap **Patterns** on the bottom bar. Choose the kind of target (**Sight in**, **Confirm**, **Precision prone** or **Precision standing**) and slide to **Last**, the latest session, then compare it with **-30**, **-90** or **All**. The season row below narrows any of these to one season.
 
 Every shot is laid over the printed target. Where they pile up they darken, so you can see whether today's group sits where your usual group does, and whether your misses have a habit. The **Observed patterns** panel gives the group size, mean radius and how far the group sits from centre.
 

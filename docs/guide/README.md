@@ -168,7 +168,7 @@ Tap **Patterns** on the bottom bar.
 
 Patterns lays every shot you have recorded over the printed target, one view for each kind of target: **Sight in**, **Confirm**, **Precision prone** and **Precision standing**. Dots are translucent, so where they pile up they darken.
 
-The slider under the views picks how far back to look. From left to right: **-∞** (all time), **-90**, **-30**, **-14** and **-7** days, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)).
+The slider under the views picks how far back to look. From left to right: **All** (all time), **-90**, **-30**, **-14** and **-7** days, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)).
 
 <p align="center">
   <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the date slider and the season row above every precision prone shot laid over the printed target">
