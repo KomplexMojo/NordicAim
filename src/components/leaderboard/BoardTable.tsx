@@ -7,6 +7,7 @@ import type { BoardRow } from '@/lib/leaderboard/submission';
 import { cn } from '@/lib/utils';
 
 import { ChallengeForm } from './ChallengeForm';
+import { ScoreMedal } from './ScoreMedal';
 import { TargetMarks } from './TargetMarks';
 
 export interface ShownRow {
@@ -63,9 +64,7 @@ export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
                     </span>
                   )}
                 </span>
-                <span className="text-lg font-semibold tabular-nums" data-testid="board-row-average">
-                  {formatPercent(row.average)}
-                </span>
+                <ScoreMedal percent={row.average} testId="board-row-average" />
               </summary>
               <ul className="mt-2 flex flex-col gap-2 border-t pt-2 text-sm">
                 {row.targets.map((t, j) => {
