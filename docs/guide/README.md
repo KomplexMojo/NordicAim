@@ -258,6 +258,8 @@ A newer submission from the same shooter replaces the older one, and importing t
 
 **Challenges.** If a target looks wrong to you, say a hole from the next lane, tap **Challenge** beside it and write why. Your challenge is signed with your passphrase and saved on your board. Share it so the shooter and others see it. The entry is then marked **Challenged**, with each reason under its target. When the shooter shares a newer submission, it answers the challenge, and the challenge is dropped. **Hide flagged** and **Hide challenged** take those entries off your view of the board. Your own row always shows.
 
+**Clear board.** To start over, say for a new season or a different group of shooters, tap **Clear board** under the board, then **Clear board** again to confirm. It removes every shooter and challenge you received, for prone and standing. Your own entry stays. Import the files again to bring shooters back.
+
 What a submission holds: your name, club, the dates, rounds, marks and shot positions of five targets. Never a photo, never a location. A full backup keeps the boards and challenges you received (see [section 15](#15-back-up-and-restore)).
 
 ## 14. Settings

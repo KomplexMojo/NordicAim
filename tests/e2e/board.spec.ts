@@ -128,6 +128,17 @@ test('two phones: one shares its signed submission, the other previews and impor
   // Only prone was submitted; Bob is not on the standing board.
   await ann.getByTestId('board-view-precision-standing').click();
   await expect(ann.getByTestId('board-empty')).toBeVisible();
+
+  // Clearing asks first; Cancel keeps the board, the second tap empties it.
+  await ann.getByTestId('board-view-precision-prone').click();
+  await ann.getByTestId('board-clear').click();
+  await expect(ann.getByTestId('board-clear-confirm')).toContainText('Remove the 1 shooter');
+  await ann.getByTestId('board-clear-cancel').click();
+  await expect(ann.getByTestId('board-row')).toHaveCount(1);
+  await ann.getByTestId('board-clear').click();
+  await ann.getByTestId('board-clear-apply').click();
+  await expect(ann.getByTestId('board-empty')).toBeVisible();
+  await expect(ann.getByTestId('board-clear')).toHaveCount(0);
 });
 
 test('a submission changed after signing is rejected on import', async ({ page }, testInfo) => {

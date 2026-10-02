@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 
 import { BoardShare } from '@/components/leaderboard/BoardShare';
 import { BoardTable, type ShownRow } from '@/components/leaderboard/BoardTable';
+import { ClearBoard } from '@/components/leaderboard/ClearBoard';
 import { SubmissionPreviewCard } from '@/components/leaderboard/SubmissionPreviewCard';
 import { ViewSwitch } from '@/components/patterns/ViewRangeControls';
 import { useLiveQuery } from '@/lib/app/use-live-query';
@@ -75,6 +76,9 @@ export function BoardPage() {
               </label>
             </div>
             <BoardTable rows={rows} ownKey={ownKey} onChallenged={() => setRefreshKey((k) => k + 1)} />
+            {(data.held.length > 0 || data.challenges.length > 0) && (
+              <ClearBoard shooters={data.held.length} onCleared={() => setRefreshKey((k) => k + 1)} />
+            )}
           </section>
         </>
       )}

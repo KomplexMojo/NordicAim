@@ -7,7 +7,7 @@ import { boardIdentity, type BoardIdentity } from '@/lib/leaderboard/identity';
 import { BOARD_CAP, mergeSubmissions, type MergeSummary } from '@/lib/leaderboard/merge';
 import { previewSubmission, type MyBoardTarget } from '@/lib/leaderboard/select';
 import { buildSubmission, Submission } from '@/lib/leaderboard/submission';
-import type { BoardStore } from '@/lib/leaderboard/store-schema';
+import { emptyBoardStore, type BoardStore } from '@/lib/leaderboard/store-schema';
 import { getBoard, putBoard } from '@/lib/store/board-repo';
 import { getSettings } from '@/lib/store/settings-repo';
 
@@ -134,6 +134,18 @@ export async function applyImport(ctx: ServiceContext, accepted: readonly Submis
   await putBoard(tx, { ...board, submissions, challenges: merged.challenges });
   await tx.done;
   return { ...summary, challengesAdded: merged.added };
+}
+
+/**
+ * leaderboard.md §8: empties the received board — every other shooter's submission and every challenge, prone and standing. This
+ * phone's own row is worked out live from its targets, so it stays. Returns how many shooters were removed.
+ */
+export async function clearBoard(ctx: ServiceContext): Promise<number> {
+  const tx = ctx.db.transaction('board', 'readwrite');
+  const removed = (await getBoard(tx)).submissions.length;
+  await putBoard(tx, emptyBoardStore());
+  await tx.done;
+  return removed;
 }
 
 /**

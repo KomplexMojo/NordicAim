@@ -8,7 +8,7 @@ import { previewSubmission } from '@/lib/leaderboard/select';
 import { boardFileText } from '@/lib/leaderboard/file';
 import { buildSubmission } from '@/lib/leaderboard/submission';
 import { analyzeTarget } from '@/lib/scoring/analyze';
-import { applyImport, createBoardFile, createMySubmission, loadBoard, loadHeldSubmissions, previewImport } from '@/lib/services/board';
+import { applyImport, clearBoard, createBoardFile, createChallenge, createMySubmission, loadBoard, loadHeldSubmissions, previewImport } from '@/lib/services/board';
 import { setPassphrase } from '@/lib/services/provenance';
 import { createBackup } from '@/lib/backup/create';
 import { readBackupText } from '@/lib/backup/format';
@@ -114,6 +114,29 @@ describe('import', () => {
     const whole = await createBoardFile(ctx);
     expect(whole.count).toBe(2);
     expect(whole.fileName).toBe('nordic-aim-board-2026-10-01.json');
+    db.close();
+  });
+});
+
+describe('clearBoard (leaderboard.md §8)', () => {
+  it('removes every received shooter and challenge; our own row is live, so it is untouched', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-10-01T12:00:00.000Z' });
+    await putSettings(db, { ...(await getSettings(db)), athleteName: 'Ann Lee' });
+    await setPassphrase(ctx, 'correct horse battery staple', FAST);
+    await seedTargets(ctx, 5, 'prone', 0);
+    const bob = await otherShooter(2, 'Bob');
+    await applyImport(ctx, [bob, await otherShooter(3, 'Cy')]);
+    const challenge = await createChallenge(ctx, { shooter: bob.publicKey, submissionSignedAt: bob.signedAt, position: 'prone', index: 0 }, 'A neighbour’s hole');
+    expect(challenge.status).toBe('ok');
+    expect((await loadBoard(ctx)).challenges).toHaveLength(1);
+
+    expect(await clearBoard(ctx)).toBe(2);
+    const board = await loadBoard(ctx);
+    expect(board.held).toEqual([]);
+    expect(board.challenges).toEqual([]);
+    expect(previewSubmission(board.mine, 'prone').complete).toBe(true);
+    expect(await clearBoard(ctx)).toBe(0);
     db.close();
   });
 });

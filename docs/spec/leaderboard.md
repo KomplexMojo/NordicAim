@@ -91,6 +91,10 @@ owner's words are in issue #42.
 - A **full backup** carries the row as `board` (`backup.md`); a backup of chosen sessions leaves it out. On restore every submission
   and challenge is checked again and merged like an import (no Keep / Replace question). The automatic baseline travels inside each
   analysis. The signing key never travels: it is derived again from the stamp passphrase.
+- **Clear board** (owner, 2026-10-02; `clearBoard` in `services/board.ts`, `ClearBoard.tsx`): under the board, shown while anything
+  was received. A second tap confirms ("Remove all N shooters and every challenge you received, prone and standing?"); it writes
+  the empty row, so every received submission and challenge goes, for both positions. The owner's own row is worked out live from
+  their targets, so it stays. Nothing is sent; importing the files again brings the shooters back.
 
 ## 9. Challenges
 
