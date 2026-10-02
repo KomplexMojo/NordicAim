@@ -168,7 +168,7 @@ Tap **Patterns** on the bottom bar.
 
 Patterns lays every shot you have recorded over the printed target, one view for each kind of target: **Sight in**, **Confirm**, **Precision prone** and **Precision standing**. Dots are translucent, so where they pile up they darken.
 
-The slider under the views picks how far back to look. From left to right: **-∞** (all time), **-90**, **-30**, **-14** and **-7** days, then **1**, the latest session. The season row below it narrows that to one season (see [section 11](#11-seasons)).
+The slider under the views picks how far back to look. From left to right: **-∞** (all time), **-90**, **-30**, **-14** and **-7** days, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)).
 
 <p align="center">
   <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the date slider and the season row above every precision prone shot laid over the printed target">
@@ -211,7 +211,7 @@ From three sessions, the Score (or Hit rate), Group size and Accuracy charts dra
 Sessions, Patterns, Analysis and Goals each have a row of five buttons: **All**, then **Winter** (a snowflake), **Spring** (a sprout), **Summer** (the sun on the water) and **Fall** (a maple leaf). Tap one to see only that season. **All** shows everything again.
 
 - A target's season is the one you chose for its photo in **Add metadata**. Without one, it follows the day the photo was taken, then the session date.
-- On Patterns and Analysis the season works with the date slider: the season is chosen first, then the range. **1** under Winter is your latest winter session, and **-30** under Summer is the summer sessions of the last 30 days.
+- On Patterns and Analysis the season works with the date slider: the season is chosen first, then the range. **Last** under Winter is your latest winter session, and **-30** under Summer is the summer sessions of the last 30 days.
 - On the Sessions screen, a session shows under a season when any of its targets belongs to it.
 
 ## 12. Goals
