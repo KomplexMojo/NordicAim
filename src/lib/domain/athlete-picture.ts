@@ -40,6 +40,38 @@ export function jpegProblem(bytes: Uint8Array): string | null {
   return 'not a JPEG';
 }
 
+/**
+ * The JPEG with every metadata segment left out: APP1 (EXIF, XMP), APP3–APP15 (IPTC and the rest) and comments. JFIF (APP0)
+ * and the colour profile (APP2) stay, and the image data is copied unchanged. Safari's own JPEG encoder writes a small EXIF
+ * block into what a canvas makes, so the picture goes through this before it is checked. A file whose segments can't be
+ * walked comes back unchanged (and then fails the check).
+ */
+export function withoutJpegMetadata(bytes: Uint8Array): Uint8Array {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return bytes;
+  const kept: Uint8Array[] = [bytes.subarray(0, 2)];
+  let i = 2;
+  while (i + 4 <= bytes.length) {
+    if (bytes[i] !== 0xff) return bytes;
+    const marker = bytes[i + 1]!;
+    if (marker === 0xda) {
+      kept.push(bytes.subarray(i)); // the image data, to the end
+      const out = new Uint8Array(kept.reduce((n, k) => n + k.length, 0));
+      let at = 0;
+      for (const k of kept) {
+        out.set(k, at);
+        at += k.length;
+      }
+      return out;
+    }
+    const end = i + 2 + ((bytes[i + 2]! << 8) | bytes[i + 3]!);
+    if (end > bytes.length || end < i + 4) return bytes;
+    const metadata = (marker >= 0xe1 && marker <= 0xef && marker !== 0xe2) || marker === 0xfe;
+    if (!metadata) kept.push(bytes.subarray(i, end));
+    i = end;
+  }
+  return bytes;
+}
+
 /** Why a stored or received picture is not acceptable, or null when it is. */
 export function athletePictureProblem(dataUrl: string): string | null {
   if (!dataUrl.startsWith(PREFIX)) return 'not a JPEG';

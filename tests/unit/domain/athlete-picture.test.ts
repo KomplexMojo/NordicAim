@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { AthletePicture, athletePictureDataUrl, athletePictureProblem, initials, MAX_ATHLETE_PICTURE_BYTES } from '@/lib/domain/athlete-picture';
+import { AthletePicture, athletePictureDataUrl, athletePictureProblem, initials, MAX_ATHLETE_PICTURE_BYTES, withoutJpegMetadata } from '@/lib/domain/athlete-picture';
 import { AppSettings, defaultAppSettings } from '@/lib/domain/settings';
 
 /** A segment: marker, then a length that counts itself, then the payload. */
@@ -40,6 +40,26 @@ describe('athletePictureProblem', () => {
     const older: Record<string, unknown> = { ...defaultAppSettings() };
     delete older.athletePicture;
     expect(AppSettings.parse(older).athletePicture).toBeNull();
+  });
+});
+
+describe('withoutJpegMetadata', () => {
+  it('takes out EXIF (as Safari\'s encoder writes it), XMP, IPTC and comments; keeps JFIF, the colour profile and the image', () => {
+    const exif = segment(0xe1, [...ascii('Exif'), 0, 0, ...ascii('MM'), 0, 42, 0, 0, 0, 8, 0, 0]);
+    const xmp = segment(0xe1, ascii('http://ns.adobe.com/xap/1.0/\0<x:xmpmeta/>'));
+    const icc = segment(0xe2, ascii('ICC_PROFILE\0abc'));
+    const iptc = segment(0xed, ascii('Photoshop 3.0'));
+    const comment = segment(0xfe, ascii('made on a phone'));
+    const input = jpeg(JFIF, exif, xmp, icc, iptc, comment);
+    const out = withoutJpegMetadata(input);
+    expect(out).toEqual(jpeg(JFIF, icc));
+    expect(athletePictureProblem(athletePictureDataUrl(input))).toBe('it carries photo metadata');
+    expect(athletePictureProblem(athletePictureDataUrl(out))).toBeNull();
+  });
+
+  it('a file it cannot walk comes back unchanged', () => {
+    const broken = new Uint8Array([0xff, 0xd8, 0x00, 0x01, 0x02, 0x03]);
+    expect(withoutJpegMetadata(broken)).toBe(broken);
   });
 });
 

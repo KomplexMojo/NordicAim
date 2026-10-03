@@ -59,7 +59,8 @@ owner's words are in issue #42.
   carries it as `picture`, inside the signature; without one it is version 1, signed exactly as before, and the Board shows
   initials (`initials`: the first letters of the first and last words). There is no separate switch: having a picture is the
   choice (owner, 2026-10-02). A picture is a JPEG data URL (`domain/athlete-picture.ts`): 96 × 96 px, the photo's centre square,
-  re-encoded on a canvas (`media/athlete-picture-browser.ts`), at most **8 KB**, and it may hold **no APP1 or APP13 segment**
+  re-encoded on a canvas (`media/athlete-picture-browser.ts`) with every metadata segment the encoder writes taken out
+  (`withoutJpegMetadata`: Safari's adds an EXIF block), at most **8 KB**, and it may hold **no APP1 or APP13 segment**
   (EXIF, XMP, IPTC: where a location would live). A received picture that fails any check rejects that submission alone, as
   does a version that does not match (2 without a picture, 1 with one). A full board of 100 then carries at most about 800 KB of
   pictures.

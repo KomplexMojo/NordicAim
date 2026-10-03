@@ -1,7 +1,7 @@
 // REV-157 (issue #99): makes the athlete's picture from a photo — the centre square, scaled to 96 px and re-encoded as JPEG on
 // a canvas, which drops every metadata segment (EXIF, and so any location). Quality steps down until it fits in 8 KB.
 
-import { ATHLETE_PICTURE_SIZE, athletePictureDataUrl, athletePictureProblem, MAX_ATHLETE_PICTURE_BYTES } from '../domain/athlete-picture';
+import { ATHLETE_PICTURE_SIZE, athletePictureDataUrl, athletePictureProblem, MAX_ATHLETE_PICTURE_BYTES, withoutJpegMetadata } from '../domain/athlete-picture';
 import { detectFormat } from './format';
 import { loadImage, UnsupportedOnThisBrowserError } from './image-browser';
 
@@ -34,9 +34,10 @@ export async function makeAthletePicture(photo: Blob): Promise<string> {
   // The centre square of the photo, filling the picture.
   ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, ATHLETE_PICTURE_SIZE, ATHLETE_PICTURE_SIZE);
   for (const quality of QUALITIES) {
-    const blob = await jpeg(canvas, quality);
-    if (blob.size > MAX_ATHLETE_PICTURE_BYTES) continue;
-    const dataUrl = athletePictureDataUrl(new Uint8Array(await blob.arrayBuffer()));
+    // Safari's encoder adds an EXIF block of its own; it is taken out here, whatever it holds.
+    const bytes = withoutJpegMetadata(new Uint8Array(await (await jpeg(canvas, quality)).arrayBuffer()));
+    if (bytes.byteLength > MAX_ATHLETE_PICTURE_BYTES) continue;
+    const dataUrl = athletePictureDataUrl(bytes);
     const problem = athletePictureProblem(dataUrl);
     if (problem !== null) throw new Error(`That picture can't be used: ${problem}.`);
     return dataUrl;
