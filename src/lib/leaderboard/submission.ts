@@ -1,10 +1,11 @@
 // leaderboard.md §5 (issue #42): a signed submission — a shooter's best 5 precision prone and/or standing targets, as shot
-// positions only (no photo, no GPS). The receiving phone re-scores every target itself and works out the marks. Pure apart from
+// positions only (no target photo, no GPS); since REV-157 (issue #99) also the athlete's own small picture, when they have one. The receiving phone re-scores every target itself and works out the marks. Pure apart from
 // WebCrypto (signing and checking).
 
 import { z } from 'zod';
 
 import type { Shot } from '../domain/analysis';
+import { AthletePicture } from '../domain/athlete-picture';
 import { MAX_ATHLETE_CLUB, MAX_ATHLETE_NAME } from '../domain/settings';
 import { LocalDate, UtcIso } from '../domain/primitives';
 import { signText, verifyText, type BoardIdentity } from './identity';
@@ -37,16 +38,20 @@ const Five = z.array(SubmittedTarget).length(SUBMISSION_SIZE);
 export const Submission = z
   .object({
     format: z.literal(SUBMISSION_FORMAT),
-    version: z.literal(1),
+    // REV-157: 2 carries the athlete's picture, 1 has none (files from before pictures read as before).
+    version: z.union([z.literal(1), z.literal(2)]),
     publicKey: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
     name: z.string().trim().min(1).max(MAX_ATHLETE_NAME),
     club: z.string().trim().max(MAX_ATHLETE_CLUB),
     signedAt: UtcIso,
     prone: Five.optional(),
     standing: Five.optional(),
+    /** REV-157: the athlete's picture (a small JPEG with no photo metadata); a picture that fails the checks rejects the submission. */
+    picture: AthletePicture.optional(),
     signature: z.string().regex(/^[A-Za-z0-9_-]{86}$/),
   })
-  .refine((s) => s.prone !== undefined || s.standing !== undefined, 'A submission holds at least one position');
+  .refine((s) => s.prone !== undefined || s.standing !== undefined, 'A submission holds at least one position')
+  .refine((s) => (s.version === 2) === (s.picture !== undefined), 'Version 2 carries a picture and version 1 none');
 export type Submission = z.infer<typeof Submission>;
 export type UnsignedSubmission = Omit<Submission, 'signature'>;
 
@@ -92,6 +97,8 @@ export function canonicalText(s: UnsignedSubmission): string {
     signedAt: s.signedAt,
     prone: s.prone === undefined ? null : s.prone.map(target),
     standing: s.standing === undefined ? null : s.standing.map(target),
+    // Only version 2 has the field, so a version 1 submission signs to exactly the text it always did.
+    ...(s.picture === undefined ? {} : { picture: s.picture }),
   });
 }
 
@@ -116,6 +123,8 @@ export interface BuildSubmissionInput {
   signedAt: string;
   prone: SubmissionPreview;
   standing: SubmissionPreview;
+  /** REV-157: the athlete's picture, or null to submit without one (the Board then shows initials). */
+  picture?: string | null;
 }
 
 /** leaderboard.md §5: the signed submission; each position is in it only when it has the full 5 (decision 35). Null when neither does. */
@@ -123,13 +132,14 @@ export async function buildSubmission(input: BuildSubmissionInput): Promise<Subm
   if (!input.prone.complete && !input.standing.complete) return null;
   const unsigned: UnsignedSubmission = {
     format: SUBMISSION_FORMAT,
-    version: 1,
+    version: input.picture == null ? 1 : 2,
     publicKey: input.identity.publicKey,
     name: input.name.trim(),
     club: input.club.trim(),
     signedAt: input.signedAt,
     ...(input.prone.complete ? { prone: submittedTargets(input.prone) } : {}),
     ...(input.standing.complete ? { standing: submittedTargets(input.standing) } : {}),
+    ...(input.picture == null ? {} : { picture: input.picture }),
   };
   return { ...unsigned, signature: await signText(input.identity.privateKey, canonicalText(unsigned)) };
 }
@@ -151,6 +161,8 @@ export interface BoardRow {
   publicKey: string;
   name: string;
   club: string;
+  /** REV-157: the shooter's picture, or null for their initials. */
+  picture: string | null;
   signedAt: string;
   position: BoardPosition;
   targets: ReceivedTarget[];
@@ -180,6 +192,7 @@ export function boardRow(s: Submission, position: BoardPosition): BoardRow | nul
     publicKey: s.publicKey,
     name: s.name,
     club: s.club,
+    picture: s.picture ?? null,
     signedAt: s.signedAt,
     position,
     targets,

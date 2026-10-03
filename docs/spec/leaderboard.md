@@ -51,10 +51,18 @@ owner's words are in issue #42.
   `nordicaim-board-identity-v1`), imported through PKCS #8 (`leaderboard/identity.ts`). The same passphrase and salt always give
   the same identity, so after a restore **Unlock** makes the owner the same shooter again. A new passphrase is a new identity.
   WebCrypto only (Safari 17+), no new dependency. Sharing needs a name (Settings → Athlete) and the stamp key set or unlocked.
-- **Submission** (`leaderboard/submission.ts`, format `nordic-aim-board-submission`, version 1): `publicKey`, `name`, `club`,
+- **Submission** (`leaderboard/submission.ts`, format `nordic-aim-board-submission`, version 1 or 2): `publicKey`, `name`, `club`,
   `signedAt`, and `prone` and/or `standing`, each exactly 5 targets of `{ date, declared, edited, auto, final }`, where `auto`
-  and `final` are shot lists `{ x, y, m }` (mm to 0.01, multiplicity) and `auto` is null without a baseline. **No photo and no
-  GPS.** The signature (base64url) is over `canonicalText`: every field in a fixed order.
+  and `final` are shot lists `{ x, y, m }` (mm to 0.01, multiplicity) and `auto` is null without a baseline. **No target photo
+  and no GPS.** The signature (base64url) is over `canonicalText`: every field in a fixed order.
+- **Athlete picture** (REV-157, issue #99): when the owner has one in Settings → Athlete, the submission is **version 2** and
+  carries it as `picture`, inside the signature; without one it is version 1, signed exactly as before, and the Board shows
+  initials (`initials`: the first letters of the first and last words). There is no separate switch: having a picture is the
+  choice (owner, 2026-10-02). A picture is a JPEG data URL (`domain/athlete-picture.ts`): 96 × 96 px, the photo's centre square,
+  re-encoded on a canvas (`media/athlete-picture-browser.ts`), at most **8 KB**, and it may hold **no APP1 or APP13 segment**
+  (EXIF, XMP, IPTC: where a location would live). A received picture that fails any check rejects that submission alone, as
+  does a version that does not match (2 without a picture, 1 with one). A full board of 100 then carries at most about 800 KB of
+  pictures.
 - **On receipt** each target is re-scored here (`boardRow`); edited is the sender's mark, or a missing baseline, or automatic shots
   that differ from the final ones, so a hidden mark is still caught. The flag is always worked out here.
 - About 6.4 KB per full submission as plain JSON.
@@ -63,7 +71,8 @@ owner's words are in issue #42.
 
 - **Share my submission** (signed now) and **Share the whole board** (this phone's own submission and every submission and
   challenge it holds, from every club) go to the share sheet or a download (`share-browser.ts` `shareBoardFile`). The Share screen
-  says: "This shares every shooter on your board: their names, clubs and scores. Shot positions only; never a photo or a location."
+  says: "This shares every shooter on your board: their names, clubs, pictures and scores. Shot positions only; never a target
+  photo or a location."
 - **Board file** (`leaderboard/file.ts`, format `nordic-aim-board`, version 1): `{ exportedAt, submissions, challenges }`. A single
   submission file is the submission itself. File names: `nordic-aim-submission[-<athlete>]-YYYY-MM-DD.json`,
   `nordic-aim-board-YYYY-MM-DD.json`, `nordic-aim-challenge-YYYY-MM-DD.json`.
@@ -83,6 +92,8 @@ owner's words are in issue #42.
 - A row shows rank, name, club, average and its marks (edited, flagged, challenged); it opens to its 5 targets (date, score, X,
   the automatic score beside a corrected one, marks) and any challenges.
 - **Hide flagged** and **Hide challenged** filter the rows on this phone; the owner's row always shows.
+- Each row shows the shooter's **picture** (REV-157) as a small round avatar beside the rank, or their initials without one; the
+  owner's own row uses their current picture. **Hide pictures** shows initials for every row on this phone.
 
 ## 8. Storage, backup and restore
 
@@ -91,6 +102,9 @@ owner's words are in issue #42.
 - A **full backup** carries the row as `board` (`backup.md`); a backup of chosen sessions leaves it out. On restore every submission
   and challenge is checked again and merged like an import (no Keep / Replace question). The automatic baseline travels inside each
   analysis. The signing key never travels: it is derived again from the stamp passphrase.
+- The **athlete picture** (REV-157) is part of the settings row, so every backup carries it, a backup of chosen sessions included
+  (the settings row always goes, and a restore always writes it back, `backup.md` REV-115). Received pictures are inside the
+  received submissions, so only a full backup carries them, with the board.
 - **Clear board** (owner, 2026-10-02; `clearBoard` in `services/board.ts`, `ClearBoard.tsx`): under the board, shown while anything
   was received. A second tap confirms ("Remove all N shooters you received, prone and standing?"); it writes
   the empty row, so every received submission and challenge goes, for both positions. The owner's own row is worked out live from

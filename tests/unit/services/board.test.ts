@@ -11,6 +11,8 @@ import { buildSubmission } from '@/lib/leaderboard/submission';
 import { analyzeTarget } from '@/lib/scoring/analyze';
 import { applyImport, clearBoard, createBoardFile, createChallenge, createMySubmission, loadBoard, loadHeldSubmissions, previewImport } from '@/lib/services/board';
 import { setPassphrase } from '@/lib/services/provenance';
+import { setAthletePicture } from '@/lib/services/settings';
+import { athletePictureDataUrl } from '@/lib/domain/athlete-picture';
 import { createBackup } from '@/lib/backup/create';
 import { readBackupText } from '@/lib/backup/format';
 import { verifyBackup } from '@/lib/backup/verify';
@@ -80,6 +82,14 @@ describe('createMySubmission', () => {
     expect(mine.fileName).toBe('nordic-aim-submission-ann-lee-2026-10-01.json');
     // No photo or GPS: only dates, rounds, marks and shot positions.
     expect(Object.keys(mine.submission.prone![0]!).sort()).toEqual(['auto', 'date', 'declared', 'edited', 'final']);
+    expect(mine.submission).toMatchObject({ version: 1 });
+
+    // REV-157: with a picture in Settings, the submission carries it.
+    const picture = athletePictureDataUrl(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xda, 0, 2, 0xff, 0xd9]));
+    await setAthletePicture(ctx, picture);
+    const withPicture = await createMySubmission(ctx);
+    expect(withPicture.status === 'ok' && withPicture.submission).toMatchObject({ version: 2, picture });
+    expect((await loadBoard(ctx)).athletePicture).toBe(picture);
     db.close();
   });
 });

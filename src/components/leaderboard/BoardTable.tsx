@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { AthleteAvatar } from '@/components/athlete/AthleteAvatar';
 import { Button } from '@/components/ui/button';
 import { CHALLENGES_ENABLED, type Challenge } from '@/lib/leaderboard/challenge';
 import { formatPercent } from '@/lib/leaderboard/score';
@@ -19,6 +20,8 @@ interface BoardTableProps {
   rows: ShownRow[];
   /** This phone's own row key, highlighted; it cannot be challenged from here. */
   ownKey: string;
+  /** REV-157: show initials instead of every picture. */
+  hidePictures: boolean;
   /** Called after a challenge was saved, so the board re-reads. */
   onChallenged(): void;
 }
@@ -28,7 +31,7 @@ interface BoardTableProps {
  * its five targets, each scored on this phone (the automatic score beside a hand-corrected one), any challenges against it, and a
  * Challenge button on each target of someone else's entry.
  */
-export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
+export function BoardTable({ rows, ownKey, hidePictures, onChallenged }: BoardTableProps) {
   const [challenging, setChallenging] = useState<{ key: string; index: number } | null>(null);
   if (rows.length === 0) {
     return (
@@ -50,6 +53,7 @@ export function BoardTable({ rows, ownKey, onChallenged }: BoardTableProps) {
                 ) : (
                   <span className="w-6 text-right text-sm text-muted-foreground tabular-nums">{i + 1}</span>
                 )}
+                <AthleteAvatar picture={hidePictures ? null : row.picture} name={row.name} testId="board-row-avatar" />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-medium" data-testid="board-row-name">
                     {row.name}

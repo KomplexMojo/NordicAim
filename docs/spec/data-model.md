@@ -222,6 +222,9 @@ export const AppSettings = z.object({
   handedness: z.enum(['right', 'left']).default('right'), // REV-88
   athleteName: z.string().max(40).default(''), // REV-99: Settings → Athlete; free text, trimmed
   athleteClub: z.string().max(60).default(''), // REV-99: the ski club
+  // REV-157: the athlete's picture, a 96 px JPEG data URL of at most 8 KB with no photo metadata (`domain/athlete-picture.ts`);
+  // null when none. One that fails the checks reads back as null rather than failing the row.
+  athletePicture: AthletePicture.nullable().catch(null).default(null),
   visibleHoleDiameterMm: z.number().min(2).max(5.6).default(4.5), // provisional
   // REV-58: which diagram renderer last drew every stored diagram (`rendering-composite.md` §6). Behind the code's
   // DIAGRAM_RENDERER_VERSION at app start means every finished analysis goes back to Stage B once.

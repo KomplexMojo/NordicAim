@@ -254,19 +254,19 @@ A newer submission from the same shooter replaces the older one, and importing t
   <img src="../assets/screens/board-entry.png" width="300" alt="One fictional shooter's entry opened: five targets with date, score and X count, one marked Edited and Flagged with its automatic score">
 </p>
 
-**Reading the board.** Each row shows the shooter, their club, their marks and their average in the same star as a session's score: gold above 90, silver from 80, bronze from 70, a plain circle below. The top scorer has a **trophy** in place of *1*. Ties go to more Xs, then the smaller group, then the earlier date. Once you have five targets for a position, your own row joins the board: highlighted, marked *(you)*, and always showing your current best 5. Tap a row to open its five targets: the date, the score and the X count, and for a corrected target, its automatic score too.
+**Reading the board.** Each row shows the shooter's picture (or their initials), their name, their club, their marks and their average in the same star as a session's score: gold above 90, silver from 80, bronze from 70, a plain circle below. The top scorer has a **trophy** in place of *1*. Ties go to more Xs, then the smaller group, then the earlier date. Once you have five targets for a position, your own row joins the board: highlighted, marked *(you)*, and always showing your current best 5. Tap a row to open its five targets: the date, the score and the X count, and for a corrected target, its automatic score too.
 
-**Hide flagged** takes flagged entries off your view of the board. Your own row always shows.
+**Hide flagged** takes flagged entries off your view of the board. Your own row always shows. **Hide pictures** shows everyone's initials instead of their pictures, on your phone only.
 
 **Clear board.** To start over, say for a new season or a different group of shooters, tap **Clear board** under the board, then **Clear board** again to confirm. It removes every shooter you received, for prone and standing. Your own entry stays. Import the files again to bring shooters back.
 
-What a submission holds: your name, club, the dates, rounds, marks and shot positions of five targets. Never a photo, never a location. A full backup keeps the boards you received (see [section 15](#15-back-up-and-restore)).
+What a submission holds: your name, club, your picture if you added one, and the dates, rounds, marks and shot positions of five targets. Never a target photo, never a location. A full backup keeps the boards you received (see [section 15](#15-back-up-and-restore)).
 
 ## 14. Settings
 
 Everything here applies to **every session**.
 
-**Athlete.** Your **name** and **ski club** print on the summary and coach images. Set your **handedness** so NordicAim describes a group as towards your trigger or sling side. A **passphrase** (at least 12 characters) creates a stamp on each image, so anyone can check with **Verify a stamp** that it came from you and was not edited. The passphrase is never stored and never backed up, so keep a note of it.
+**Athlete.** Your **name** and **ski club** print on the summary and coach images. Your **picture** is optional: tap **Add picture** to take one or choose one from Photos. NordicAim keeps only a small square copy of its centre, with no location, and shows it beside your name on the Board. **Remove** takes it off; without a picture the Board shows your initials. Set your **handedness** so NordicAim describes a group as towards your trigger or sling side. A **passphrase** (at least 12 characters) creates a stamp on each image, so anyone can check with **Verify a stamp** that it came from you and was not edited. The passphrase is never stored and never backed up, so keep a note of it.
 
 <p align="center">
   <img src="../assets/screens/settings.png" width="300" alt="The Settings screen's Athlete section: name, ski club, handedness, key fingerprint and passphrase">

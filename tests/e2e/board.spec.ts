@@ -1,6 +1,8 @@
 // Issue #42 (leaderboard.md): the Board tab previews what this phone would submit (best 5 per position, of all time), and a
 // hand-corrected target shows its automatic score beside the owner's.
 
+import { fileURLToPath } from 'node:url';
+
 import { expect, test } from '@playwright/test';
 
 test.setTimeout(240_000);
@@ -179,4 +181,32 @@ test('challenges are hidden for now: no Challenge button and no Hide challenged'
   await expect(row.getByTestId('challenge-open')).toHaveCount(0);
   await expect(ann.getByTestId('board-hide-challenged')).toHaveCount(0);
   await expect(ann.getByTestId('board-hide-flagged')).toBeVisible();
+});
+
+test('REV-157: a shooter\'s picture travels in the signed submission; without one, initials; Hide pictures shows initials for all', async ({ browser }, testInfo) => {
+  const bob = await (await browser.newContext()).newPage();
+  await readyPhone(bob, 'Bob Berg', 'North SC');
+  await bob.getByTestId('athlete-picture-input').setInputFiles(fileURLToPath(new URL('../../fixtures/reference/exif-sample.jpg', import.meta.url)));
+  await expect(bob.getByTestId('athlete-picture-preview')).toHaveAttribute('data-kind', 'picture');
+  await bob.goto('/#/board');
+  await expect(bob.locator('[data-testid="board-row"][data-own="true"]').getByTestId('board-row-avatar')).toHaveAttribute('data-kind', 'picture');
+  await bob.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true }));
+  const [download] = await Promise.all([bob.waitForEvent('download'), bob.getByTestId('board-share-mine').click()]);
+  const bobFile = testInfo.outputPath('bob.json');
+  await download.saveAs(bobFile);
+  const sent = JSON.parse(await (await import('node:fs/promises')).readFile(bobFile, 'utf-8')) as { version: number; picture?: string };
+  expect(sent.version).toBe(2);
+  expect(sent.picture?.startsWith('data:image/jpeg;base64,')).toBe(true);
+
+  const ann = await (await browser.newContext()).newPage();
+  await identify(ann, 'Ann Lee', 'South SC');
+  await ann.goto('/#/board');
+  await ann.getByTestId('board-import-input').setInputFiles(bobFile);
+  await ann.getByTestId('board-import-apply').click();
+  const avatar = ann.getByTestId('board-row').first().getByTestId('board-row-avatar');
+  await expect(avatar).toHaveAttribute('data-kind', 'picture');
+  await expect(avatar).toHaveAttribute('src', sent.picture!);
+  await ann.getByTestId('board-hide-pictures').check();
+  await expect(avatar).toHaveAttribute('data-kind', 'initials');
+  await expect(avatar).toHaveText('BB');
 });

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AthletePicture } from './athlete-picture';
 import { BackingMode, BackingSheet, DEFAULT_BACKING_MODE, type ColourSignature } from './backing';
 import { DEFAULT_TEMPLATE_REFERENCES, TemplateReferences } from './template-reference';
 
@@ -66,6 +67,9 @@ export const AppSettings = z.object({
   // REV-99: the athlete's name and ski club. Both default to empty so older rows read back.
   athleteName: z.string().max(MAX_ATHLETE_NAME).default(''),
   athleteClub: z.string().max(MAX_ATHLETE_CLUB).default(''),
+  // REV-157 (issue #99): the athlete's picture, a small square JPEG data URL; null when none. A Board submission carries it.
+  // A picture that no longer passes the checks reads back as none rather than failing the whole row.
+  athletePicture: AthletePicture.nullable().catch(null).default(null),
   // REV-100: the key's public side. The salt and fingerprint are backed up; the key itself is in the `secrets` store, never the passphrase.
   athleteSalt: z.string().nullable().default(null),
   keyFingerprint: z.string().nullable().default(null),
@@ -127,6 +131,7 @@ export function defaultAppSettings(): AppSettings {
     handedness: DEFAULT_HANDEDNESS,
     athleteName: '',
     athleteClub: '',
+    athletePicture: null,
     athleteSalt: null,
     keyFingerprint: null,
     visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,

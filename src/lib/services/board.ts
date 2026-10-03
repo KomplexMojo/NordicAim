@@ -29,6 +29,8 @@ export interface BoardData {
   identity: IdentityState;
   athleteName: string;
   athleteClub: string;
+  /** REV-157: the athlete's picture (Settings), or null. */
+  athletePicture: string | null;
 }
 
 async function ownIdentity(ctx: ServiceContext): Promise<BoardIdentity | null> {
@@ -65,6 +67,7 @@ export async function loadBoard(ctx: ServiceContext): Promise<BoardData> {
     identity: identity !== null ? 'ready' : settings.athleteSalt === null ? 'no-passphrase' : 'locked',
     athleteName: settings.athleteName.trim(),
     athleteClub: settings.athleteClub.trim(),
+    athletePicture: settings.athletePicture,
   };
 }
 
@@ -85,6 +88,7 @@ export async function createMySubmission(ctx: ServiceContext): Promise<MySubmiss
     signedAt: ctx.now().toISOString(),
     prone: previewSubmission(data.mine, 'prone'),
     standing: previewSubmission(data.mine, 'standing'),
+    picture: data.athletePicture,
   });
   if (submission === null) return { status: 'not-enough' };
   return { status: 'ok', submission, fileName: submissionFileName(data.athleteName, localToday(ctx)), text: submissionFileText(submission) };

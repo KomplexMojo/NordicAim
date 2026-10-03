@@ -112,7 +112,7 @@ export function BoardShare({ identity, hasName, canSubmit, onImported }: BoardSh
         Share the whole board
       </Button>
       <p className="text-xs text-muted-foreground">
-        This shares every shooter on your board: their names, clubs and scores. Shot positions only; never a photo or a location.
+        This shares every shooter on your board: their names, clubs, pictures and scores. Shot positions only; never a target photo or a location.
       </p>
       <input ref={fileInput} type="file" accept=".json,application/json" className="hidden" onChange={(e) => void onFile(e)} data-testid="board-import-input" />
 

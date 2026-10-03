@@ -45,6 +45,7 @@ describe('defaultAppSettings', () => {
       handedness: 'right',
       athleteName: '',
       athleteClub: '',
+      athletePicture: null,
       athleteSalt: null,
       keyFingerprint: null,
       visibleHoleDiameterMm: 4.5,

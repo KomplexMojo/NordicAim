@@ -7,6 +7,7 @@ import { boardFileText, checkSubmissions, readBoardFile, submissionFileName } fr
 import { boardIdentity, signText, verifyText } from '@/lib/leaderboard/identity';
 import { BOARD_CAP, mergeSubmissions, rankRows } from '@/lib/leaderboard/merge';
 import { previewSubmission, type MyBoardTarget } from '@/lib/leaderboard/select';
+import { athletePictureDataUrl, MAX_ATHLETE_PICTURE_BYTES } from '@/lib/domain/athlete-picture';
 import { boardRow, buildSubmission, Submission, verifySubmission, type SubmittedTarget } from '@/lib/leaderboard/submission';
 import { correctionCheck } from '@/lib/leaderboard/score';
 
@@ -67,6 +68,48 @@ describe('buildSubmission', () => {
     expect(await verifySubmission({ ...s, name: 'Bob' })).toBe(false);
     const moved: SubmittedTarget[] = s.prone!.map((t, i) => (i === 0 ? { ...t, final: t.final.map((p) => ({ ...p, x: p.x + 1 })) } : t));
     expect(await verifySubmission({ ...s, prone: moved })).toBe(false);
+  });
+});
+
+describe('the athlete picture in a submission (REV-157)', () => {
+  // A tiny JPEG with no metadata, as a canvas makes it.
+  const seg = (marker: number, payload: number[]) => [0xff, marker, (payload.length + 2) >> 8, (payload.length + 2) & 0xff, ...payload];
+  const jpeg = (extra: number[] = []) =>
+    athletePictureDataUrl(new Uint8Array([0xff, 0xd8, ...seg(0xe0, [0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0]), ...extra, ...seg(0xda, [1, 1, 0, 0, 0x3f, 0]), 0x12, 0xff, 0xd9]));
+  const picture = jpeg();
+
+  async function withPicture(p: string | null) {
+    const identity = await boardIdentity(stampKey(5));
+    const mine = [0, 0, 0, 0, 0].map((r, i) => myTarget(`p${i}`, r));
+    return (await buildSubmission({ identity, name: 'Pia', club: '', signedAt: '2026-10-03T10:00:00.000Z', prone: previewSubmission(mine, 'prone'), standing: previewSubmission(mine, 'standing'), picture: p }))!;
+  }
+
+  it('with a picture: version 2, signed over it, and the board row shows it', async () => {
+    const s = await withPicture(picture);
+    expect(s).toMatchObject({ version: 2, picture });
+    expect(Submission.safeParse(s).success).toBe(true);
+    expect(await verifySubmission(s)).toBe(true);
+    expect(boardRow(s, 'prone')!.picture).toBe(picture);
+    // Another picture swapped in after signing is caught.
+    expect(await verifySubmission({ ...s, picture: jpeg(seg(0xfe, [0x41])) })).toBe(false);
+  });
+
+  it('without one: version 1, exactly as before, and the row falls back to initials', async () => {
+    const s = await withPicture(null);
+    expect(s.version).toBe(1);
+    expect('picture' in s).toBe(false);
+    expect(await verifySubmission(s)).toBe(true);
+    expect(boardRow(s, 'prone')!.picture).toBeNull();
+  });
+
+  it('a picture that is too large, carries EXIF, or comes without version 2 rejects that submission alone', async () => {
+    const good = await withPicture(picture);
+    const tooBig = { ...good, picture: jpeg(seg(0xfe, new Array(MAX_ATHLETE_PICTURE_BYTES).fill(0x20))) };
+    const exif = { ...good, picture: jpeg(seg(0xe1, [0x45, 0x78, 0x69, 0x66, 0, 0])) };
+    const v1WithPicture = { ...good, version: 1 };
+    const { accepted, rejected } = await checkSubmissions([good, tooBig, exif, v1WithPicture]);
+    expect(accepted).toEqual([good]);
+    expect(rejected).toBe(3);
   });
 });
 

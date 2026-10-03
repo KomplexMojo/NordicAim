@@ -70,7 +70,7 @@ export function rankRows(submissions: readonly Submission[], position: BoardPosi
 }
 
 /** This phone's own row, worked out live from its preview (never from a stored submission); null until it has the full 5. */
-export function ownRow(preview: SubmissionPreview, me: { publicKey: string | null; name: string; club: string }): BoardRow | null {
+export function ownRow(preview: SubmissionPreview, me: { publicKey: string | null; name: string; club: string; picture: string | null }): BoardRow | null {
   if (!preview.complete) return null;
   const targets = preview.targets.map((t) => ({ date: t.sessionDate, check: t.check }));
   const groups = targets.map((t) => t.check.final.groupMm).filter((g): g is number => g !== null);
@@ -78,6 +78,7 @@ export function ownRow(preview: SubmissionPreview, me: { publicKey: string | nul
     publicKey: me.publicKey ?? 'this-phone',
     name: me.name === '' ? 'You' : me.name,
     club: me.club,
+    picture: me.picture,
     signedAt: '',
     position: preview.position,
     targets,

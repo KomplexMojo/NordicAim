@@ -94,7 +94,8 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
   §5, REV-124), each only on the owner's tap. Photos never leave the phone, with one exception (REV-63): a
   **backup the owner explicitly creates** (`docs/spec/backup.md`) may contain photos. The static printable sheets in `public/sheets/` (no user data, REV-135) may also be downloaded. A
   **signed board submission, board file or challenge** (`docs/spec/leaderboard.md` §6, REV-155: names, clubs and shot positions;
-  never a photo or GPS) may be shared, only on the owner's tap. Nothing else may leave the phone, and nothing is ever sent
+  never a target photo or GPS) may be shared, only on the owner's tap. Its one picture is the **athlete picture** the owner chose
+  in Settings → Athlete (REV-157: 96 px, re-encoded on the phone, no EXIF or other photo metadata, at most 8 KB). Nothing else may leave the phone, and nothing is ever sent
   anywhere automatically.
 - **Repo privacy.** Never commit `fixtures/private/`, `.env*` (except `.env.example`), or user data. Committed images
   carry no GPS EXIF (`pnpm check:privacy`).

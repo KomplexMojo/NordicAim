@@ -39,10 +39,12 @@ export function BoardPage() {
   // leaderboard.md §9: each phone may hide flagged or challenged entries; the owner's own row always shows.
   const [hideFlagged, setHideFlagged] = useState(false);
   const [hideChallenged, setHideChallenged] = useState(false);
+  // REV-157: pictures can be hidden on this phone too; initials stand in.
+  const [hidePictures, setHidePictures] = useState(false);
   const ownKey = data?.ownKey ?? 'this-phone';
   const rows = useMemo((): ShownRow[] => {
     if (data === undefined) return [];
-    const me = { publicKey: data.ownKey, name: data.athleteName, club: data.athleteClub };
+    const me = { publicKey: data.ownKey, name: data.athleteName, club: data.athleteClub, picture: data.athletePicture };
     return boardRows(data.held, ownRow(preview, me), position)
       .map((row) => ({ row, challenges: challengesFor(data.challenges, row.publicKey, position, row.publicKey === ownKey ? null : row.signedAt) }))
       .filter(({ row, challenges }) => row.publicKey === ownKey || ((!hideFlagged || !row.flagged) && (!hideChallenged || challenges.length === 0)));
@@ -70,6 +72,10 @@ export function BoardPage() {
                 <input type="checkbox" className="size-5" checked={hideFlagged} onChange={(e) => setHideFlagged(e.target.checked)} data-testid="board-hide-flagged" />
                 Hide flagged
               </label>
+              <label className="flex min-h-11 items-center gap-2">
+                <input type="checkbox" className="size-5" checked={hidePictures} onChange={(e) => setHidePictures(e.target.checked)} data-testid="board-hide-pictures" />
+                Hide pictures
+              </label>
               {CHALLENGES_ENABLED && (
                 <label className="flex min-h-11 items-center gap-2">
                   <input type="checkbox" className="size-5" checked={hideChallenged} onChange={(e) => setHideChallenged(e.target.checked)} data-testid="board-hide-challenged" />
@@ -77,7 +83,7 @@ export function BoardPage() {
                 </label>
               )}
             </div>
-            <BoardTable rows={rows} ownKey={ownKey} onChallenged={() => setRefreshKey((k) => k + 1)} />
+            <BoardTable rows={rows} ownKey={ownKey} hidePictures={hidePictures} onChallenged={() => setRefreshKey((k) => k + 1)} />
             {data.held.length > 0 && (
               <ClearBoard shooters={data.held.length} onCleared={() => setRefreshKey((k) => k + 1)} />
             )}

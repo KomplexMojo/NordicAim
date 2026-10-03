@@ -25,6 +25,7 @@ import {
   setHoleDiameterMm,
   setMaxPlausibleHoles,
   setAthlete,
+  setAthletePicture,
   setHandedness,
   setScoringRule,
   setVisibleHoleDiameterMm,
@@ -127,6 +128,8 @@ export function SettingsPage() {
             key={`athlete-${epoch}`}
             name={settings.athleteName}
             club={settings.athleteClub}
+            picture={settings.athletePicture}
+            onPictureChange={async (p) => setSettings(await setAthletePicture(ctx, p))}
             handedness={settings.handedness}
             onHandednessChange={(h) => void saveScoring(() => setHandedness(ctx, h), { handedness: h })}
             fingerprint={settings.keyFingerprint}
