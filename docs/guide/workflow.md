@@ -34,7 +34,7 @@ Open **Settings**, the gear at the top right. Under **Athlete**, fill in:
 - **Passphrase**, at least 12 characters. It creates the stamp that lets anyone check a summary image really came from you and was not edited, the key fingerprint in your backup file names, and the signature on your Board submission. The passphrase itself is never stored and never leaves the phone, so keep a note of it somewhere safe.
 
 <p align="center">
-  <img src="../assets/screens/settings.png" width="300" alt="The Settings screen with the Athlete section: name, ski club, handedness and passphrase">
+  <img src="../assets/screens/settings.png" width="300" alt="The Settings screen with the Athlete section: name, ski club, the athlete picture with Change and Remove, handedness and passphrase">
 </p>
 
 While you are in Settings, check the **scoring rule** and, if you use one, set up your **backing sheet** (see the next step).

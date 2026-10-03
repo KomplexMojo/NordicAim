@@ -269,7 +269,7 @@ Everything here applies to **every session**.
 **Athlete.** Your **name** and **ski club** print on the summary and coach images. Your **picture** is optional: tap **Add picture** to take one or choose one from Photos. NordicAim keeps only a small square copy of its centre, with no location, and shows it beside your name on the Board. **Remove** takes it off; without a picture the Board shows your initials. Set your **handedness** so NordicAim describes a group as towards your trigger or sling side. A **passphrase** (at least 12 characters) creates a stamp on each image, so anyone can check with **Verify a stamp** that it came from you and was not edited. The passphrase is never stored and never backed up, so keep a note of it.
 
 <p align="center">
-  <img src="../assets/screens/settings.png" width="300" alt="The Settings screen's Athlete section: name, ski club, handedness, key fingerprint and passphrase">
+  <img src="../assets/screens/settings.png" width="300" alt="The Settings screen's Athlete section: name, ski club, the athlete picture with Change and Remove, handedness, key fingerprint and passphrase">
 </p>
 
 **Scoring.** Choose how a shot is scored:
