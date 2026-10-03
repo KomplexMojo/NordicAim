@@ -102,7 +102,7 @@ Tap **Patterns** on the bottom bar. Choose the kind of target (**Sight in**, **C
 Every shot is laid over the printed target. Where they pile up they darken, so you can see whether today's group sits where your usual group does, and whether your misses have a habit. The **Observed patterns** panel gives the group size, mean radius and how far the group sits from centre.
 
 <p align="center">
-  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the session slider and the season row above every precision prone shot laid over the printed target">
+  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone with the last 5 sessions and Fall chosen, the sentence Showing all 4 of your fall sessions, and every one of those precision prone shots laid over the printed target">
 </p>
 
 Then tap **Analysis** beside it. The same kinds of target and ranges, but one point per session, so you see how your score or hit rate, group size, accuracy (RMS) and mean point of impact move over time. From three sessions, a dashed trend line on the score, group size and accuracy shows the direction and how much it changes per session.

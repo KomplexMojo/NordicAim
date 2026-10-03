@@ -171,7 +171,7 @@ Patterns lays every shot you have recorded over the printed target, one view for
 The slider under the views picks how many of your most recent sessions to show. From left to right: **All** your sessions, the last **30**, **20**, **10** or **5**, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)). A sentence under the season row says what you are looking at, for example *Showing your last 5 winter sessions.*
 
 <p align="center">
-  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the session slider and the season row above every precision prone shot laid over the printed target">
+  <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone with the last 5 sessions and Fall chosen, the sentence Showing all 4 of your fall sessions, and every one of those precision prone shots laid over the printed target">
 </p>
 
 Under the drawing you get the number of shots, targets and sessions, your mean point of impact, the group ellipse, and either the share of shots in each ring (precision) or the share landing in the hit zone (sighting).
