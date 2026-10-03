@@ -143,7 +143,7 @@ The **Board** ranks shooters by the average of their best 5 precision targets, o
 
 <table>
   <tr>
-    <td align="center" width="50%"><img src="docs/assets/screens/goals.png" alt="The Goals screen on Prone: the season row, then the Score chart with its goal line at 85% and the Group size chart below" width="300"></td>
+    <td align="center" width="50%"><img src="docs/assets/screens/goals.png" alt="The Goals screen on Prone with Fall chosen: the Score chart with its goal line at 85% and its trend, and the Group size chart below" width="300"></td>
     <td align="center" width="50%"><img src="docs/assets/screens/board-list.png" alt="A board of fictional shooters: a gold trophy in place of first, each shooter's initials where a picture would be, each average in a gold or silver star, and Edited marks" width="300"></td>
   </tr>
   <tr>

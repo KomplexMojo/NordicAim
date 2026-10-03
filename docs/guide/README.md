@@ -227,7 +227,7 @@ Sessions, Patterns, Analysis and Goals each have a row of five buttons: **All**,
 Tap **Goals** on the bottom bar. Choose **Prone** or **Standing**, then set where you want each measure to be: **Score**, **Group size**, **Accuracy (RMS)** and **Biathlon hits** (the share of your shots that would hit the biathlon hit zone: 45 mm prone, 115 mm standing).
 
 <p align="center">
-  <img src="../assets/screens/goals.png" width="300" alt="The Goals screen on Prone: the season row, then the Score chart with its goal line at 85% and the Group size chart below">
+  <img src="../assets/screens/goals.png" width="300" alt="The Goals screen on Prone with Fall chosen: the Score chart with its goal line at 85% and its trend, and the Group size chart below">
 </p>
 
 Each chart plots every session, with the dashed trend line from three sessions, as on Analysis. Tap **▲** or **▼** beside a chart to move its goal, drawn as a solid blue line. Each tap saves at once.
