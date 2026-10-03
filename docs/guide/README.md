@@ -168,7 +168,7 @@ Tap **Patterns** on the bottom bar.
 
 Patterns lays every shot you have recorded over the printed target, one view for each kind of target: **Sight in**, **Confirm**, **Precision prone** and **Precision standing**. Dots are translucent, so where they pile up they darken.
 
-The slider under the views picks how many of your most recent sessions to show. From left to right: **All** your sessions, the last **20**, **10**, **5** or **3**, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)). A sentence under the season row says what you are looking at, for example *Showing your last 5 winter sessions.*
+The slider under the views picks how many of your most recent sessions to show. From left to right: **All** your sessions, the last **30**, **20**, **10** or **5**, then **Last**, your latest session, however long ago it was. The season row below it narrows that to one season (see [section 11](#11-seasons)). A sentence under the season row says what you are looking at, for example *Showing your last 5 winter sessions.*
 
 <p align="center">
   <img src="../assets/screens/patterns.png" width="300" alt="The Patterns screen on Prone, with the session slider and the season row above every precision prone shot laid over the printed target">

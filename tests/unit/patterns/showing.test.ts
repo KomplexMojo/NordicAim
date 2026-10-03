@@ -14,7 +14,7 @@ describe('showingSentence', () => {
 
   it('says so when there are fewer sessions than the range asks for', () => {
     expect(showingSentence('10', 'summer', 4)).toBe('Showing all 4 of your summer sessions.');
-    expect(showingSentence('3', 'all', 1)).toBe('Showing your only session.');
+    expect(showingSentence('5', 'all', 1)).toBe('Showing your only session.');
   });
 
   it('empty: names the season that left nothing, and says nothing extra without one', () => {

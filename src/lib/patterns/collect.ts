@@ -17,16 +17,16 @@ export const PATTERN_VIEW_LABEL: Record<PatternView, string> = {
 };
 
 /** REV-156: how many of the most recent sessions to show, broadest last; `last` is one, `all` is every session. */
-export type PatternRange = 'last' | '3' | '5' | '10' | '20' | 'all';
+export type PatternRange = 'last' | '5' | '10' | '20' | '30' | 'all';
 
 /** patterns.md §3: each range as read in a sentence (the coach image's subtitle, analysis.md §5, and `ViewRangeControls`'s
  * accessible label — its visible tick text is its own, shorter set). */
 export const PATTERN_RANGE_LABEL: Record<PatternRange, string> = {
   last: 'Latest session',
-  '3': 'Last 3 sessions',
   '5': 'Last 5 sessions',
   '10': 'Last 10 sessions',
   '20': 'Last 20 sessions',
+  '30': 'Last 30 sessions',
   all: 'All sessions',
 };
 
@@ -125,7 +125,7 @@ export function collectPatterns(sources: PatternSource[]): PatternData {
 }
 
 /** How many sessions each range keeps; `null` keeps every one. */
-export const RANGE_SESSIONS: Record<PatternRange, number | null> = { last: 1, '3': 3, '5': 5, '10': 10, '20': 20, all: null };
+export const RANGE_SESSIONS: Record<PatternRange, number | null> = { last: 1, '5': 5, '10': 10, '20': 20, '30': 30, all: null };
 
 /**
  * patterns.md §3 (REV-156): the points of the most recent N sessions that have points here, newest by session date, then

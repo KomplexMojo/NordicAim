@@ -12,7 +12,7 @@ Code: `src/lib/analysis/trend.ts` and `chart.ts` (pure), `src/routes/analysis/An
 - Route **`#/analysis`**, reached from the **Analysis** tab (a small line chart) on the bottom tab bar, beside **Patterns** (REV-136; it was a header icon until then).
 - The same four views as Patterns (`patterns.md` §1): **Sight in**, **Confirm**, **Precision prone**, **Precision
   standing**. They use the same buttons (`ViewRangeControls`).
-- The same ranges and slider as Patterns (`patterns.md` §3, REV-156): the latest session, the last 3, 5, 10 or 20 sessions, or all
+- The same ranges and slider as Patterns (`patterns.md` §3, REV-156): the latest session, the last 5, 10, 20 or 30 sessions, or all
   sessions, with the same *Showing …* sentence.
 - The same season row as Patterns (`patterns.md` §3a, REV-154); the counts line names the season when one is chosen. The coach
   image (§5) is unchanged: it follows the range only.

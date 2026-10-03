@@ -8,11 +8,11 @@ import { PATTERN_RANGE_LABEL, PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternRan
 
 // patterns.md §3, broadest to most recent: the order the slider moves through, left to right. "Latest session" sits
 // on the right, since that's this session, and dragging left goes back in time (owner, 2026-09-30).
-const RANGE_ORDER: readonly PatternRange[] = ['all', '20', '10', '5', '3', 'last'];
+const RANGE_ORDER: readonly PatternRange[] = ['all', '30', '20', '10', '5', 'last'];
 // The slider's own tick text (owner, 2026-09-30): short enough at six stops to stay easy to read and to tap. "Last" for
 // the latest session, then how many of the most recent sessions (REV-156, in place of days back), then "All" (owner,
 // 2026-10-02). `PATTERN_RANGE_LABEL` (e.g. "Last 5 sessions") is still the accessible name and what the coach image uses.
-const RANGE_TICK_LABEL: Record<PatternRange, string> = { last: 'Last', '3': '3', '5': '5', '10': '10', '20': '20', all: 'All' };
+const RANGE_TICK_LABEL: Record<PatternRange, string> = { last: 'Last', '5': '5', '10': '10', '20': '20', '30': '30', all: 'All' };
 const RANGE_STEPS = RANGE_ORDER.map((id) => ({ id, tick: RANGE_TICK_LABEL[id], label: PATTERN_RANGE_LABEL[id] }));
 const LAST_STEP = RANGE_STEPS.length - 1;
 

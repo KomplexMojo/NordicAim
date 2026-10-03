@@ -54,8 +54,9 @@ describe('view and range in the address', () => {
     expect(parseViewRange(new URLSearchParams(viewRangeSearch('confirm', '10')))).toEqual({ view: 'confirm', range: '10', season: 'all' });
     expect(parseViewRange(new URLSearchParams(''))).toEqual({ view: 'sight-in', range: 'last', season: 'all' });
     expect(parseViewRange(new URLSearchParams('view=nope&range=nope'))).toEqual({ view: 'sight-in', range: 'last', season: 'all' });
-    // A link saved when the stops were days back (REV-156) falls back to the latest session.
-    expect(parseViewRange(new URLSearchParams('view=confirm&range=30')).range).toBe('last');
+    // A link saved when the stops were days back (REV-156), or with the dropped 3-session stop, falls back to the latest session.
+    expect(parseViewRange(new URLSearchParams('view=confirm&range=90')).range).toBe('last');
+    expect(parseViewRange(new URLSearchParams('view=confirm&range=3')).range).toBe('last');
   });
 });
 

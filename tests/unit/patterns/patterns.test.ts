@@ -125,13 +125,14 @@ describe('filterByRange: the most recent N sessions (patterns.md §3, REV-156)',
     at('e', '2026-09-18', '2026-09-18T08:00:00Z'),
   ];
 
-  it('3 and 5 keep that many of the newest sessions, every point of each, however long ago', () => {
-    expect(filterByRange(points, '3').map((p) => p.sessionId)).toEqual(['c', 'e', 'd', 'e']);
-    expect(filterByRange(points, '5')).toHaveLength(6);
+  it('5 keeps that many of the newest sessions, every point of each, however long ago', () => {
+    const more = [...points, at('f', '2024-01-01', '2024-01-01T08:00:00Z')];
+    expect(filterByRange(more, '5').map((p) => p.sessionId)).toEqual(['c', 'a', 'e', 'b', 'd', 'e']);
+    expect(filterByRange(more, '10')).toHaveLength(7);
   });
 
   it('fewer sessions than the range asks for keeps them all; all keeps everything', () => {
-    expect(filterByRange(points, '20')).toHaveLength(6);
+    expect(filterByRange(points, '30')).toHaveLength(6);
     expect(filterByRange(points, 'all')).toBe(points);
     expect(filterByRange([], '10')).toEqual([]);
   });
@@ -144,7 +145,7 @@ describe('filterByRange: the most recent N sessions (patterns.md §3, REV-156)',
       at('evening', '2026-09-10', '2026-09-10T18:00:00Z'),
     ];
     expect(filterByRange(same, 'last').map((p) => p.sessionId)).toEqual(['evening', 'evening']);
-    expect(filterByRange(same, '3').map((p) => p.sessionId)).toEqual(['old', 'morning', 'evening', 'evening']);
+    expect(filterByRange(same, '5').map((p) => p.sessionId)).toEqual(['old', 'morning', 'evening', 'evening']);
     expect(filterByRange([], 'last')).toEqual([]);
   });
 });

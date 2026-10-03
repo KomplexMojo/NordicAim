@@ -54,9 +54,9 @@ test('two demo sessions overlay on the right views, the range filter and the dra
   }
   expect(precision).toBeGreaterThan(0);
 
-  // REV-156: the last 3 sessions keep both demo sessions, and the sentence says it is every one there is.
+  // REV-156: the last 5 sessions keep both demo sessions, and the sentence says it is every one there is.
   await page.getByTestId('pattern-view-sight-in').click();
-  await page.getByTestId('pattern-range-3').click();
+  await page.getByTestId('pattern-range-5').click();
   await expect(page.getByTestId('patterns-drawing')).toHaveAttribute('data-shots', String(sightShots));
   await expect(page.getByTestId('pattern-showing')).toHaveText('Showing all 2 of your sessions.');
 

@@ -70,7 +70,7 @@ describe('Patterns points carry their season', () => {
     });
     const points = [at('w1', '2026-01-10', 'winter'), at('w2', '2026-02-10', 'winter'), at('s1', '2026-07-10', 'summer')];
     expect(filterByRange(filterBySeason(points, 'winter'), 'last').map((p) => p.photoId)).toEqual(['w2']);
-    expect(filterByRange(filterBySeason(points, 'winter'), '3').map((p) => p.photoId)).toEqual(['w1', 'w2']);
+    expect(filterByRange(filterBySeason(points, 'winter'), '5').map((p) => p.photoId)).toEqual(['w1', 'w2']);
   });
 });
 

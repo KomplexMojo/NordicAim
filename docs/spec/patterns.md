@@ -33,12 +33,12 @@ Shots are the located **units** of `computed.result.all.units`, in mm from the t
 ## 3. Range: the most recent sessions (REV-156)
 
 How many of the most recent sessions **that have shots in the view** to show (`filterByRange`, `RANGE_SESSIONS`): **Latest
-session** (default, owner, 2026-09-30), **Last 3**, **5**, **10**, **20 sessions**, **All sessions**. Newest is the latest
+session** (default, owner, 2026-09-30), **Last 5**, **10**, **20**, **30 sessions**, **All sessions** (owner, 2026-10-03, in place of 3, 5, 10 and 20). Newest is the latest
 `session.sessionDate`, then the latest session creation time; each kept session brings all its shots. Fewer sessions than
 the range asks for keeps them all. Nothing counts back from today, so `patterns/` needs no date (owner, 2026-10-02: day
-ranges such as *30 days* went empty under a season out of its months). The slider's ticks read **All, 20, 10, 5, 3, Last**,
-above the track; `PATTERN_RANGE_LABEL` is each stop's accessible name. A saved address with an old day range (`range=30`)
-falls back to the latest session. The dots and the summary change together.
+ranges such as *30 days* went empty under a season out of its months). The slider's ticks read **All, 30, 20, 10, 5, Last**,
+above the track; `PATTERN_RANGE_LABEL` is each stop's accessible name. A saved address with an old day range (`range=90`) or the dropped
+3-session stop falls back to the latest session (an old `range=30` now reads as 30 sessions). The dots and the summary change together.
 
 **What is shown, in a sentence** (`showingSentence`, `components/patterns/RangeShowing.tsx`): under the season row, on
 Patterns and Analysis, e.g. *Showing your last 5 winter sessions.*, *Showing all 4 of your summer sessions.* (fewer than
