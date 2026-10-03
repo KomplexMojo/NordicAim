@@ -185,7 +185,7 @@ Tap a dot to see which target it came from: a list opens under the drawing with 
 Tap **Analysis** on the bottom bar. It uses the same kinds of target and the same ranges as Patterns, but where Patterns shows *where* your shots land, Analysis shows *how your numbers move*, with **one point per session**. Tap a point to read its value; under the chart you can then open that session's target, and **Back to Analysis** brings you back to the same view.
 
 <p align="center">
-  <img src="../assets/screens/analysis.png" width="300" alt="The Analysis screen with Precision prone and All time chosen, and the Score chart below">
+  <img src="../assets/screens/analysis.png" width="300" alt="The Analysis screen on Sight in with the last 5 sessions and Fall chosen, the sentence Showing all 4 of your fall sessions, and the Hit rate chart with its dashed trend line">
   &nbsp;
   <img src="../assets/screens/analysis-trends.png" width="300" alt="The Analysis screen's Score and Group size charts, each with a dashed trend line">
 </p>
