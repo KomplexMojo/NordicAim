@@ -249,7 +249,7 @@ The Board ranks shooters by the **average of their best 5 precision targets**, o
 A newer submission from the same shooter replaces the older one, and importing the same file twice changes nothing. A board keeps the best 100 shooters.
 
 <p align="center">
-  <img src="../assets/screens/board-list.png" width="300" alt="A board of fictional shooters: a gold trophy in place of first, each average in a gold or silver star, and an Edited mark">
+  <img src="../assets/screens/board-list.png" width="300" alt="A board of fictional shooters: a gold trophy in place of first, each shooter's initials where a picture would be, each average in a gold or silver star, and Edited marks">
   &nbsp;
   <img src="../assets/screens/board-entry.png" width="300" alt="One fictional shooter's entry opened: five targets with date, score and X count, one marked Edited and Flagged with its automatic score">
 </p>
