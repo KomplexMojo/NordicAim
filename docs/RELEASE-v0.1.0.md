@@ -5,13 +5,15 @@ the three MVP steps (REV-15/16/20) and the original `docs/DESIGN.md` §"Delivery
 was actually built, with evidence, then records the owner's §9 performance measurements and sign-off.
 `git tag v0.1.0 && git push origin v0.1.0` happens only after that sign-off (M15 Pitfalls).
 
+**Refreshed 2026-10-03.** v0.1.0 now also covers what was built after the MVP (§3a), and the owner checks in §6 cover it.
+
 ## 1. MVP steps (REV-15, REV-16, REV-20)
 
 | Step | Status | Evidence |
 |---|---|---|
 | REV-15: take picture(s) → add metadata → receive analysis | **Done** | Routes in `src/app/router.tsx` (analysis-pipeline.md §1); `tests/e2e/capture.spec.ts`, `metadata.spec.ts`, `results.spec.ts`; end to end in `tests/e2e/journey.spec.ts` (M15) |
-| REV-16: automatic pipeline (review image, overlay on template, pull metadata, incorporate user metadata, generate analysis) with an optional Adjust screen | **Done** | `src/lib/pipeline/*`, `src/lib/cv/*`; `tests/e2e/pipeline.spec.ts`; Adjust screen `src/routes/adjust/AdjustPage.tsx`, `tests/e2e/adjust.spec.ts` |
-| REV-20: scoring is core and never deferred (ISSF ring scoring, sighting zones, multiplicity, `both` split, missing-round ranges/misses) | **Done** | `src/lib/scoring/*`; `tests/unit/scoring/*` (every `geometry-scoring.md` test vector); declared-rounds handling in M20 |
+| REV-16: automatic pipeline (review image, overlay on template, pull metadata, incorporate user metadata, generate analysis) with an optional Adjust screen | **Done** | `src/lib/pipeline/*`, `src/lib/cv/*`; `tests/e2e/pipeline.spec.ts`; adjusting now happens on the target's own screen (`src/routes/target/TargetPage.tsx`), `tests/e2e/adjust.spec.ts`, `tests/e2e/target.spec.ts` |
+| REV-20: scoring is core and never deferred (ISSF ring scoring, sighting zones, multiplicity, missing-round misses; the `both` position was removed by REV-153) | **Done** | `src/lib/scoring/*`; `tests/unit/scoring/*` (every `geometry-scoring.md` test vector); declared-rounds handling in M20 |
 
 ## 2. `docs/DESIGN.md` §"Delivery checklist"
 
@@ -38,11 +40,25 @@ was actually built, with evidence, then records the owner's §9 performance meas
 | Offline e2e | **Done** | `tests/e2e/offline.spec.ts` + `playwright.offline.config.ts` + `pnpm test:e2e:offline` |
 | Release evidence document, tag | **This document**; tag is an owner step (§5) |
 
+## 3a. Built since the MVP
+
+| Feature | Spec / REV | Evidence |
+|---|---|---|
+| Backup and restore, optionally locked with the stamp passphrase; backups of chosen sessions | `backup.md`, REV-63, REV-143, REV-151 | `src/lib/backup/*`; `tests/e2e/backup.spec.ts` |
+| Provenance stamp on shared images, and Verify a stamp | `provenance.md`, REV-99/100 | `tests/e2e/provenance.spec.ts` |
+| Patterns and Analysis (trends, coach image), counting the most recent sessions, with a *Showing …* sentence | `patterns.md`, `analysis.md`, REV-123/124, REV-156 | `tests/e2e/patterns.spec.ts`, `analysis.spec.ts`, `drilldown.spec.ts` |
+| Goals, and each session's goal checks | `goals.md`, M27–M28, REV-148 | `tests/e2e/goals.spec.ts` |
+| Seasons on Sessions, Patterns, Analysis and Goals | `patterns.md` §3a, REV-154 | `tests/e2e/season-filter.spec.ts` |
+| The Board: signed submissions exchanged as files, edited and flagged marks, Clear board (challenges built but hidden) | `leaderboard.md`, REV-155 | `tests/e2e/board.spec.ts`, `tests/unit/leaderboard/*` |
+| Athlete picture in Settings and on the Board | REV-157 | `tests/e2e/athlete-picture.spec.ts`, `tests/unit/domain/athlete-picture.test.ts` |
+| Photos never keep their location (on import, and for photos stored before) | `metadata-lighting.md` §1.1, REV-158 | `tests/unit/media/strip-location.test.ts`, `tests/unit/services/location.test.ts`; checked against the owner's 47 private photos with a location |
+| Five-tab bar, update banner, printable sheets, template reference sheets (M26 part 1) | REV-136, REV-135, REV-121 | `tests/e2e/navigation.spec.ts`, `update-banner.spec.ts`, `template-sheets.spec.ts` |
+
 ## 4. Backlog items not built (by design)
 
-Per `docs/BACKLOG.md` and AGENTS.md scope rules: backups, the sequence player, harness trends, a Capacitor
-shell, Apple Health / Garmin integrations, and Backlog B11 visual polish (illustrated landing, bottom nav
-beyond the M22 tab bar, update prompt). None of these block the MVP's three-step flow.
+Per `docs/BACKLOG.md` and AGENTS.md scope rules: the sequence player, a Capacitor shell, Board challenges (hidden) and
+QR exchange, the illustrated landing and a full accessibility audit (B11), cause suggestions for group patterns (B12), and
+M26 part 2. Apple Health and Garmin integrations are out of scope entirely. None of these block the three-step flow.
 
 ## 5. §9 performance budget (iPhone 16 Pro Max)
 
@@ -67,11 +83,14 @@ These cannot be run by an agent; see `docs/milestones/OWNER-CHECKS.md` for the r
 3. Add metadata → Analyze → check the scores against your own count → share the summary image → attach it
    in Garmin Connect.
 4. Record the stage timings from `?debug=1` into §5 above.
-5. Sign off below.
+5. Since the MVP: import a photo from Photos and confirm it is added (its location is removed); make a protected
+   backup and restore it; set a goal and check a later session's goal card; add your athlete picture, share your Board
+   submission to a second phone and import it there.
+6. Sign off below.
 
 ## 7. Sign-off
 
-- [ ] **Owner sign-off**: the MVP (three-step flow, install, offline, performance budget) meets expectations
-      for a v0.1.0 release. Tag `v0.1.0` only after this box is checked.
+- [ ] **Owner sign-off**: the MVP (three-step flow, install, offline, performance budget) and the features built
+      since (§3a) meet expectations for a v0.1.0 release. Tag `v0.1.0` only after this box is checked.
 
 Signed: _______________________  Date: _______________________

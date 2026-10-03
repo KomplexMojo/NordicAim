@@ -314,7 +314,7 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
    `navigator.share({ files: [file], title })`; `AbortError` → `cancelled`.
 3. Otherwise download via a temporary `<a download>` (object URL, revoked after 60 s) → `download`.
 4. On `web-share`/`download` → `recordShare`.
-5. ~~Attach in Garmin Connect card~~ removed from the app (REV-87); the four steps are in `docs/MANUAL.md`.
+5. ~~Attach in Garmin Connect card~~ removed from the app (REV-87); the steps are in the user guide (`docs/guide/README.md` §6; `docs/MANUAL.md` was folded into it).
 
 ## REV-79 / REV-80 marks
 

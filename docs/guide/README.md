@@ -131,7 +131,15 @@ The summary image puts your session on one page: the sight in and the confirm ac
 
 Tap **Share** to send the image with the iPhone share sheet: save it to Photos, message it to a coach or teammate, or post it to your team's chat. If you have changed anything since, tap **Update summary** first.
 
-Only two images ever leave NordicAim, and only when you tap **Share**: this summary image, and the coach image from the Analysis screen (see [section 10](#10-trends-and-the-coach-image)). Your original photos stay on your phone. The Board shares files too, never images: names, clubs and shot positions, only when you tap (see [section 13](#13-the-board)).
+**Attach it to a Garmin Connect activity.** NordicAim never connects to Garmin, so you attach the image yourself:
+
+1. Tap **Share**, then **Save Image** in the share sheet.
+2. Open the Garmin Connect app and the activity (usually the most recent).
+3. Tap the camera icon and choose the saved image.
+
+The same works for a Strava activity: add the saved image as a photo.
+
+Only two images ever leave NordicAim, and only when you tap **Share**: this summary image, and the coach image from the Analysis screen (see [section 10](#10-trends-and-the-coach-image)). Your original photos stay on your phone. The Board shares files, not target photos: names, clubs, your small athlete picture if you added one, and shot positions, only when you tap (see [section 13](#13-the-board)).
 
 ## 7. Correct a shot or the alignment
 

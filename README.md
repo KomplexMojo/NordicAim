@@ -40,8 +40,11 @@ You always have the last word. Every hole and the alignment can be corrected by 
 - **Patterns over time.** Every shot from every session, laid over the printed target for sight in, confirm, precision prone and precision standing. Show your latest session, your last 5 to 30, or all of them, for any season, and see whether your misses have a habit.
 - **Trends, session by session.** The Analysis screen charts your score or hit rate, group size, accuracy (RMS distance from the centre) and point of impact with one point per session, and from three sessions draws a trend line on the score, group size and accuracy that says how much you are changing per session.
 - **A coach image.** One picture of your recent sessions: the pattern drawings, then your averages in small boxes, each with an arrow showing which way it is trending, and a small bullseye showing where your average shot lands. Share it with your coach.
+- **Goals.** Set where you want your prone and standing score, group size, accuracy and biathlon hits to be. Each chart draws the goal, says how the sessions since have done, and every session's results show whether it met the goals of its day.
+- **A Board, with no server.** Your best 5 prone and standing targets of all time, signed and shared as a file, ranked against other shooters' files on your phone. Hand corrections are marked, and flagged when they move a score by more than 10 points. Add a small picture of yourself, or the Board shows your initials.
+- **Seasons.** Narrow sessions, patterns, trends and goals to winter, spring, summer or fall.
 - **A review pass.** Step through a session photo by photo, targets that need attention first.
-- **Backup and restore.** One compressed file, named with your name and the date, holds all your sessions. Restore it on a new phone.
+- **Backup and restore.** One compressed file, named with your name and the date, holds all your sessions, and can be locked with your passphrase. Restore it on a new phone.
 
 Two printed sheets are supported today: the **sighting sheet** and the **Olympic 50 m rifle target** used for precision work, shot with a .22 at 50 m.
 
@@ -70,7 +73,7 @@ There is no shared team account or dashboard. Each phone keeps its own history.
 ## Private, free, and light
 
 - **Everything happens on your phone.** No server, no login, no analytics, no ads.
-- **Your photos stay yours.** They are never uploaded. Only three things can leave the phone, and only when you ask: the summary image or coach image you share, and a backup file you create.
+- **Your photos stay yours.** They are never uploaded, and NordicAim takes the location out of every photo as it is added. Only these can leave the phone, and only when you ask: the summary image or coach image you share, a Board file you share, and a backup file you create.
 - **Free to use.** NordicAim is served as plain static files from GitHub Pages, so there is nothing to pay for and nothing to sign up to.
 - **Works at the range.** After the first load it runs offline, so no signal is no problem.
 

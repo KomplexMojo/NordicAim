@@ -43,7 +43,7 @@ const SHORT_VIEW_LABEL: Record<PatternView, string> = {
 };
 
 /**
- * patterns.md §1: the view buttons on their own — Goals uses these without the date range (goals.md §3). Issue #90: each view is a
+ * patterns.md §1: the view buttons on their own — Goals uses these without the range (goals.md §3). Issue #90: each view is a
  * compact button, its mark over a short name, so the chart or drawing leads the screen; all four fit one row on Patterns and
  * Analysis, and Goals' two use the same look (owner, 2026-10-01).
  */
@@ -113,7 +113,7 @@ export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }
       <ViewSwitch view={view} onView={onView} testIdPrefix={testIdPrefix} views={PATTERN_VIEWS} />
       <div className="flex flex-col gap-1">
         {/* The stop labels sit above the track (owner, 2026-10-02), so a thumb under the finger never hides them. */}
-        <div role="group" aria-label="Date range" className="relative h-11">
+        <div role="group" aria-label="Recent sessions" className="relative h-11">
           {RANGE_STEPS.map((step, i) => (
             <button
               key={step.id}

@@ -63,14 +63,21 @@ To start: ask Claude to run the `run-milestones` workflow (`mode: "run"`, the de
   `fixtures/private/`. Still answer the owner's question right away, and still act at once on anything that blocks the
   current run. Sweep with `gh issue list --label owner-request`.
 
-## Project state (as of 2026-09-27)
+## Project state (as of 2026-10-03)
 
-- **MVP milestones M01–M25 are done** and deployed to Pages. The app is named **Nordic Aim** (REV-45). The repo and the
-  Pages URL keep their old names on purpose.
+- **MVP milestones M01–M25 are done** and deployed to Pages, and so are the post-MVP Goals milestones **M27–M28**. The app
+  is named **Nordic Aim** (REV-45). The repo and the Pages URL keep their old names on purpose.
+- **Built since the MVP, straight from owner requests** (issues and REVs rather than milestones): the five-tab bar
+  (Sessions, Analysis, Patterns, Goals, Board); **seasons** on every list and chart (REV-154); Patterns and Analysis count
+  the **most recent sessions**, not days, with a *Showing …* sentence (REV-156); the **Board** leaderboard (REV-155:
+  signed file exchange, no server); the **athlete picture** (REV-157); and **photos never keep their location** (REV-158,
+  on import and for photos stored before). Board **challenges are built but hidden** (`CHALLENGES_ENABLED = false`,
+  `docs/spec/leaderboard.md` §9) until the owner decides how they should work.
 - **Never tag or push `v0.1.0` without the owner's explicit sign-off.** The remaining release steps belong to the owner:
   device checks, a real range session end to end, the §9 timings, and the sign-off box. They are tracked in
   `docs/RELEASE-v0.1.0.md` §5/§7 and `docs/milestones/OWNER-CHECKS.md`. Don't re-run finished milestones.
-- **M26** (template reference photos) is `blocked` on owner design decisions (see its *Decisions* section).
+- **M26** (template reference photos): part 1 (Settings, storage, defaults) is done; part 2 (detection uses the reference)
+  is `blocked` until it proves a gain on the production benchmark.
 - **Detection benchmark (2026-09-27):** `pnpm cv:eval` gates on the owner's **production set**, 12 confirmed targets
   from three range sessions on a coloured backing (`fixtures/private/range-2026-09-26/`): recall **92.2%**, precision
   **90.5%** (floors 92% / 90%). That is the standard case. The 46 older photos below are the **worse case** (straight
@@ -133,19 +140,20 @@ iPhone testing: push to `main`, then open `https://komplexmojo.github.io/NordicA
 index.html                     CSP meta, root element
 src/main.tsx                   bootstrap, service worker registration, pipeline resume
 src/app/router.tsx             createHashRouter route table (routes: spec/analysis-pipeline.md §1)
-src/routes/                    home, patterns, analysis, goals, board, capture, metadata, results, target, review, settings, diagnostics (sessions/ is only the redirect)
+src/routes/                    home, patterns, analysis, goals, board, capture, metadata, results, target, review, settings, verify, diagnostics (sessions/ is only the redirect)
 src/components/                UI components (shadcn primitives in components/ui)
-src/lib/domain/                zod schemas, types, categorization helpers, status.ts (photoStatus)
+src/lib/domain/                zod schemas, types, categorization helpers, status.ts (photoStatus), season, athlete-picture
 src/lib/defaults/              biathlon profile + template geometry
 src/lib/geometry/              mm<->px transforms, calibration scaling
 src/lib/scoring/               pure scoring, groups, splits, missing-round modes, characteristics (observed patterns)
 src/lib/backup/  src/lib/patterns/   backup create/restore/verify/rebuild (REV-63, REV-125/126); cross-session Patterns collect/summarize
+src/lib/goals/                 Goals (goals.md): the goal log, goal metrics, a session's goal checks
 src/lib/analysis/              Analysis trends (trend, chart incl. least-squares), coach image data and averages (REV-123/124, REV-128–132)
 src/lib/leaderboard/           Board (REV-155): board score and correction flag, automatic baseline, top 5, Ed25519 identity, signed submissions and challenges, merge, files
 src/lib/capture/               overlay.ts (pure), camera.ts, fake-camera.ts, wake-lock-browser.ts
-src/lib/media/                 format, capture-time, image-stats, lighting (pure); exif.ts; image-browser.ts
+src/lib/media/                 format, capture-time, image-stats, lighting, strip-location (pure); exif.ts; image-browser.ts, athlete-picture-browser.ts
 src/lib/store/                 db.ts + repositories (idb) + persistence-browser.ts
-src/lib/services/              sessions, ingest, photos, quick-start, shares
+src/lib/services/              sessions, ingest, location, photos, quick-start, shares, goals, board, leaderboard
 src/lib/pipeline/              plan.ts (pure), runner-browser.ts, stage-a.ts, stage-b.ts, hooks.ts, events.ts
 src/lib/cv/                    pure CV over RgbaImage (anchor, sharpness, template-hint, rectify, holes, split-cluster) + opencv loader
 src/workers/                   cv.worker.ts + cv-client.ts (Comlink)
