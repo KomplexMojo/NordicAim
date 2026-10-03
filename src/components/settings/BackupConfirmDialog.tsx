@@ -9,12 +9,13 @@ import { BackupScopePicker, type BackupScope } from './BackupScopePicker';
 type ScopeProps = ComponentProps<typeof BackupScopePicker>;
 
 /**
- * backup.md §1, §2c, §2d: the "Make a backup" dialog — what the file holds (photos with GPS), which sessions (REV-143), and whether
+ * backup.md §1, §2c, §2d: the "Make a backup" dialog — what the file holds (photos, without their location since REV-158), which sessions (REV-143), and whether
  * to protect it with the stamp passphrase (REV-151, off by default).
  */
 export function BackupConfirmDialog({
   open,
   onOpenChange,
+  stillLocated,
   sessions,
   scope,
   chosen,
@@ -26,6 +27,8 @@ export function BackupConfirmDialog({
 }: {
   open: boolean;
   onOpenChange(open: boolean): void;
+  /** REV-158: photos whose location could not be taken out; normally none. */
+  stillLocated: number;
   sessions: ScopeProps['sessions'];
   scope: BackupScope;
   chosen: ScopeProps['chosen'];
@@ -42,7 +45,10 @@ export function BackupConfirmDialog({
         <DialogHeader>
           <DialogTitle>Make a backup</DialogTitle>
           <DialogDescription>
-            The backup file contains your original photos, and photos keep the exact GPS location where they were taken.{' '}
+            The backup file contains your original photos.{' '}
+            {stillLocated === 0
+              ? 'NordicAim removes where a photo was taken when it is added, so the file holds no locations.'
+              : `${stillLocated} ${stillLocated === 1 ? 'photo still holds' : 'photos still hold'} the GPS location where ${stillLocated === 1 ? 'it was' : 'they were'} taken.`}{' '}
             {protecting
               ? 'Protected, the file opens only with your stamp passphrase.'
               : 'Keep the file in your own Files or iCloud Drive and do not share it.'}{' '}

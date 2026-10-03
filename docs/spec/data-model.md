@@ -85,7 +85,7 @@ export const ExifMeta = z.object({
   captureLocal: LocalDateTime.nullable(), captureOffset: Offset.nullable(), captureUtc: UtcIso.nullable(),
   gpsPresent: z.boolean(),
   gps: z.object({ lat: z.number(), lon: z.number(), altM: z.number().nullable() }).nullable(),
-  gpsImgDirection: z.number().nullable(),
+  gpsImgDirection: z.number().nullable(), // REV-158: gps and gpsImgDirection are always stored null; gpsPresent says the file had one
   make: z.string().nullable(), model: z.string().nullable(), lens: z.string().nullable(),
   brightnessValue: z.number().nullable(), iso: z.number().nullable(),
   exposureTimeSec: z.number().nullable(), fNumber: z.number().nullable(),

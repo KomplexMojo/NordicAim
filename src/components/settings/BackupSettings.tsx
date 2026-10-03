@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useServices } from '@/lib/app/services';
+import { countPhotosWithLocation, removeStoredLocations } from '@/lib/services/location';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { getAppSettings } from '@/lib/services/settings';
 import { BUILD_SHA } from '@/lib/app/build-info';
@@ -25,7 +26,7 @@ import type { BackupScope } from './BackupScopePicker';
 
 /**
  * backup.md (REV-63, issue #13): Settings → **Backup**. Everything here is an explicit tap: creating a file, choosing a
- * file to restore, and restoring it. The file holds the photos, including their GPS location, and the dialog says so.
+ * file to restore, and restoring it. The file holds the photos; since REV-158 without their location, and the dialog says so.
  */
 export function BackupSettings({ settings: initial, onRestored }: { settings: AppSettings; onRestored(): void }) {
   const { ctx, imageTools, renderTools } = useServices();
@@ -33,6 +34,8 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
   const { value: live } = useLiveQuery(() => getAppSettings(ctx), [ctx]);
   const settings = live ?? initial;
   const [confirming, setConfirming] = useState(false);
+  // REV-158: photos that still hold their location (none, unless one could not be changed safely).
+  const [stillLocated, setStillLocated] = useState(0);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
@@ -198,6 +201,9 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
           setProtectPass('');
           setProtectError(null);
           setConfirming(true);
+          void removeStoredLocations(ctx)
+            .then(() => countPhotosWithLocation(ctx))
+            .then(setStillLocated);
         }}
         data-testid="backup-now"
       >
@@ -264,6 +270,7 @@ export function BackupSettings({ settings: initial, onRestored }: { settings: Ap
       <BackupConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
+        stillLocated={stillLocated}
         sessions={sessionList}
         scope={scope}
         chosen={chosen}

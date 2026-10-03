@@ -9,6 +9,7 @@ import { loadAppServices } from '@/lib/app/services';
 import { startSummaryScheduler } from '@/lib/composite/scheduler-browser';
 import { startPipelineRunner } from '@/lib/pipeline/runner-browser';
 import { errorSummary } from '@/lib/app/log';
+import { removeStoredLocations } from '@/lib/services/location';
 import { getCvClient } from '@/workers/cv-client';
 
 import './index.css';
@@ -30,6 +31,8 @@ if (!framed) {
       startPipelineRunner(ctx, { getCvApi: getCvClient, imageTools, renderTools });
       // analysis-pipeline §7: rebuilds the session summary image after Stage B settles.
       startSummaryScheduler(ctx, renderTools, BUILD_SHA);
+      // REV-158: photos stored before locations were removed on import have theirs taken out, once each.
+      removeStoredLocations(ctx).catch((err: unknown) => console.error('[location] pass failed', errorSummary(err)));
     })
     .catch((err: unknown) => {
       console.error('[pipeline] runner failed to start', errorSummary(err));

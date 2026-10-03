@@ -25,7 +25,8 @@ test('back up, wipe the database, restore: the session and its scores come back;
     Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
   });
   await page.getByTestId('backup-now').click();
-  await expect(page.getByTestId('backup-confirm-dialog')).toContainText('GPS');
+  // REV-158: photos are stored without their location, and the dialog says so.
+  await expect(page.getByTestId('backup-confirm-dialog')).toContainText('so the file holds no locations.');
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup-confirm').click()]);
   expect(download.suggestedFilename()).toMatch(/^nordic-aim-backup-\d{4}-\d{2}-\d{2}\.json\.gz$/);
   const backupPath = testInfo.outputPath('backup.json.gz');

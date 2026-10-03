@@ -9,6 +9,7 @@ import type { RebuildTools } from '@/lib/backup/rebuild';
 import type { VerifiedBackup } from '@/lib/backup/verify';
 import { applyPreferences, collectPreferences } from '@/lib/backup/preferences-browser';
 import { restoreBoard } from '@/lib/services/board';
+import { removeStoredLocations } from '@/lib/services/location';
 import { isStampPassphrase, loadProvenanceKey, WrongPassphraseError } from '@/lib/services/provenance';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
@@ -37,6 +38,8 @@ export async function buildBackupFile(
   const nowIso = now.toISOString();
   const settings = await getSettings(ctx.db);
   if (protect !== undefined && !(await isStampPassphrase(ctx, protect.passphrase, protect.iterations))) throw new WrongPassphraseError();
+  // REV-158: any photo still holding its location (stored before, or restored) has it taken out before it goes in a file.
+  await removeStoredLocations(ctx);
   const created = await createBackup(ctx.db, { appBuild, nowIso, preferences: collectPreferences(), sessionIds });
   const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const fileName = backupFileName({
@@ -88,6 +91,8 @@ export async function restoreBackup(
   const preferences = applyPreferences(backup.file.preferences ?? []);
   // leaderboard.md §8: received submissions are checked again and merged, newest per shooter winning.
   const boardShooters = await restoreBoard(ctx, backup.file.board);
+  // REV-158: photos from an older backup still hold their location; take it out now.
+  await removeStoredLocations(ctx);
   // The provenance key is never in a backup (docs/spec/provenance.md §1): after a restore the athlete enters the passphrase once more.
   const settings = await getSettings(ctx.db);
   const needsUnlock = settings.keyFingerprint !== null && (await loadProvenanceKey(ctx)) === null;

@@ -123,5 +123,8 @@ export const TargetPhoto = z.object({
   notes: z.string().max(1000).nullable(),
   status: PhotoStatus, // computed by photoStatus (analysis-pipeline §4); never set by UI code
   reasons: z.array(Reason),
+  // REV-158: the stored original no longer holds where it was taken (`media/strip-location.ts`), and `exif.gps` is null.
+  // Absent for a photo stored before this, or restored from an older backup, until `removeStoredLocations` has done it.
+  locationRemoved: z.boolean().optional(),
 });
 export type TargetPhoto = z.infer<typeof TargetPhoto>;

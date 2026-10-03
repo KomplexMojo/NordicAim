@@ -1,7 +1,8 @@
 # Backup and restore (REV-63, issue #13)
 
 Source of truth for the backup file, its verification, restore, and reminders. Owner decisions 2026-09-19: one JSON file,
-images base64, no password; the file holds photo GPS and the app says so. REV-151 (2026-10-01): a backup can optionally be
+images base64, no password; the file holds photo GPS and the app says so (since REV-158 the stored photos hold no
+location, so the dialog says the file holds none, or counts any photo that still does). REV-151 (2026-10-01): a backup can optionally be
 protected with the athlete's stamp passphrase (§2d); unprotected stays the default.
 
 ## 1. Rule
@@ -102,7 +103,7 @@ finished file (the gzip of §2a) is encrypted (`src/lib/backup/encrypt.ts`):
   and nothing is read. Decrypted, the file goes through §3 and §4 unchanged. A header asking for more than 10,000,000 rounds
   is refused as damaged.
 - Everything else is as for any backup: protecting doesn't change what is in the file, whether it counts as the backup (§2c,
-  §5), or the GPS warning. If the passphrase is forgotten, a protected backup can't be restored; the dialog says so.
+  §5), or the location line. If the passphrase is forgotten, a protected backup can't be restored; the dialog says so.
 
 ## 3. Verify (before anything is written)
 
