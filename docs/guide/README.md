@@ -251,7 +251,7 @@ A newer submission from the same shooter replaces the older one, and importing t
 <p align="center">
   <img src="../assets/screens/board-list.png" width="300" alt="A board of fictional shooters: a gold trophy in place of first, each shooter's initials where a picture would be, each average in a gold or silver star, and Edited marks">
   &nbsp;
-  <img src="../assets/screens/board-entry.png" width="300" alt="One fictional shooter's entry opened: five targets with date, score and X count, one marked Edited and Flagged with its automatic score">
+  <img src="../assets/screens/board-entry.png" width="300" alt="One fictional shooter's entry opened, with their initials: five targets with date, score and X count, one marked Edited and Flagged with its automatic score beside it">
 </p>
 
 **Reading the board.** Each row shows the shooter's picture (or their initials), their name, their club, their marks and their average in the same star as a session's score: gold above 90, silver from 80, bronze from 70, a plain circle below. The top scorer has a **trophy** in place of *1*. Ties go to more Xs, then the smaller group, then the earlier date. Once you have five targets for a position, your own row joins the board: highlighted, marked *(you)*, and always showing your current best 5. Tap a row to open its five targets: the date, the score and the X count, and for a corrected target, its automatic score too.
