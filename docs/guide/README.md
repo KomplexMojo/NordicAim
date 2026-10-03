@@ -308,6 +308,8 @@ Your sessions are stored only on your phone. If you delete the Home Screen app o
 
 <p align="center">
   <img src="../assets/screens/backup.png" width="300" alt="The Backup section after a backup: last backup date, Back up now, the reminder days, Choose backup file and the size of the backup just made">
+  &nbsp;
+  <img src="../assets/screens/backup-dialog.png" width="300" alt="The Make a backup dialog: the file holds no locations, All sessions or Choose sessions, and Protect with my stamp passphrase ticked with the passphrase entered">
 </p>
 
 A backup file contains your photos, but not where they were taken: NordicAim takes the location out of every photo when it is added (and out of photos added before it did, the first time it opens). The photo itself, its time and its orientation are untouched. If a photo's location ever couldn't be removed, NordicAim refuses to add it, and the backup dialog names any older photo that still holds one. Keep the file somewhere you trust all the same.
