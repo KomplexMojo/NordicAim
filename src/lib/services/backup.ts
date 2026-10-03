@@ -9,6 +9,7 @@ import type { RebuildTools } from '@/lib/backup/rebuild';
 import type { VerifiedBackup } from '@/lib/backup/verify';
 import { applyPreferences, collectPreferences } from '@/lib/backup/preferences-browser';
 import { restoreBoard } from '@/lib/services/board';
+import { restoreGoals } from '@/lib/services/goals';
 import { removeStoredLocations } from '@/lib/services/location';
 import { isStampPassphrase, loadProvenanceKey, WrongPassphraseError } from '@/lib/services/provenance';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
@@ -86,11 +87,13 @@ export async function restoreBackup(
   plan: RestorePlan,
   policy: ConflictPolicy,
   tools: RebuildTools,
-): Promise<RestoreReport & { preferences: number; needsUnlock: boolean; boardShooters: number }> {
+): Promise<RestoreReport & { preferences: number; needsUnlock: boolean; boardShooters: number; goals: number }> {
   const report = await applyRestore(ctx.db, backup, plan, policy, tools);
   const preferences = applyPreferences(backup.file.preferences ?? []);
   // leaderboard.md §8: received submissions are checked again and merged, newest per shooter winning.
   const boardShooters = await restoreBoard(ctx, backup.file.board);
+  // goals.md §2a: the goal log, merged with this phone's own.
+  const goals = await restoreGoals(ctx, backup.file.goals);
   // REV-158: photos from an older backup still hold their location; take it out now.
   await removeStoredLocations(ctx);
   // The provenance key is never in a backup (docs/spec/provenance.md §1): after a restore the athlete enters the passphrase once more.
@@ -98,5 +101,5 @@ export async function restoreBackup(
   const needsUnlock = settings.keyFingerprint !== null && (await loadProvenanceKey(ctx)) === null;
   emitPipelineChanged({ sessionId: '' });
   pipelineHooks.notify();
-  return { ...report, preferences, needsUnlock, boardShooters };
+  return { ...report, preferences, needsUnlock, boardShooters, goals };
 }

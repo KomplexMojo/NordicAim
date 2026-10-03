@@ -307,7 +307,7 @@ Changing the rule **re-scores every session you have stored**. Your shots and al
 Your sessions are stored only on your phone. If you delete the Home Screen app or clear Safari's website data, they are gone.
 
 - In **Settings**, tap **Back up now** to save everything to one file. Use the share sheet to save it to Files or send it to yourself.
-- A backup of everything also keeps the board submissions you received. A backup of chosen sessions leaves them out.
+- Every backup keeps your goals, with the day you set each one. A backup of everything also keeps the board submissions you received; a backup of chosen sessions leaves those out.
 - To save or send just some sessions (one range day, say), choose **Choose sessions** in the same dialog and tick the ones you want. The file is much smaller and its name ends with how many sessions it holds, for example `…-2026-09-30-1-session.json.gz`. It doesn't count as your backup, so the reminder still waits for a backup of everything.
 - The file is compressed and named after you and the day, for example `nordic-aim-backup-jane-doe-3FA91C07-2026-09-27.json.gz`: your name, your key fingerprint if you set a passphrase, and the date. To keep it small, it holds each original photo once; the smaller copies NordicAim works from are made again when you restore. When it is done, Settings tells you the size, and the size before compression.
 - NordicAim reminds you when you have never backed up, or when the last backup is more than 14 days old (you can change the number of days).

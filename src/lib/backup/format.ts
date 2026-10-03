@@ -46,6 +46,11 @@ export interface BackupFile {
    * in a backup of chosen sessions and in every earlier file. Each is checked again (signature and shape) when restored.
    */
   board?: { submissions: unknown[]; challenges: unknown[] };
+  /**
+   * goals.md §2a: the goal log, as stored. Every backup carries it (it is the owner's own, like the settings); absent in a file
+   * made before it was added. Each entry is checked again when restored.
+   */
+  goals?: { entries: unknown[] };
 }
 
 const CHUNK = 0x8000;

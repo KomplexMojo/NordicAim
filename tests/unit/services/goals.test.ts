@@ -62,3 +62,49 @@ describe('goals service (goals.md §6)', () => {
     db.close();
   });
 });
+
+describe('goals in a backup (goals.md §2a)', () => {
+  it('every backup carries the goal log; a restore onto an empty phone brings it back with its dates; again adds nothing', async () => {
+    const { createBackup } = await import('@/lib/backup/create');
+    const { readBackupText } = await import('@/lib/backup/format');
+    const { verifyBackup } = await import('@/lib/backup/verify');
+    const { restoreGoals } = await import('@/lib/services/goals');
+
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-09-29T08:00:00.000Z' });
+    const first = await setGoal(ctx, { view: 'precision-prone', metric: 'score', value: 85 });
+    const second = await setGoal(makeTestContext(db, { nowIso: '2026-09-30T08:00:00.000Z' }), { view: 'precision-prone', metric: 'group', value: 3 });
+
+    for (const sessionIds of [undefined, []]) {
+      const made = await createBackup(db, { appBuild: 'test', nowIso: '2026-10-01T12:00:00.000Z', sessionIds });
+      const read = await verifyBackup(await readBackupText(made.blob));
+      if (!read.ok) throw new Error(read.problem);
+      expect(read.backup.file.goals?.entries).toEqual([first, second]);
+    }
+
+    const made = await createBackup(db, { appBuild: 'test', nowIso: '2026-10-01T12:00:00.000Z' });
+    const read = await verifyBackup(await readBackupText(made.blob));
+    if (!read.ok) throw new Error(read.problem);
+    const fresh = await openTestDb();
+    const freshCtx = makeTestContext(fresh, { nowIso: '2026-10-03T12:00:00.000Z' });
+    // A damaged entry is dropped on its own.
+    const goals = { entries: [...read.backup.file.goals!.entries, { id: 'x', view: 'nope' }] };
+    expect(await restoreGoals(freshCtx, goals)).toBe(2);
+    expect(await listGoals(freshCtx)).toEqual([first, second]);
+    expect(await restoreGoals(freshCtx, goals)).toBe(0);
+    expect(await restoreGoals(freshCtx, undefined)).toBe(0);
+    db.close();
+    fresh.close();
+  });
+
+  it('a phone with no goals writes no goals into its backup', async () => {
+    const { createBackup } = await import('@/lib/backup/create');
+    const { readBackupText } = await import('@/lib/backup/format');
+    const { verifyBackup } = await import('@/lib/backup/verify');
+    const db = await openTestDb();
+    const read = await verifyBackup(await readBackupText((await createBackup(db, { appBuild: 'test', nowIso: '2026-10-01T12:00:00.000Z' })).blob));
+    if (!read.ok) throw new Error(read.problem);
+    expect(read.backup.file.goals).toBeUndefined();
+    db.close();
+  });
+});

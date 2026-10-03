@@ -108,7 +108,10 @@ export async function verifyBackup(text: string): Promise<VerifyResult> {
     rawBoard === null
       ? undefined
       : { submissions: Array.isArray(rawBoard.submissions) ? rawBoard.submissions : [], challenges: Array.isArray(rawBoard.challenges) ? rawBoard.challenges : [] };
+  // goals.md §2a: the goal log is optional and read loosely here too; each entry is checked when restored.
+  const goals = isRecord(raw.goals) && Array.isArray(raw.goals.entries) ? { entries: raw.goals.entries } : undefined;
   const file = { ...(raw as unknown as BackupFile), preferences: prefs };
   delete file.board;
-  return { ok: true, backup: { file: board === undefined ? file : { ...file, board }, bytes } };
+  delete file.goals;
+  return { ok: true, backup: { file: { ...file, ...(board === undefined ? {} : { board }), ...(goals === undefined ? {} : { goals }) }, bytes } };
 }

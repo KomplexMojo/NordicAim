@@ -73,6 +73,16 @@ a separately maintained flag. Earlier entries for a pair stay in the log but are
   2 → 3 (`src/lib/store/db.ts`); the `upgrade` callback changes from its two early-return branches to cascading
   `if (oldVersion < N)` blocks (never skipping a store a still-older database is also missing).
 
+### 2a. Backup and restore (owner, 2026-10-03: "I did a restore and it doesn't look like my goals came back")
+
+Until then no backup held the goal log, so a restore onto a fresh phone lost every goal. Now **every backup** (a backup
+of chosen sessions too, since the goals are the owner's own, like the settings) carries the stored log as an optional
+top-level `"goals": { "entries": [...] }` (`backup/create.ts`); a phone with no goals writes none, and an older file has
+none. On restore (`restoreGoals`, `services/goals.ts`, after the rest of the restore) each entry is checked on its own
+with `GoalLogEntry`, and the log is **merged by `id`** with this phone's own: nothing is replaced or removed, and each
+entry keeps its `setAt`, so the current goal, the "since set" window and every session's goal checks (§8) read as they
+did. The restore message says "Your goals came back." when any entry was new.
+
 ## 3. Screen (`#/goals`, fourth tab)
 
 - Tab bar (`src/lib/app/nav.ts`, `src/components/nav/TabBar.tsx`): `MAIN_TABS` gains `{ id: 'goals', label: 'Goals',

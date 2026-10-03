@@ -16,6 +16,32 @@ import { getSettings } from '@/lib/store/settings-repo';
 
 import type { ServiceContext } from './context';
 
+/**
+ * goals.md §2a: a backup's goal log, added after the rest of a restore. Each entry is checked on its own; the log is
+ * append-only, so entries are merged by id with this phone's own (nothing is replaced or removed), and the current goal
+ * is again the latest `setAt` per pair. Returns how many entries were new to this phone.
+ */
+export async function restoreGoals(ctx: ServiceContext, goals: { entries: unknown[] } | undefined): Promise<number> {
+  if (goals === undefined) return 0;
+  const incoming = goals.entries.flatMap((raw) => {
+    const parsed = GoalLogEntry.safeParse(raw);
+    return parsed.success ? [parsed.data] : [];
+  });
+  if (incoming.length === 0) return 0;
+  const tx = ctx.db.transaction('goals', 'readwrite');
+  const stored = await getGoals(tx);
+  const known = new Set(stored.entries.map((e) => e.id));
+  const added: GoalLogEntry[] = [];
+  for (const entry of incoming) {
+    if (known.has(entry.id)) continue;
+    known.add(entry.id);
+    added.push(entry);
+  }
+  if (added.length > 0) await putGoals(tx, { ...stored, entries: [...stored.entries, ...added] });
+  await tx.done;
+  return added.length;
+}
+
 export async function listGoals(ctx: ServiceContext): Promise<GoalLogEntry[]> {
   return (await getGoals(ctx.db)).entries;
 }
