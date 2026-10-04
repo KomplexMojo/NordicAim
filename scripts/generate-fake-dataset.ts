@@ -115,10 +115,21 @@ interface Spec {
   roundsProne: number | null;
   roundsStanding: number | null;
 }
-function sightingSpec(): Spec {
-  const position: 'prone' | 'standing' = chance(0.55) ? 'prone' : 'standing';
-  const rounds = Math.round(uniform(2.5, 6.5));
+function sightingSpecAt(position: 'prone' | 'standing', rounds: number): Spec {
   return { template: 'sighting', position, roundsProne: position === 'prone' ? rounds : null, roundsStanding: position === 'standing' ? rounds : null };
+}
+/**
+ * domain/sighting-role.ts: a session's sighting-template targets get their `sight-in` / `confirm` role
+ * inferred from chronological order — the first is `sight-in`, any later one is `confirm`. A lone sighting
+ * target in a session can therefore never show up under Confirm; most real sessions that sight in at all
+ * shoot a sight-in (10 rounds) and then a tighter confirm (5 rounds) at the same position to check the
+ * zero, so that's the common case here too (65%); the rest are a sight-in with no confirm shot.
+ */
+function sightingPlan(): Spec[] {
+  const position: 'prone' | 'standing' = chance(0.55) ? 'prone' : 'standing';
+  const sightIn = sightingSpecAt(position, 10);
+  if (!chance(0.65)) return [sightIn];
+  return [sightIn, sightingSpecAt(position, 5)];
 }
 function precisionSpec(): Spec {
   const position: 'prone' | 'standing' = chance(0.5) ? 'prone' : 'standing';
@@ -128,8 +139,8 @@ function precisionSpec(): Spec {
 function sessionPlan(): Spec[] {
   const r = rand();
   if (r < 0.5) return [precisionSpec()];
-  if (r < 0.75) return [sightingSpec(), precisionSpec()];
-  if (r < 0.9) return [sightingSpec(), precisionSpec(), precisionSpec()];
+  if (r < 0.75) return [...sightingPlan(), precisionSpec()];
+  if (r < 0.9) return [...sightingPlan(), precisionSpec(), precisionSpec()];
   return [precisionSpec(), precisionSpec()];
 }
 
