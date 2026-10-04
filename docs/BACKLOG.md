@@ -18,6 +18,7 @@ as starting points to re-validate, not as current spec.
 | B10 | Capacitor native shell | Install as a native app via Xcode; one-tap Save to Photos. **No Apple Health.** | Web app covers the MVP | `docs/milestones/M20-capacitor-shell.md`, `M22-native-photos-share.md` |
 | B11 | Visual polish | Illustrated full-bleed landing, bottom nav, update prompt, full accessibility audit | MVP ships a clean, basic UI | `docs/milestones/M18-offline-polish.md` |
 | B12 | **Group pattern recognition and coaching suggestions** | When a target shows an obvious group pattern (offset, vertical, horizontal or diagonal stringing, two clusters, stray shots, scatter), suggest likely causes and things to check, per position | Future requirement (owner, 2026-09-15). Needs coach validation of thresholds and cause mappings, plus new inputs (handedness; optional shot order) | Draft spec: `docs/spec/group-patterns.md` (source: Biathlon Canada Technical Coaching Manual, fig. 4.43; not stored in repo) |
+| B13 | **Pull shooting context from 545 Coach** | Read-only, file-based import of sight/zero-click history, session wind, and metal-bout hit/miss logged in the separate 545 Coach app, shown alongside NordicAim's own precision reports | Future requirement (owner, 2026-10-04). Needs the 545 Coach developer to confirm export granularity; file import only, no runtime network calls | Draft spec: `docs/spec/coach-context-import.md` |
 
 ## Explicitly out of scope (not backlog)
 
