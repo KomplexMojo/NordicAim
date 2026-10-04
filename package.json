@@ -22,6 +22,7 @@
     "check:privacy": "node scripts/check-privacy.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm check:privacy",
     "render:samples": "tsx scripts/render-samples.ts",
+    "generate:fake-dataset": "tsx scripts/generate-fake-dataset.ts",
     "make:icons": "tsx scripts/make-icons.ts",
     "docs:screens": "node scripts/docs-screens.mjs",
     "make:test-sheets": "tsx scripts/make-test-sheets.mjs",
