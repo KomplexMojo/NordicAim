@@ -55,6 +55,18 @@ const seasonGlyphs = (line: string): Record<Season, string> => ({
     stroke('<line x1="22" y1="13" x2="22" y2="38" /><line x1="22" y1="24" x2="29" y2="19" /><line x1="22" y1="24" x2="15" y2="19" />', '#5A3410', 1.4),
 });
 
+/**
+ * All four season glyphs in one 44 × 44 box, 2×2 in cycle order (winter, spring / summer, fall): the season filter's
+ * "All" button (REV-154 follow-up, owner, 2026-10-04), in place of the word "All", so the button reads visually like
+ * its four siblings. `line` is winter's line colour (`currentColor` on the filter button, same as the solo glyph);
+ * spring, summer and fall keep their own fixed palette either way.
+ */
+export function renderAllSeasonsGlyph(line = LINE): string {
+  const glyphs = seasonGlyphs(line);
+  const quadrant = (season: Season, tx: number, ty: number): string => `<g transform="translate(${tx} ${ty}) scale(0.5)">${glyphs[season]}</g>`;
+  return quadrant('winter', 0, 0) + quadrant('spring', 22, 0) + quadrant('summer', 0, 22) + quadrant('fall', 22, 22);
+}
+
 const LIGHTING_GLYPH: Record<Exclude<Lighting, 'unknown'>, string> = {
   daylight: `<circle cx="22" cy="22" r="5.5" fill="${SUN}" />` + stroke(rays(22, 22, 9, 13, 8, 0), SUN),
   night: `<path d="M26 11 A11.5 11.5 0 1 0 33 28 A9.5 9.5 0 0 1 26 11 Z" fill="${LINE}" />`,

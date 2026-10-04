@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils';
 import { ViewMark } from './ViewMark';
 import { PATTERN_RANGE_LABEL, PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternRange, type PatternView } from '@/lib/patterns/collect';
 
-// patterns.md §3, broadest to most recent: the order the slider moves through, left to right. "Latest session" sits
-// on the right, since that's this session, and dragging left goes back in time (owner, 2026-09-30).
-const RANGE_ORDER: readonly PatternRange[] = ['all', '30', '20', '10', '5', 'last'];
+// patterns.md §3, most recent to broadest: the order the slider moves through, left to right. "Last" sits
+// on the left to match the tightest-to-loosest reading of the season row above it; dragging right widens the range.
+const RANGE_ORDER: readonly PatternRange[] = ['last', '5', '10', '20', '30', 'all'];
 // The slider's own tick text (owner, 2026-09-30): short enough at six stops to stay easy to read and to tap. "Last" for
 // the latest session, then how many of the most recent sessions (REV-156, in place of days back), then "All" (owner,
 // 2026-10-02). `PATTERN_RANGE_LABEL` (e.g. "Last 5 sessions") is still the accessible name and what the coach image uses.
@@ -83,7 +83,7 @@ function thumbCenterX(fraction: number): string {
 
 /**
  * patterns.md §1, §3 and analysis.md §1 (REV-123): the four views, and the range (most recent sessions) as a six-stop slider
- * ("Latest session" last, on the right), the same controls on Patterns and on Analysis.
+ * ("Last" first, on the left, widening to "All" on the right), the same controls on Patterns and on Analysis.
  */
 export function ViewRangeControls({ view, range, onView, onRange, testIdPrefix }: ViewRangeControlsProps) {
   const rangeIndex = Math.max(

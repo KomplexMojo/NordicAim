@@ -36,8 +36,11 @@ How many of the most recent sessions **that have shots in the view** to show (`f
 session** (default, owner, 2026-09-30), **Last 5**, **10**, **20**, **30 sessions**, **All sessions** (owner, 2026-10-03, in place of 3, 5, 10 and 20). Newest is the latest
 `session.sessionDate`, then the latest session creation time; each kept session brings all its shots. Fewer sessions than
 the range asks for keeps them all. Nothing counts back from today, so `patterns/` needs no date (owner, 2026-10-02: day
-ranges such as *30 days* went empty under a season out of its months). The slider's ticks read **All, 30, 20, 10, 5, Last**,
-above the track; `PATTERN_RANGE_LABEL` is each stop's accessible name. A saved address with an old day range (`range=90`) or the dropped
+ranges such as *30 days* went empty under a season out of its months). The slider's ticks read **Last, 5, 10, 20, 30, All**,
+above the track, left to right — ascending from the smallest session count to the largest, as a slider's min-to-max
+convention expects (owner, 2026-10-04; previously **All, 30, 20, 10, 5, Last**, descending, which read backwards). The
+season row's own leftmost **All** is unrelated: it's a categorical reset, not a point on a magnitude scale, so it keeps
+its own position. `PATTERN_RANGE_LABEL` is each stop's accessible name. A saved address with an old day range (`range=90`) or the dropped
 3-session stop falls back to the latest session (an old `range=30` now reads as 30 sessions). The dots and the summary change together.
 
 **What is shown, in a sentence** (`showingSentence`, `components/patterns/RangeShowing.tsx`): under the season row, on
