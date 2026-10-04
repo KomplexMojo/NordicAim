@@ -140,8 +140,7 @@ function sightingSpecAt(position: 'prone' | 'standing', rounds: number): Spec {
   return { template: 'sighting', position, roundsProne: position === 'prone' ? rounds : null, roundsStanding: position === 'standing' ? rounds : null };
 }
 function precisionSpecAt(position: 'prone' | 'standing'): Spec {
-  const rounds = chance(0.7) ? 10 : 5;
-  return { template: 'precision', position, roundsProne: position === 'prone' ? rounds : null, roundsStanding: position === 'standing' ? rounds : null };
+  return { template: 'precision', position, roundsProne: position === 'prone' ? 10 : null, roundsStanding: position === 'standing' ? 10 : null };
 }
 /**
  * owner, 2026-10-04: every session is a full range day — all four Patterns views (patterns/collect.ts
@@ -152,7 +151,13 @@ function precisionSpecAt(position: 'prone' | 'standing'): Spec {
  */
 function sessionPlan(): Spec[] {
   const sightingPosition: 'prone' | 'standing' = chance(0.5) ? 'prone' : 'standing';
-  return [sightingSpecAt(sightingPosition, 10), sightingSpecAt(sightingPosition, 5), precisionSpecAt('prone'), precisionSpecAt('standing')];
+  const confirmRounds = chance(0.5) ? 10 : 5;
+  return [
+    sightingSpecAt(sightingPosition, 10),
+    sightingSpecAt(sightingPosition, confirmRounds),
+    precisionSpecAt('prone'),
+    precisionSpecAt('standing'),
+  ];
 }
 
 const SESSION_NAMES = [
@@ -198,16 +203,15 @@ function toShot(p: { x: number; y: number }, doublePunch: boolean): Shot {
 }
 
 /**
- * One declared-rounds group of shots scattered around `(cx, cy)`. Rarely (4%) one round is a "double
- * punch" (two rounds through the same hole, `multiplicity: 2`) — then only `n - 1` holes are generated
- * so the identified unit count still lands on `n`, never overcounting. Separately, rarely (8%) a round
- * never shows up as a hole at all, leaving the group genuinely short.
+ * owner, 2026-10-04: every declared round is taken and recorded — no shortfalls. One declared-rounds
+ * group of shots scattered around `(cx, cy)`. Rarely (4%) one round is a "double punch" (two rounds
+ * through the same hole, `multiplicity: 2`): then only `n - 1` holes are generated so the identified
+ * unit count still lands exactly on `n`, matching the declared count either way.
  */
 function buildGroup(n: number, cx: number, cy: number, sigma: number): Shot[] {
   if (n <= 0) return [];
   const doublePunch = n >= 2 && chance(0.04);
-  const missing = !doublePunch && n > 1 && chance(0.08);
-  const holeCount = doublePunch || missing ? n - 1 : n;
+  const holeCount = doublePunch ? n - 1 : n;
   const points = Array.from({ length: holeCount }, () => ({ x: gaussian(cx, sigma), y: gaussian(cy, sigma) }));
   return points.map((p, i) => toShot(p, doublePunch && i === 0));
 }
@@ -227,12 +231,12 @@ function buildPhoto(spec: Spec, sessionId: string, captureTime: Date, center: { 
   const categorization: Categorization = { template: spec.template, position: spec.position, roundsProne: spec.roundsProne, roundsStanding: spec.roundsStanding };
   const shots = buildShots(spec, center, sigmaProne, sigmaStanding);
 
-  // Occasionally the disc wasn't found and the overlay guess stood in (status.ts rule 9: needs-attention,
-  // alignment-uncertain) — rare, but real enough to be worth a few in a demo/test dataset.
-  const alignmentMethod: 'cv' | 'manual' | 'overlay' = weighted([
-    ['cv', 86],
+  // owner, 2026-10-04: every target counts (patterns/collect.ts isIncluded needs `cv` or `manual` and an
+  // 'analyzed' status), so the alignment is never the overlay guess here — that would drop the whole
+  // target out of Patterns and off its declared count.
+  const alignmentMethod: 'cv' | 'manual' = weighted([
+    ['cv', 90],
     ['manual', 10],
-    ['overlay', 4],
   ] as const);
   const alignmentConfidence = alignmentMethod === 'cv' ? round2(uniform(0.82, 0.99)) : null;
   const blurry = chance(0.05);
