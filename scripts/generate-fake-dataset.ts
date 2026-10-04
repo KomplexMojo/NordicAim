@@ -6,8 +6,12 @@
 // internally-consistent, schema-valid data, just with no pixels behind it. Board submissions are signed
 // with freshly generated Ed25519 keys (Node's WebCrypto), exactly as `verifySubmission` checks them.
 //
-// Usage: tsx scripts/generate-fake-dataset.ts [--count=100] [--seed=20261004] [--out=path.json]
+// Usage: tsx scripts/generate-fake-dataset.ts [--seed=20261004] [--out=path.json]
 // Open it from the app's own Settings -> Backup -> choose this file -> Restore (or the `/demo` route).
+//
+// Shape (owner, 2026-10-04): 25 sessions, split 12 winter / 3 spring / 3 summer / 7 fall
+// (SEASON_SPLIT below), each with all four Patterns views — sight-in, confirm, precision prone and
+// precision standing — so every session is a full range day, not a sampled subset of one.
 
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -41,7 +45,6 @@ function argVal(name: string, fallback: string): string {
   const hit = process.argv.find((a) => a.startsWith(prefix));
   return hit === undefined ? fallback : hit.slice(prefix.length);
 }
-const SESSION_COUNT = Number(argVal('count', '100'));
 const SEED = Number(argVal('seed', '20261004'));
 const OUT = argVal('out', `${REPO_ROOT}public/demo/nordic-aim-fake-dataset.json`);
 
@@ -88,21 +91,39 @@ const addDays = (d: Date, days: number): Date => new Date(d.getTime() + days * 8
 const addMinutes = (d: Date, minutes: number): Date => new Date(d.getTime() + minutes * 60_000);
 
 const TODAY = new Date();
-/** `count - 1` gaps, averaging ~2.8 days, rescaled to span one training season ending a few days ago. */
-function seasonDates(count: number): Date[] {
-  if (count <= 1) return [addDays(TODAY, -4)];
-  const gaps = Array.from({ length: count - 1 }, () => Math.max(0.4, gaussian(2.8, 1.6)));
-  const totalGapDays = gaps.reduce((a, b) => a + b, 0);
-  const scale = 330 / totalGapDays;
-  const offsets = [0];
-  let t = 0;
-  for (const g of gaps) {
-    t += g * scale;
-    offsets.push(t);
+
+/** owner, 2026-10-04: 12 winter, 3 spring, 3 summer, 7 fall — 25 sessions total. */
+const SEASON_SPLIT: ReadonlyArray<{ season: 'winter' | 'spring' | 'summer' | 'fall'; count: number }> = [
+  { season: 'winter', count: 12 },
+  { season: 'spring', count: 3 },
+  { season: 'summer', count: 3 },
+  { season: 'fall', count: 7 },
+];
+const SESSION_COUNT = SEASON_SPLIT.reduce((sum, s) => sum + s.count, 0);
+
+/**
+ * The calendar window a season's dates are drawn from, matching `suggestSeason` (domain/season.ts): winter
+ * spans the turn of the year (Dec of `year - 1` through Feb of `year`); fall runs up to a few days before
+ * today, so the most recent session always reads as "now". `year` is today's UTC year.
+ */
+function seasonWindow(season: 'winter' | 'spring' | 'summer' | 'fall', year: number): [Date, Date] {
+  if (season === 'winter') return [new Date(Date.UTC(year - 1, 11, 1)), new Date(Date.UTC(year, 1, 28))];
+  if (season === 'spring') return [new Date(Date.UTC(year, 2, 1)), new Date(Date.UTC(year, 4, 31))];
+  if (season === 'summer') return [new Date(Date.UTC(year, 5, 1)), new Date(Date.UTC(year, 7, 31))];
+  return [new Date(Date.UTC(year, 8, 1)), addDays(TODAY, -4)];
+}
+
+/** One date per session, in chronological order: winter first, fall (most recent) last, matching SEASON_SPLIT. */
+function seasonDates(): Date[] {
+  const year = TODAY.getUTCFullYear();
+  const dates: Date[] = [];
+  for (const { season, count } of SEASON_SPLIT) {
+    const [start, end] = seasonWindow(season, year);
+    const spanDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+    const offsets = Array.from({ length: count }, () => Math.round(uniform(0, spanDays))).sort((a, b) => a - b);
+    for (const offset of offsets) dates.push(addDays(start, offset));
   }
-  const lastOffset = offsets[offsets.length - 1]!;
-  const start = addDays(TODAY, -Math.round(lastOffset) - 4);
-  return offsets.map((off) => addDays(start, Math.round(off)));
+  return dates;
 }
 
 // ======================================================================================
@@ -118,30 +139,20 @@ interface Spec {
 function sightingSpecAt(position: 'prone' | 'standing', rounds: number): Spec {
   return { template: 'sighting', position, roundsProne: position === 'prone' ? rounds : null, roundsStanding: position === 'standing' ? rounds : null };
 }
-/**
- * domain/sighting-role.ts: a session's sighting-template targets get their `sight-in` / `confirm` role
- * inferred from chronological order — the first is `sight-in`, any later one is `confirm`. A lone sighting
- * target in a session can therefore never show up under Confirm; most real sessions that sight in at all
- * shoot a sight-in (10 rounds) and then a tighter confirm (5 rounds) at the same position to check the
- * zero, so that's the common case here too (65%); the rest are a sight-in with no confirm shot.
- */
-function sightingPlan(): Spec[] {
-  const position: 'prone' | 'standing' = chance(0.55) ? 'prone' : 'standing';
-  const sightIn = sightingSpecAt(position, 10);
-  if (!chance(0.65)) return [sightIn];
-  return [sightIn, sightingSpecAt(position, 5)];
-}
-function precisionSpec(): Spec {
-  const position: 'prone' | 'standing' = chance(0.5) ? 'prone' : 'standing';
+function precisionSpecAt(position: 'prone' | 'standing'): Spec {
   const rounds = chance(0.7) ? 10 : 5;
   return { template: 'precision', position, roundsProne: position === 'prone' ? rounds : null, roundsStanding: position === 'standing' ? rounds : null };
 }
+/**
+ * owner, 2026-10-04: every session is a full range day — all four Patterns views (patterns/collect.ts
+ * `PATTERN_VIEWS`). domain/sighting-role.ts infers `sight-in` / `confirm` from chronological order within
+ * a session (the first sighting-template target is `sight-in`, any later one is `confirm`), so the pair
+ * below — built and timestamped in this order — always lands on both roles, at whichever position the
+ * owner sighted in at that day. Precision always covers both prone and standing.
+ */
 function sessionPlan(): Spec[] {
-  const r = rand();
-  if (r < 0.5) return [precisionSpec()];
-  if (r < 0.75) return [...sightingPlan(), precisionSpec()];
-  if (r < 0.9) return [...sightingPlan(), precisionSpec(), precisionSpec()];
-  return [precisionSpec(), precisionSpec()];
+  const sightingPosition: 'prone' | 'standing' = chance(0.5) ? 'prone' : 'standing';
+  return [sightingSpecAt(sightingPosition, 10), sightingSpecAt(sightingPosition, 5), precisionSpecAt('prone'), precisionSpecAt('standing')];
 }
 
 const SESSION_NAMES = [
@@ -307,7 +318,7 @@ function buildPhoto(spec: Spec, sessionId: string, captureTime: Date, center: { 
   return { photo, analysis };
 }
 
-const dates = seasonDates(SESSION_COUNT);
+const dates = seasonDates();
 const sessions: BiathlonSession[] = [];
 const photos: TargetPhoto[] = [];
 const analyses: TargetAnalysis[] = [];
