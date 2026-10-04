@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { activeTab, showsTabBar } from '@/lib/app/nav';
 import { ServicesProvider } from '@/lib/app/services';
 import { CapturePage } from '@/routes/capture/CapturePage';
+import { DemoPage } from '@/routes/demo/DemoPage';
 import { DiagnosticsPage } from '@/routes/diagnostics/DiagnosticsPage';
 import { HomePage } from '@/routes/home/HomePage';
 import { MetadataPage } from '@/routes/metadata/MetadataPage';
@@ -86,6 +87,9 @@ const router = createHashRouter([
           // M22 (REV-47, REV-48): Settings, and its full-screen backing-card capture.
           { path: '/settings', element: <SettingsPage /> },
           { path: '/verify', element: <VerifyPage /> },
+          // A link anyone can open to see Nordic Aim pre-populated with a fake season, Goals history and
+          // Board: writes nothing until the visitor taps "Load demo data" (DemoPage).
+          { path: '/demo', element: <DemoPage /> },
           { path: '/settings/backing-card', element: <BackingCardPage /> },
           // M26 (REV-121, template-reference.md §2): the full-screen blank-sheet capture.
           { path: '/settings/template-sheet/:template', element: <TemplateSheetPage /> },
