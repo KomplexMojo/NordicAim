@@ -51,8 +51,10 @@ asked for), *Showing your latest session.* A season with no sessions in the view
 ### 3a. Season (REV-154, issue #29)
 
 Under the range, one row of five small buttons (`components/patterns/SeasonFilter.tsx`, `testIdPrefix-season-<id>`):
-**All** (default), then **Winter**, **Spring**, **Summer**, **Fall** as the summary image's season pictograms (REV-108,
-`renderSeasonGlyph`). A shot's season is its target's (`targetSeason`): the season chosen on the photo (REV-79), else
+**All** (default, all four season pictograms in a line, same size as the others, owner 2026-10-04 — the four season
+buttons share whatever width is left over), then **Winter**, **Spring**, **Summer**, **Fall** as the summary image's
+season pictograms (REV-108, `renderSeasonGlyph`). A shot's season is its target's (`targetSeason`): the season chosen
+on the photo (REV-79), else
 its capture date's (`suggestSeason`), else the session date's. `filterBySeason` runs **before** the range, so
 *Last 5* under Winter is the last five winter sessions. The choice lives in the address (`season=`, absent = All)
 with the view and range. The same row, with the same rule, is on Analysis (`analysis.md` §1), Goals (`goals.md` §3)
