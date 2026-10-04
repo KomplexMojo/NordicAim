@@ -5,6 +5,7 @@ import type { Characteristics } from '../scoring/characteristics';
 import { ShotPosition, StageState, TemplateId, Warning } from './enums';
 import { Id, ShotId, UtcIso } from './primitives';
 import { Calibration } from './photo';
+import { ReferenceUsed } from './template-reference';
 
 export const Shot = z
   .object({
@@ -56,6 +57,9 @@ export const DetectionRecord = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .nullable()
     .optional(),
+  // REV-121 (template-reference.md §4): the reference sheet detection used; null or absent when it used the
+  // geometric masks alone, which is always the case until §6 is implemented.
+  reference: ReferenceUsed.nullable().optional(),
 });
 export type DetectionRecord = z.infer<typeof DetectionRecord>;
 
@@ -164,7 +168,7 @@ export interface SubsetResult {
 export interface AnalysisResult {
   engineVersion: string;
   template: 'sighting' | 'precision';
-  position: 'prone' | 'standing' | 'both';
+  position: 'prone' | 'standing';
   subsets: SubsetResult[];
   all: SubsetResult;
 }
@@ -173,7 +177,7 @@ export interface AnalysisResult {
 export const AnalysisResultSchema: z.ZodType<AnalysisResult> = z.object({
   engineVersion: z.string(),
   template: z.enum(['sighting', 'precision']),
-  position: z.enum(['prone', 'standing', 'both']),
+  position: z.enum(['prone', 'standing']),
   subsets: z.array(z.custom<SubsetResult>()),
   all: z.custom<SubsetResult>(),
 });
@@ -185,7 +189,15 @@ export const TargetAnalysis = z.object({
   shots: z.array(Shot),
   pipeline: PipelineState,
   updatedAt: UtcIso,
-  computed: z.object({ engineVersion: z.string(), result: AnalysisResultSchema }).nullable(),
+  // REV-153: a result stored for an old `both` target reads as not yet computed, so it is scored again as prone.
+  computed: z.preprocess(
+    (c) => ((c as { result?: { position?: unknown } } | null)?.result?.position === 'both' ? null : c),
+    z.object({ engineVersion: z.string(), result: AnalysisResultSchema }).nullable(),
+  ),
+  // leaderboard.md §3 (issue #42): the automatic shots, kept the first time the owner corrects an automatically scored target,
+  // so a correction can be compared with what the app found. Absent while nothing was corrected (the shots are then the
+  // baseline themselves) and on targets corrected before it was kept.
+  autoBaseline: z.object({ shots: z.array(Shot), recordedAt: UtcIso }).nullable().optional(),
 });
 export type TargetAnalysis = z.infer<typeof TargetAnalysis>;
 

@@ -7,9 +7,14 @@ import { Label } from '@/components/ui/label';
 import { HANDEDNESS_LABEL, Handedness, MAX_ATHLETE_CLUB, MAX_ATHLETE_NAME } from '@/lib/domain/settings';
 import { MIN_PASSPHRASE_LENGTH } from '@/lib/provenance/key';
 
+import { AthletePicturePicker } from './AthletePicturePicker';
+
 interface AthleteSettingsProps {
   name: string;
   club: string;
+  /** REV-157: the athlete's picture, or null. */
+  picture: string | null;
+  onPictureChange(picture: string | null): Promise<void>;
   /** The trigger hand (REV-113): a property of the athlete. Changing it re-checks every stored target. */
   handedness: Handedness;
   onHandednessChange(next: Handedness): void;
@@ -27,7 +32,7 @@ interface AthleteSettingsProps {
  * REV-99/REV-100: Settings → Athlete: the name and ski club printed on every summary image, and the passphrase behind the provenance
  * stamp (docs/spec/provenance.md). The passphrase is used once to make the key and is never stored.
  */
-export function AthleteSettings({ name, club, handedness, onHandednessChange, fingerprint, keyPresent, onSave, onSetPassphrase, onUnlock }: AthleteSettingsProps) {
+export function AthleteSettings({ name, club, picture, onPictureChange, handedness, onHandednessChange, fingerprint, keyPresent, onSave, onSetPassphrase, onUnlock }: AthleteSettingsProps) {
   const [draft, setDraft] = useState({ name, club });
   const [passphrase, setPassphrase] = useState('');
   const [busy, setBusy] = useState(false);
@@ -83,6 +88,8 @@ export function AthleteSettings({ name, club, handedness, onHandednessChange, fi
         />
       </div>
 
+      <AthletePicturePicker picture={picture} name={draft.name} onChange={onPictureChange} />
+
       <fieldset className="flex flex-col gap-1">
         <legend className="mb-1 text-sm font-medium">Handedness</legend>
         <div className="grid grid-cols-2 gap-2">
@@ -134,7 +141,8 @@ export function AthleteSettings({ name, club, handedness, onHandednessChange, fi
           aria-describedby="athlete-passphrase-help"
         />
         <p id="athlete-passphrase-help" className="text-xs text-muted-foreground">
-          At least {MIN_PASSPHRASE_LENGTH} characters. A short or common phrase can be guessed from a stamp: use a sentence.
+          At least {MIN_PASSPHRASE_LENGTH} characters. Anyone holding a stamp or a backup file can try guesses offline, so use a
+          sentence of four or more words nobody would guess. It also protects backups when you choose to.
         </p>
       </div>
       <div className="flex gap-2">

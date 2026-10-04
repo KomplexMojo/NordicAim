@@ -8,7 +8,6 @@ import { analyzeTarget } from '@/lib/scoring/analyze';
 import { scoreRing } from '@/lib/scoring/precision';
 import {
   mergeReconcileWarnings,
-  reconcileReasonContext,
   reconcileShots,
   type DetectionMethod,
 } from '@/lib/scoring/reconcile-shots';
@@ -167,24 +166,6 @@ describe('reconcileShots: owner overrides win (analysis-pipeline §8, M20 step 8
   });
 });
 
-describe('reconcileShots: a both target is reconciled per subset (Pitfalls)', () => {
-  const both: Categorization = { template: 'precision', position: 'both', roundsProne: 5, roundsStanding: 5 };
-
-  it('says which position was rejected', () => {
-    // 13 holes: the 5 outermost are standing (§7), the other 8 are prone — 3 over.
-    const r = run(autos(13), both);
-    expect(r.rejected).toEqual([{ position: 'prone', holesFound: 8, declared: 5 }]);
-    expect(r.warnings).toEqual(['too-many-holes']);
-    const ctx = reconcileReasonContext(autos(13), both, 'colour', TEST_MAX_PLAUSIBLE_HOLES);
-    expect(ctx).toMatchObject({ holesFound: 8, rejectedDeclared: 5, rejectedPosition: 'prone' });
-  });
-
-  it('short: misses are counted per subset', () => {
-    const r = run(autos(8), both);
-    expect(r.missesAssumed).toBe(2);
-  });
-});
-
 describe('REV-43 (M20 Open question 1): a located hole outside the scoring area is a ring-zero unit', () => {
   it('beyond ring 1 already scores 0 under geometry-scoring §4 — no extra case is needed', () => {
     expect(scoreRing(80.01).ring).toBe(0);
@@ -245,14 +226,6 @@ describe('reconcileShots: maxPlausibleHoles safety net (owner instruction, 2026-
     expect(r.rejected).toEqual([]);
   });
 
-  it('splits per subset on a both target, exactly like the ordinary reject path', () => {
-    const both: Categorization = { template: 'precision', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const r = reconcileShots({ shots: autos(13), categorization: both, method: 'colour', maxPlausibleHoles: 5 });
-    expect(r.rejected).toEqual([
-      { position: 'prone', holesFound: 8, declared: 5 },
-      { position: 'standing', holesFound: 5, declared: 5 },
-    ]);
-  });
 });
 
 describe('mergeReconcileWarnings', () => {

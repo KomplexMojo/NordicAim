@@ -1,6 +1,7 @@
 // REV-118: the summary image's analysis band, laid out as a small table on the left and the session notes in a box on the right, instead
 // of one ragged list of lines. Pure: takes a model, returns its height and its SVG.
 
+import { crossPath, tickPath } from './composite-goals';
 import { PALETTE } from './palette';
 import { renderScoringIcon } from './scoring-icons';
 import { el, text } from './svg';
@@ -18,6 +19,16 @@ export interface BandRow {
   scores: Record<Rule, string> | null;
 }
 
+/** REV-148: one goal in effect when the session was created, and whether the session's own value met it. */
+export interface GoalBandRow {
+  /** The view (`Precision prone`), on its first row only; '' after. */
+  view: string;
+  metric: string;
+  value: string;
+  goal: string;
+  met: boolean | null;
+}
+
 export interface BandModel {
   /** `Scoring: <method>`. */
   scoring: string;
@@ -26,6 +37,8 @@ export interface BandModel {
   showRules: boolean;
   /** Extra plain lines under the table (a single target's footer lines, `+N more target(s)`). */
   extra: string[];
+  /** REV-148: the session's goal checks; none when no goal was in effect. */
+  goals: GoalBandRow[];
   notes: string | null;
   athlete: string | null;
   footer: string;
@@ -95,6 +108,29 @@ export function layoutBand(model: BandModel, bandY: number): { height: number; s
   for (const line of model.extra) {
     y += ROW;
     body += text(40, y, 18, line, ink);
+  }
+  if (model.goals.length > 0) {
+    // REV-148: the goals in effect when the session was created, this session's own value, and met (✓) or not (✗).
+    y += 46;
+    const [metricX, valueX, goalX, markX] = [250, 500, 650, 800];
+    body += text(40, y, 16, 'Goals', { bold: true, ...soft });
+    body += text(valueX, y, 16, 'This session', { bold: true, ...soft });
+    body += text(goalX, y, 16, 'Goal', { bold: true, ...soft });
+    body += el('line', { x1: 40, y1: y + 12, x2: markX + 30, y2: y + 12, stroke: PALETTE.panelBorder, 'stroke-width': 1.5 });
+    for (const row of model.goals) {
+      y += ROW;
+      if (row.view !== '') body += text(40, y, 18, row.view, ink);
+      body += text(metricX, y, 18, row.metric, ink);
+      body += text(valueX, y, 18, row.value, ink);
+      body += text(goalX, y, 18, row.goal, ink);
+      const mark =
+        row.met === true
+          ? tickPath(markX + 10, y - 6, 18, PALETTE.goalMet, 3.5)
+          : row.met === false
+            ? crossPath(markX + 10, y - 6, 14, PALETTE.goalMissed, 3.5)
+            : text(markX + 4, y, 18, '—', soft);
+      body += el('g', { class: 'goal-mark', 'data-met': String(row.met) }, mark);
+    }
   }
   const leftBottom = y + 16;
 

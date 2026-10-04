@@ -12,8 +12,12 @@ import { MetadataPage } from '@/routes/metadata/MetadataPage';
 import { ResultsPage } from '@/routes/results/ResultsPage';
 import { ReviewPage } from '@/routes/review/ReviewPage';
 import { PatternsPage } from '@/routes/patterns/PatternsPage';
+import { AnalysisPage } from '@/routes/analysis/AnalysisPage';
+import { GoalsPage } from '@/routes/goals/GoalsPage';
+import { BoardPage } from '@/routes/board/BoardPage';
 import { SessionRedirect } from '@/routes/sessions/SessionRedirect';
 import { BackingCardPage } from '@/routes/settings/BackingCardPage';
+import { TemplateSheetPage } from '@/routes/settings/TemplateSheetPage';
 import { VerifyPage } from '@/routes/verify/VerifyPage';
 import { SettingsPage } from '@/routes/settings/SettingsPage';
 import { TargetPage } from '@/routes/target/TargetPage';
@@ -32,7 +36,7 @@ function ServicesLayout() {
 }
 
 /**
- * REV-47 (analysis-pipeline §1): every screen sits above the three-tab bar, except the full-screen capture
+ * REV-47 (analysis-pipeline §1), REV-136: every screen sits above the three-tab bar, except the full-screen capture
  * screens. The page is padded by the bar's height plus the safe-area inset so the bar never covers content.
  */
 function AppShell() {
@@ -64,6 +68,12 @@ const router = createHashRouter([
           // REV-72: the session list is Home; an old link to the removed Sessions screen goes there.
           { path: '/sessions', element: <Navigate to="/" replace /> },
           { path: '/patterns', element: <PatternsPage /> },
+          // REV-123 (issue #57): trends over time, one point per session.
+          { path: '/analysis', element: <AnalysisPage /> },
+          // M27 (goals.md): a target value per (view, metric), drawn on the same charts as Analysis.
+          { path: '/goals', element: <GoalsPage /> },
+          // Issue #42 (leaderboard.md): your top 5 per position, and the shooters received from others.
+          { path: '/board', element: <BoardPage /> },
           { path: '/sessions/:sid', element: <SessionRedirect /> },
           { path: '/sessions/:sid/capture', element: <CapturePage /> },
           { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
@@ -77,6 +87,8 @@ const router = createHashRouter([
           { path: '/settings', element: <SettingsPage /> },
           { path: '/verify', element: <VerifyPage /> },
           { path: '/settings/backing-card', element: <BackingCardPage /> },
+          // M26 (REV-121, template-reference.md §2): the full-screen blank-sheet capture.
+          { path: '/settings/template-sheet/:template', element: <TemplateSheetPage /> },
         ],
       },
       { path: '/diagnostics', element: <DiagnosticsPage /> },

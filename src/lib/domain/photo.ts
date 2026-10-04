@@ -75,7 +75,18 @@ export const LightingSuggestion = z.object({
 });
 export type LightingSuggestion = z.infer<typeof LightingSuggestion>;
 
-export const Categorization = z.object({
+/**
+ * REV-153 (issue #25, owner 2026-10-01): `both` is gone. A target stored as `both` reads as **prone**, its prone and standing
+ * rounds added together, and is re-scored as one prone target (`DIAGRAM_RENDERER_VERSION` 13). Exported for its test.
+ */
+export function upgradeBothCategorization(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null || (raw as { position?: unknown }).position !== 'both') return raw;
+  const c = raw as { roundsProne?: number | null; roundsStanding?: number | null };
+  const rounds = (c.roundsProne ?? 0) + (c.roundsStanding ?? 0);
+  return { ...raw, position: 'prone', roundsProne: rounds === 0 ? null : rounds, roundsStanding: null };
+}
+
+const CategorizationShape = z.object({
   template: TemplateId.nullable(),
   position: Position.nullable(),
   roundsProne: z.number().int().min(1).max(50).nullable(),
@@ -83,7 +94,8 @@ export const Categorization = z.object({
   // REV-67: a sighting target's role. null = not chosen; `sightingRoles` infers it by order.
   sightingRole: z.enum(['sight-in', 'confirm']).nullable().optional(),
 });
-export type Categorization = z.infer<typeof Categorization>;
+export const Categorization = z.preprocess(upgradeBothCategorization, CategorizationShape);
+export type Categorization = z.infer<typeof CategorizationShape>;
 
 export const TargetPhoto = z.object({
   schemaVersion: z.literal(1),
@@ -111,5 +123,8 @@ export const TargetPhoto = z.object({
   notes: z.string().max(1000).nullable(),
   status: PhotoStatus, // computed by photoStatus (analysis-pipeline §4); never set by UI code
   reasons: z.array(Reason),
+  // REV-158: the stored original no longer holds where it was taken (`media/strip-location.ts`), and `exif.gps` is null.
+  // Absent for a photo stored before this, or restored from an older backup, until `removeStoredLocations` has done it.
+  locationRemoved: z.boolean().optional(),
 });
 export type TargetPhoto = z.infer<typeof TargetPhoto>;

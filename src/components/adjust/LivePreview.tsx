@@ -42,7 +42,7 @@ export function LivePreview({ result, status, reasons, hintTemplate, declared, r
         {result === null ? (
           reconcile === null && (
             <p className="text-sm text-muted-foreground">
-              Add this target&apos;s template, position and rounds on the metadata screen to see a score here.
+              Add this target&apos;s type and rounds on the metadata screen to see a score here.
             </p>
           )
         ) : (

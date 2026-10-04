@@ -84,6 +84,7 @@ test('summary: changing declared rounds rebuilds the summary (new artifact id)',
   await page.goto(`/#/sessions/${sessionId}/metadata`);
   // Capture order: sighting first, precision second (analysis-pipeline §10).
   const sightingMetadataCard = page.getByTestId('photo-metadata-card').nth(0);
+  await sightingMetadataCard.getByTestId('photo-card-toggle').click(); // issue #79: complete cards start collapsed
   const roundsProne = sightingMetadataCard.locator('input[id$="-rounds-prone"]');
   await expect(roundsProne).toHaveValue('10', { timeout: 30_000 });
   await roundsProne.fill('11');

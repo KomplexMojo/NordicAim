@@ -1,6 +1,7 @@
-// rendering-composite.md §7. Browser-only: shares (or downloads) the session summary image PNG. The
-// share rule (AGENTS.md): this is the only image the app ever hands to the share sheet or a download, apart from
-// a backup the owner explicitly creates (`shareBackup`, backup.md).
+// rendering-composite.md §7. Browser-only: shares (or downloads) a stored image PNG. The share rule (AGENTS.md): the
+// session summary (`CompositeArtifact`) and the coach image (`TrendsArtifact`, REV-124) are the only images the app ever
+// hands to the share sheet or a download, apart from a backup the owner explicitly creates (`shareBackup`, backup.md) and,
+// leaderboard.md §6, a signed board submission or board file (shot positions only, no photo, no GPS: `shareBoardFile`).
 
 export type ShareOutcome = 'web-share' | 'download' | 'cancelled';
 
@@ -49,7 +50,7 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
  * to a download rather than failing.
  */
 export async function shareBackup(file: Blob, fileName: string): Promise<ShareOutcome> {
-  const asFile = new File([file], fileName, { type: 'application/json' });
+  const asFile = new File([file], fileName, { type: file.type || 'application/json' });
   const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean };
   if (typeof nav.canShare === 'function' && nav.canShare({ files: [asFile] })) {
     try {
@@ -60,5 +61,25 @@ export async function shareBackup(file: Blob, fileName: string): Promise<ShareOu
     }
   }
   downloadViaAnchor(file, fileName);
+  return 'download';
+}
+
+/**
+ * leaderboard.md §6 (issue #42): hands a signed submission or a whole board (JSON: names, clubs and shot positions; never a photo or
+ * GPS) to the share sheet, or downloads it. Only ever called from the Board screen's Share buttons.
+ */
+export async function shareBoardFile(text: string, fileName: string, title: string): Promise<ShareOutcome> {
+  const blob = new Blob([text], { type: 'application/json' });
+  const asFile = new File([blob], fileName, { type: 'application/json' });
+  const nav = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean };
+  if (typeof nav.canShare === 'function' && nav.canShare({ files: [asFile] })) {
+    try {
+      await navigator.share({ files: [asFile], title });
+      return 'web-share';
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
+    }
+  }
+  downloadViaAnchor(blob, fileName);
   return 'download';
 }

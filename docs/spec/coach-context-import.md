@@ -1,6 +1,6 @@
 # Spec (DRAFT, post-MVP): pulling shooting context from 545 Coach
 
-> **Status: draft, backlog B13.** Not part of the MVP and not to be implemented until the owner approves it, the 545
+> **Status: draft, backlog B15.** Not part of the MVP and not to be implemented until the owner approves it, the 545
 > Coach developer confirms what their export can actually produce, and a milestone is written. Field names and the
 > storage shape below are starting points for that validation, not decisions.
 

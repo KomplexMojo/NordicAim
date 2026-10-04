@@ -124,17 +124,18 @@ export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProp
                 saved in Adjust, {leftOut === 1 ? 'it joins' : 'they join'} the summary.
               </p>
             )}
+            {/* Issue #85: Share is the payoff and comes first; rebuilding by hand is a quiet secondary action. */}
+            <Button className="h-11" onClick={() => void handleShare()} disabled={sharing} data-testid="summary-share">
+              Share
+            </Button>
             <Button
-              variant="outline"
-              className="h-11"
+              variant="ghost"
+              className="h-11 text-muted-foreground"
               onClick={() => scheduleSummaryRebuild(sessionId)}
               disabled={pending}
               data-testid="summary-rebuild"
             >
               {pending ? 'Updating…' : 'Update summary'}
-            </Button>
-            <Button className="h-11" onClick={() => void handleShare()} disabled={sharing} data-testid="summary-share">
-              Share
             </Button>
           </>
         )}

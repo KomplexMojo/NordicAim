@@ -61,7 +61,11 @@ async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'preci
 
 test('precision + prone: fake camera capture is stored with its overlay prior, then Done shows 1 photo', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
+  // Issue #83: with nothing captured Done is quiet (the shutter is the strong action), but it still works.
+  await expect(page.getByTestId('capture-done')).toHaveAttribute('data-emphasis', 'quiet');
+  await expect(page.getByTestId('capture-done')).toBeEnabled();
   await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await expect(page.getByTestId('capture-done')).toHaveAttribute('data-emphasis', 'primary');
 
   const photos = await listPhotos(page, sessionId);
   expect(photos).toHaveLength(1);
@@ -87,6 +91,29 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
   await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
   await expect(page.getByTestId('metadata-photo-count')).toHaveText('1 photo');
+});
+
+test('the phone camera and Photos import sit behind More options, and show at once when there is no camera (issue #82)', async ({ page }) => {
+  const sessionId = await createSessionViaHome(page);
+  // No camera here: the options are the only way in, so they show open with no toggle. The engines word it differently
+  // (Chromium: no camera found; WebKit: access denied), and both point to the options below.
+  await expect(page.getByRole('alert')).toContainText(/Photos import below/);
+  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'More options' })).toHaveCount(0);
+
+  // With a working camera they are tucked away; the Size slider stays visible.
+  await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
+  await expect(page.getByText('FAKE CAMERA')).toBeVisible();
+  await expect(page.getByRole('slider', { name: 'Size' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeHidden();
+  const more = page.getByRole('button', { name: 'More options' });
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await expect(more).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Import from Photos' })).toBeVisible();
+  await more.click();
+  await expect(page.getByRole('button', { name: 'Import from Photos' })).toBeHidden();
 });
 
 test('sight in: prone, ten rounds, role stored; confirm: five rounds (REV-79)', async ({ page }) => {

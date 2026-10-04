@@ -159,6 +159,23 @@ describe('markManualShots (M13 step 4)', () => {
 });
 
 describe('saveAdjustments (analysis-pipeline §8)', () => {
+  it('leaderboard.md §3: the first correction of a scored target keeps its automatic shots, and later ones keep that snapshot', async () => {
+    const stored = autoShot('auto-1', 1.4, -0.8);
+    const { ctx, photoId } = await seed({ shots: [stored] });
+    const scored = (await getAnalysisRecord(ctx.db, photoId))!;
+    const result = { engineVersion: '1', template: 'precision' as const, position: 'prone' as const, subsets: [], all: {} as never };
+    await putAnalysisRecord(ctx.db, { ...scored, computed: { engineVersion: '1', result } });
+
+    await saveAdjustments(ctx, photoId, { shots: [{ ...stored, xMm: 0 }] });
+    const first = await getAnalysisRecord(ctx.db, photoId);
+    expect(first?.autoBaseline?.shots).toEqual([stored]);
+
+    await saveAdjustments(ctx, photoId, { calibration: MOVED_CAL });
+    const second = await getAnalysisRecord(ctx.db, photoId);
+    expect(second?.autoBaseline).toEqual(first?.autoBaseline);
+    ctx.db.close();
+  });
+
   it('saves a moved calibration as manual, with alignment method manual and stageB pending', async () => {
     const { ctx, photoId } = await seed();
 
@@ -401,6 +418,28 @@ describe('saving shots confirms the capped set (owner report 2026-09-19)', () =>
   });
 });
 
+describe('saving the alignment answers the sheet markers (REV-144)', () => {
+  it('clears sheet-markers-disagree when the owner saves an alignment', async () => {
+    const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)], warnings: ['sheet-markers-disagree', 'image-blurry'] });
+
+    await saveAdjustments(ctx, photoId, { calibration: MOVED_CAL });
+
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.warnings).toEqual(['image-blurry']);
+    ctx.db.close();
+  });
+
+  it('keeps it when only shots were saved', async () => {
+    const shot = autoShot('auto-1', 1, 1);
+    const { ctx, photoId } = await seed({ shots: [shot], warnings: ['sheet-markers-disagree'] });
+
+    await saveAdjustments(ctx, photoId, { shots: [shot] });
+
+    expect((await getAnalysisRecord(ctx.db, photoId))?.pipeline.warnings).toEqual(['sheet-markers-disagree']);
+    ctx.db.close();
+  });
+});
+
 describe('reanalyze (REV-46)', () => {
   it('passes the Settings backing to the worker (REV-48)', async () => {
     const { ctx, photoId } = await seed({ shots: [autoShot('auto-1', 1, 1)] });
@@ -540,16 +579,6 @@ describe('unplacedRounds (M17 step 1, REV-29)', () => {
   it('never goes negative when there are more units than declared rounds', () => {
     const shots = Array.from({ length: 12 }, (_, i) => autoShot(`a${i}`, i, 0));
     expect(unplacedRounds(precision10, shots)).toBe(0);
-  });
-
-  it('sums both positions for a `both` target', () => {
-    const both: Categorization = {
-      template: 'precision',
-      position: 'both',
-      roundsProne: 5,
-      roundsStanding: 5,
-    };
-    expect(unplacedRounds(both, [autoShot('a0', 0, 0)])).toBe(9);
   });
 
   it('parks nothing while the categorization is still incomplete', () => {

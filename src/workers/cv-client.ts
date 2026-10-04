@@ -7,6 +7,7 @@ import type { DetectionRecord } from '@/lib/domain/analysis';
 import type { BackingMode, ColourSignature } from '@/lib/domain/backing';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
+import type { TargetKind } from '@/lib/domain/target-kind';
 import type { CappableShot } from '@/lib/scoring/cap-shots';
 
 /** analysis-pipeline §6: what `reviewAndAlign` gives Stage A back. */
@@ -14,6 +15,14 @@ export interface ReviewAndAlignResult {
   detection: { calibration: Calibration; confidence: number; outsidePrior: boolean } | null;
   sharpness: number;
   templateHint: { template: TemplateId; confidence: number } | null;
+  /** REV-144: the corner markers of the app's own printed sheets, when any were read (template-reference.md §10). */
+  sheet?: SheetMarkersResult;
+}
+
+/** REV-144: the kind the markers agree on (null when they disagree) and each marker's corners in working-image px. */
+export interface SheetMarkersResult {
+  kind: TargetKind | null;
+  markers: Array<{ corner: 0 | 1 | 2 | 3; corners: Array<{ x: number; y: number }> }>;
 }
 
 /** backing-sheet.md §5 (REV-48): the Settings backing, as A5 and Re-analyze need it. */
@@ -39,6 +48,14 @@ export interface DetectShotsResult {
   holeWidths: HoleWidth[];
 }
 
+/**
+ * template-reference.md §3 (REV-121): a blank sheet made into a reference — its target circles as a JPEG and the
+ * calibration measured on that JPEG — or why the photo was refused (no disc, the other template, or holes in it).
+ */
+export type MakeReferenceResult =
+  | { status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration }
+  | { status: 'refused'; reason: 'no-disc' | 'wrong-template' | 'has-holes' };
+
 export interface CvWorkerApi {
   ping(): Promise<{ loadedMs: number; hasMat: boolean }>;
   /** `templateHint` is `capture.overlayTemplate`; null (an import) searches for both anchor sizes. */
@@ -63,6 +80,8 @@ export interface CvWorkerApi {
    * analysis-pipeline §6 (see the M11 Open questions); the milestone's Files section asks for it here.
    */
   splitCluster(pointsMm: PointMm[], k: number): Promise<PointMm[]>;
+  /** template-reference.md §3 steps 2–5: `workingJpeg` is the photo's working image (§3 step 1). */
+  makeReference(workingJpeg: ArrayBuffer, template: TemplateId, holeDiameterMm: number): Promise<MakeReferenceResult>;
 }
 
 let client: Comlink.Remote<CvWorkerApi> | undefined;

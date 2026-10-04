@@ -14,8 +14,8 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 
 | Route (hash) | Screen | Milestone |
 |---|---|---|
-| `#/` | Home: quick-start button + **every** session (REV-72) | M09 |
-| `#/sessions` | Redirects to `#/` (REV-72). Home lists **every** session (name, date, target count) and is the one place a session is deleted | M09 |
+| `#/` | Home: quick-start button + **every** session (REV-72), with the season row above the list (REV-154, `patterns.md` §3a; `?season=`). With no sessions yet, one line under the button: "Photograph your targets, confirm what you shot, then read the analysis." (issue #93) | M09 |
+| `#/sessions` | Redirects to `#/` (REV-72). Home lists **every** session (name, date, and its targets' kinds as marks, REV-139) and is the one place a session is deleted | M09 |
 | `#/sessions/:sid` | Redirect: to `metadata` if any photo is `needs-metadata`, else to `results` | M09 |
 | `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |
 | `#/sessions/:sid/metadata` | **Step 2: add metadata** | M09 |
@@ -25,36 +25,60 @@ The user experience is three steps: **take picture(s) → add metadata → recei
 | `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with the photo editor embedded (REV-73/78) | M21 |
 | `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |
 | `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
+| `#/settings/template-sheet/:template` | Capture in sheet mode: photograph a blank sheet as that template's reference (full screen, no tab bar; `template-reference.md` §2) | M26 |
+| `#/analysis` | Analysis: trends over time, one data point per session, with the Patterns views and date ranges (`analysis.md`, REV-123). The view and range are in the query, `?view=<view>&range=<range>` (REV-140; `#/patterns` too), so Back from a target opened there returns to them | — |
+| `#/goals` | Goals: a target value per (view, metric), drawn on the same charts as Analysis (`goals.md`) | M27 |
 | `#/diagnostics` | Device capability checks | M01 |
 
-**Three main screens (REV-47).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has three tabs of at
-least 44 px, each an icon and a label, with the active one marked: **Shooting** (`#/` and every `#/sessions/...` and
-`#/review/...` route), **Settings** (`#/settings`) and **Diagnostics** (`#/diagnostics`). It is **hidden on the full-screen
-capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`). Scrolling content is padded by the bar's height plus
+**Four main screens (REV-47, REV-136; Goals added M27).** A bottom tab bar, fixed and clear of `env(safe-area-inset-bottom)`, has
+four tabs of at least 44 px, each an icon and a label, with the active one marked: **Sessions** (`#/` and every `#/sessions/...`
+and `#/review/...` route), **Analysis** (`#/analysis`), **Patterns** (`#/patterns`) and **Goals** (`#/goals`). **Settings** is a gear with its label at the
+right of the header, marked on `#/settings` and `#/diagnostics`, where no tab is marked. **Diagnostics** is opened from Settings
+(About) and links back to it. The bar is **hidden on the full-screen
+capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`, `#/settings/template-sheet/:template`). Scrolling content is padded by the bar's height plus
 the safe-area inset so the bar never covers it.
 
 **Step 1: take picture(s)** (spec/capture-overlay.md): quick start → pick Sighting/Precision and position → overlay →
 capture → Use photo (Stage A starts in the background) → next target → **Done** → metadata screen.
 
 **Step 2: add metadata** (`MetadataPage`):
-- Session name (default `Session <YYYY-MM-DD>`) and optional session notes.
-- One card per photo: thumbnail, a small Stage A progress indicator ("Checking photo…", "Aligning…", "Finding shots…",
-  "Ready"), and these fields:
+- Session name (default `Session <YYYY-MM-DD>`), **session date** and optional session notes. REV-141: the date is today's local
+  date for a session made by Start & capture, and a date picker (not after today, not before 2000; `isValidSessionDate`,
+  `src/lib/domain/session-date.ts`) moves it to an earlier day, saved at once. A default name follows the new date; a typed
+  name is kept. `updateSession` refuses a date that is not a real day or is in the future. On the results screen, **Edit
+  metadata** is a button beside **Review session** (REV-141), each with its icon (lucide `PencilLine`, `ListChecks`).
+- One card per photo: thumbnail, a small Stage A progress indicator, and these fields. The indicator maps Stage A's stored
+  state (no sub-steps are stored, issue #81): `pending` "Queued…", `running` "Aligning and finding shots…", `done` "Ready",
+  `error` "Couldn't process this photo: <error>". The fields:
   - **Target type** (prefilled from capture; REV-79): Sight in, Confirm, Precision prone or Precision standing, which sets the template and position
   - **Rounds** for prone and/or standing (defaults from `categorizationForKind`, REV-79)
   - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`, with **Season** (Winter | Spring | Summer | Fall) beside it
   - **Notes** (optional)
   - **Remove photo**.
+- **Collapsed when complete (issue #79).** A card whose type and rounds are already set (capture sets both) starts collapsed
+  to its header row: thumbnail, Stage A status, a summary (`Precision prone · 10 rounds`) and an **Edit** toggle that opens
+  the fields above. An incomplete card is always open. Opened from a target's screen (`?photo=<id>`), that target's card
+  starts open.
 - **Add more photos** → capture screen.
 - Primary button **Analyze N targets**: enabled when every photo's categorization is complete. Tapping it confirms
   lighting on every photo, sets `session.analyzeRequestedAt`, and navigates to results.
 
+**Episode steps (issue #78).** The metadata (step 2) and results (step 3) screens open with a small, non-interactive strip,
+**Photograph · Confirm · Results** (`EpisodeSteps`): earlier steps ticked, the current one filled. Capture stays full-screen
+without it.
+
 **Step 3: receive analysis** (`ResultsPage`):
-- Top: **Session summary** card with the summary image, **Share**, and the "Attach in Garmin Connect" steps (M14).
+- Top: **Session summary** card with the summary image, **Share**, then a quiet **Update summary**, and the "Attach in Garmin
+  Connect" steps (M14). Issue #85: the payoff leads. On a healthy session the **Review session** / **Edit metadata** row
+  (both outline) and the backup reminder follow the summary and the Goals card. When a target needs attention, the row sits
+  above the summary with **Review session** as the starred primary.
 - Then one **target card** per photo in capture order:
   - the `cell` diagram
   - headline (precision: `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses; sighting:
-    `9/10 hits @ 45 mm`; `both`: per-position headlines). The score is definite — no range (REV-39)
+    `9/10 hits @ 45 mm`). The score is definite — no range (REV-39)
+  - a plain-language line under the headline (issue #86, `plainLine` in `render/text-lines.ts`, also on the target
+    screen): `7 of 10 in the 45 mm zone · group 4.7 MOA across · centre 2 mm high, 3 mm left`, or for precision
+    `Average ring 8.9 · group 2.9 MOA across · centred` (a centre within 3 mm). It never mentions shots found (REV-49)
   - key metrics (group size mm · MOA · MRAD; MPI offset)
   - a **rejected** target (`too-many-holes`) shows the photo and its reason instead of a diagram, headline and metrics
   - status chip plus reason messages (§4)
@@ -69,7 +93,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 |---|---|---|---|
 | A1 | *(store)* | `ingestPhoto` saves original/working/thumb and the photo record | photo, blobs |
 | A2 | **Pull photo metadata** | Inside `ingestPhoto` (M08): EXIF (if readable), capture time, image stats, lighting suggestion | `photo.exif`, `captureTime`, `lightingSuggestion` |
-| A3 | **Review image** | Worker: sharpness score and template hint | `pipeline.sharpness`, `pipeline.templateHint` |
+| A3 | **Review image** | Worker: sharpness score, template hint, and a NordicAim sheet's corner markers (REV-144: they fill an empty kind and check A4) | `pipeline.sharpness`, `pipeline.templateHint`, `photo.categorization` when empty |
 | A4 | **Overlay it on the target template** | Worker: detect the anchor disc near the overlay prior, then measure every printed circle and store the sheet's tilt with it (REV-44, §3) → choose the alignment (§3) | `analysis.calibration`, `pipeline.alignment`, warnings |
 | A5 | *(detect shots)* | Worker: hole detection with the calibration (skipped if there's no calibration or any shot is manual). Holes are found without assuming they are brighter or darker than their surroundings (REV-34), anywhere on the paper sheet (REV-36); printed rings, guides and numerals are removed by their known positions (REV-35); every automatic shot has `multiplicity` 1 (REV-28); when the declared rounds are known the set is **reconciled** against them (REV-39, geometry-scoring §8.3): rejected (`too-many-holes`), capped (`extra-candidates-dropped`, REV-28), given inferred double punches (`double-punch-assumed`) and misses (`rounds-scored-as-miss`). With a coloured backing (REV-38, `backing-sheet.md` §5) — the **Settings** backing mode and colour as they are when A5 runs (REV-48) — holes are found by colour first, falling back to the above with warning `backing-colour-not-found` | `analysis.shots` (source `auto`) |
 
@@ -78,7 +102,7 @@ capture → Use photo (Stage A starts in the background) → next target → **D
 | Step | Name | What happens | Output |
 |---|---|---|---|
 | B1 | **Incorporate user metadata** | Read categorization and lighting | — |
-| B2 | **Generate analysis: scoring (core MVP, REV-20)** | `analyzeTarget(template, categorization, shots, profile)`: precision ring scores /100, X count, tally; sighting hits/misses/clean per zone; `both` split; missing rounds scored as misses, after reconciling the shots against the declared rounds again (geometry-scoring §8.3; a rejected target gets no result); group size mm/MOA/MRAD; MPI offset (geometry-scoring) | `analysis.computed` |
+| B2 | **Generate analysis: scoring (core MVP, REV-20)** | `analyzeTarget(template, categorization, shots, profile)`: precision ring scores /100, X count, tally; sighting hits/misses/clean per zone; missing rounds scored as misses, after reconciling the shots against the declared rounds again (geometry-scoring §8.3; a rejected target gets no result); group size mm/MOA/MRAD; MPI offset (geometry-scoring) | `analysis.computed` |
 | B3 | *(diagrams)* | Render `full-svg`, `full-png`, `cell-svg`; rasterise before the transaction | diagram blobs |
 | B4 | *(status)* | `photoStatus(...)` (§4), including the `template-mismatch` warning when `templateHint.template !== categorization.template && templateHint.confidence >= 0.5` | `photo.status`, `photo.reasons` |
 | B5 | *(summary)* | After all of a session's photos are settled, schedule the summary image build (§7) | artifact |
@@ -152,13 +176,13 @@ adjusts the constant with a note.
 export type PhotoStatus = 'needs-metadata' | 'processing' | 'ready' | 'analyzed' | 'needs-attention' | 'failed';
 export type Reason = 'target-not-found' | 'no-shots-found' | 'too-many-shots' | 'extra-candidates-dropped'
   | 'rounds-unaccounted' | 'alignment-uncertain' | 'image-blurry' | 'template-mismatch' | 'backing-colour-not-found'
-  | 'too-many-holes' | 'double-punch-assumed' | 'rounds-scored-as-miss';
+  | 'too-many-holes' | 'double-punch-assumed' | 'rounds-scored-as-miss' | 'sheet-markers-disagree';
 export function photoStatus(input: { categorization: Categorization; analysis: TargetAnalysis; result: AnalysisResult | null })
   : { status: PhotoStatus; reasons: Reason[] };
 ```
 
 Rules, first match sets the status. Pipeline warnings are **always appended** to `reasons` (in the order
-`extra-candidates-dropped`, `too-many-holes`, `double-punch-assumed`, `rounds-scored-as-miss`,
+`sheet-markers-disagree`, `extra-candidates-dropped`, `too-many-holes`, `double-punch-assumed`, `rounds-scored-as-miss`,
 `backing-colour-not-found`, `alignment-uncertain`, `image-blurry`, `template-mismatch`), except for `needs-metadata`,
 `processing`, and `failed`:
 1. categorization incomplete → `needs-metadata`, []
@@ -179,6 +203,9 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
    overlay fallback means **no disc was found**, so the rings sit where the owner aimed rather than where the target is. A guess
    must not present as a finished score. A `cv` alignment with `outsidePrior: true` is *not* escalated — there the disc was
    measured, so its `alignment-uncertain` warning stays an appended note.)
+9a. warnings include `sheet-markers-disagree` and `pipeline.alignment.method !== 'manual'` → `needs-attention`, [...warnings]
+   (REV-144: the printed sheet's corner markers put the target more than 8 mm from the measured alignment, so the rings are
+   probably on the wrong circle. Stage A raises it only for a `cv` alignment; an alignment the owner saved is never second-guessed.)
 10. otherwise → `analyzed`, [(`rounds-unaccounted` if Σ subset.missing > 0 and the warnings do not include
     `rounds-scored-as-miss`), ...warnings] (M20: reconciliation reports its misses as `rounds-scored-as-miss`; `rounds-unaccounted`
     remains only for a result that was never reconciled. M24, issue #8 point 5: this rule is unchanged — `rounds-unaccounted`
@@ -196,6 +223,8 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 - done/done, warnings [extra-candidates-dropped] → `needs-attention`, [extra-candidates-dropped]
 - done/done, `alignment.method` `overlay` → `needs-attention`, [alignment-uncertain] (REV-31)
 - done/done, `alignment.method` `cv` with warnings [alignment-uncertain] (the `outsidePrior` case) → `analyzed`, [alignment-uncertain]
+- done/done, `alignment.method` `cv`, warnings [image-blurry, sheet-markers-disagree] → `needs-attention`, [sheet-markers-disagree, image-blurry] (REV-144)
+- done/done, `alignment.method` `manual`, warnings [sheet-markers-disagree] → `analyzed` (REV-144)
 - done/done, precision golden fixture (missing 0) → `analyzed`, []
 - done/done, golden with P8 multiplicity 1 (missing 1) → `analyzed`, [rounds-unaccounted]
 - done/done, warnings [too-many-holes], result null → `needs-attention`, [too-many-holes] (M20)
@@ -217,6 +246,7 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 | `too-many-holes` | Found `<N>` clear holes but you entered `<D>` rounds. This may be the wrong target or the wrong round count. |
 | `double-punch-assumed` | `<N>` hole(s) look like two shots through the same hole. |
 | `rounds-scored-as-miss` | `<N>` round(s) weren't found and are scored as misses. |
+| `sheet-markers-disagree` | The sheet's corner markers don't match the alignment — check the rings line up in Adjust. |
 
 ## 5. Triggers and runner
 
@@ -273,6 +303,9 @@ interface CvWorkerApi {
     backing: BackingInput):
     Promise<{ shots: Shot[]; detection: DetectionRecord;                                    // M11, M19
               suggestions: ShotCandidate[]; holeWidths: HoleWidth[] }>;                     // M21
+  makeReference(workingJpeg: ArrayBuffer, template: TemplateId, holeDiameterMm: number):   // M26, template-reference.md §3
+    Promise<{ status: 'ok'; jpeg: ArrayBuffer; widthPx: number; heightPx: number; calibration: Calibration }
+          | { status: 'refused'; reason: 'no-disc' | 'wrong-template' | 'has-holes' }>;
 }
 ```
 
@@ -324,6 +357,8 @@ template is already set is aligned against the right disc size.
   (§4 rule 9 — no disc was found, the rings sit where the owner aimed), a Save sends the alignment on screen even if the
   rings were not moved (`adjustSavePatch`), so it becomes `manual` and rule 9 releases the photo. The owner has seen those
   rings over the photo and saved. Before, a shots-only save left the guess stored and the photo at `needs-attention`.
+- **Saving confirms an alignment the sheet's markers disputed** (REV-144): when the warnings hold `sheet-markers-disagree`, a
+  Save sends the alignment on screen even if unmoved (`adjustSavePatch`), and saving an alignment removes the warning.
 - Saving in Adjust sets `stageB = 'pending'` and calls `notify()`.
 
 ## 9. Performance budget (iPhone 16 Pro Max, measured in M15)

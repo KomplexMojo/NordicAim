@@ -1,15 +1,17 @@
-// REV-47 (analysis-pipeline §1): which main tab a route belongs to, and where the tab bar is hidden.
+// REV-47 (analysis-pipeline §1), REV-136: which main tab a route belongs to, and where the tab bar is hidden.
 
 import { describe, expect, it } from 'vitest';
 
-import { MAIN_TABS, activeTab, showsTabBar } from '@/lib/app/nav';
+import { MAIN_TABS, activeTab, inSettings, showsTabBar } from '@/lib/app/nav';
 
 describe('MAIN_TABS', () => {
-  it('is Sessions, Settings, Diagnostics in that order', () => {
+  it('is Sessions, Analysis, Patterns, Goals, Board in that order (M27, issue #42)', () => {
     expect(MAIN_TABS.map((t) => [t.label, t.to])).toEqual([
       ['Sessions', '/'],
-      ['Settings', '/settings'],
-      ['Diagnostics', '/diagnostics'],
+      ['Analysis', '/analysis'],
+      ['Patterns', '/patterns'],
+      ['Goals', '/goals'],
+      ['Board', '/board'],
     ]);
   });
 });
@@ -30,10 +32,20 @@ describe('activeTab', () => {
     }
   });
 
-  it('marks Settings and Diagnostics', () => {
-    expect(activeTab('/settings')).toBe('settings');
-    expect(activeTab('/settings/backing-card')).toBe('settings');
-    expect(activeTab('/diagnostics')).toBe('diagnostics');
+  it('marks Analysis, Patterns, Goals and Board', () => {
+    expect(activeTab('/analysis')).toBe('analysis');
+    expect(activeTab('/patterns')).toBe('patterns');
+    expect(activeTab('/goals')).toBe('goals');
+    expect(activeTab('/goals/anything')).toBe('goals');
+    expect(activeTab('/board')).toBe('board');
+  });
+
+  it('marks no tab on Settings and Diagnostics, which belong to the header gear', () => {
+    for (const path of ['/settings', '/settings/backing-card', '/diagnostics']) {
+      expect(activeTab(path)).toBeNull();
+      expect(inSettings(path)).toBe(true);
+    }
+    for (const path of ['/', '/analysis', '/patterns', '/sessions/abc', '/settingsx']) expect(inSettings(path)).toBe(false);
   });
 });
 
@@ -41,6 +53,7 @@ describe('showsTabBar', () => {
   it('is hidden on the full-screen capture screens only', () => {
     expect(showsTabBar('/sessions/abc/capture')).toBe(false);
     expect(showsTabBar('/settings/backing-card')).toBe(false);
+    expect(showsTabBar('/settings/template-sheet/precision')).toBe(false);
     expect(showsTabBar('/')).toBe(true);
     expect(showsTabBar('/sessions/abc/metadata')).toBe(true);
     expect(showsTabBar('/settings')).toBe(true);

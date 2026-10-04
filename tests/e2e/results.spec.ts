@@ -89,6 +89,7 @@ test('results: raising the declared rounds scores the extra rounds as misses (RE
   await page.goto(`/#/sessions/${sessionId}/metadata`);
   // Capture order: sighting first, precision second (analysis-pipeline §10).
   const precisionMetadataCard = page.getByTestId('photo-metadata-card').nth(1);
+  await precisionMetadataCard.getByTestId('photo-card-toggle').click(); // issue #79: complete cards start collapsed
   const roundsProne = precisionMetadataCard.locator('input[id$="-rounds-prone"]');
   await expect(roundsProne).toHaveValue('10', { timeout: 30_000 });
   await roundsProne.fill('12');
@@ -133,4 +134,49 @@ test('results: capture → Analyze reaches a terminal status', async ({ page }) 
   await expect(page.getByTestId('status-chip')).toHaveAttribute('data-status', /analyzed|needs-attention/, {
     timeout: 180_000,
   });
+});
+
+test('results lead with the summary and Share; Review and Edit metadata follow on a healthy session (issue #85)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/results`);
+  await waitForIdle(page);
+  const share = page.getByTestId('summary-share');
+  const review = page.getByTestId('review-session-link');
+  await expect(share).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('review-session-star')).toHaveCount(0);
+  const [s, r, u] = [await share.boundingBox(), await review.boundingBox(), await page.getByTestId('summary-rebuild').boundingBox()];
+  expect(s!.y).toBeLessThan(r!.y);
+  expect(s!.y).toBeLessThan(u!.y); // Share before Update summary
+  await expect(page.getByTestId('edit-metadata-link')).toBeVisible();
+});
+
+test('cards and the target screen say the result in plain words before the metrics (issue #86)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/results`);
+  await waitForIdle(page);
+  const cards = page.getByTestId('target-card');
+  await expect(cards.first().getByTestId('plain-line')).toHaveText(/MOA across/, { timeout: 30_000 });
+  const precision = cards.filter({ hasText: 'Precision' }).first();
+  await expect(precision.getByTestId('plain-line')).toHaveText(/^Average ring \d+\.\d · group \d+\.\d MOA across · (centred|centre \d+ mm (high|low), \d+ mm (left|right))$/);
+  await precision.getByTestId('view-target').click();
+  await page.waitForURL(/\/photos\//);
+  await expect(page.getByTestId('target-detail-title')).toBeVisible();
+  await expect(page.getByTestId('plain-line')).toHaveText(/^Average ring /);
+});
+
+test('metadata and results show where the session is: Photograph → Confirm → Results (issue #78)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await page.goto(`/#/sessions/${sessionId}/metadata`);
+  const steps = page.getByTestId('episode-steps');
+  await expect(steps).toHaveAttribute('data-current', '2');
+  await expect(steps.locator('[aria-current="step"]')).toContainText('Confirm');
+  await expect(steps.locator('[data-step="1"]')).toHaveAttribute('data-done', 'true');
+  await expect(steps.locator('[data-step="3"]')).toHaveAttribute('data-done', 'false');
+
+  await page.goto(`/#/sessions/${sessionId}/results`);
+  await expect(page.getByTestId('episode-steps')).toHaveAttribute('data-current', '3');
+  await expect(page.getByTestId('episode-steps').locator('[aria-current="step"]')).toContainText('Results');
+
+  await page.goto(`/#/sessions/${sessionId}/capture`);
+  await expect(page.getByTestId('episode-steps')).toHaveCount(0); // capture stays full-screen
 });

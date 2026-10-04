@@ -34,13 +34,18 @@
 | `θ` | angle of the principal axis, CCW from +x′, in `[0°, 180°)` | **grouping** |
 | `med` | median of the `dᵢ` | **precision** |
 | flyer | a shot with `dᵢ ≥ F · med`, `F = 2.5` (*P*); the rest are the **core**; `ES_core` is the core's spread | **grouping** |
-| `q` | share of shots farther than the black disc's radius from the bullseye (56.2 mm precision, 57.5 mm sighting) | **accuracy** |
+| `q` | share of shots that would miss the biathlon hit zone for their position, on every template: `rᵢ − h > R`, with `R` = 22.5 mm prone, 57.5 mm standing (the sighting sheet's solid circles, the real 45 mm / 115 mm zones) and `h` half the scoring rule's hole diameter (REV-56; `hitsZone` in `scoring/sighting.ts`), so a hole touching the edge is in, as in the score. An unknown position reads prone, the tighter of the two. REV-146 (owner, 2026-10-01): replaces precision's ring 8 (prone) and black disc (standing) | **accuracy** |
 | two clusters | 2-means split, each cluster ≥ 2 shots, centroid separation `Δ ≥ 2 · w` and `Δ ≥ 1 MOA`, `w` the larger within-cluster mean radius | **grouping** |
 | `Z` | a "significant" offset: `M ≥ Z`, `Z = 1.0 MOA` (≈ 14.5 mm) (*P*) | |
 
 Named shapes: **horizontal string** `a ≤ 0.5 ∧ θ ≤ 25° ∨ θ ≥ 155°`; **vertical string** `a ≤ 0.5 ∧ |θ − 90°| ≤ 20°`;
 **diagonal up-trigger** `a ≤ 0.6 ∧ 30° ≤ θ ≤ 60°` (low sling side to high trigger side); **diagonal down-trigger**
 `a ≤ 0.6 ∧ 120° ≤ θ ≤ 150°` (high sling side to low trigger side). *(Shape tests are hand-free: the mirror is already applied.)*
+Otherwise, **round** only when `a > 0.6`; a group with `a ≤ 0.6` that is none of the named strings (an angle between
+the bands, or a horizontal/vertical one with `0.5 < a ≤ 0.6`) reads **elongated**, by the nearest of four directions:
+*roughly horizontal* (`θ < 22.5°` or `θ ≥ 157.5°`), *rising to the trigger side* (`< 67.5°`), *roughly vertical*
+(`< 112.5°`), *rising to the sling side*. It is a description only: no issue rule reads it (REV-147, owner,
+2026-10-01: a 2:1 group at 117° read "round").
 
 ## 3. Definition table
 
@@ -51,7 +56,7 @@ Named shapes: **horizontal string** `a ≤ 0.5 ∧ θ ≤ 25° ∨ θ ≥ 155°`
 | 1 | **Tight group** | grouping | `MOA(ES) ≤ 1.5` | all |
 | 2 | **Scattered group** | grouping | `MOA(ES) ≥ 3.0` | all |
 | 3 | **Zero off** (incorrect zero) | accuracy vs precision | `MOA(ES) ≤ T_loose ∧ M ≥ Z ∧ κ ≥ 2` | all |
-| 4 | **Fundamentals / equipment** (a) | accuracy | `q ≥ 0.5` (half or more of the shots outside the black disc) | all |
+| 4 | **Fundamentals / equipment** (a) | accuracy | `q ≥ 0.5` (half or more of the shots outside the zone) | all |
 | 5 | **Sight alignment** (b) | grouping | `≥ 2 flyers ∧ MOA(ES_core) ≤ 1.5 ∧ 0.2 ≤ q < 0.5` | all |
 | 6 | **Position change** (d) | grouping | two clusters | prone |
 | 7 | **Wind or light drift** (e) | grouping | horizontal string `∧ MOA(ES) ≥ 2 ∧ |x̄′| < Z` | all |

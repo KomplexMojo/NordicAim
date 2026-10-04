@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { AthletePicture } from './athlete-picture';
 import { BackingMode, BackingSheet, DEFAULT_BACKING_MODE, type ColourSignature } from './backing';
+import { DEFAULT_TEMPLATE_REFERENCES, TemplateReferences } from './template-reference';
 
 /**
  * REV-56: `gauge` = official gauge touch (the full hole), `centre` = centre in ring, `visible` = visible hole
@@ -65,6 +67,9 @@ export const AppSettings = z.object({
   // REV-99: the athlete's name and ski club. Both default to empty so older rows read back.
   athleteName: z.string().max(MAX_ATHLETE_NAME).default(''),
   athleteClub: z.string().max(MAX_ATHLETE_CLUB).default(''),
+  // REV-157 (issue #99): the athlete's picture, a small square JPEG data URL; null when none. A Board submission carries it.
+  // A picture that no longer passes the checks reads back as none rather than failing the whole row.
+  athletePicture: AthletePicture.nullable().catch(null).default(null),
   // REV-100: the key's public side. The salt and fingerprint are backed up; the key itself is in the `secrets` store, never the passphrase.
   athleteSalt: z.string().nullable().default(null),
   keyFingerprint: z.string().nullable().default(null),
@@ -84,6 +89,9 @@ export const AppSettings = z.object({
   // Owner instruction, 2026-09-26: the raw-hole-count safety net (`isValidMaxPlausibleHoles` below),
   // editable so it isn't stuck at the precision default. Defaults for older rows so they read back.
   maxPlausibleHoles: z.number().int().positive().default(10),
+  // REV-121 (template-reference.md §4): the user's own reference sheets; `null` per template means the shipped
+  // default. Defaults so older rows read back.
+  templateReferences: TemplateReferences.default(DEFAULT_TEMPLATE_REFERENCES),
 });
 export type AppSettings = z.infer<typeof AppSettings>;
 
@@ -123,6 +131,7 @@ export function defaultAppSettings(): AppSettings {
     handedness: DEFAULT_HANDEDNESS,
     athleteName: '',
     athleteClub: '',
+    athletePicture: null,
     athleteSalt: null,
     keyFingerprint: null,
     visibleHoleDiameterMm: DEFAULT_VISIBLE_HOLE_DIAMETER_MM,
@@ -131,6 +140,7 @@ export function defaultAppSettings(): AppSettings {
     lastBackupSessions: 0,
     backupReminderDays: 14,
     maxPlausibleHoles: DEFAULT_MAX_PLAUSIBLE_HOLES,
+    templateReferences: DEFAULT_TEMPLATE_REFERENCES,
   };
 }
 

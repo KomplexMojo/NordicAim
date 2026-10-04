@@ -73,6 +73,32 @@ export async function readExif(input: Blob | Uint8Array): Promise<ExifMeta | nul
 | make / model / lens | `Apple` / `iPhone 16 Pro Max` / `iPhone 16 Pro Max back triple camera 6.765mm f/1.78` |
 | gpsPresent / gps | false / null |
 
+### 1.1 The location is never kept (REV-158)
+
+`readExif` reads the file as it came, so the capture time and `gpsPresent` are right. The record then keeps **no
+coordinates**: `withoutLocation` (`services/location.ts`) sets `gps` and `gpsImgDirection` to null. The **stored original**
+has its location taken out before it is written (`stripLocation`, `media/strip-location.ts`, pure), without re-encoding:
+
+- **EXIF** (inside a JPEG's APP1 `Exif` segment, a HEIC's `Exif` item found through `iinf`/`iloc`, or a PNG's `eXIf` chunk):
+  the GPS directory that IFD0's tag `0x8825` points to is emptied in place. Every value it points to is zeroed, then its
+  entries and next-directory pointer, so it reads as an empty directory. Nothing moves, so no offset in the file changes.
+  Orientation, capture time and camera details stay.
+- **XMP**: in every `<x:xmpmeta>` packet, the values of `exif:GPS*`, `photoshop:City|State|Country` and
+  `Iptc4xmpCore:Location|CountryCode` (attribute or element) are overwritten with spaces, same length.
+- **IPTC** (a JPEG's APP13 block): zeroed.
+- A PNG chunk that changed gets its CRC again.
+
+`removeLocation` then reads the result back with `readExif`; if a location can still be read, the import is refused with
+"This photo wasn't added: its location could not be removed (…)". Metadata laid out in a way `stripLocation` can't safely
+change (an out-of-range offset, EXIF in a HEIC `idat`) refuses the import too, unless no location can be read from the file
+at all, in which case it is kept as it came. The photo record gains `locationRemoved: true`.
+
+**Photos stored before** (or restored from an older backup) are done by `removeStoredLocations` once each: at app start,
+before a backup is built, and after a restore. One photo at a time: the file is changed before its transaction, and the
+record is read again inside it. A photo it cannot change keeps `locationRemoved` unset and is tried again next time; the backup
+dialog counts any such photo (`countPhotosWithLocation`). A summary image stamped earlier names the hash of the original as it
+was then (`provenance.md`); the next rebuild names the new one.
+
 Also: `readExif` on `fixtures/reference/tiny-sighting.heic` (no metadata) → `null`. Private (skip if absent):
 `readExif` on `fixtures/private/IMG_5132.HEIC` either returns `null` or matches the sidecar's non-GPS fields.
 Assert without printing GPS values.

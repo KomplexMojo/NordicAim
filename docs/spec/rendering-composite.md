@@ -28,7 +28,8 @@ Implementation: `src/lib/render/*` (pure, returns SVG strings); `src/lib/render/
 | `shotProne` | `#E8604C` | prone shots |
 | `shotStanding` | `#8A5CF6` | standing shots |
 | `mpi` | `#C8452F` | MPI marker |
-| `ellipse` | `#2F7FB0` | group ellipse |
+| `ellipse` | `#3AA8F8` | group ellipse (REV-137; was `#2F7FB0`) |
+| `ellipseHalo` | `#0E2A40` | the group ellipse's halo, at opacity 0.55 (REV-137) |
 | `header` | `#1F2630` | summary image header |
 
 The UI theme reuses these as CSS variables.
@@ -78,7 +79,6 @@ diagram out until the farthest shot lands on the printed halo's edge, never belo
 4. Legend band (48, 120, 1404, 52) rx 10 `panel`, text baseline 152, 17 px:
    - sighting: "45 mm prone zone" (x 110, icon x 83), "115 mm standing zone" (x 416, icon x 380), "Dotted: 40 mm / 110 mm guides" (x 760)
    - precision: "Scoring key:   Inner Circle = 10   ·   1st Ring = 10   ·   2nd Ring = 9" (x 72)
-   - position `both`: prone and standing colour dots with labels at x 1200.
 5. **Target**:
    - **Sighting**: centre (750, 720), s = 8 px/mm; halo r 62.5 fill `haloFill` stroke `panelBorder` 1.5; disc r 57.5 fill `discSighting`
      stroke `#232A33` 3; guide r 55 stroke `guideOnDark` 2 dash `18 14`; prone ring r 22.5 stroke `ringOnDark` 2 fill none (owner
@@ -91,8 +91,10 @@ diagram out until the farthest shot lands on the printed halo's edge, never belo
      `ringOnLight` 2.5; black disc r 56.2 `discPrecision`; ring lines n = 4…10 `ringOnDark` 2; inner ten r 2.5 `ringOnDark` 1.5 dash
      `4 3`; labels (class `ring-label`) n = 1…9 at x = cx + ((r_n + r_{n+1})/2)·s, y = cy + 6, 17 bold, `ringOnDark` if midpoint < 56.2
      else `textPrimary`; "10" at (cx + 1.5·s, cy − 3·s) 13 px.
-6. **Group ellipse** (non-null): at the MPI, rx = rxMm·s, ry = ryMm·s, stroke `ellipse` 2, `transform="rotate(${-angleDeg} X Y)"`
-   (negative: CCW target angle → clockwise SVG rotation).
+6. **Group ellipse** (non-null): at the MPI, rx = rxMm·s, ry = ryMm·s, `transform="rotate(${-angleDeg} X Y)"`
+   (negative: CCW target angle → clockwise SVG rotation). REV-137: drawn twice, a halo (stroke `ellipseHalo` 8, opacity 0.55)
+   under the line (stroke `ellipse` 4, class `group-ellipse`), so it reads on the black disc and on white paper and survives the
+   cells' and the coach image's downscaling. The Patterns screen and the coach image use the same drawing.
 7. **Shots** (class `shot`): one circle per `Shot`, fixed display marker r = 8 px (not the true hole size, so tight groups stay
    readable; REV-22), × 1.25 if multiplicity > 1; fill by the position
    of unit 0; white stroke 2. `x<k>` label 15 bold `accentText` when k > 1, preferred position (X + 10, Y − 14), placed per item 11.
@@ -127,7 +129,6 @@ diagram out until the farthest shot lands on the printed halo's edge, never belo
       3. `Total: <identifiedTotal> / <maxPossible> · X count <xCount>` (+ ` · <n> miss` / ` · <n> misses` when missing > 0)
       4. `Group size: <es> mm · <moa> MOA · <mrad> MRAD @ 50 m`
       5. `MPI offset: …`
-      6. (both) `Prone: <total>/<max> · Standing: <total>/<max>`
       (M20 removed the former line 4, `Range: pessimistic … · averaged … · optimistic …`.)
     - **Both templates, appended only when item 7a's marker is present** (M24): one more line,
       `Dashed ring around a shot: scored by touching the line, not a solid hit` (`touchCreditNote`).
@@ -147,10 +148,7 @@ Expose line builders as pure functions: `sightingFooterLines`, `precisionFooterL
 image's per-slot line (`composite.ts` `slotSummaryLine`) — all three call the same helper, so they stay in step: precision
 `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses (REV-39: never a range); sighting `<hits>
 hit(s) · <misses> miss(es) — <45|115> mm <prone|standing>` (REV-49, issue #6: never "hits @ mm", which reads as a shot count;
-"hit" singular at exactly 1, matching `miss`/`misses`); both: `Prone <hits> hit(s) · <misses> miss(es) · Standing <hits>
-hit(s) · <misses> miss(es)`, each half without its own position word (the "Prone "/"Standing " prefix already names it) and
-without the zone size (fix round 1: repeating "— 45 mm"/"— 115 mm" in both halves is redundant once each is already labelled,
-and it is what pushed the summary image's per-slot line, below, past its 110-char cap).
+"hit" singular at exactly 1, matching `miss`/`misses`). (REV-153 removed the old `both` form.)
 
 `shotsFoundLine(result)` (REV-49, issue #6) is a second line, always shown directly under the headline, never merged into it:
 `<identified> of <declared> shots found`, or `<identified> of <declared> shots found — <missing> not placed` when
@@ -180,7 +178,6 @@ and it is what pushed the summary image's per-slot line, below, past its 110-cha
   `SIGHT IN` / `CONFIRM`). A standalone thumbnail leaves it undefined and shows the template name.
 - Caption band (0, 668, 720, 52) `panel`; centred 17 px at y 700 (REV-49 wording, so the cell never reads as "N of M found"):
   - sighting `<h> hit(s) · <m> miss(es) — <45|115> mm · ES <es> mm · <moa> MOA`
-    (both: `Prone <h> hit(s) · Standing <h> hit(s) · ES <es> mm · <moa> MOA`)
   - precision `<total> / <max> · X <x> · ES <es> mm · <moa> MOA`
   - (M20: no range suffix; the total is definite.)
 
@@ -233,7 +230,7 @@ black border), described only that one target, and left a fixed 600 px band most
     2. ~~One line per filled slot~~ removed (REV-106): the caption under each target already states the hits, score, ES and MOA, so the band never repeats it. A sighting target keeps one line for what the caption lacks: `<label> MPI 9.7 R / 3.9 U mm`.
     2a. **The other rules' scores, only where they differ (REV-59).** One line per slot, labelled with it (REV-106: `Precision prone by rule: …`), when its score is not the same under
        all three rules: `By rule: gauge 72 · centre 70 · visible 71` (precision: the total) or `By rule (hits): gauge 7 · centre 6 · (REV-91: drawn with each rule's icon beside its number, the words kept.)
-       visible 7` (sighting: hits; a `both` slot sums its two positions). A slot that scores the same under every rule gets no line.
+       visible 7` (sighting: hits). A slot that scores the same under every rule gets no line.
        Each is computed by `analyzeTarget` with that rule's effective hole size (`geometry-scoring.md` §3); the total on the slot's
        own line is always the rule in force.
     3. **N = 1 only:** that target's `full`-variant footer lines (§3), which the old stat card carried — the only place the
@@ -255,12 +252,22 @@ it. 1 filled precision slot → 120 + 1440 + (100 + 34·6 + 64) = **1928**; 2 fi
 
 **Slot selection (automatic, pure)**: candidates per template = photos with `status === 'analyzed'`, sorted by `captureTime.utc`
 descending (null last, then `importedAt` descending). Break ties with the better result (precision: higher `identifiedTotal`;
-sighting: smaller `extremeSpreadMm`, null worst). Take the first two, then order chronologically (older = slot 1). Returns photo ids. **Sighting roles (REV-67):** when any analysed sighting target in the session has an explicit `categorization.sightingRole`, slot 1 (SIGHT IN) is the most recent sighting target whose effective role is `sight-in` and slot 2 (CONFIRM) the most recent whose effective role is `confirm` (either may be empty); with no explicit role the rule above applies unchanged. A target with no role is inferred by `sightingRoles` (`domain/sighting-role.ts`): if none is explicitly `sight-in`, the oldest unset one is `sight-in`; every other unset one is `confirm`. **Precision (REV-90):** slot 3 is the most recent analysed Precision prone and slot 4 the most recent Precision standing (either may be empty); precision targets with no single position (`both`, or uncategorised) fall back to the two-most-recent rule. One order everywhere: Sight in, Confirm, Precision prone, Precision standing (`domain/photo-order.ts` `orderedByKind`, used by Results, Metadata and Review). A rejected target (`too-many-holes`,
+sighting: smaller `extremeSpreadMm`, null worst). Take the first two, then order chronologically (older = slot 1). Returns photo ids. **Sighting roles (REV-67):** when any analysed sighting target in the session has an explicit `categorization.sightingRole`, slot 1 (SIGHT IN) is the most recent sighting target whose effective role is `sight-in` and slot 2 (CONFIRM) the most recent whose effective role is `confirm` (either may be empty); with no explicit role the rule above applies unchanged. A target with no role is inferred by `sightingRoles` (`domain/sighting-role.ts`): if none is explicitly `sight-in`, the oldest unset one is `sight-in`; every other unset one is `confirm`. **Precision (REV-90):** slot 3 is the most recent analysed Precision prone and slot 4 the most recent Precision standing (either may be empty); precision targets with no position (uncategorised) fall back to the two-most-recent rule. One order everywhere: Sight in, Confirm, Precision prone, Precision standing (`domain/photo-order.ts` `orderedByKind`, used by Results, Metadata and Review). A rejected target (`too-many-holes`,
 REV-39) is `needs-attention`, never `analyzed`, so it is never a candidate: it is **excluded** from the summary image.
+
+**Goals (REV-148, `goals.md` §8).** `CompositeInput.goals` (`SessionGoalChecks`, omitted with none) adds two things:
+a **seal** on a precision cell (green disc r 26, white ring and tick, at cell (664, 198), under the scoring-rule icon)
+when every goal in effect for that target's position was met (`render/composite-goals.ts`), and a **Goals** table in the
+band, under the other lines: a header row (`Goals`, `This session`, `Goal`) with a rule, then one 34 px row per goal
+(view on its first row, metric at x 250, value at 500, goal at 650, a green tick or red cross at 800, "—" with no value).
+It adds `46 + 34 × rows` to the band.
 
 **Athlete line (REV-100).** After the band's lines (never truncated): `Athlete: <name> · <club> · Stamp: <fingerprint>-<12 hex>`, leaving out what is empty, and with no stamp when no key is set. See `provenance.md`. `ArtifactMeta.identity` (`name|club|fingerprint`) marks an image stale when Settings changes it.
 
 ## 6. `CompositeArtifact` and the share rule
+
+> **REV-124:** the share rule now allows a second image, the coach image (`TrendsArtifact`, `analysis.md` §5). Everything
+> below about the session summary is unchanged.
 
 ```ts
 declare const artifactBrand: unique symbol;
@@ -272,10 +279,12 @@ export async function loadArtifact(ctx: ServiceContext, sessionId: string, artif
 export async function latestArtifact(ctx: ServiceContext, sessionId: string): Promise<{ artifact: CompositeArtifact; png: Blob } | null>;
 ```
 
-- **Stored diagrams are versioned too (REV-58).** The per-photo `full` and `cell` diagrams are written when a photo is scored, so a
-  renderer change would not reach existing sessions. `DIAGRAM_RENDERER_VERSION` (currently **1**) is compared, at app start, with
+- **Stored diagrams are versioned too (REV-58).** The per-photo `full` and `cell` diagrams — and, since Stage B writes both in the same
+  pass, `computed.result.<subset>.characteristics` (owner, 2026-09-30) — are written when a photo is scored, so a renderer or
+  characterization change would not reach existing sessions. `DIAGRAM_RENDERER_VERSION` (currently **9**) is compared, at app start, with
   `AppSettings.diagramRendererVersion` (default 0); when the setting is behind, every finished analysis goes back to Stage B once
-  (`rescoreAll`) and the setting is brought up to date. Bump it whenever a per-target diagram's output changes.
+  (`rescoreAll`) and the setting is brought up to date. Bump it whenever a per-target diagram's output changes, or
+  `characterize-result.ts`'s / `characteristics.ts`'s.
 - `ArtifactMeta.rendererVersion` (`COMPOSITE_RENDERER_VERSION`, currently **3**) records which renderer drew an artifact; it
   defaults to 0 so artifacts stored before the stamp read back. **The results screen rebuilds a summary whose version is below the
   current one**, so an app update is never invisible in the shared image, and the Summary card offers **Update summary** to force
@@ -305,7 +314,7 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
    `navigator.share({ files: [file], title })`; `AbortError` → `cancelled`.
 3. Otherwise download via a temporary `<a download>` (object URL, revoked after 60 s) → `download`.
 4. On `web-share`/`download` → `recordShare`.
-5. ~~Attach in Garmin Connect card~~ removed from the app (REV-87); the four steps are in `docs/MANUAL.md`.
+5. ~~Attach in Garmin Connect card~~ removed from the app (REV-87); the steps are in the user guide (`docs/guide/README.md` §6; `docs/MANUAL.md` was folded into it).
 
 ## REV-79 / REV-80 marks
 
@@ -314,7 +323,7 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
   summary slot uses its position (slot 1 sight-in, slot 2 confirm), blank slots too. Precision keeps its text chip.
 - **Precision score star (top-right)**: `renderScoreStar` draws a five-pointed star with `identifiedTotal` inside: gold when the score is above 90% of `maxPossible`, **Below 70% (REV-107) there is no star**: the score sits in a plain black-outlined circle (`data-medal="none"`), a clear statement of the score with no endorsement.
   silver from 80% to 90%, bronze below (`scoring/medal.ts`). In the cell at (664, 56) and in the detail diagram at (1400, 250, ×1.3), clear of the legend band; the scoring-rule icon (REV-81) sits directly below it, at (664, 128) and (1400, 345, ×1.3).
-- **Precision cell (top-left, REV-86)**: the text chip is replaced by a 24 px-radius black disc with a white horizontal bar (`prone`) or a white vertical bar (`standing`), like the sighting symbols; a blank precision slot shows `prone` (first) then `standing` (second). A stored `both` target keeps its text chip.
+- **Precision cell (top-left, REV-86)**: the text chip is replaced by a 24 px-radius black disc with a white horizontal bar (`prone`) or a white vertical bar (`standing`), like the sighting symbols; a blank precision slot shows `prone` (first) then `standing` (second).
 
 ## Analysis band layout (REV-118)
 

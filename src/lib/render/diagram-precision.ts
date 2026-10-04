@@ -14,7 +14,6 @@ import {
   renderFooterPanel,
   renderGroupEllipse,
   renderLegendBand,
-  renderLegendBothDots,
   renderMarkerLabels,
   renderMpiMarker,
   renderShots,
@@ -88,10 +87,9 @@ export function renderTarget(cx: number, cy: number, s: number, includeLabels: b
   return halo + outerRings + blackDisc + innerRings + innerTen + labels;
 }
 
-function renderLegend(isBoth: boolean): string {
+function renderLegend(): string {
   const key = text(72, 152, 17, `Scoring key:   ${PRECISION_TEMPLATE.scoringKey.join('   ·   ')}`, { color: PALETTE.textPrimary });
-  const both = isBoth ? renderLegendBothDots() : '';
-  return renderLegendBand(48, 120, 1404, 52, key + both);
+  return renderLegendBand(48, 120, 1404, 52, key);
 }
 
 /** §3 item 9: the RESULTS tally panel (full variant only). */
@@ -122,7 +120,6 @@ function renderResultsPanel(subset: SubsetResult): string {
 export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVariant, slotLabel?: string): string {
   const { result, shots, positionLabel, captureLocal, lighting, holeDiameterMm } = input;
   const subset = result.all;
-  const isBoth = result.position === 'both';
 
   if (variant === 'cell') {
     // §4 (REV-58): one fixed scale, never a zoom-out; the drawing is clipped above the caption band and a clipped
@@ -161,7 +158,7 @@ export function renderPrecisionDiagram(input: DiagramInput, variant: DiagramVari
     renderBackground(FULL.width, FULL.height) +
     renderTitle(TITLE) +
     renderSubtitle(positionLabel, subset.declared, captureLocal, lighting) +
-    renderLegend(isBoth) +
+    renderLegend() +
     target +
     renderResultsPanel(subset) +
     renderFooterPanel(precisionFooterLines(result, shots)) +

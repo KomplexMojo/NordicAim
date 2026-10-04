@@ -57,6 +57,16 @@ export async function unlockPassphrase(ctx: ServiceContext, passphrase: string, 
   return settings;
 }
 
+/**
+ * REV-151 (backup.md §2d): whether `passphrase` is the athlete's stamp passphrase on this phone, checked through the stored salt
+ * and fingerprint without storing anything. A protected backup reuses that passphrase (owner, 2026-10-01).
+ */
+export async function isStampPassphrase(ctx: ServiceContext, passphrase: string, iterations = PBKDF2_ITERATIONS): Promise<boolean> {
+  const settings = await getSettings(ctx.db);
+  if (settings.athleteSalt === null || settings.keyFingerprint === null) return false;
+  return (await keyFingerprint(await deriveKeyBytes(passphrase, settings.athleteSalt, iterations))) === settings.keyFingerprint;
+}
+
 /** The key stored on this phone, or null. */
 export async function loadProvenanceKey(ctx: ServiceContext): Promise<Uint8Array | null> {
   const b64 = await getProvenanceKey(ctx.db);

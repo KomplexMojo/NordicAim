@@ -8,6 +8,7 @@ import type { Shot } from '@/lib/domain/analysis';
 import type { Categorization } from '@/lib/domain/photo';
 import {
   cellCaption,
+  plainLine,
   precisionFooterLines,
   shotsFoundLine,
   sightingFooterLines,
@@ -171,15 +172,6 @@ describe('render/text-lines targetHeadline (rendering-composite.md §3, Steps §
     expect(targetHeadline(result)).toBe('86 / 100 · X 1');
   });
 
-  it('"both" position joins each subset\'s own headline as "Prone <h> · Standing <h>"', () => {
-    const fixture = readFixture('sample-shots-sighting.json');
-    const categorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const result = analyzeTarget({ template: fixture.template, categorization, shots: fixture.shots });
-    const headline = targetHeadline(result);
-    expect(headline).toMatch(/^Prone .+ · Standing .+$/);
-    expect(headline).not.toContain('undefined');
-    expect(headline).not.toContain('null');
-  });
 });
 
 describe('render/text-lines golden checks (rendering-composite.md §3 "Golden check")', () => {
@@ -208,17 +200,10 @@ describe('render/text-lines golden checks (rendering-composite.md §3 "Golden ch
     expect(lines).toContain('x4'); // largest cluster note (S2 multiplicity 4)
   });
 
-  it('precisionFooterLines adds a "Prone: … · Standing: …" line only when position is both', () => {
+  it('precisionFooterLines has 5 lines (REV-39 removed "Range:"; REV-153 removed the per-position line)', () => {
     const fixture = readFixture('sample-shots-precision.json');
     const single = analyzeTarget({ template: fixture.template, categorization: fixture.categorization, shots: fixture.shots });
-    // REV-39 removed the "Range:" line, so a single-position target has 5 lines.
     expect(precisionFooterLines(single, fixture.shots)).toHaveLength(5);
-
-    const both: Categorization = { template: 'precision', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const bothResult = analyzeTarget({ template: fixture.template, categorization: both, shots: fixture.shots });
-    const lines = precisionFooterLines(bothResult, fixture.shots);
-    expect(lines).toHaveLength(6);
-    expect(lines[5]).toMatch(/^Prone: \d+\/\d+ · Standing: \d+\/\d+$/);
   });
 });
 
@@ -253,12 +238,6 @@ describe('render/text-lines cellCaption (rendering-composite.md §4)', () => {
     expect(lines.join('\n')).not.toContain('Range');
   });
 
-  it('sighting "both" names each position\'s hits instead of a single zone', () => {
-    const fixture = readFixture('sample-shots-sighting.json');
-    const categorization: Categorization = { template: 'sighting', position: 'both', roundsProne: 5, roundsStanding: 5 };
-    const result = analyzeTarget({ template: fixture.template, categorization, shots: fixture.shots });
-    expect(cellCaption(result)).toMatch(/^Prone \d+ hits? · Standing \d+ hits? · ES /);
-  });
 });
 
 function atShot(id: string, xMm: number, multiplicity = 1): Shot {
@@ -304,3 +283,40 @@ describe('render/text-lines touchCreditNote (M24, REV-49: rendering-composite §
     expect(touchCreditNote(result.all.units)).not.toBeNull();
   });
 });
+
+describe('plainLine (issue #86)', () => {
+  const shot = (id: string, xMm: number, yMm: number): Shot => ({
+    id,
+    xMm,
+    yMm,
+    multiplicity: 1,
+    positionOverrides: null,
+    source: 'auto',
+    confidence: null,
+    cluster: false,
+    possibleOverlap: false,
+  });
+
+  it('sighting: hits of rounds in the zone, the group in MOA, and where the centre sits', () => {
+    const categorization: Categorization = { template: 'sighting', position: 'prone', roundsProne: 4, roundsStanding: null };
+    // Centre (-10, 20): 20 mm high, 10 mm left. The 40 mm shot misses the 45 mm zone.
+    const shots = [shot('a', -10, 10), shot('b', -10, 30), shot('c', -20, 20), shot('d', 0, 20)];
+    const result = analyzeTarget({ template: 'sighting', categorization, shots });
+    const moa = result.all.extremeSpreadAngular!.moa.toFixed(1);
+    const { hits, misses } = result.all.sighting!;
+    expect(plainLine(result)).toBe(`${hits} of ${hits + misses} in the 45 mm zone · group ${moa} MOA across · centre 20 mm high, 10 mm left`);
+    expect(plainLine(result)).not.toMatch(/found/); // REV-49
+  });
+
+  it('precision: the average ring over the shots placed, and "centred" within 3 mm', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 2, roundsStanding: null };
+    const result = analyzeTarget({ template: 'precision', categorization, shots: [shot('a', 1, 0), shot('b', -1, 0)] });
+    expect(plainLine(result)).toMatch(/^Average ring 10\.0 · group \d+\.\d MOA across · centred$/);
+  });
+
+  it('is null with no shots', () => {
+    const categorization: Categorization = { template: 'precision', position: 'prone', roundsProne: 10, roundsStanding: null };
+    expect(plainLine(analyzeTarget({ template: 'precision', categorization, shots: [] }))).toBeNull();
+  });
+});
+

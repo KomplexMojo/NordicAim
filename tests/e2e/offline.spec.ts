@@ -40,6 +40,15 @@ test('offline: the app installs a service worker and still runs fully offline', 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'NordicAim' })).toBeVisible();
 
+  // Issue #67 (REV-135): the printable sheets are precached, so Settings can still hand them over offline.
+  for (const file of ['nordicaim-sighting-letter.pdf', 'nordicaim-precision-letter.pdf']) {
+    const head = await page.evaluate(async (f) => {
+      const res = await fetch(`sheets/${f}`);
+      return res.ok ? new TextDecoder('latin1').decode((await res.arrayBuffer()).slice(0, 5)) : `HTTP ${res.status}`;
+    }, file);
+    expect(head).toBe('%PDF-');
+  }
+
   // 3. loadDemo → results with scores and the summary image render offline.
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   const sessionId = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());

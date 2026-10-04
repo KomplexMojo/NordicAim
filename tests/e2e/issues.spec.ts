@@ -75,7 +75,7 @@ test('Settings → Athlete has the trigger hand, and the choice is kept', async 
   await expect(page.getByTestId('handedness-left')).toBeChecked();
 });
 
-test('Patterns can show the latest session or this week only', async ({ page }) => {
+test('Patterns can show the latest session or the last 5 sessions only', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   for (let i = 0; i < 2; i++) {
@@ -84,10 +84,12 @@ test('Patterns can show the latest session or this week only', async ({ page }) 
   }
   await page.goto('/#/patterns');
   await page.getByTestId('pattern-view-sight-in').click();
+  // Owner, 2026-09-30: Patterns opens on the latest session by default; widen to see both demo sessions first.
+  await page.getByTestId('pattern-range-all').click();
   await expect(page.getByTestId('patterns-counts')).toContainText('2 sessions');
   await page.getByTestId('pattern-range-last').click();
   await expect(page.getByTestId('patterns-counts')).toContainText('1 session');
-  // The demo sessions are dated today, so this week keeps both.
-  await page.getByTestId('pattern-range-week').click();
+  // REV-156: the last 5 sessions keeps both.
+  await page.getByTestId('pattern-range-5').click();
   await expect(page.getByTestId('patterns-counts')).toContainText('2 sessions');
 });

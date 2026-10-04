@@ -36,37 +36,41 @@ to be, instead of needing its own investigation each time.
   measured feature separates them." Differencing against a real reference is the plausible way past that wall; nothing
   else tried this session got there.
 
-## Decisions this milestone needs before it is implementable (none made yet)
+## Decisions this milestone needs before it is implementable (1, 2, 5, 6 decided; 3, 4 measured 2026-09-27)
 Per AGENTS.md golden rule 2 ("if the spec is silent or ambiguous about something you need, stop"): this feature has no
-spec at all yet. The six items below are the owner's to decide, not mine to guess — this milestone documents the
-question precisely rather than picking an answer.
+spec at all yet. The six items below are the owner's to decide, not mine to guess. On 2026-09-27 the owner accepted the
+recommendations for Decisions 2, 5 and 6 as written below, and answered Decision 1 in issue #52; 3 and 4 remain open.
+The spec is `docs/spec/template-reference.md` (REV-121).
 
-1. **Captured how often.** Once per template design, ever — or re-captured whenever a fresh batch is printed? Depends
-   on the owner's own printing practice (a professionally offset-printed batch likely varies less print-to-print than
-   a home/office-printed one), which I don't know.
-2. **Where it fits the 3-step flow.** A new explicit step would violate the "three steps: take picture(s) → add
-   metadata → receive analysis" invariant (AGENTS.md). The backing-card capture (M19) is the closest precedent: an
-   optional, one-time, Settings-level capture outside the three steps. Recommend mirroring that shape, but the owner
-   should confirm rather than have this milestone assume it.
-3. **Registration precision.** Differencing needs the blank and the real photo aligned to at least the precision hole
-   detection itself needs, done for two photos instead of one. Whether today's `detectAnchor`/`calibrationWithPerspective`
-   is good enough, or this needs its own refinement pass first, is **unmeasured** — needs a real investigation before
-   any differencing logic is written, not an assumption either way.
-4. **What gets differenced.** Raw pixel subtraction across two separately-lit photos will manufacture false
-   differences from lighting alone. The direction discussed this session: difference the same *local-deviation-from-
-   background* signal `holeSignal` already computes (relative, not absolute, so less sensitive to overall exposure),
-   read in the same calibrated target-mm space for both photos — but this needs prototyping against real reference +
-   shot pairs before anyone trusts it, not a guess written straight into production code.
-5. **Privacy.** A blank reference photo isn't a photo of the shooter's targets, but it's still a photo leaving the
-   camera into IndexedDB. Almost certainly fine under the existing rules (same storage path as any other captured
-   image, `pnpm check:privacy` already covers stored images), but should be explicitly confirmed as part of this
-   milestone's spec, not assumed.
-6. **Replace or supplement today's geometric masking.** A user who captures a reference could, in principle, skip
-   `printedBandMap`/`inNumeralBox` entirely. A user who doesn't capture one still needs today's geometric fallback.
-   Recommend: additive — the reference sharpens/replaces masking only where one exists, geometric masking remains the
-   default. Owner should confirm this is the right default, not just implement it as taken for granted.
+1. **Captured how often — DECIDED (owner, 2026-09-27, issue #52).** The app ships a default reference for each template,
+   made from the owner's blank sheets. The user replaces it from Settings whenever their print changes, and can restore
+   the default. One reference per template, not per backing colour. A reference keeps only the target circles and what
+   is printed inside them (template-reference.md §1, §3).
+2. **Where it fits the 3-step flow — DECIDED (owner, 2026-09-27).** Mirror the backing-card capture (M19): an
+   optional, one-time capture reached from Settings, outside the three steps. The three-step flow (take picture(s) →
+   add metadata → receive analysis) gains no new step, and nothing in it prompts for or requires a reference.
+3. **Registration precision — MEASURED (2026-09-27).** Today's `detectAnchor`/`calibrationWithPerspective` is good
+   enough: on the production benchmark the reference sits within 0.05 mm of the photo overall (p90) and 0.35 mm region by
+   region (median). See template-reference.md §6.
+4. **What gets differenced — MEASURED, not adopted (2026-09-27).** Local deviation minus the locally aligned reference's
+   separates holes from print well for the standard detector on production photos, but the standard case uses the
+   colour path. There it fails as a filter, and its promise as a rescue rests on only 3 missed holes. Needs a larger
+   production sample before any detection code is written. See template-reference.md §6.
+5. **Privacy — DECIDED (owner, 2026-09-27).** A reference photo is treated like any other captured photo: stored
+   on the phone in IndexedDB only, never shared, downloaded or sent anywhere, and never part of a `CompositeArtifact`.
+   The share rule and the no-network invariant apply unchanged. Correction to the earlier wording: `pnpm check:privacy`
+   only scans images committed to the repo, not what the app stores, so it is not evidence here; the guarantee comes
+   from the share rule and the CSP. Reference-photo fixtures committed for `cv:eval` must still pass
+   `pnpm check:privacy` (no GPS EXIF). **Still open for the spec:** whether an owner-created backup
+   (`docs/spec/backup.md`, REV-63) includes reference photos — `backup.md` today covers sessions, photos, analyses and
+   settings only.
+6. **Replace or supplement today's geometric masking — DECIDED (owner, 2026-09-27).** Additive. Geometric masking
+   (`printedBandMap`/`inNumeralBox`) stays the default and is unchanged when no reference exists for the active
+   template/backing combination. Where one exists, the reference signal may sharpen or replace masking for that
+   combination only.
 
 ## Read first
+- `docs/spec/template-reference.md` (the spec for this milestone; §6 is pending Decisions 3 and 4)
 - `docs/spec/analysis-pipeline.md` §2 (A3 review image, A4 overlay/alignment, A5 shot detection), §3
 - `docs/spec/backing-sheet.md` (the closest existing precedent: a once-measured reference reused across a session,
   including its Open Questions section as a model for how unresolved measurement questions were tracked before)
@@ -77,13 +81,12 @@ question precisely rather than picking an answer.
   `src/lib/cv/constants.ts`, which are the evidence trail behind this milestone
 
 ## In scope (once the Decisions above are resolved)
-- A stored template reference per template id (and per backing colour, when used) — a new domain concept, likely
-  modelled on `BackingSheet`.
-- A capture flow for a blank sighting sheet and a blank precision sheet, optionally over the chosen backing colour,
-  shaped by Decision 2.
+- A stored template reference per template id (template-reference.md §4), with shipped defaults in
+  `public/templates/` (§5).
+- The Settings **Target sheets** section and the sheet capture flow (§2, §3).
 - A pure differencing module (pure/adapter split preserved, no DOM in `src/lib/cv/`) producing an additional signal
   `holes.ts`/`hole-signal.ts` can consume alongside — not instead of — the existing geometric masks.
-- Fallback to today's geometric masking when no reference exists for the active template/backing combination.
+- Fallback to today's geometric masking when no usable reference exists for the photo's template (§6).
 - `pnpm cv:eval` and `pnpm review:detection` support for reference-photo fixtures.
 
 ## Out of scope
@@ -92,28 +95,50 @@ question precisely rather than picking an answer.
 - Guaranteeing the T16/T21 colour recall gap is fixed; this milestone makes it diagnosable and calibratable
   per-session, which is a narrower claim than "fixed."
 
-## Files (anticipated — confirm once the Decisions above are resolved; this list is not authoritative yet)
+## Files (from template-reference.md; the detection files follow Decisions 3 and 4)
+- `public/templates/sighting-reference.jpg`, `public/templates/precision-reference.jpg` (shipped defaults, added with the spec)
+- `src/lib/defaults/template-references.ts` (new: the defaults' calibration, size and hash)
 - `src/lib/domain/template-reference.ts` (new, mirroring `backing.ts`)
-- `src/lib/cv/template-reference.ts` (new, pure differencing)
+- `src/lib/cv/template-reference.ts` (new, pure: keeping the circles and the refusal rule; §6's comparison would go here)
 - `src/lib/cv/holes.ts`, `hole-signal.ts`, `print-mask.ts` (consume the new signal; fallback preserved)
-- `src/components/settings/` (capture entry point, mirroring `BackingSettings`/`BackingCardPage`)
-- `docs/spec/template-reference.md` (new spec — nothing exists for this feature yet)
+- `src/components/settings/TemplateSheetSettings.tsx` and the `#/settings/template-sheet/:template` route (mirroring `BackingSettings`/`BackingCardPage`)
 - `scripts/cv-eval.ts`, `scripts/detection-review/`
 
 ## Steps
-Not written. Per golden rule 1 ("read the milestone file completely, then only the spec sections it lists"), there is
-no spec for this feature yet — Steps cannot be written responsibly before the Decisions above have owner answers and a
-real spec document exists. The next work on this milestone is the owner resolving the Decisions section and a spec
-draft, not code.
+M26 is built in two parts (owner, 2026-09-27: "Build what you can of M26").
+
+**Part 1: reference sheets in Settings (template-reference.md §1–§5, §7, §8). Done 2026-09-27.**
+1. Pure `keepTargetCircles` and `referenceRefusal` (`src/lib/cv/template-reference.ts`, §3 steps 2–3).
+2. `TemplateReference` / `TemplateReferences` / `ReferenceUsed` schemas; `AppSettings.templateReferences` (default both
+   `null`, older rows read back); blob key `reference:<template>:image`; optional `pipeline.detection.reference` (§4).
+3. `DEFAULT_TEMPLATE_REFERENCE`: the shipped defaults' asset path, size, hash and calibration (§5).
+4. Worker `makeReference` (§3 steps 2–5) and the service: `prepareTemplateReference`, `saveTemplateReference`,
+   `restoreDefaultReference`, each change re-running that template's photos with nothing manual (`canRerunStageA`, §7).
+5. Settings **Target sheets** section and `#/settings/template-sheet/:template` sheet capture, with the refusal messages
+   (no rings, the other template, holes in the sheet) (§2, §3).
+
+**Part 2: detection uses the reference (§6). Blocked.** Not started: the §6 measurements show no gain on the production
+benchmark yet (see *Open questions*).
 
 ## Tests
-Not written, for the same reason as Steps.
+Part 1:
+- `tests/unit/cv/template-reference.test.ts`: the kept radius, the crop, painting beyond the radius, removing a mark
+  outside the circles, input untouched, the crop clamped at an edge; the refusal rule's three cases.
+- `tests/unit/defaults/template-references.test.ts`: each default's record parses, its hash matches the file, and the
+  app's A4 finds the recorded disc (within 0.5% of R) and names the template.
+- `tests/unit/services/template-reference.test.ts`: prepare (worker call, hash, refusal, non-image), save (blob and
+  entry together), the §7 re-run (only that template's finished photos with nothing manual; shots and calibration
+  untouched), and Restore default.
+- `tests/unit/domain/settings.test.ts`, `tests/unit/app/nav.test.ts`: the new default and field, and the hidden tab bar.
+- `tests/e2e/template-sheets.spec.ts`: both defaults shown and loading; a used sheet refused for its holes; a blank sheet
+  stored as *Your sheet*, kept across a reload, then *Restore default*; the other template's photo refused; sheet mode
+  opens full screen and Cancel returns.
 
-## Acceptance (draft — will change once the Decisions above are resolved)
+## Acceptance
 ```bash
 pnpm check
-pnpm cv:eval
-pnpm review:detection
+pnpm test:e2e --project=mobile-chromium tests/e2e/template-sheets.spec.ts   # and the WebKit project on the owner's Mac
+pnpm cv:eval                                                                # part 2 only; needs the private fixtures
 ```
 **Human (owner):** photograph a blank sighting sheet and a blank precision sheet — with and without your backing
 colour — in the same conditions you actually shoot in, plus a few real sessions shot under matching conditions, so the
@@ -136,9 +161,22 @@ guess.
   real measurement before any detection logic is written against the assumption that alignment is good enough.
 
 ## Open questions
-Every item in the Decisions section above is open. This milestone is intentionally not implementable as written — it
-exists to record the evidence and the exact questions precisely, per AGENTS.md golden rule 2 ("never guess on scoring,
-geometry, or storage"), rather than to guess at answers those decisions call for.
+Part 2 (§6) waits on a larger production sample (issue #56 would supply one). Still open: whether backups include a
+custom reference (template-reference.md §8). Decisions
+3 and 4 need measurement and prototyping on the owner's photos in `fixtures/private/`; cloud sessions can do this when the
+private fixtures repo is attached. The spec exists (`docs/spec/template-reference.md`); its §6 method stays pending until
+those measurements are made, per AGENTS.md golden rule 2 ("never guess on scoring, geometry, or storage").
 
 ## Completion notes
-Not started.
+**Part 1, 2026-09-27 (cloud session, private fixtures attached).**
+- `pnpm check`: typecheck and lint pass (the 4 existing warnings), 1080/1080 unit tests pass (110 files), and the
+  privacy check passes (37 images). `pnpm build` passes; the precache is unchanged at 23 entries.
+- Chromium e2e: `template-sheets.spec.ts` 5/5; the full Chromium suite passed (87 + 1 skipped before the refusal change added one test). WebKit is not available in
+  the cloud container; the owner runs that project on the Mac.
+- Checked by hand in the dev build: the stored reference is a JPEG of the circles only, with no EXIF.
+- Owner, same day: a sheet with holes must never become a reference. §3 step 5 changed from a warning (*Use anyway*) to a
+  refusal, after measuring 0 detected holes on both blank defaults and 7–11 on used sheets.
+- **Deviations:** none from the spec. §7's re-run is implemented as specified, although nothing reads a reference until
+  part 2, so a re-run currently reproduces the same results.
+- **Owner checks:** photograph a blank sheet with *Photograph sheet* on the iPhone (camera and HEIC path), and confirm
+  whether backups should include a custom sheet (§8; today they do, as backups copy every blob).

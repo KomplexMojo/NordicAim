@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -18,6 +19,8 @@ interface CaptureFallbacksProps {
   template: TemplateId | null;
   outerDiameterFraction: number;
   onImported(): void;
+  /** Issue #82: show the options without a tap — when the live camera can't start, they are the only way in. */
+  forceOpen?: boolean;
 }
 
 /** One photo of a picked batch, currently shown on the review screen. */
@@ -33,12 +36,16 @@ interface Session {
  * (`import`) both route through the review screen (§1.5), one photo at a time, with Keep/Discard.
  * The overlay shown is informational only — imports keep `prior: null` (Decisions #1).
  */
-export function CaptureFallbacks({ sessionId, categorization, template, outerDiameterFraction, onImported }: CaptureFallbacksProps) {
+export function CaptureFallbacks({ sessionId, categorization, template, outerDiameterFraction, onImported, forceOpen = false }: CaptureFallbacksProps) {
   const { ctx, imageTools } = useServices();
   const nativeRef = useRef<HTMLInputElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [saving, setSaving] = useState(false);
+  // Issue #82: the phone camera, Photos import and the HEIC note sit behind "More options", so the default path is kind,
+  // viewfinder, shutter.
+  const [open, setOpen] = useState(false);
+  const shown = open || forceOpen;
 
   // Revoke the current photo's object URL once it is replaced or the screen unmounts.
   useEffect(() => {
@@ -113,45 +120,60 @@ export function CaptureFallbacks({ sessionId, categorization, template, outerDia
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="flex w-full gap-2">
-        <Button
-          variant="outline"
-          className="h-11 flex-1"
-          disabled={busy}
-          onClick={() => nativeRef.current?.click()}
+      {!forceOpen && (
+        <button
+          type="button"
+          className="inline-flex h-11 items-center gap-1 px-3 text-sm text-muted-foreground"
+          aria-expanded={shown}
+          aria-controls="capture-more-options"
+          data-testid="capture-more"
+          onClick={() => setOpen((o) => !o)}
         >
-          Native camera
-        </Button>
-        <Button
-          variant="outline"
-          className="h-11 flex-1"
-          disabled={busy}
-          onClick={() => importRef.current?.click()}
-        >
-          Import from Photos
-        </Button>
+          More options
+          <ChevronDown className={`size-4 transition-transform ${shown ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+      )}
+      <div id="capture-more-options" className={shown ? 'flex w-full flex-col items-center gap-2' : 'hidden'}>
+        <div className="flex w-full gap-2">
+          <Button
+            variant="outline"
+            className="h-11 flex-1"
+            disabled={busy}
+            onClick={() => nativeRef.current?.click()}
+          >
+            Phone camera
+          </Button>
+          <Button
+            variant="outline"
+            className="h-11 flex-1"
+            disabled={busy}
+            onClick={() => importRef.current?.click()}
+          >
+            Import from Photos
+          </Button>
+        </div>
+        <input
+          ref={nativeRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          data-testid="native-camera-input"
+          onChange={(e) => pickFiles(e.currentTarget, 'camera-native')}
+        />
+        <input
+          ref={importRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          className="hidden"
+          data-testid="import-input"
+          onChange={(e) => pickFiles(e.currentTarget, 'import')}
+        />
+        <p className="text-center text-xs text-muted-foreground">
+          HEIC photos only open in Safari (iPhone or Mac). On other browsers, such as Chrome on Android, use JPEG photos.
+        </p>
       </div>
-      <input
-        ref={nativeRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        data-testid="native-camera-input"
-        onChange={(e) => pickFiles(e.currentTarget, 'camera-native')}
-      />
-      <input
-        ref={importRef}
-        type="file"
-        accept="image/*,.heic,.heif"
-        multiple
-        className="hidden"
-        data-testid="import-input"
-        onChange={(e) => pickFiles(e.currentTarget, 'import')}
-      />
-      <p className="text-center text-xs text-muted-foreground">
-        HEIC photos only open in Safari (iPhone or Mac). On other browsers, such as Chrome on Android, use JPEG photos.
-      </p>
       {session && (
         <div className="fixed inset-0 z-50 bg-background pt-[env(safe-area-inset-top)]" data-testid="capture-review">
           <CaptureReview

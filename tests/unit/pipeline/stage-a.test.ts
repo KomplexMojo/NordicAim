@@ -3,9 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DetectionRecord, Shot } from '@/lib/domain/analysis';
 import type { ColourSignature } from '@/lib/domain/backing';
 import type { TemplateId } from '@/lib/domain/enums';
-import type { Calibration } from '@/lib/domain/photo';
+import type { Calibration, Categorization } from '@/lib/domain/photo';
+import { emptyCategorization } from '@/lib/domain/categorization';
+import type { TargetKind } from '@/lib/domain/target-kind';
+import { markerCornersMm } from '@/lib/cv/sheet-markers';
+import { mmToPx } from '@/lib/geometry/transform';
 import { defaultAppSettings } from '@/lib/domain/settings';
 import {
+  categorizationFromMarkers,
+  markersDisagree,
   NotATargetPhotoError,
   runStageA,
   priorInWorkingPx,
@@ -124,6 +130,8 @@ async function seed(
     shots?: Shot[];
     /** `null` is an import whose template the user has not set yet. */
     template?: TemplateId | null;
+    /** Replaces the whole categorization (REV-144: an import with no kind at all). */
+    categorization?: Categorization;
   } = {},
 ): Promise<Seeded> {
   const db = await openTestDb();
@@ -135,7 +143,7 @@ async function seed(
       opts.withPrior === false
         ? null
         : makeCapture({ overlayTemplate: 'precision', calibrationPriorFramePx: makePrior() }),
-    categorization: {
+    categorization: opts.categorization ?? {
       template: opts.template === undefined ? 'precision' : opts.template,
       position: 'prone',
       roundsProne: 10,
@@ -596,5 +604,112 @@ describe('withCvTimeout (owner report, 2026-09-26: a CV call can hang indefinite
   it('propagates a normal rejection unchanged, without waiting for the timeout', async () => {
     const result = withCvTimeout(Promise.reject(new Error('boom')), 'detectShots', 1000);
     await expect(result).rejects.toThrow('boom');
+  });
+});
+
+/** REV-144: the sheet's four markers where `cal` puts them, moved by `shiftPx` to fake a disagreeing alignment. */
+function sheetAt(cal: Calibration, kind: TargetKind | null, shiftPx = 0): NonNullable<ReviewAndAlignResult['sheet']> {
+  return {
+    kind,
+    markers: ([0, 1, 2, 3] as const).map((corner) => ({
+      corner,
+      corners: markerCornersMm(corner).map((p) => {
+        const px = mmToPx(p, cal);
+        return { x: px.x + shiftPx, y: px.y };
+      }),
+    })),
+  };
+}
+
+describe('sheet markers in Stage A (REV-144, issue #65)', () => {
+  const detection = { calibration: MEASURED, confidence: 0.96, outsidePrior: false };
+
+  it('fills an empty categorization with the kind the markers name, and queues Stage A again for its template', async () => {
+    const { ctx, photoId } = await seed({ withPrior: false, categorization: emptyCategorization() });
+    const { api } = stubCv(review({ detection, sheet: sheetAt(MEASURED, 'confirm') }), []);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.categorization).toEqual({
+      template: 'sighting',
+      position: 'prone',
+      roundsProne: 5,
+      roundsStanding: null,
+      sightingRole: 'confirm',
+    });
+    // REV-57: the template changed from none, so this run re-queues itself against the sighting template.
+    const analysis = await getAnalysisRecord(ctx.db, photoId);
+    expect(analysis?.pipeline.stageA).toBe('pending');
+  });
+
+  it("never replaces a kind the owner (or the capture screen) chose", async () => {
+    const { ctx, photoId } = await seed();
+    const { api } = stubCv(review({ detection, sheet: sheetAt(MEASURED, 'confirm') }));
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.categorization.template).toBe('precision');
+    expect(photo?.categorization.position).toBe('prone');
+  });
+
+  it('leaves the categorization alone when the markers disagree on the kind', async () => {
+    const { ctx, photoId } = await seed({ withPrior: false, categorization: emptyCategorization() });
+    const { api } = stubCv(review({ detection, sheet: sheetAt(MEASURED, null) }), []);
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect((await getPhotoRecord(ctx.db, photoId))?.categorization).toEqual(emptyCategorization());
+  });
+
+  it('warns sheet-markers-disagree, and needs attention, when the markers put the target far from the ring fit', async () => {
+    const { ctx, photoId } = await seed();
+    // About 20 mm at this scale (4.6 px/mm): a ring fit on the wrong circle.
+    const { api } = stubCv(review({ detection, sheet: sheetAt(MEASURED, 'precision-prone', 92) }));
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect((await getAnalysisRecord(ctx.db, photoId))?.pipeline.warnings).toEqual(['sheet-markers-disagree']);
+    const photo = await getPhotoRecord(ctx.db, photoId);
+    expect(photo?.reasons).toEqual(['sheet-markers-disagree']);
+  });
+
+  it('does not warn when the markers agree within the bowing of a hand-held sheet', async () => {
+    const { ctx, photoId } = await seed();
+    // About 3 mm, like the owner's real sheets.
+    const { api } = stubCv(review({ detection, sheet: sheetAt(MEASURED, 'precision-prone', 14) }));
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect((await getAnalysisRecord(ctx.db, photoId))?.pipeline.warnings).toEqual([]);
+  });
+
+  it('never second-guesses a manual alignment', async () => {
+    const { ctx, photoId } = await seed({ calibration: MANUAL });
+    const { api } = stubCv(review({ detection, sheet: sheetAt(MEASURED, 'precision-prone', 300) }));
+
+    await runStageA(ctx, photoId, api, imageTools);
+
+    expect((await getAnalysisRecord(ctx.db, photoId))?.pipeline.warnings).toEqual([]);
+  });
+});
+
+describe('categorizationFromMarkers / markersDisagree (REV-144)', () => {
+  it('fills only a categorization with neither template nor position', () => {
+    expect(categorizationFromMarkers(emptyCategorization(), 'precision-standing')?.position).toBe('standing');
+    expect(categorizationFromMarkers(emptyCategorization(), null)).toBeNull();
+    expect(categorizationFromMarkers(emptyCategorization(), undefined)).toBeNull();
+    expect(categorizationFromMarkers({ ...emptyCategorization(), position: 'prone' }, 'sight-in')).toBeNull();
+    expect(categorizationFromMarkers({ ...emptyCategorization(), template: 'sighting' }, 'sight-in')).toBeNull();
+  });
+
+  it('checks only a measured alignment, and needs markers', () => {
+    const far = sheetAt(MEASURED, 'sight-in', 92);
+    expect(markersDisagree(far, MEASURED, 'cv')).toBe(true);
+    expect(markersDisagree(far, MEASURED, 'overlay')).toBe(false);
+    expect(markersDisagree(far, MEASURED, 'manual')).toBe(false);
+    expect(markersDisagree(far, null, 'none')).toBe(false);
+    expect(markersDisagree(undefined, MEASURED, 'cv')).toBe(false);
   });
 });

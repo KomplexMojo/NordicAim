@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { checksLabel, dataLabel, metricsLabel, reasonsLabel } from '@/lib/ui/panel-labels';
+import { checksLabel, dataLabel, metricsLabel, missLabel, reasonsLabel, stageALabel } from '@/lib/ui/panel-labels';
 import { readPanelOpen, writePanelOpen } from '@/lib/ui/panel-state';
 
 describe('panel labels (issue #14)', () => {
@@ -20,6 +20,12 @@ describe('panel labels (issue #14)', () => {
     expect(checksLabel({ pass: 14, fail: 0 })).toBe('14 pass · 0 fail');
     expect(dataLabel({ sessions: 2, photos: 6 })).toBe('2 sessions · 6 photos');
     expect(dataLabel({ sessions: 1, photos: 1 })).toBe('1 session · 1 photo');
+  });
+
+  it('miss label (owner, 2026-10-01): the biathlon zone for the position, the same on every template', () => {
+    expect(missLabel('standing')).toBe('Miss on standing');
+    expect(missLabel('prone')).toBe('Miss on prone');
+    expect(missLabel(null)).toBe('Miss on prone');
   });
 });
 
@@ -56,5 +62,13 @@ describe('panel state', () => {
     expect(readPanelOpen('unit-b', false)).toBe(false);
     expect(() => writePanelOpen('unit-b', true)).not.toThrow();
     expect(readPanelOpen('unit-b', false)).toBe(true);
+  });
+
+  it('Stage A badge (issue #81): queued and running are told apart, never "Waiting…"', () => {
+    expect(stageALabel('pending', null)).toBe('Queued…');
+    expect(stageALabel('running', null)).toBe('Aligning and finding shots…');
+    expect(stageALabel('done', null)).toBe('Ready');
+    expect(stageALabel('error', 'no target found')).toBe("Couldn't process this photo: no target found");
+    expect(stageALabel('error', null)).toBe("Couldn't process this photo");
   });
 });

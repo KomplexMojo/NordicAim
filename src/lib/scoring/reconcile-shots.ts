@@ -88,21 +88,20 @@ function asDetected(shot: Shot): Shot {
   return fresh;
 }
 
+/** REV-153: a target is one position, so there is one subset to reconcile. */
 function subsetKeys(categorization: Categorization): ShotPosition[] {
-  const position = categorization.position;
-  return position === 'both' ? ['prone', 'standing'] : [position as ShotPosition];
+  return [categorization.position as ShotPosition];
 }
 
-function declaredFor(categorization: Categorization, key: ShotPosition): number {
-  if (categorization.position !== 'both') return declaredRounds(categorization);
-  return (key === 'prone' ? categorization.roundsProne : categorization.roundsStanding) ?? 0;
+function declaredFor(categorization: Categorization): number {
+  return declaredRounds(categorization);
 }
 
 /** Σ over subsets of `max(0, declared - units)` for `shots` as geometry-scoring §7 splits them. */
 export function missingRounds(shots: Shot[], categorization: Categorization): number {
-  const positioned = assignPositions(expandUnits(shots), categorization, shots);
+  const positioned = assignPositions(expandUnits(shots), categorization);
   return subsetKeys(categorization).reduce(
-    (sum, key) => sum + Math.max(0, declaredFor(categorization, key) - positioned.filter((u) => u.position === key).length),
+    (sum, key) => sum + Math.max(0, declaredFor(categorization) - positioned.filter((u) => u.position === key).length),
     0,
   );
 }
@@ -124,17 +123,17 @@ export function reconcileShots(input: ReconcileShotsInput): ShotsReconciliation 
   // independently of any subset's declared rounds, and only while every shot is still `auto`: a manual
   // edit is the owner's own confirmed count and is never overridden (analysis-pipeline §8).
   if (!ownerEdited && (shots.length === 0 || shots.length > maxPlausibleHoles)) {
-    const positionedRaw = assignPositions(expandUnits(shots), categorization, shots);
+    const positionedRaw = assignPositions(expandUnits(shots), categorization);
     const rejected: RejectedSubset[] = subsetKeys(categorization).map((key) => ({
       position: key,
       holesFound: positionedRaw.filter((u) => u.position === key).length,
-      declared: declaredFor(categorization, key),
+      declared: declaredFor(categorization),
     }));
     return { shots, rejected, dropped: [], doublePunches: 0, missesAssumed: 0, warnings: ['too-many-holes'] };
   }
 
   // Which subset each unit falls in (§7), before anything is inferred.
-  const positioned = assignPositions(expandUnits(shots), categorization, shots);
+  const positioned = assignPositions(expandUnits(shots), categorization);
   const minRatio = ownerEdited ? null : method === 'colour' ? DOUBLE_PUNCH_MIN_RATIO : DOUBLE_PUNCH_MIN_RATIO_STANDARD;
 
   const perSubset: Array<{ key: ShotPosition; declared: number; fixed: number; result: Reconciliation }> = [];
@@ -159,7 +158,7 @@ export function reconcileShots(input: ReconcileShotsInput): ShotsReconciliation 
         fixed += 1;
       }
     }
-    const declared = declaredFor(categorization, key);
+    const declared = declaredFor(categorization);
     perSubset.push({ key, declared, fixed, result: reconcileRounds(found, declared - fixed, { doublePunchMinRatio: minRatio }) });
   }
 
@@ -214,7 +213,6 @@ export function mergeReconcileWarnings(warnings: Warning[], reconciliation: Pick
 export interface ReconcileReasonContext {
   holesFound?: number;
   rejectedDeclared?: number;
-  rejectedPosition?: ShotPosition;
   doublePunches: number;
   missesAssumed: number;
 }
@@ -239,7 +237,6 @@ export function reconcileReasonContext(
       : {
           holesFound: rejected.holesFound,
           rejectedDeclared: rejected.declared,
-          ...(categorization.position === 'both' ? { rejectedPosition: rejected.position } : {}),
         }),
     doublePunches: reconciled.doublePunches,
     missesAssumed: reconciled.missesAssumed,

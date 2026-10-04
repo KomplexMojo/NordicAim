@@ -10,7 +10,7 @@ Formats: `UtcIso` = ISO-8601 with `Z`; `LocalDateTime` = `YYYY-MM-DDTHH:mm:ss`; 
 
 ```ts
 export const TemplateId   = z.enum(['sighting', 'precision']);
-export const Position     = z.enum(['prone', 'standing', 'both']);
+export const Position     = z.enum(['prone', 'standing']); // REV-153: `both` removed
 export const ShotPosition = z.enum(['prone', 'standing']);
 export const Lighting     = z.enum(['daylight', 'night', 'artificial', 'mixed', 'unknown']);
 export const PhotoOrigin  = z.enum(['camera-overlay', 'camera-native', 'import']);
@@ -85,7 +85,7 @@ export const ExifMeta = z.object({
   captureLocal: LocalDateTime.nullable(), captureOffset: Offset.nullable(), captureUtc: UtcIso.nullable(),
   gpsPresent: z.boolean(),
   gps: z.object({ lat: z.number(), lon: z.number(), altM: z.number().nullable() }).nullable(),
-  gpsImgDirection: z.number().nullable(),
+  gpsImgDirection: z.number().nullable(), // REV-158: gps and gpsImgDirection are always stored null; gpsPresent says the file had one
   make: z.string().nullable(), model: z.string().nullable(), lens: z.string().nullable(),
   brightnessValue: z.number().nullable(), iso: z.number().nullable(),
   exposureTimeSec: z.number().nullable(), fNumber: z.number().nullable(),
@@ -108,9 +108,10 @@ export const Categorization = z.object({
   roundsStanding: z.number().int().min(1).max(50).nullable(),
   // REV-67: for a sighting target, whether it is the initial sight-in or the confirm. absent or null = not chosen, inferred by order.
   sightingRole: z.enum(['sight-in', 'confirm']).nullable().optional(),
-  // REV-79: the UI now sets template, position, rounds and role together from one target kind (`domain/target-kind.ts`); `position: 'both'`
-  // is no longer offered but stored values still read.
+  // REV-79: the UI now sets template, position, rounds and role together from one target kind (`domain/target-kind.ts`).
 });
+// REV-153: `Categorization` is `z.preprocess(upgradeBothCategorization, …)`: a stored `position: 'both'` reads as `prone` with
+// `roundsProne = roundsProne + roundsStanding` (null when both are null) and `roundsStanding: null`.
 
 export const TargetPhoto = z.object({
   schemaVersion: z.literal(1),
@@ -135,8 +136,8 @@ export const TargetPhoto = z.object({
 ```
 
 **Helpers** (`src/lib/domain/categorization.ts`):
-- `isCategorizationComplete(c)`: template and position set; `roundsProne` set if position ∈ {prone, both}; `roundsStanding`
-  set if position ∈ {standing, both}.
+- `isCategorizationComplete(c)`: template and position set; `roundsProne` set if position is prone; `roundsStanding`
+  set if position is standing.
 - `declaredRounds(c)`: geometry-scoring §7; throws `IncompleteCategorizationError`.
 - ~~`defaultCategorization`~~ removed (REV-92): `categorizationForKind(kind)` in `domain/target-kind.ts` (REV-79) gives the default rounds per kind.
 - `emptyCategorization()`: all null.
@@ -197,8 +198,8 @@ export interface SubsetResult { key: 'prone' | 'standing' | 'all'; declared: num
   overcount: number; units: UnitResult[]; mpi: { xMm: number; yMm: number } | null; extremeSpreadMm: number | null;
   extremeSpreadAngular: Angular | null; meanRadiusMm: number | null; accuracyRmseMm: number | null; mpiOffset: MpiOffset | null;
   groupEllipse: GroupEllipse | null; precision: PrecisionScore | null; sighting: SightingOutcome | null; warnings: Array<'overcount'> }
-export interface AnalysisResult { engineVersion: string; template: 'sighting' | 'precision'; position: 'prone' | 'standing' | 'both';
-  subsets: SubsetResult[]; all: SubsetResult }
+export interface AnalysisResult { engineVersion: string; template: 'sighting' | 'precision'; position: 'prone' | 'standing';
+  subsets: SubsetResult[]; all: SubsetResult } // REV-153: a stored `both` result makes `computed` read as null
 ```
 
 Status: `photoStatus` in `src/lib/domain/status.ts`, with rules and vectors in **analysis-pipeline §4**.
@@ -221,12 +222,17 @@ export const AppSettings = z.object({
   handedness: z.enum(['right', 'left']).default('right'), // REV-88
   athleteName: z.string().max(40).default(''), // REV-99: Settings → Athlete; free text, trimmed
   athleteClub: z.string().max(60).default(''), // REV-99: the ski club
+  // REV-157: the athlete's picture, a 96 px JPEG data URL of at most 8 KB with no photo metadata (`domain/athlete-picture.ts`);
+  // null when none. One that fails the checks reads back as null rather than failing the row.
+  athletePicture: AthletePicture.nullable().catch(null).default(null),
   visibleHoleDiameterMm: z.number().min(2).max(5.6).default(4.5), // provisional
   // REV-58: which diagram renderer last drew every stored diagram (`rendering-composite.md` §6). Behind the code's
   // DIAGRAM_RENDERER_VERSION at app start means every finished analysis goes back to Stage B once.
   diagramRendererVersion: z.number().int().min(0).default(0),
   // Owner instruction, 2026-09-26: the raw-hole-count safety net (§8 below). Defaults for older rows so they read back.
   maxPlausibleHoles: z.number().int().positive().default(10),
+  // REV-121: the user's own reference sheets (`template-reference.md` §4); null per template = the shipped default.
+  templateReferences: TemplateReferences.default({ sighting: null, precision: null }),
 });
 // default: { schemaVersion 1, key 'app', profileOverrides { holeDiameterMm: 5.6 }, persistRequested false, persisted null,
 //            backingMode 'auto', backing null, scoringRule 'gauge', visibleHoleDiameterMm 4.5, maxPlausibleHoles 10 }
@@ -243,7 +249,7 @@ export const AppSettings = z.object({
 
 ## 6. IndexedDB schema (`src/lib/store/db.ts`)
 
-Database `asa`, version **1**, opened with `idb`'s `openDB`.
+Database `asa`, version **3**, opened with `idb`'s `openDB`.
 
 | Store | Key | Indexes | Value |
 |---|---|---|---|
@@ -253,11 +259,14 @@ Database `asa`, version **1**, opened with `idb`'s `openDB`.
 | `blobs` | out-of-line string key | — | `StoredBlob { bytes: ArrayBuffer; contentType: string; sizeBytes: number; createdAt: UtcIso }` |
 | `secrets` | `key` (`'provenance'`) | — | `{ key, keyB64 }` — the derived provenance key (REV-100, `provenance.md`). Database version 2. **Never in a backup**; the passphrase is never stored. |
 | `settings` | keyPath `key` | — | `AppSettings` |
+| `goals` | keyPath `key` | — | `GoalsStore` — the append-only goal log (`goals.md` §2). Database version 3. |
+| `board` | keyPath `key` | — | `BoardStore` — submissions and challenges received from other shooters (`leaderboard.md` §8). Database version 4. |
 
 Blob keys (`src/lib/store/blob-keys.ts`):
 - `photo:<pid>:original`, `photo:<pid>:working` (JPEG ≤ 3000 px, oriented, no metadata), `photo:<pid>:thumb` (≤ 480 px)
 - `diagram:<pid>:full-svg`, `diagram:<pid>:full-png`, `diagram:<pid>:cell-svg`
 - `artifact:<aid>:png`, `artifact:<aid>:json`
+- `reference:<template>:image` (JPEG): the user's own reference sheet for a template (REV-121, `template-reference.md` §4)
 
 Rules:
 - Store bytes as `ArrayBuffer` and rebuild `Blob` on read.
@@ -290,6 +299,7 @@ export interface RenderTools { svgToPng(svg: string, widthPx: number, heightPx: 
 | `saveAdjustments(ctx, photoId, { calibration?, shots? })` · `redetectShots(ctx, photoId, cvApi)` | `services/adjust.ts` | M13 |
 | `buildComposite(ctx, sessionId, renderTools)` · `loadArtifact` | `composite/build.ts` | M14 |
 | `recordShare(ctx, sessionId, artifactId, method)` | `services/shares.ts` | M14 |
+| `listGoals(ctx)` · `setGoal(ctx, { view, metric, value })` | `services/goals.ts` | M27 |
 
 Every mutating service updates `session.updatedAt` and recomputes `photo.status`/`reasons` with `photoStatus` in the same transaction.
 After committing, services call `pipelineHooks.notify()` (`src/lib/pipeline/hooks.ts`; a no-op until the runner is registered in M10).

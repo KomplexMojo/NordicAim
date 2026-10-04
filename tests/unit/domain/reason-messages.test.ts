@@ -51,12 +51,6 @@ describe('reasonMessage: REV-39 reasons (M20, analysis-pipeline §4)', () => {
     );
   });
 
-  it('too-many-holes says which position was rejected on a both target', () => {
-    expect(reasonMessage('too-many-holes', { holesFound: 8, rejectedDeclared: 5, rejectedPosition: 'prone' })).toBe(
-      'Prone: Found 8 clear holes but you entered 5 rounds. This may be the wrong target or the wrong round count.',
-    );
-  });
-
   it('double-punch-assumed', () => {
     expect(reasonMessage('double-punch-assumed', { doublePunches: 1 })).toBe(
       '1 hole(s) look like two shots through the same hole.',
@@ -66,6 +60,12 @@ describe('reasonMessage: REV-39 reasons (M20, analysis-pipeline §4)', () => {
   it('rounds-scored-as-miss', () => {
     expect(reasonMessage('rounds-scored-as-miss', { missesAssumed: 2 })).toBe(
       "2 round(s) weren't found and are scored as misses.",
+    );
+  });
+
+  it('sheet-markers-disagree points the owner to Adjust (REV-144)', () => {
+    expect(reasonMessage('sheet-markers-disagree')).toBe(
+      "The sheet's corner markers don't match the alignment — check the rings line up in Adjust.",
     );
   });
 });

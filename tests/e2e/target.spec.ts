@@ -64,7 +64,8 @@ test('target: the swipe slider wipes the diagram across the photo (M17 step 3, R
   const sessionId = await loadDemoSession(page);
   await openPrecisionTarget(page, sessionId);
 
-  await expect(page.getByTestId('compare-slider')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('compare-toggle').click({ timeout: 30_000 }); // issue #88: behind Compare
+  await expect(page.getByTestId('compare-slider')).toBeVisible();
   await expect(page.getByTestId('compare-photo')).toBeVisible();
 
   // The diagram overlay is drawn in the photo's own pixel space, on top of the photo.
@@ -108,6 +109,7 @@ test('target: the fade slider drives the opacity, beside the swipe slider (REV-3
 
   const overlay = page.getByTestId('compare-overlay');
   await expect(overlay).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('compare-toggle').click(); // issue #88: behind Compare
   // No Fade/Wipe button any more: the two are sliders, half a row each.
   await expect(page.getByTestId('compare-mode')).toHaveCount(0);
   const fade = page.getByTestId('fade-range');
@@ -172,6 +174,38 @@ test('the target screen links to the metadata screen, where the target type can 
   await openPrecisionTarget(page, sessionId);
   await page.getByTestId('target-edit-metadata').click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
-  await expect(page.getByRole('radio', { name: 'Precision standing', exact: true }).first()).toBeVisible();
+  // Issue #79: the other cards start collapsed, but this target's own card opens.
+  await expect(page.getByTestId('photo-metadata-card').filter({ has: page.getByRole('radio', { name: 'Precision standing', exact: true }) })).toHaveCount(1);
+  await expect(page.getByRole('radio', { name: 'Precision standing', exact: true })).toBeVisible();
+});
+
+test('Adjust: a first-open tip, the compare sliders behind Compare, and the glossary in a sheet (issues #87, #88, #89)', async ({ page }) => {
+  const sessionId = await loadDemoSession(page);
+  await openPrecisionTarget(page, sessionId);
+
+  // #87: the tip shows until dismissed, then stays gone after a reload.
+  const tip = page.getByTestId('adjust-tip');
+  await expect(tip).toBeVisible({ timeout: 30_000 });
+  await expect(tip).toContainText('drag a hole to move it');
+  await page.getByTestId('adjust-tip-dismiss').click();
+  await expect(tip).toHaveCount(0);
+
+  // #88: closed by default; opening it is remembered on this device.
+  await expect(page.getByTestId('compare-slider')).toHaveCount(0);
+  await expect(page.getByTestId('compare-overlay')).toHaveAttribute('data-clip-path', 'inset(0 0% 0 0)');
+  await page.getByTestId('compare-toggle').click();
+  await expect(page.getByTestId('compare-toggle')).toHaveAttribute('aria-expanded', 'true');
+  await page.reload();
+  await expect(page.getByTestId('compare-slider')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('adjust-tip')).toHaveCount(0);
+
+  // #89: the glossary opens over the editor and closes back to it, never leaving the target.
+  const url = page.url();
+  await page.getByTestId('glossary-open').click();
+  await expect(page.getByTestId('glossary-sheet')).toBeVisible();
+  await expect(page.getByTestId('glossary-sheet').locator('[data-term="MOA"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('glossary-sheet')).toHaveCount(0);
+  await expect(page).toHaveURL(url);
 });
 

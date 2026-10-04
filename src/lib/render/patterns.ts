@@ -49,6 +49,15 @@ export function patternsScale(kind: 'precision' | 'sighting', factor: number): n
   return (kind === 'precision' ? PRECISION_BASE_SCALE : SIGHTING_BASE_SCALE) * factor;
 }
 
+/**
+ * Issue #72: a spot on the Patterns drawing (its own 1200 px units, +y down) back in target mm (+y up), and the hit radius a
+ * tap there gets. The inverse of `projectMm` at this view's scale.
+ */
+export function patternsPxToMm(kind: 'precision' | 'sighting', factor: number, xPx: number, yPx: number): { xMm: number; yMm: number } {
+  const s = patternsScale(kind, factor);
+  return { xMm: (xPx - CENTRE) / s, yMm: (CENTRE - yPx) / s };
+}
+
 export function renderPatternsSvg({ kind, points, summary, factor }: PatternsInput): string {
   const s = patternsScale(kind, factor);
   const target = kind === 'precision' ? renderPrecisionTarget(CENTRE, CENTRE, s, s >= 4) : renderSightingTarget(CENTRE, CENTRE, s);

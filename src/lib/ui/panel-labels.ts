@@ -29,3 +29,22 @@ export function dataLabel(counts: { sessions: number; photos: number }): string 
   const p = counts.photos === 1 ? '1 photo' : `${counts.photos} photos`;
   return `${s} · ${p}`;
 }
+
+/**
+ * Observed patterns' `outsideShare` row: the share of shots that would miss the biathlon hit zone for the position
+ * (`hitsZone`, owner, 2026-10-01) — the same 45 mm prone / 115 mm standing zones on every template, so the label
+ * names the position only. `null` reads prone, the tighter, as `characterize` does.
+ */
+export function missLabel(position: 'prone' | 'standing' | null): string {
+  return position === 'standing' ? 'Miss on standing' : 'Miss on prone';
+}
+
+/**
+ * Issue #81 (analysis-pipeline §1): the metadata card's Stage A badge. No sub-steps are stored, so a queued photo and a
+ * running one are told apart, and a running one says what Stage A does as a whole.
+ */
+export function stageALabel(state: 'pending' | 'running' | 'done' | 'error', error: string | null): string {
+  if (state === 'error') return `Couldn't process this photo${error ? `: ${error}` : ''}`;
+  if (state === 'done') return 'Ready';
+  return state === 'running' ? 'Aligning and finding shots…' : 'Queued…';
+}

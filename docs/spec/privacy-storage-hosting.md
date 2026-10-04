@@ -5,11 +5,12 @@ The MVP runs entirely on the phone (REV-10). There is no server and no login.
 ## 1. Privacy invariants
 
 1. **No runtime network requests** except the app's own same-origin assets (HTML, JS, CSS, wasm, icons, `demo/`,
-   `dev-fixtures/`, `diagnostics/`). No APIs, analytics, CDNs, external fonts, or error reporting.
+   `dev-fixtures/`, `diagnostics/`, `sheets/`). No APIs, analytics, CDNs, external fonts, or error reporting.
 2. **Photos never leave the phone** — except in a backup file the owner explicitly creates (`backup.md`, REV-63).
-3. **The only image shared** is a stored `CompositeArtifact` (rendering-composite §6–§7); the one other file that may be handed to the share sheet or a download is an owner-created backup.
+3. **The only image shared** is a stored `CompositeArtifact` (rendering-composite §6–§7); the one other file that may be handed to the share sheet or a download is an owner-created backup, apart from the static printable sheets (`public/sheets/*.pdf`, template-reference §10, REV-135), which are generated artwork with no user data.
 4. **Repo privacy**: the public repo never contains `fixtures/private/` or images with GPS; `pnpm check:privacy` (M01) enforces this in CI.
-5. Nothing logs EXIF GPS values.
+5. Nothing logs EXIF GPS values. REV-142 (issue #49): error logs carry only the error's name and message (`errorSummary`,
+   `src/lib/app/log.ts`), never the error object, and a unit test scans `src` for a console call passing a raw error.
 6. **Athlete identity (REV-100, `provenance.md`)**: the summary image, the one thing that is shared, may carry the athlete's name, club and stamp, which the athlete set in Settings. The passphrase is never stored; the derived key stays on the phone and out of backups.
 
 ## 2. Storage persistence (`src/lib/store/persistence-browser.ts`)
@@ -34,6 +35,29 @@ default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; script-s
 worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self';
 object-src 'none'; base-uri 'self'; form-action 'self'
 ```
+
+**Trade-offs (issue #48, reviewed 2026-09-21 and 2026-10-01).** Two directives are looser than the strictest policy, and
+both are kept on purpose:
+
+- `style-src 'unsafe-inline'`: React `style={…}` attributes (blend layers, slider ticks, chart geometry) and Tailwind's
+  injected styles need it. A nonce or hash can't be used: the CSP is a `<meta>` tag baked into a static build on GitHub
+  Pages, so there is no server to mint a per-response nonce, and inline style attributes can't be hashed. Inline **styles**
+  can't run code. The risk is limited to CSS-based tricks on content the app itself renders, and the app never renders
+  untrusted HTML (backup SVGs are checked, REV-142).
+- `img-src data:`: the SVG-raster fallback and a few drawn marks use `data:` image URLs. Images can't run script.
+- What makes these safe: `script-src` has neither `'unsafe-inline'` nor `'unsafe-eval'`, only `'self'` and
+  `'wasm-unsafe-eval'` for OpenCV's WebAssembly. Also `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` and
+  `connect-src 'self'` (no network beyond the app's own files).
+- Revisit `style-src` if the app ever gets a server that can send headers.
+
+## 3a. Being framed (issue #47)
+
+A `<meta>` CSP can't set `frame-ancestors`, and GitHub Pages can't send `X-Frame-Options`, so another site could put the
+app in a frame and disguise a tap on **Share** or **Back up now**. At start-up the app checks whether it is framed
+(`isFramed`, `src/lib/app/framing-browser.ts`: `window.self !== window.top`, or the check is blocked). Framed, it starts
+nothing (no services, pipeline or test hooks) and renders only a notice, "NordicAim can't run inside another page.", with a
+link that opens it on its own (`target="_top"`). Following that link is the owner's own tap, which browsers allow to leave
+the frame. No controls exist in the framed copy, so there is nothing to trick a tap onto.
 
 **OpenCV and the CSP (investigated 2026-09-15).** OpenCV.js (Emscripten embind) calls `new Function()` while initialising,
 so it cannot run on the **page** under this CSP. It runs in the **module Web Worker** (`src/workers/cv.worker.ts`), which this

@@ -18,12 +18,11 @@ describe('target kinds (REV-79)', () => {
     expect(kindTemplate('precision-standing')).toBe('precision');
   });
 
-  it('reads the kind back, and shows nothing for a target stored with both positions', () => {
+  it('reads the kind back, and shows nothing for an uncategorised target', () => {
     for (const k of TARGET_KINDS) {
       const c = categorizationForKind(k);
       expect(kindOfCategorization(c, c.sightingRole ?? null)).toBe(k);
     }
-    expect(kindOfCategorization({ template: 'precision', position: 'both' }, null)).toBeNull();
     expect(kindOfCategorization({ template: null, position: null }, null)).toBeNull();
     expect(isTargetKind('confirm')).toBe(true);
     expect(isTargetKind('both')).toBe(false);

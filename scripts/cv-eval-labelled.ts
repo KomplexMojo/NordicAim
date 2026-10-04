@@ -1,4 +1,6 @@
-// M16 R4 (REV-37). Gates shot detection on the owner's labelled holes. Node-only; called by
+// M16 R4 (REV-37). Shot detection on the owner's labelled holes: since 2026-09-27 the owner's "worse case"
+// (early photos straight off the backing board, bad angles, no backing), REPORTED and no longer gated —
+// the production benchmark (`cv-eval-production.ts`) is the gate. Node-only; called by
 // `scripts/cv-eval.ts`. The labels and photos are gitignored, so everything here is skipped — loudly —
 // when they are absent (CI).
 
@@ -329,7 +331,7 @@ export async function evaluateLabelled(cv: OpenCv, repoRoot: string): Promise<La
 
   const failed = !passesGate(all);
   lines.push(
-    `\nGATE (gated set): recall ${pct(all.recall)} (floor ${pct(GATE_RECALL_MIN)}), precision ${pct(all.precision)} (floor ${pct(GATE_PRECISION_MIN)}) — ${failed ? 'FAIL' : 'pass'}`,
+    `\nWORSE CASE (reported, not gated): recall ${pct(all.recall)} (R4 floor ${pct(GATE_RECALL_MIN)}), precision ${pct(all.precision)} (R4 floor ${pct(GATE_PRECISION_MIN)}) — ${failed ? 'below' : 'at or above'} the old R4 floors`,
   );
   return { lines, failed };
 }

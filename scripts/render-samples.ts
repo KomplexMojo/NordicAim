@@ -35,7 +35,6 @@ function readJson<T>(relativePath: string): T {
 const POSITION_LABELS: Record<Position, string> = {
   prone: 'Prone',
   standing: 'Standing',
-  both: 'Prone + standing',
 };
 
 const SAMPLES: Array<{ template: 'sighting' | 'precision'; fixture: string; sidecar: string }> = [

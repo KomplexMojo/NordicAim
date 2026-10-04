@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { orderedByKind } from '@/lib/domain/photo-order';
 
-type Position = 'prone' | 'standing' | 'both' | null;
+type Position = 'prone' | 'standing' | null;
 const p = (id: string, template: 'sighting' | 'precision' | null, utc: string | null, position: Position = null, sightingRole?: 'sight-in' | 'confirm') => ({
   id,
   importedAt: '2026-09-10T00:00:00.000Z',

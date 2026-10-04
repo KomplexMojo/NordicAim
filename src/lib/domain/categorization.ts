@@ -10,8 +10,8 @@ export class IncompleteCategorizationError extends Error {
 
 export function isCategorizationComplete(c: Categorization): boolean {
   if (c.template === null || c.position === null) return false;
-  if ((c.position === 'prone' || c.position === 'both') && c.roundsProne === null) return false;
-  if ((c.position === 'standing' || c.position === 'both') && c.roundsStanding === null) return false;
+  if (c.position === 'prone' && c.roundsProne === null) return false;
+  if (c.position === 'standing' && c.roundsStanding === null) return false;
   return true;
 }
 

@@ -11,7 +11,6 @@ import {
   renderFooterPanel,
   renderGroupEllipse,
   renderLegendBand,
-  renderLegendBothDots,
   renderMarkerLabels,
   renderMpiMarker,
   renderShots,
@@ -85,20 +84,18 @@ function renderLegendIcon(cx: number, cy: number, kind: 'prone' | 'standing'): s
   return disc + el('circle', { cx, cy, r: 5, stroke: PALETTE.ringOnDark, 'stroke-width': 1.5, fill: 'none' });
 }
 
-function renderLegend(isBoth: boolean): string {
+function renderLegend(): string {
   const proneIcon = renderLegendIcon(83, 146, 'prone');
   const proneLabel = text(110, 152, 17, '45 mm prone zone', { color: PALETTE.textPrimary });
   const standingIcon = renderLegendIcon(380, 146, 'standing');
   const standingLabel = text(416, 152, 17, '115 mm standing zone', { color: PALETTE.textPrimary });
   const guideLabel = text(760, 152, 17, 'Dotted: 40 mm / 110 mm guides', { color: PALETTE.textSecondary });
-  const both = isBoth ? renderLegendBothDots() : '';
-  return renderLegendBand(48, 120, 1404, 52, proneIcon + proneLabel + standingIcon + standingLabel + guideLabel + both);
+  return renderLegendBand(48, 120, 1404, 52, proneIcon + proneLabel + standingIcon + standingLabel + guideLabel);
 }
 
 export function renderSightingDiagram(input: DiagramInput, variant: DiagramVariant, slotLabel?: string): string {
   const { result, shots, positionLabel, captureLocal, lighting, holeDiameterMm } = input;
   const subset = result.all;
-  const isBoth = result.position === 'both';
 
   if (variant === 'cell') {
     // §4 (REV-58): one fixed scale, never a zoom-out; the drawing is clipped above the caption band and a clipped
@@ -136,7 +133,7 @@ export function renderSightingDiagram(input: DiagramInput, variant: DiagramVaria
     renderBackground(FULL.width, FULL.height) +
     renderTitle(TITLE) +
     renderSubtitle(positionLabel, subset.declared, captureLocal, lighting) +
-    renderLegend(isBoth) +
+    renderLegend() +
     target +
     renderFooterPanel(sightingFooterLines(result, shots, positionLabel, holeDiameterMm));
   return svgRoot(FULL.width, FULL.height, body);

@@ -4,7 +4,7 @@ import { characterize, moa, type CharacterizeOptions, type Pt } from '@/lib/scor
 
 const MM = moa(1); // MOA per mm; 1 MOA ≈ 14.54 mm
 
-const opts: CharacterizeOptions = { handedness: 'right', position: 'prone', discRadiusMm: 56.2 };
+const opts: CharacterizeOptions = { handedness: 'right', position: 'prone', holeDiameterMm: 5.6 };
 const ids = (points: Pt[], o = opts) => characterize(points, o).issues.map((i) => i.id);
 const at = (xs: number[], ys: number[]): Pt[] => xs.map((x, i) => ({ xMm: x, yMm: ys[i]! }));
 const mirror = (points: Pt[]): Pt[] => points.map((p) => ({ xMm: -p.xMm, yMm: p.yMm }));
@@ -96,9 +96,62 @@ describe('characterize: the rules (spec §3)', () => {
     expect(ids([...core, { xMm: -30, yMm: -30 }])).not.toContain('flinch');
   });
 
-  it('4 fundamentals: half or more of the shots outside the black disc', () => {
+  it('4 fundamentals: half or more of the shots outside the hit zone', () => {
     const wide = at([70, -70, 60, -65, 0, 5, 68, -60], [0, 5, -66, 62, 3, -2, 60, -70]);
     expect(ids(wide)).toContain('fundamentals');
+  });
+
+  it('outside the zone (owner, 2026-10-01): the biathlon hit zone for the position, with the scoring rule\'s touch', () => {
+    // 10 shots, one each at these distances from the centre. Prone: 22.5 mm zone + 2.8 mm (half a 5.6 mm hole).
+    const d = [0, 10, 20, 25, 25.3, 25.4, 40, 60, 60.3, 60.4];
+    const pts = d.map((r) => ({ xMm: r, yMm: 0 }));
+    expect(characterize(pts, opts).outsideShare).toBeCloseTo(5 / 10, 9); // 25.4 and beyond
+    // Standing: 57.5 mm + 2.8 mm.
+    expect(characterize(pts, { ...opts, position: 'standing' }).outsideShare).toBeCloseTo(1 / 10, 9); // 60.4 only
+    // Unknown position reads prone, the tighter.
+    expect(characterize(pts, { ...opts, position: null }).outsideShare).toBeCloseTo(5 / 10, 9);
+    // Centre in ring (REV-56, hole 0): only the centre counts, so 22.5 mm is the edge.
+    expect(characterize(pts, { ...opts, holeDiameterMm: 0 }).outsideShare).toBeCloseTo(7 / 10, 9);
+  });
+});
+
+/** Eight shots evenly round an ellipse centred on the bullseye: semi-axes `major` and `minor` (aspect = minor / major), major axis at `deg`. */
+function ellipse(deg: number, major: number, minor: number): Pt[] {
+  const a = (deg * Math.PI) / 180;
+  return Array.from({ length: 8 }, (_, i) => {
+    const t = (i * Math.PI) / 4;
+    const u = major * Math.cos(t);
+    const v = minor * Math.sin(t);
+    return { xMm: u * Math.cos(a) - v * Math.sin(a), yMm: u * Math.sin(a) + v * Math.cos(a) };
+  });
+}
+
+describe('characterize: shape (spec §2, owner 2026-10-01)', () => {
+  const shape = (pts: Pt[]) => characterize(pts, opts).shape;
+
+  it('is round only when the aspect is over 0.6', () => {
+    expect(shape(ellipse(117, 30, 30))).toBe('round');
+    expect(shape(ellipse(117, 30, 18.3))).toBe('round'); // aspect 0.61
+  });
+
+  it('an elongated group between the named bands is elongated, not round (the owner\'s 2:1 group at 117°)', () => {
+    expect(characterize(ellipse(117, 60, 30), opts).aspect).toBeCloseTo(0.5, 9);
+    expect(shape(ellipse(117, 60, 30))).toBe('elongated (rising to the sling side)');
+    expect(shape(ellipse(65, 60, 30))).toBe('elongated (rising to the trigger side)');
+    expect(shape(ellipse(27, 60, 30))).toBe('elongated (rising to the trigger side)');
+    expect(shape(ellipse(153, 60, 30))).toBe('elongated (rising to the sling side)');
+  });
+
+  it('a horizontal or vertical group just over a string\'s aspect (0.5 < a <= 0.6) is elongated in that direction', () => {
+    expect(shape(ellipse(90, 50, 27.5))).toBe('elongated (roughly vertical)'); // aspect 0.55
+    expect(shape(ellipse(0, 50, 27.5))).toBe('elongated (roughly horizontal)');
+  });
+
+  it('the named strings are unchanged', () => {
+    expect(shape(ellipse(90, 50, 20))).toBe('vertical string');
+    expect(shape(ellipse(0, 50, 20))).toBe('horizontal string');
+    expect(shape(ellipse(45, 50, 25))).toBe('diagonal string (up to the trigger side)');
+    expect(shape(ellipse(135, 50, 25))).toBe('diagonal string (down to the trigger side)');
   });
 });
 

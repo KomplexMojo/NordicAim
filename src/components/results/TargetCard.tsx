@@ -5,7 +5,7 @@ import type { TargetAnalysis } from '@/lib/domain/analysis';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { positionLabel } from '@/lib/pipeline/stage-b';
-import { shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
+import { plainLine, shotsFoundLine, targetHeadline } from '@/lib/render/text-lines';
 import { reconcileReasonContext } from '@/lib/scoring/reconcile-shots';
 
 import { DiagramSvg } from './DiagramSvg';
@@ -53,6 +53,12 @@ export function TargetCard({ sessionId, photo, analysis, onRetry }: TargetCardPr
             <p className="text-sm text-muted-foreground" data-testid="shots-found-line">
               {shotsFoundLine(result)}
             </p>
+            {/* Issue #86: the result in plain words before the ES / MPI / MOA details. */}
+            {plainLine(result) !== null && (
+              <p className="text-sm" data-testid="plain-line">
+                {plainLine(result)}
+              </p>
+            )}
           </>
         )}
       </CardHeader>

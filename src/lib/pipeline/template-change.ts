@@ -19,6 +19,14 @@ export function shouldRerunStageA(
   analysis: Pick<TargetAnalysis, 'calibration' | 'shots' | 'pipeline'>,
 ): boolean {
   if (after.template === null || after.template === before.template) return false;
+  return canRerunStageA(analysis);
+}
+
+/**
+ * The half of {@link shouldRerunStageA} that does not depend on what changed: Stage A has finished and nothing on
+ * the photo is manual. Also the rule for a changed reference sheet (template-reference.md §7, REV-121).
+ */
+export function canRerunStageA(analysis: Pick<TargetAnalysis, 'calibration' | 'shots' | 'pipeline'>): boolean {
   if (analysis.pipeline.stageA !== 'done') return false;
   if (analysis.calibration?.source === 'manual') return false;
   if (analysis.shots.some((shot) => shot.source === 'manual')) return false;

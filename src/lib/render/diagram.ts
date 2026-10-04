@@ -11,7 +11,7 @@ export interface DiagramInput {
   template: 'sighting' | 'precision';
   result: AnalysisResult;
   shots: Shot[];
-  positionLabel: string; // "Prone" | "Standing" | "Prone + standing"
+  positionLabel: string; // "Prone" | "Standing"
   captureLocal: string | null; // "2026-09-05T16:56:03"
   lighting: Lighting;
   holeDiameterMm: number;

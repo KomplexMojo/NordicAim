@@ -102,13 +102,13 @@ export const GLOSSARY: ReadonlyArray<GlossaryEntry> = [
   {
     term: 'GPS',
     stands: 'global positioning system',
-    means: 'The location a phone can record inside a photo. Photos keep it, so a backup file holds it too; keep backups private.',
+    means: 'The location a phone can record inside a photo. NordicAim takes it out of every photo when it is added, so no photo or backup holds it.',
     formula: null,
   },
   {
     term: 'EXIF',
     stands: 'exchangeable image file format',
-    means: 'The extra data inside a photo: when it was taken, the camera, and the GPS location. The app reads the time from it.',
+    means: 'The extra data inside a photo: when it was taken, the camera, and the GPS location. The app reads the time from it and removes the location.',
     formula: null,
   },
   {

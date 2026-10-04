@@ -83,7 +83,7 @@ describe('collectPatterns (patterns.md §1, §2)', () => {
     expect(data.points.confirm).toHaveLength(0);
   });
 
-  it('a both precision target splits its units by position', () => {
+  it('a precision unit goes to its own position\'s view', () => {
     const data = collectPatterns([source({ id: 'p', template: 'precision', units: [u(1, 0, 'prone', 10), u(2, 0, 'standing', 9), u(3, 0, 'standing', 8)] })]);
     expect(data.points['precision-prone']).toHaveLength(1);
     expect(data.points['precision-standing']).toHaveLength(2);
@@ -103,17 +103,7 @@ describe('collectPatterns (patterns.md §1, §2)', () => {
   });
 });
 
-describe('filterByRange (patterns.md §3)', () => {
-  const at = (date: string): PatternPoint => ({ xMm: 0, yMm: 0, ring: null, isX: null, zone: null, photoId: date, sessionId: date, sessionDate: date, sessionStamp: `${date}T08:00:00.000Z` });
-  const points = [at('2026-06-01'), at('2026-07-15'), at('2026-08-25'), at('2026-09-18')];
-  it('all keeps everything; 30 and 90 days count back from today', () => {
-    expect(filterByRange(points, 'all', '2026-09-20')).toHaveLength(4);
-    expect(filterByRange(points, '30', '2026-09-20').map((p) => p.sessionDate)).toEqual(['2026-08-25', '2026-09-18']);
-    expect(filterByRange(points, '30', '2026-09-20')).not.toContainEqual(expect.objectContaining({ sessionDate: '2026-06-01' }));
-  });
-});
-
-describe('filterByRange: this week and latest session (REV-77)', () => {
+describe('filterByRange: the most recent N sessions (patterns.md §3, REV-156)', () => {
   const at = (sessionId: string, sessionDate: string, sessionStamp: string): PatternPoint => ({
     xMm: 0,
     yMm: 0,
@@ -125,25 +115,38 @@ describe('filterByRange: this week and latest session (REV-77)', () => {
     sessionDate,
     sessionStamp,
   });
+  // Five sessions, one with two points, deliberately out of order.
+  const points = [
+    at('c', '2026-08-25', '2026-08-25T08:00:00Z'),
+    at('a', '2025-06-01', '2025-06-01T08:00:00Z'),
+    at('e', '2026-09-18', '2026-09-18T08:00:00Z'),
+    at('b', '2026-07-15', '2026-07-15T08:00:00Z'),
+    at('d', '2026-09-01', '2026-09-01T08:00:00Z'),
+    at('e', '2026-09-18', '2026-09-18T08:00:00Z'),
+  ];
 
-  it('this week is the calendar week from Monday to today', () => {
-    // 2026-09-20 is a Sunday, so the week began on Monday 2026-09-14.
-    const points = [at('a', '2026-09-13', '2026-09-13T08:00:00Z'), at('b', '2026-09-14', '2026-09-14T08:00:00Z'), at('c', '2026-09-20', '2026-09-20T08:00:00Z')];
-    expect(filterByRange(points, 'week', '2026-09-20').map((p) => p.sessionId)).toEqual(['b', 'c']);
-    // On a Monday the week is just that day.
-    expect(filterByRange(points, 'week', '2026-09-14').map((p) => p.sessionId)).toEqual(['b', 'c']);
-    expect(filterByRange([at('a', '2026-09-13', 'x')], 'week', '2026-09-14')).toEqual([]);
+  it('5 keeps that many of the newest sessions, every point of each, however long ago', () => {
+    const more = [...points, at('f', '2024-01-01', '2024-01-01T08:00:00Z')];
+    expect(filterByRange(more, '5').map((p) => p.sessionId)).toEqual(['c', 'a', 'e', 'b', 'd', 'e']);
+    expect(filterByRange(more, '10')).toHaveLength(7);
+  });
+
+  it('fewer sessions than the range asks for keeps them all; all keeps everything', () => {
+    expect(filterByRange(points, '30')).toHaveLength(6);
+    expect(filterByRange(points, 'all')).toBe(points);
+    expect(filterByRange([], '10')).toEqual([]);
   });
 
   it('the latest session is one session: the latest date, then the latest creation time, with all its points', () => {
-    const points = [
+    const same = [
       at('old', '2026-09-01', '2026-09-01T08:00:00Z'),
       at('morning', '2026-09-10', '2026-09-10T07:00:00Z'),
       at('evening', '2026-09-10', '2026-09-10T18:00:00Z'),
       at('evening', '2026-09-10', '2026-09-10T18:00:00Z'),
     ];
-    expect(filterByRange(points, 'last', '2026-09-20').map((p) => p.sessionId)).toEqual(['evening', 'evening']);
-    expect(filterByRange([], 'last', '2026-09-20')).toEqual([]);
+    expect(filterByRange(same, 'last').map((p) => p.sessionId)).toEqual(['evening', 'evening']);
+    expect(filterByRange(same, '5').map((p) => p.sessionId)).toEqual(['old', 'morning', 'evening', 'evening']);
+    expect(filterByRange([], 'last')).toEqual([]);
   });
 });
 

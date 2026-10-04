@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { EpisodeSteps } from '@/components/session/EpisodeSteps';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { PhotoMetadataCard } from '@/components/metadata/PhotoMetadataCard';
+import { SessionDateField } from '@/components/metadata/SessionDateField';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { isTargetPhoto } from '@/lib/domain/backing';
@@ -19,13 +21,15 @@ import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 import { sightingRoles } from '@/lib/domain/sighting-role';
 import { deletePhoto, requestAnalysis, updatePhotoMetadata } from '@/lib/services/photos';
-import { getSession, updateSession } from '@/lib/services/sessions';
+import { getSession, localToday, updateSession } from '@/lib/services/sessions';
+import { nameForNewDate } from '@/lib/domain/session-date';
 
 const NAME_NOTES_DEBOUNCE_MS = 600;
 
 interface MetadataData {
   sid: string;
   name: string;
+  sessionDate: string;
   notes: string;
   photos: TargetPhoto[];
   analyses: Map<string, TargetAnalysis | null>;
@@ -47,6 +51,7 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
   return {
     sid,
     name: session.name,
+    sessionDate: session.sessionDate,
     notes: session.notes,
     photos: ordered,
     analyses: new Map(analysisEntries),
@@ -56,6 +61,9 @@ async function loadData(ctx: ReturnType<typeof useServices>['ctx'], sid: string)
 /** Route `#/sessions/:sid/metadata` (analysis-pipeline §1 step 2), replacing M07's stub. */
 export function MetadataPage() {
   const { sid = '' } = useParams();
+  // Issue #79: opened from a target's screen (`?photo=<id>`), that target's card starts open.
+  const [searchParams] = useSearchParams();
+  const openPhotoId = searchParams.get('photo');
   const { ctx } = useServices();
   const navigate = useNavigate();
 
@@ -68,6 +76,20 @@ export function MetadataPage() {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const today = localToday(ctx);
+
+  /** REV-141: saved at once (a picker, not typing); a default name follows the date, in this form too. */
+  async function onDateChange(sessionDate: string) {
+    if (!data) return;
+    const renamed = nameForNewDate(name, data.sessionDate, sessionDate);
+    if (renamed !== name) setName(renamed);
+    try {
+      await updateSession(ctx, sid, { sessionDate, name: renamed });
+      toast.success(`Session date set to ${sessionDate}.`);
+    } catch (err) {
+      toast.error(`Could not save the date: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   if (data && data.sid === sid && seededFor !== sid) {
     setSeededFor(sid);
@@ -176,12 +198,14 @@ export function MetadataPage() {
         </span>
       </header>
 
+      <EpisodeSteps current={2} />
       <h1 className="text-xl font-semibold">Add metadata</h1>
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="session-name">Session name</Label>
         <Input id="session-name" value={name} onChange={(e) => setName(e.currentTarget.value)} maxLength={80} />
       </div>
+      <SessionDateField value={data.sessionDate} today={today} onChange={(d) => void onDateChange(d)} />
       <div className="flex flex-col gap-1">
         <Label htmlFor="session-notes">Session notes</Label>
         <Textarea
@@ -196,6 +220,7 @@ export function MetadataPage() {
         {photos.map((photo) => (
           <PhotoMetadataCard
             key={photo.id}
+            initiallyOpen={photo.id === openPhotoId}
             photo={photo}
             role={roles.get(photo.id) ?? null}
             analysis={data.analyses.get(photo.id) ?? null}
@@ -222,8 +247,8 @@ export function MetadataPage() {
       </Button>
       {!canAnalyze && photos.length > 0 && (
         <p className="text-center text-xs text-muted-foreground" data-testid="analyze-hint">
-          {incompleteCount} {incompleteCount === 1 ? 'photo needs' : 'photos need'} template, position, and rounds
-          before you can analyze.
+          {incompleteCount} {incompleteCount === 1 ? 'photo needs' : 'photos need'} a target type and rounds before you can
+          analyze.
         </p>
       )}
     </main>

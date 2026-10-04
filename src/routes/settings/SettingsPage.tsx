@@ -10,6 +10,7 @@ import { AthleteSettings } from '@/components/settings/AthleteSettings';
 import { ScoringSettings } from '@/components/settings/ScoringSettings';
 import { HoleSizeSettings } from '@/components/settings/HoleSizeSettings';
 import { MaxPlausibleHolesSettings } from '@/components/settings/MaxPlausibleHolesSettings';
+import { TemplateSheetSettings } from '@/components/settings/TemplateSheetSettings';
 import { useServices } from '@/lib/app/services';
 import type { BackingMode } from '@/lib/domain/backing';
 import type { AppSettings } from '@/lib/domain/settings';
@@ -24,6 +25,7 @@ import {
   setHoleDiameterMm,
   setMaxPlausibleHoles,
   setAthlete,
+  setAthletePicture,
   setHandedness,
   setScoringRule,
   setVisibleHoleDiameterMm,
@@ -126,6 +128,8 @@ export function SettingsPage() {
             key={`athlete-${epoch}`}
             name={settings.athleteName}
             club={settings.athleteClub}
+            picture={settings.athletePicture}
+            onPictureChange={async (p) => setSettings(await setAthletePicture(ctx, p))}
             handedness={settings.handedness}
             onHandednessChange={(h) => void saveScoring(() => setHandedness(ctx, h), { handedness: h })}
             fingerprint={settings.keyFingerprint}
@@ -174,6 +178,12 @@ export function SettingsPage() {
               setCardError(false);
               void save(() => clearBacking(ctx));
             }}
+          />
+          <TemplateSheetSettings
+            key={`sheets-${epoch}`}
+            templateReferences={settings.templateReferences}
+            holeDiameterMm={settings.profileOverrides.holeDiameterMm}
+            onChanged={setSettings}
           />
           <BackupSettings
             settings={settings}

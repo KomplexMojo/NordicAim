@@ -1,8 +1,13 @@
 import { BiathlonSession, repairSession, upgradeSession } from '@/lib/domain/session';
+import { defaultSessionName, isValidSessionDate, nameForNewDate } from '@/lib/domain/session-date';
+import { clientNow } from '@/lib/media/capture-time';
 import { photoPrefix, diagramPrefix, artifactPrefix } from '@/lib/store/blob-keys';
 import { deleteByPrefix } from '@/lib/store/blobs-repo';
 import { deleteAnalysisRecord } from '@/lib/store/analyses-repo';
-import { deletePhotoRecord, listPhotoIdsBySession } from '@/lib/store/photos-repo';
+import { deletePhotoRecord, listPhotoIdsBySession, listPhotoRecords } from '@/lib/store/photos-repo';
+import { kindsBySession, type SessionKinds } from '@/lib/sessions/kinds';
+import { seasonsBySession } from '@/lib/sessions/seasons';
+import type { Season } from '@/lib/domain/enums';
 import {
   deleteSessionRecord,
   getRawSessionRecord,
@@ -41,7 +46,7 @@ export async function createSession(ctx: ServiceContext, input: CreateSessionInp
   const session: BiathlonSession = {
     schemaVersion: 3,
     id: ctx.newId(),
-    name: input.name ?? `Session ${sessionDate}`,
+    name: input.name ?? defaultSessionName(sessionDate),
     sessionDate,
     createdAt: nowIso,
     updatedAt: nowIso,
@@ -72,6 +77,24 @@ export async function listSessionsWithProblems(
   return listSessionRecordsWithProblems(ctx.db);
 }
 
+/**
+ * Issue #73 (REV-139): every session's target kinds, for the marks on Home's rows. One read of the photo records (no blobs),
+ * grouped by session, so the list stays quick however many sessions there are.
+ */
+export async function listSessionKinds(ctx: ServiceContext): Promise<Map<string, SessionKinds>> {
+  return kindsBySession(await listPhotoRecords(ctx.db));
+}
+
+/** REV-154 (issue #29): each session's target seasons, for Home's season filter (`sessionInSeason`). */
+export async function listSessionSeasons(ctx: ServiceContext): Promise<Map<string, Array<Season | null>>> {
+  return seasonsBySession(await listPhotoRecords(ctx.db));
+}
+
+/** The phone's local date today, `YYYY-MM-DD` (the date quick start gives a new session). */
+export function localToday(ctx: ServiceContext): string {
+  return clientNow(ctx.now()).clientLocal.slice(0, 10);
+}
+
 export interface UpdateSessionInput {
   name?: string;
   sessionDate?: string;
@@ -83,14 +106,21 @@ export async function updateSession(
   sessionId: string,
   input: UpdateSessionInput,
 ): Promise<BiathlonSession> {
+  // REV-141: a session's date is a real day, not in the future (the phone's local today).
+  if (input.sessionDate !== undefined && !isValidSessionDate(input.sessionDate, localToday(ctx))) {
+    throw new RangeError(`Not a valid session date: ${input.sessionDate}`);
+  }
   const tx = ctx.db.transaction('sessions', 'readwrite');
   const session = await getSessionRecord(tx, sessionId);
   if (session === null) throw new SessionNotFoundError(sessionId);
+  // A blank name is a field being retyped, not a rename: keep the current one (owner, 2026-09-19).
+  const name = input.name?.trim() ? input.name.trim() : session.name;
+  const sessionDate = input.sessionDate ?? session.sessionDate;
   const updated: BiathlonSession = {
     ...session,
-    // A blank name is a field being retyped, not a rename: keep the current one (owner, 2026-09-19).
-    name: input.name?.trim() ? input.name.trim() : session.name,
-    sessionDate: input.sessionDate ?? session.sessionDate,
+    // REV-141: a default name ("Session <date>") follows a changed date; a typed name is kept.
+    name: nameForNewDate(name, session.sessionDate, sessionDate),
+    sessionDate,
     notes: input.notes ?? session.notes,
     updatedAt: ctx.now().toISOString(),
   };

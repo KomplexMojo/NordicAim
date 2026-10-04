@@ -17,6 +17,7 @@ import type { StoredBlob } from '@/lib/store/db';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 
 import type { ServiceContext } from './context';
+import { removeLocation, withoutLocation } from './location';
 import { SessionNotFoundError } from './sessions';
 
 const MAX_ORIGINAL_BYTES = 30 * 1024 * 1024;
@@ -84,8 +85,10 @@ export async function ingestPhoto(
   const workingBuffer = await working.arrayBuffer();
   const thumbBuffer = await thumb.arrayBuffer();
 
-  // 3. metadata (analysis-pipeline §2 A2, metadata-lighting §1-§4)
-  const exif = await readExif(new Uint8Array(originalBuffer));
+  // 3. metadata (analysis-pipeline §2 A2, metadata-lighting §1-§4), read from the file as it came; then (REV-158) the
+  // location is taken out of the file that is kept, and never copied onto the record.
+  const exif = withoutLocation(await readExif(new Uint8Array(originalBuffer)));
+  const keptBuffer = await removeLocation(new Uint8Array(originalBuffer), format);
   const captureTime = resolveCaptureTime({ exif, origin, clientLocal, clientOffset });
   const imageStats = computeImageStats(await imageTools.toRgba(working, 256));
   const localHour = captureTime.local === null ? null : Number(captureTime.local.slice(11, 13));
@@ -128,12 +131,13 @@ export async function ingestPhoto(
     notes,
     status,
     reasons,
+    locationRemoved: true,
   };
 
   const originalRecord: StoredBlob = {
-    bytes: originalBuffer,
+    bytes: keptBuffer,
     contentType: contentTypeFor(format),
-    sizeBytes: originalBuffer.byteLength,
+    sizeBytes: keptBuffer.byteLength,
     createdAt: nowIso,
   };
   const workingRecord: StoredBlob = {

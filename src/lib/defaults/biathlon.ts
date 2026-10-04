@@ -9,7 +9,5 @@ export const BIATHLON_50M = {
     precisionRounds: 10,
     sightingRounds: 10,
     competitionBoutRoundsPerPosition: 5,
-    bothRoundsProne: 5,
-    bothRoundsStanding: 5,
   },
 } as const;

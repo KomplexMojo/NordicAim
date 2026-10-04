@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { backingDisplayColour, withBackingColour } from '@/lib/domain/backing';
-import { renderPositionSilhouette, renderScoreStar } from '@/lib/render/diagram-marks';
+import { renderPatternViewMark, renderPositionSilhouette, renderScoreStar, renderSightingRoleSymbol } from '@/lib/render/diagram-marks';
 import { renderShots } from '@/lib/render/diagram-shared';
 import { renderScoringIcon } from '@/lib/render/scoring-icons';
 import { medalFor } from '@/lib/scoring/medal';
@@ -114,5 +114,19 @@ describe('position marks (REV-86)', () => {
     expect(bar(standing).h).toBeGreaterThan(bar(standing).w); // vertical
     expect((prone.match(/<circle/g) ?? []).length).toBe(1); // just the disc
     expect(prone).toContain('fill="#FFFFFF"');
+  });
+});
+
+describe('renderPatternViewMark (REV-122, issue #58)', () => {
+  it('is the same drawing a results card of that kind carries', () => {
+    expect(renderPatternViewMark('sight-in')).toBe(renderSightingRoleSymbol('sight-in'));
+    expect(renderPatternViewMark('confirm')).toBe(renderSightingRoleSymbol('confirm'));
+    expect(renderPatternViewMark('precision-prone')).toBe(renderPositionSilhouette('prone'));
+    expect(renderPatternViewMark('precision-standing')).toBe(renderPositionSilhouette('standing'));
+  });
+
+  it('gives each view a different mark', () => {
+    const marks = (['sight-in', 'confirm', 'precision-prone', 'precision-standing'] as const).map(renderPatternViewMark);
+    expect(new Set(marks).size).toBe(4);
   });
 });

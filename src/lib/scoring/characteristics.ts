@@ -4,6 +4,8 @@
 // Everything is measured in a frame where +x is the trigger side and -x the sling side, so a left-handed shooter's shots are mirrored first
 // (`x' = h * x`) and no rule ever mentions a hand.
 
+import { hitsZone } from './sighting';
+
 export type Handedness = 'right' | 'left';
 
 export interface Pt {
@@ -52,12 +54,34 @@ export interface Characteristics {
   /** Shape: principal-axis aspect (0 a line, 1 round) and angle CCW from +x' in [0, 180). */
   aspect: number | null;
   axisDeg: number | null;
-  shape: 'round' | 'horizontal string' | 'vertical string' | 'diagonal string (up to the trigger side)' | 'diagonal string (down to the trigger side)' | null;
+  shape:
+    | 'round'
+    | 'horizontal string'
+    | 'vertical string'
+    | 'diagonal string (up to the trigger side)'
+    | 'diagonal string (down to the trigger side)'
+    | ElongatedShape
+    | null;
   flyers: number;
-  /** Share of shots outside the black disc. */
+  /** Share of shots that would miss the biathlon hit zone for the position (`CharacterizeOptions.holeDiameterMm`). */
   outsideShare: number | null;
   twoClusters: boolean;
   issues: IssueFinding[];
+}
+
+/** Spec §2 (owner, 2026-10-01): an elongated group that is none of the named strings, by its nearest direction. */
+export type ElongatedShape =
+  | 'elongated (roughly horizontal)'
+  | 'elongated (roughly vertical)'
+  | 'elongated (rising to the trigger side)'
+  | 'elongated (rising to the sling side)';
+
+/** The nearest of the four directions to the principal axis (`axisDeg`, CCW from +x′ in [0, 180)). */
+function elongatedShape(axisDeg: number): ElongatedShape {
+  if (axisDeg < 22.5 || axisDeg >= 157.5) return 'elongated (roughly horizontal)';
+  if (axisDeg < 67.5) return 'elongated (rising to the trigger side)';
+  if (axisDeg < 112.5) return 'elongated (roughly vertical)';
+  return 'elongated (rising to the sling side)';
 }
 
 export interface IssueFinding {
@@ -72,8 +96,11 @@ export interface CharacterizeOptions {
   handedness: Handedness;
   /** `prone` runs the prone-only rules; `standing` and null skip them. */
   position: 'prone' | 'standing' | null;
-  /** The black disc's radius in mm, for the outside-the-disc share. */
-  discRadiusMm: number;
+  /**
+   * The scoring rule's hole diameter (`scoringHoleDiameterMm`, REV-56), for the outside-the-zone share: a shot is
+   * outside when it would miss the biathlon hit zone for `position` (`hitsZone`; null reads prone, the tighter).
+   */
+  holeDiameterMm: number;
 }
 
 function median(values: number[]): number {
@@ -185,13 +212,18 @@ export function characterize(points: readonly Pt[], options: CharacterizeOptions
         ? 'diagonal string (up to the trigger side)'
         : diagDown
           ? 'diagonal string (down to the trigger side)'
-          : 'round';
+          : // "Round" only when it is: an elongated group outside every named band (or just over a string's aspect)
+            // used to fall through to "round" (owner, 2026-10-01, a 2:1 group at 117° read "round").
+            aspect <= T.diagonalAspect
+            ? elongatedShape(axis)
+            : 'round';
 
   const flyerIdx = med > 0 ? d.map((v, i) => (v >= T.flyerFactor * med ? i : -1)).filter((i) => i >= 0) : [];
   const core = pts.filter((_, i) => !flyerIdx.includes(i));
   const esCore = core.length < 2 ? 0 : spread(core);
   const coreC = core.length === 0 ? c : centroid(core);
-  const outside = pts.filter((p) => Math.hypot(p.xMm, p.yMm) > options.discRadiusMm).length / n;
+  const zone = options.position ?? 'prone';
+  const outside = pts.filter((p) => !hitsZone(Math.hypot(p.xMm, p.yMm), zone, options.holeDiameterMm)).length / n;
   const split = twoClusterSplit(pts);
   let twoClusters = false;
   if (split) {
@@ -222,7 +254,7 @@ export function characterize(points: readonly Pt[], options: CharacterizeOptions
     if (esMoa <= T.looseMoa && offMoa >= T.offsetMoa && kappa >= T.offsetRatio) {
       f('zero-off', 'Zero off', `centre ${fmt(offMoa)} MOA from the bullseye, ${fmt(kappa)} group widths`);
     }
-    if (outside >= 0.5) f('fundamentals', 'Fundamentals / equipment', `${Math.round(outside * 100)}% of shots outside the black`);
+    if (outside >= 0.5) f('fundamentals', 'Fundamentals / equipment', `${Math.round(outside * 100)}% of shots outside the zone`);
     if (flyerIdx.length >= 2 && moa(esCore) <= T.tightMoa && outside >= 0.2 && outside < 0.5) {
       f('sight-alignment', 'Sight alignment', `${flyerIdx.length} flyers around a ${fmt(moa(esCore))} MOA core`);
     }

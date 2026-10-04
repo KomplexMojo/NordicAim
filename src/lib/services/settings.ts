@@ -6,6 +6,7 @@
 // The one exception is the scoring rule (REV-56): it changes how the same shots are read, not what is
 // found, so `setScoringRule` / `setVisibleHoleDiameterMm` re-score every stored session (`rescoreAll`).
 
+import { athletePictureProblem } from '@/lib/domain/athlete-picture';
 import type { BackingMode, BackingSheet } from '@/lib/domain/backing';
 import {
   cleanIdentityText,
@@ -130,6 +131,12 @@ export async function setHandedness(ctx: ServiceContext, handedness: Handedness)
   const before = await getSettings(ctx.db);
   const settings = await updateSettings(ctx, (s) => ({ ...s, handedness }));
   return { settings, rescored: before.handedness !== handedness ? await rescoreAll(ctx) : null };
+}
+
+/** REV-157: the athlete's picture (already made and checked by the caller), or null to remove it. Re-runs nothing. */
+export async function setAthletePicture(ctx: ServiceContext, picture: string | null): Promise<AppSettings> {
+  if (picture !== null && athletePictureProblem(picture) !== null) throw new Error(`That picture can't be used: ${athletePictureProblem(picture)}.`);
+  return updateSettings(ctx, (s) => ({ ...s, athletePicture: picture }));
 }
 
 /** REV-99: the athlete's name and ski club, cleaned before they are stored. Re-runs nothing. */

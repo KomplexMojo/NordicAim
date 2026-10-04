@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-
 import { doublePunchProposal, measuredAreaMm2 } from '@/lib/cv/multiplicity';
 import { shotFromSuggestion, visibleSuggestions } from '@/lib/cv/suggestions';
 import { useServices } from '@/lib/app/services';
@@ -8,58 +7,24 @@ import { BIATHLON_50M } from '@/lib/defaults/biathlon';
 import type { AnalysisResult, Shot, TargetAnalysis } from '@/lib/domain/analysis';
 import type { Warning } from '@/lib/domain/enums';
 import { isCategorizationComplete } from '@/lib/domain/categorization';
-import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
-import type { PhotoStatus, Reason } from '@/lib/domain/enums';
+import type { Calibration } from '@/lib/domain/photo';
 import { photoStatus } from '@/lib/domain/status';
 import { reprojectShots } from '@/lib/geometry/reproject';
 import { analyzeTarget } from '@/lib/scoring/analyze';
-import { scoringDiameterFromSettings } from '@/lib/scoring/rule';
 import { mergeReconcileWarnings, reconcileReasonContext, reconcileShots } from '@/lib/scoring/reconcile-shots';
 import { adjustStartCalibration, SAME_HOLE_DIAMETERS, type AdjustmentsPatch } from '@/lib/services/adjust';
 import { loadDetectionAids, type DetectionAids } from '@/lib/services/detection-aids';
 import { adjustSavePatch, hasAdjustEdits, sameCalibration } from '@/lib/services/review';
-import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
 import { getBlob } from '@/lib/store/blobs-repo';
-import { getPhotoRecord } from '@/lib/store/photos-repo';
-import { getSettings } from '@/lib/store/settings-repo';
 import { getCvClient } from '@/workers/cv-client';
 
 import type { ScreenSuggestion } from './SuggestionLayer';
 
-export interface AdjustData {
-  photo: TargetPhoto;
-  analysis: TargetAnalysis;
-  holeDiameterMm: number;
-  /** REV-56: what the score preview treats a hole as (the owner's scoring rule); detection uses `holeDiameterMm`. */
-  scoringHoleDiameterMm: number;
-  /** Settings' raw-hole-count safety net, so the preview matches what Stage B would decide. */
-  maxPlausibleHoles: number;
-}
+import { type AdjustData, type AdjustPreview, loadAdjust } from './adjust-data';
 
-type Ctx = ReturnType<typeof useServices>['ctx'];
-
-export async function loadAdjust(ctx: Ctx, pid: string): Promise<AdjustData | null> {
-  const photo = await getPhotoRecord(ctx.db, pid);
-  if (photo === null) return null;
-  const analysis = await getAnalysisRecord(ctx.db, pid);
-  if (analysis === null) return null;
-  const settings = await getSettings(ctx.db);
-  return {
-    photo,
-    analysis,
-    holeDiameterMm: settings.profileOverrides.holeDiameterMm,
-    scoringHoleDiameterMm: scoringDiameterFromSettings(settings),
-    maxPlausibleHoles: settings.maxPlausibleHoles,
-  };
-}
-
-export interface AdjustPreview {
-  result: AnalysisResult | null;
-  status: PhotoStatus;
-  reasons: Reason[];
-  reconcile: ReturnType<typeof reconcileReasonContext>;
-}
+export { loadAdjust } from './adjust-data';
+export type { AdjustData, AdjustPreview } from './adjust-data';
 
 /**
  * M13's Adjust draft, shared by the Adjust route and M21's session review so the review embeds the one
@@ -174,7 +139,9 @@ export function useAdjustDraft(pid: string) {
     // `extra-candidates-dropped`) and, via `adjustSavePatch`, an overlay-guess alignment. Without this the
     // preview kept saying "needs attention" for exactly the two things a Save resolves.
     const willSave = adjustSavePatch(analysis, calibration, shots);
-    let warnings: Warning[] = analysis.pipeline.warnings.filter((w) => w !== 'extra-candidates-dropped');
+    let warnings: Warning[] = analysis.pipeline.warnings.filter(
+      (w) => w !== 'extra-candidates-dropped' && !(willSave.calibration !== undefined && w === 'sheet-markers-disagree'),
+    );
     const method = analysis.pipeline.detection.method;
     if (categorization.template !== null && isCategorizationComplete(categorization)) {
       const profile = { ...BIATHLON_50M, holeDiameterMm: scoringHoleDiameterMm } as typeof BIATHLON_50M;

@@ -38,6 +38,9 @@ test('the result card picture opens the target, where the photo is editable on t
 
   // The swipe (wipe) comparison is part of the editor, not a separate view.
   await expect(page.getByTestId('photo-view-compare')).toHaveCount(0);
+  // Issue #88: behind Compare until opened.
+  await expect(page.getByTestId('compare-slider')).toHaveCount(0);
+  await page.getByTestId('compare-toggle').click();
   await expect(page.getByTestId('compare-slider')).toBeVisible();
   await expect(page.getByTestId('fade-range')).toBeVisible();
   await expect(page.getByTestId('swipe-range')).toBeVisible();
@@ -60,7 +63,7 @@ test('adding more photos is one tap from results, and the session parent is one 
 
 test('the tab bar is the only Home link on screens that have it', async ({ page }) => {
   const { sessionId } = await demoSession(page);
-  for (const path of [`#/sessions`, `#/diagnostics`, `#/sessions/${sessionId}/results`]) {
+  for (const path of [`#/sessions`, `#/diagnostics`, `#/analysis`, `#/patterns`, `#/sessions/${sessionId}/results`]) {
     await page.goto(`/${path}`);
     await expect(page.getByRole('link', { name: 'Home', exact: true })).toHaveCount(0);
     await expect(page.getByTestId('tab-shooting')).toBeVisible();
@@ -73,7 +76,7 @@ test('a tab opens its screen at the top, not at the scroll position of the last 
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
 
-  for (const tab of ['tab-shooting', 'tab-diagnostics', 'tab-settings']) {
+  for (const tab of ['tab-shooting', 'tab-analysis', 'tab-patterns', 'open-settings']) {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     await page.getByTestId(tab).click();
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
@@ -87,3 +90,13 @@ test('the NordicAim mark and name in the header take you to the sessions screen 
   await expect(page.getByTestId('tab-shooting')).toHaveAttribute('aria-current', 'page');
 });
 
+
+test('the empty Home states the three steps in one line, and drops it once a session exists (issue #93)', async ({ page }) => {
+  await page.goto('/#/');
+  await expect(page.getByTestId('home-promise')).toHaveText('Photograph your targets, confirm what you shot, then read the analysis.');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.reload();
+  await expect(page.getByTestId('session-list').first()).toBeVisible();
+  await expect(page.getByTestId('home-promise')).toHaveCount(0);
+});

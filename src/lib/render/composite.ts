@@ -3,8 +3,8 @@
 // shares or downloads (`CompositeArtifact`, §6; the "share rule" in AGENTS.md).
 
 import { EmptyCompositeError } from '@/lib/composite/artifact';
-import type { AnalysisResult, MpiOffset, TargetAnalysis } from '@/lib/domain/analysis';
-import type { Lighting, Position, Season } from '@/lib/domain/enums';
+import type { AnalysisResult, MpiOffset } from '@/lib/domain/analysis';
+import type { Lighting, Season } from '@/lib/domain/enums';
 import { suggestSeason } from '@/lib/domain/season';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import type { BiathlonSession } from '@/lib/domain/session';
@@ -13,108 +13,38 @@ import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
 import { brandMotif } from './brand-mark';
 import { layoutBand, type BandModel, type BandRow } from './composite-band';
+import { goalBandRows, goalViewOf, renderGoalsSeal } from './composite-goals';
 import { renderLightingIcon, renderSeasonIcon } from './condition-icons';
 import { PALETTE } from './palette';
 import { el, num, text } from './svg';
 import { fmtMm, precisionFooterLines, sightingFooterLines } from './text-lines';
 
-export interface SlotData {
-  photo: TargetPhoto;
-  analysis: TargetAnalysis;
-  /** The result under the scoring rule in force (`CompositeInput.scoring`). */
-  result: AnalysisResult;
-  /**
-   * REV-59: the same shots scored under every rule, for the band's comparison. Optional: without it the band
-   * names the rule but shows no comparison.
-   */
-  byRule?: Record<ScoringRule, AnalysisResult>;
-}
+import {
+  APP_NAME,
+  COMPOSITE_CELLS,
+  COMPOSITE_GRID_HEIGHT,
+  type CompositeInput,
+  DEVELOPER_NAME,
+  FOOTER_APP_NAME,
+  HEADER_HEIGHT,
+  type SlotData,
+  WIDTH,
+  capitalize,
+  fullPositionLabel,
+  positionName,
+  truncate,
+} from './composite-layout';
 
-export interface CompositeInput {
-  session: BiathlonSession;
-  slots: { sighting: [SlotData | null, SlotData | null]; precision: [SlotData | null, SlotData | null] };
-  generatedAtLocal: string; // "2026-09-05 17:20"
-  /** REV-69: the build (git short SHA) that drew the image; printed in the footer of every summary. */
-  release: string;
-  holeDiameterMm: number;
-  /** REV-59: the scoring rule the results were computed under, and the visible-hole size it may use. */
-  scoring: { rule: ScoringRule; visibleHoleDiameterMm: number };
-  /**
-   * §5's line 3 ("+<n> more target(s) in the app") needs the count of `analyzed` candidates beyond the
-   * four slots — information `selectDefaultSlots` sees but a `CompositeInput` built from only the
-   * selected slots cannot recover on its own. `composite/build.ts` computes it; see the milestone's
-   * Open questions for this addition to the documented `CompositeInput` shape.
-   */
-  moreCount: number;
-  /** REV-100: the athlete's identity line and, when a key is set, the stamp. Omitted when there is nothing to print. */
-  provenance?: { name: string; club: string; stamp: string | null };
-}
-
-/**
- * rendering-composite.md §6: bumped whenever this renderer's output changes (REV-51 layout, REV-52 shared
- * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method). A stored artifact drawn by an older version is rebuilt when its session's
- * results screen is opened, so an app update is never invisible in the summary image.
- */
-export const COMPOSITE_RENDERER_VERSION = 18;
-
-/** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
-export const APP_NAME = 'NordicAim';
-export const DEVELOPER_NAME = 'KomplexMojo';
-/** REV-69: the footer writes the app's name as one word. */
-export const FOOTER_APP_NAME = 'NordicAim';
-
-const WIDTH = 1440;
-const HEADER_HEIGHT = 120;
-const MAX_LINE_CHARS = 110;
-
-/** §5 (REV-51): one of the four fixed positions, its offset within the grid, and its drawn size. */
-export interface CellPlacement {
-  template: 'sighting' | 'precision';
-  index: 0 | 1;
-  x: number;
-  y: number;
-  size: number;
-}
-
-/**
- * §5 (REV-51, owner: "keep a blank template slot for each of the 4 targets"): always four positions —
- * sighting 1 and 2 on the top row, precision 1 and 2 below. An empty position shows its blank template,
- * so every summary has the same shape and a target is always found in the same place.
- */
-export const COMPOSITE_CELLS: readonly CellPlacement[] = [
-  { template: 'sighting', index: 0, x: 0, y: 0, size: 720 },
-  { template: 'sighting', index: 1, x: 720, y: 0, size: 720 },
-  { template: 'precision', index: 0, x: 0, y: 720, size: 720 },
-  { template: 'precision', index: 1, x: 720, y: 720, size: 720 },
-];
-export const COMPOSITE_GRID_HEIGHT = 1440;
-
-/**
- * §5 (REV-53). How a session actually runs, in the owner's words: "you sight in on one target and then you
- * confirm on a second target". So the two sighting positions are **Sight in** and **Confirm** rather than
- * "Sighting 1" and "Sighting 2"; the precision positions stay numbered. Slot 1 is the earlier target
- * (selection orders them chronologically), which is the one sighted in on.
- */
-export function positionName(template: 'sighting' | 'precision', index: 0 | 1): string {
-  if (template === 'sighting') return index === 0 ? 'Sight in' : 'Confirm';
-  return index === 0 ? 'Precision prone' : 'Precision standing';
-}
-
-function capitalize(value: string): string {
-  return value.length === 0 ? value : value[0]!.toUpperCase() + value.slice(1);
-}
-
-function truncate(value: string, max = MAX_LINE_CHARS): string {
-  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
-}
-
-/** §3's `DiagramInput.positionLabel` ("Prone" | "Standing" | "Prone + standing"), duplicated here (not
- * imported from `pipeline/stage-b.ts`) so this pure render module stays free of the pipeline layer. */
-function fullPositionLabel(position: Position): string {
-  if (position === 'prone') return 'Prone';
-  if (position === 'standing') return 'Standing';
-  return 'Prone + standing';
-}
+export {
+  COMPOSITE_RENDERER_VERSION,
+  APP_NAME,
+  DEVELOPER_NAME,
+  FOOTER_APP_NAME,
+  COMPOSITE_CELLS,
+  COMPOSITE_GRID_HEIGHT,
+  positionName,
+} from './composite-layout';
+export type { SlotData, CompositeInput, CellPlacement } from './composite-layout';
 
 function slotDiagramInput(
   slot: SlotData,
@@ -275,6 +205,7 @@ function bandModel(input: CompositeInput, placed: Placed[]): BandModel {
     showMpi: rows.some((r) => r.mpi !== null),
     showRules,
     extra,
+    goals: goalBandRows(input.goals),
     notes: input.session.notes.trim().length > 0 ? input.session.notes : null,
     // Never truncated: cutting the stamp would make it unverifiable.
     athlete: input.provenance === undefined ? null : provenanceLine(input.provenance),
@@ -318,6 +249,9 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
             String(cell.index + 1), // only the clip id still needs the slot number
           );
     body += nestCellSvg(svg, cell.x, HEADER_HEIGHT + cell.y, cell.size);
+    // REV-148: the seal when the session met every goal in effect for this target's position.
+    const view = slot === null || cell.template !== 'precision' ? null : goalViewOf(slot.result.position);
+    if (view !== null && input.goals?.[view]?.allMet === true) body += renderGoalsSeal(cell.x + 664, HEADER_HEIGHT + cell.y + 198);
   }
   body += band.svg;
 

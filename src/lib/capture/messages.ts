@@ -13,13 +13,13 @@ export const OVERLAY_LABELS: Record<TemplateId, string> = {
 export function cameraErrorMessage(code: CameraErrorCode): string {
   switch (code) {
     case 'insecure_context':
-      return 'The camera needs a secure (HTTPS) connection. Use the native camera or import from Photos below.';
+      return 'The camera needs a secure (HTTPS) connection. Use the phone camera or import from Photos below.';
     case 'permission_denied':
-      return 'Camera access was denied. Allow camera access for this site, or use the native camera or Photos import below.';
+      return 'Camera access was denied. Allow camera access for this site, or use the phone camera or Photos import below.';
     case 'no_camera':
       return 'No camera was found. Use Photos import below.';
     case 'camera_error':
-      return 'The camera could not start. Use the native camera or Photos import below.';
+      return 'The camera could not start. Use the phone camera or Photos import below.';
   }
 }
 

@@ -1,7 +1,9 @@
 // patterns.md §1–§3: which recorded shots belong to which Patterns view. Pure: no clock, no storage.
 
 import type { TargetAnalysis, UnitResult } from '../domain/analysis';
+import type { Season } from '../domain/enums';
 import type { TargetPhoto } from '../domain/photo';
+import { seasonMatches, targetSeason, type SeasonFilter } from '../domain/season';
 import { sightingRoles } from '../domain/sighting-role';
 
 export const PATTERN_VIEWS = ['sight-in', 'confirm', 'precision-prone', 'precision-standing'] as const;
@@ -14,7 +16,19 @@ export const PATTERN_VIEW_LABEL: Record<PatternView, string> = {
   'precision-standing': 'Precision standing',
 };
 
-export type PatternRange = 'last' | 'week' | '30' | '90' | 'all';
+/** REV-156: how many of the most recent sessions to show, broadest last; `last` is one, `all` is every session. */
+export type PatternRange = 'last' | '5' | '10' | '20' | '30' | 'all';
+
+/** patterns.md §3: each range as read in a sentence (the coach image's subtitle, analysis.md §5, and `ViewRangeControls`'s
+ * accessible label — its visible tick text is its own, shorter set). */
+export const PATTERN_RANGE_LABEL: Record<PatternRange, string> = {
+  last: 'Latest session',
+  '5': 'Last 5 sessions',
+  '10': 'Last 10 sessions',
+  '20': 'Last 20 sessions',
+  '30': 'Last 30 sessions',
+  all: 'All sessions',
+};
 
 export interface PatternSource {
   sessionId: string;
@@ -22,7 +36,7 @@ export interface PatternSource {
   sessionDate: string;
   /** When the session was created (ISO), to tell two sessions on the same day apart. */
   sessionStamp: string;
-  photo: Pick<TargetPhoto, 'id' | 'sessionId' | 'status' | 'captureTime' | 'importedAt'> & {
+  photo: Pick<TargetPhoto, 'id' | 'sessionId' | 'status' | 'captureTime' | 'importedAt' | 'season'> & {
     categorization: Pick<TargetPhoto['categorization'], 'template' | 'sightingRole'>;
   };
   analysis: Pick<TargetAnalysis, 'computed' | 'pipeline'> | null;
@@ -38,6 +52,8 @@ export interface PatternPoint {
   sessionId: string;
   sessionDate: string;
   sessionStamp: string;
+  /** REV-154: the season its target counts in (`targetSeason`); absent or null = no season, shown only under All. */
+  season?: Season | null;
 }
 
 export interface PatternData {
@@ -65,6 +81,7 @@ function toPoint(unit: UnitResult, source: PatternSource): PatternPoint {
     sessionId: source.sessionId,
     sessionDate: source.sessionDate,
     sessionStamp: source.sessionStamp,
+    season: targetSeason(source.photo.season, source.photo.captureTime.local, source.sessionDate),
   };
 }
 
@@ -107,34 +124,28 @@ export function collectPatterns(sources: PatternSource[]): PatternData {
   return { points, leftOut };
 }
 
-/** The Monday on or before `today` (`YYYY-MM-DD`), the start of the calendar week. */
-function weekStart(today: string): string {
-  const d = new Date(`${today}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
-  return d.toISOString().slice(0, 10);
-}
+/** How many sessions each range keeps; `null` keeps every one. */
+export const RANGE_SESSIONS: Record<PatternRange, number | null> = { last: 1, '5': 5, '10': 10, '20': 20, '30': 30, all: null };
 
 /**
- * patterns.md §3: `today` is `YYYY-MM-DD`, supplied by the caller. `last` is the most recent session that has points here
- * (latest session date, then latest creation time); `week` is this calendar week, Monday to today; `30` and `90` count back days.
+ * patterns.md §3 (REV-156): the points of the most recent N sessions that have points here, newest by session date, then
+ * by creation time. Counting sessions, not days, means a season (filtered first) never empties a range by itself.
  */
-export function filterByRange(points: PatternPoint[], range: PatternRange, today: string): PatternPoint[] {
-  if (range === 'all') return points;
-  if (range === 'last') {
-    let latest: PatternPoint | null = null;
-    for (const p of points) {
-      if (latest === null || p.sessionDate > latest.sessionDate || (p.sessionDate === latest.sessionDate && p.sessionStamp > latest.sessionStamp)) {
-        latest = p;
-      }
-    }
-    return latest === null ? [] : points.filter((p) => p.sessionId === latest.sessionId);
-  }
-  if (range === 'week') {
-    const start = weekStart(today);
-    return points.filter((p) => p.sessionDate >= start);
-  }
-  const cutoff = new Date(`${today}T00:00:00Z`);
-  cutoff.setUTCDate(cutoff.getUTCDate() - Number(range));
-  const cutoffDate = cutoff.toISOString().slice(0, 10);
-  return points.filter((p) => p.sessionDate >= cutoffDate);
+export function filterByRange(points: PatternPoint[], range: PatternRange): PatternPoint[] {
+  const keep = RANGE_SESSIONS[range];
+  if (keep === null) return points;
+  const newest = new Map<string, { date: string; stamp: string }>();
+  for (const p of points) if (!newest.has(p.sessionId)) newest.set(p.sessionId, { date: p.sessionDate, stamp: p.sessionStamp });
+  const kept = new Set(
+    [...newest.entries()]
+      .sort(([, a], [, b]) => (a.date === b.date ? (a.stamp < b.stamp ? 1 : a.stamp > b.stamp ? -1 : 0) : a.date < b.date ? 1 : -1))
+      .slice(0, keep)
+      .map(([id]) => id),
+  );
+  return points.filter((p) => kept.has(p.sessionId));
+}
+
+/** REV-154 (issue #29): only the shots whose target counts in `season`; `all` keeps everything. Applied before the range. */
+export function filterBySeason(points: PatternPoint[], season: SeasonFilter): PatternPoint[] {
+  return season === 'all' ? points : points.filter((p) => seasonMatches(p.season, season));
 }

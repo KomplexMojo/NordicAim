@@ -14,14 +14,22 @@ export type SightingZone = 'clean' | 'hit' | 'miss';
  * within EPS.
  */
 export function zoneFor(radialMm: number, position: ShotPosition, holeDiameterMm: number): SightingZone {
-  const zone = SIGHTING_TEMPLATE.zones[position];
-  const h = holeDiameterMm / 2;
-  const guideRadiusMm = zone.guideDiameterMm / 2;
-  const solidRadiusMm = zone.solidDiameterMm / 2;
+  const guideRadiusMm = SIGHTING_TEMPLATE.zones[position].guideDiameterMm / 2;
 
   if (radialMm <= guideRadiusMm + EPS) return 'clean';
-  if (radialMm - h <= solidRadiusMm + EPS) return 'hit';
+  if (hitsZone(radialMm, position, holeDiameterMm)) return 'hit';
   return 'miss';
+}
+
+/**
+ * Whether a shot would hit the biathlon hit zone for `position` (45 mm prone, 115 mm standing: the sighting sheet's
+ * solid circles) under the scoring rule's hole size: the hole touches the solid circle (`radialMm - h <= R`,
+ * h = holeDiameterMm/2), inclusive within EPS. The same test on every template (shooting-issues.md's `q`, the
+ * Goals "Biathlon hits" measure; owner, 2026-10-01): the precision sheet has rings, not hit zones, so it is
+ * measured against the real zone sizes rather than the nearest ring.
+ */
+export function hitsZone(radialMm: number, position: ShotPosition, holeDiameterMm: number): boolean {
+  return radialMm - holeDiameterMm / 2 <= SIGHTING_TEMPLATE.zones[position].solidDiameterMm / 2 + EPS;
 }
 
 /**

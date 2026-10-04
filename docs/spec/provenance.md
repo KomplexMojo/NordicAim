@@ -9,7 +9,11 @@ code, so anyone can check without a secret) is deferred until a real need appear
 ## 1. Identity and key (`lib/provenance/key.ts`)
 
 - **Settings → Athlete**: `athleteName` (≤ 40), `athleteClub` (≤ 60) (REV-99), and a passphrase.
-- **Passphrase**: at least **12 characters** (`MIN_PASSPHRASE_LENGTH`). It is never stored or backed up.
+- **Passphrase**: at least **12 characters** (`MIN_PASSPHRASE_LENGTH`). It is never stored or backed up. **Offline guessing
+  (issue #46, accepted):** whoever holds a stamped image, a backup (which carries the salt and fingerprint), or a protected
+  backup (§2d of `backup.md`, through its own salt) can try passphrases offline, each guess costing 310,000 PBKDF2 rounds.
+  That cost and the 12-character minimum are the defence. Settings asks for a sentence of four or more words. Raising the
+  round count would re-key every existing stamp, so it is not done. REV-151: the same passphrase can also protect a backup (`backup.md` §2d), through a separate key with its own salt; the stamp key is unaffected.
 - **Key**: `PBKDF2-HMAC-SHA256(passphrase, salt, 310 000 iterations)` → 32 bytes. The **salt** is 16 random bytes, per athlete.
 - **Fingerprint**: the first 8 hex characters (upper case) of `HMAC-SHA-256(key, "asa-key-fingerprint")`. It names the key without
   revealing it and is shown in Settings and on every image.

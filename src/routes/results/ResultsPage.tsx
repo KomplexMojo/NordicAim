@@ -1,7 +1,9 @@
-import { Star } from 'lucide-react';
+import { ListChecks, PencilLine, Star } from 'lucide-react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
+import { EpisodeSteps } from '@/components/session/EpisodeSteps';
+import { GoalChecksCard } from '@/components/goals/GoalChecks';
 import { BackupReminder } from '@/components/settings/BackupReminder';
 import { SummaryCard } from '@/components/results/SummaryCard';
 import { leftOutOfSummary } from '@/lib/composite/select-defaults';
@@ -14,7 +16,9 @@ import { orderedByKind } from '@/lib/domain/photo-order';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { getRecentTimings } from '@/lib/pipeline/timing';
 import { retryFailedStage } from '@/lib/pipeline/runner-browser';
+import { loadSessionGoalChecks } from '@/lib/services/goals';
 import { getSession } from '@/lib/services/sessions';
+import { cn } from '@/lib/utils';
 import { getAnalysisRecord } from '@/lib/store/analyses-repo';
 import { listPhotosBySession } from '@/lib/store/photos-repo';
 
@@ -69,6 +73,7 @@ export function ResultsPage() {
   const { sid = '' } = useParams();
   const { ctx } = useServices();
   const { value: data } = useLiveQuery(() => loadResults(ctx, sid), [ctx, sid]);
+  const { value: goals } = useLiveQuery(() => loadSessionGoalChecks(ctx, sid), [ctx, sid]);
   const [searchParams] = useSearchParams();
   const showDebug = searchParams.get('debug') === '1';
 
@@ -95,6 +100,36 @@ export function ResultsPage() {
   }
 
   const needsReview = data.photos.some((p) => p.status === 'needs-attention');
+  // REV-42: batch review walks every target once, the ones needing attention first; its star lights only when one does.
+  // REV-141: Edit metadata sits beside it, each with its icon; with no targets there is nothing to review.
+  // Issue #85: on a healthy session the payoff leads (summary, Share, goals) and this row follows it, both buttons quiet;
+  // when a target needs attention, Review session is the next step, so the row stays at the top with Review as the primary.
+  const actions = (
+    <div className={data.photos.length > 0 ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1'}>
+      {data.photos.length > 0 && (
+        <Link
+          to={`/review/${sid}`}
+          className={cn(
+            'inline-flex h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium',
+            needsReview ? 'bg-primary text-primary-foreground' : 'border border-border',
+          )}
+          data-testid="review-session-link"
+        >
+          <ListChecks className="size-5 shrink-0" aria-hidden="true" />
+          Review session
+          {needsReview && <Star className="size-4 shrink-0" aria-hidden="true" fill="currentColor" data-testid="review-session-star" />}
+        </Link>
+      )}
+      <Link
+        to={`/sessions/${sid}/metadata`}
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border px-3 text-sm font-medium"
+        data-testid="edit-metadata-link"
+      >
+        <PencilLine className="size-5 shrink-0" aria-hidden="true" />
+        Edit metadata
+      </Link>
+    </div>
+  );
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-6xl">
@@ -112,32 +147,25 @@ export function ResultsPage() {
         </span>
       </header>
 
+      <EpisodeSteps current={3} />
       <h1 className="text-xl font-semibold">{data.name}</h1>
 
-      {/* REV-42: batch review is the primary way in — walk every target once, the ones needing
-          attention first, rather than opening each one from the grid below. Moved to the top of the
-          screen (owner, 2026-09-23) so it is seen before the per-target cards. The star only lights up
-          when something in the session actually needs a look (status `needs-attention`, the same group
-          the review pass walks first) — with nothing flagged, the button still opens the pass, but starts
-          bare. */}
-      {data.photos.length > 0 && (
-        <Link
-          to={`/review/${sid}`}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-          data-testid="review-session-link"
-        >
-          {needsReview && <Star className="size-4 shrink-0" aria-hidden="true" fill="currentColor" data-testid="review-session-star" />}
-          Review session
-        </Link>
-      )}
+      {needsReview && actions}
 
       {showDebug && <TimingDebugPanel />}
-
-      <BackupReminder />
 
       <div className="lg:mx-auto lg:w-full lg:max-w-4xl">
         <SummaryCard sessionId={sid} sessionName={data.name} leftOut={leftOutOfSummary(data.photos)} />
       </div>
+
+      {/* REV-148: the goals in effect when this session was created, against its own results. */}
+      <div className="lg:mx-auto lg:w-full lg:max-w-4xl">
+        <GoalChecksCard goals={goals} note="Against the goals set when this session was created." testId="results-goals" />
+      </div>
+
+      {!needsReview && actions}
+
+      <BackupReminder />
 
       {data.photos.length === 0 ? (
         <p className="text-sm text-muted-foreground">No targets in this session yet.</p>
@@ -164,13 +192,6 @@ export function ResultsPage() {
         Add photos
       </Link>
 
-      <Link
-        to={`/sessions/${sid}/metadata`}
-        className="inline-flex h-11 items-center justify-center text-sm text-primary underline underline-offset-4"
-        data-testid="edit-metadata-link"
-      >
-        Edit metadata
-      </Link>
     </main>
   );
 }

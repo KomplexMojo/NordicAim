@@ -1,11 +1,16 @@
+import { ChevronDown } from 'lucide-react';
 import { useId, useMemo, useRef, useState } from 'react';
 
+import { GlossarySheet } from '@/components/glossary/GlossarySheet';
 import { Button } from '@/components/ui/button';
 import { declaredRoundsOrNull } from '@/lib/domain/categorization';
 import { shotTemplate } from '@/lib/pipeline/stage-a';
 import { blendLayerStyle, renderDiagramOverlaySvg } from '@/lib/render/diagram-overlay';
 import { unplacedRounds } from '@/lib/services/adjust';
+import { readPanelOpen, writePanelOpen } from '@/lib/ui/panel-state';
+import { cn } from '@/lib/utils';
 
+import { AdjustTip } from './AdjustTip';
 import { AlignmentControls } from './AlignmentControls';
 import { ImageStage, type StageApi } from './ImageStage';
 import { LivePreview } from './LivePreview';
@@ -34,6 +39,9 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
   const [fade, setFade] = useState(0);
   // REV-119: everything drawn shows at first; slide right (swipe) or up (fade) to reveal the bare photo.
   const [swipe, setSwipe] = useState(0);
+  // Issue #88: the two sliders sit behind a Compare toggle, closed by default (remembered on this device); closed, the
+  // diagram shows solid over the photo, the default editing view.
+  const [compareOpen, setCompareOpen] = useState(() => readPanelOpen('compare', false));
   const fadeId = useId();
   const swipeId = useId();
   const { data, calibration, shots, selectedId, setSelectedId, preview } = draft;
@@ -48,9 +56,10 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
       photo.working,
       holeDiameterMm,
     );
-    const style = blendLayerStyle(fade, draft.imageUrl === null ? 0 : swipe);
-    return { svg, ...style, showHandle: swipe > 0 && swipe < 1 };
-  }, [data, calibration, shots, preview, fade, swipe, draft.imageUrl]);
+    const [f, w] = compareOpen ? [fade, swipe] : [0, 0];
+    const style = blendLayerStyle(f, draft.imageUrl === null ? 0 : w);
+    return { svg, ...style, showHandle: w > 0 && w < 1 };
+  }, [data, calibration, shots, preview, fade, swipe, compareOpen, draft.imageUrl]);
   if (!data || calibration === null) return null;
 
   const { photo, analysis, holeDiameterMm } = data;
@@ -77,6 +86,7 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
 
   return (
     <>
+      <AdjustTip />
       <div className="flex gap-2" role="group" aria-label="Edit mode">
         <Button
           variant={mode === 'shots' ? 'default' : 'outline'}
@@ -129,47 +139,68 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
         {mode === 'shots' && <UnplacedTray count={unplaced} onPlace={placeUnplaced} />}
       </div>
 
-      {/* REV-78/REV-85: the diagram↔photo comparison is part of the editor, as two half-width sliders side by side. */}
-      <section
-        className="grid grid-cols-2 gap-3"
-        data-testid="compare-slider"
-        data-fade={fade}
-        data-swipe={swipe}
-        aria-label="Compare the diagram with the photo"
-      >
-        <div className="flex flex-col gap-1">
-          <label htmlFor={fadeId} className="text-sm text-muted-foreground">
-            Fade
-          </label>
-          <input
-            id={fadeId}
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={fade}
-            data-testid="fade-range"
-            className="h-11 w-full"
-            onChange={(e) => setFade(Number(e.target.value))}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor={swipeId} className="text-sm text-muted-foreground">
-            Swipe
-          </label>
-          <input
-            id={swipeId}
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={swipe}
-            data-testid="swipe-range"
-            className="h-11 w-full"
-            onChange={(e) => setSwipe(Number(e.target.value))}
-          />
-        </div>
-      </section>
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="ghost"
+          className="h-11 gap-2 text-muted-foreground"
+          aria-expanded={compareOpen}
+          aria-controls="compare-slider"
+          data-testid="compare-toggle"
+          onClick={() => {
+            writePanelOpen('compare', !compareOpen);
+            setCompareOpen(!compareOpen);
+          }}
+        >
+          Compare with photo
+          <ChevronDown className={cn('size-4 transition-transform', compareOpen && 'rotate-180')} aria-hidden="true" />
+        </Button>
+        <GlossarySheet />
+      </div>
+
+      {/* REV-78/REV-85: the diagram↔photo comparison, as two half-width sliders side by side (issue #88: behind Compare). */}
+      {compareOpen && (
+        <section
+          id="compare-slider"
+          className="grid grid-cols-2 gap-3"
+          data-testid="compare-slider"
+          data-fade={fade}
+          data-swipe={swipe}
+          aria-label="Compare the diagram with the photo"
+        >
+          <div className="flex flex-col gap-1">
+            <label htmlFor={fadeId} className="text-sm text-muted-foreground">
+              Fade
+            </label>
+            <input
+              id={fadeId}
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={fade}
+              data-testid="fade-range"
+              className="h-11 w-full"
+              onChange={(e) => setFade(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={swipeId} className="text-sm text-muted-foreground">
+              Swipe
+            </label>
+            <input
+              id={swipeId}
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={swipe}
+              data-testid="swipe-range"
+              className="h-11 w-full"
+              onChange={(e) => setSwipe(Number(e.target.value))}
+            />
+          </div>
+        </section>
+      )}
 
       {/* M21 step 2: only when there is something to hide; with no suggestions nothing is shown or said. */}
       {SHOW_SUGGESTED_HOLES && mode === 'shots' && draft.suggestionCount > 0 && (
@@ -190,7 +221,6 @@ export function AdjustSurface({ draft }: { draft: AdjustDraft }) {
         selected !== null ? (
           <ShotInspector
             shot={selected}
-            position={photo.categorization.position ?? 'prone'}
             onChange={draft.changeShot}
             onDelete={deleteSelected}
             onClose={() => setSelectedId(null)}

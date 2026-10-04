@@ -1,5 +1,5 @@
 // rendering-composite.md §3-§4. Layout pieces shared verbatim by both templates: the page background,
-// title/subtitle, the "both"-position legend dots, shot circles, the group ellipse, the MPI marker, the
+// title/subtitle, shot circles, the group ellipse, the MPI marker, the
 // footer panel, and the cell-variant chip/caption band. Each template's own ring/zone geometry (the part
 // that actually differs) lives in `diagram-sighting.ts` / `diagram-precision.ts`.
 
@@ -9,10 +9,23 @@ import { isTouchCredited as isPrecisionTouchCredited } from '../scoring/precisio
 import { isTouchCredited as isSightingTouchCredited } from '../scoring/sighting';
 import { placeLabels, type Box, type Circle, type LabelRequest, type PlacedLabel } from './label-placement';
 import { PALETTE } from './palette';
-import { PRECISION_TEMPLATE } from '../defaults/templates';
-
-import { renderPositionSilhouette, renderSightingRoleSymbol } from './diagram-marks';
 import { el, num, text } from './svg';
+
+import { projectMm } from './diagram-svg-base';
+
+export { svgRoot, projectMm, renderBackground } from './diagram-svg-base';
+export {
+  renderCellChip,
+  renderCellCaptionBand,
+  CELL_CAPTION_TOP,
+  CELL_SCALE,
+  fitScale,
+  offViewCount,
+  renderOffViewNote,
+  clipCell,
+  BLANK_CELL_OPACITY,
+  renderBlankCell,
+} from './diagram-cell';
 
 /**
  * rendering-composite.md §3 item 7a (M24, REV-49): true for a unit whose scored ring or zone credited
@@ -25,21 +38,6 @@ export function isUnitTouchCredited(unit: UnitResult): boolean {
   if (unit.ring !== null) return isPrecisionTouchCredited(unit.radialMm, unit.ring);
   if (unit.zone !== null) return isSightingTouchCredited(unit.radialMm, unit.zone, unit.position);
   return false;
-}
-
-export function svgRoot(width: number, height: number, children: string): string {
-  return el('svg', { xmlns: 'http://www.w3.org/2000/svg', width, height, viewBox: `0 0 ${width} ${height}` }, children);
-}
-
-/** rendering-composite.md intro: `X = cx + xMm*s`, `Y = cy - yMm*s`. */
-export function projectMm(cx: number, cy: number, s: number, xMm: number, yMm: number): { x: number; y: number } {
-  return { x: cx + xMm * s, y: cy - yMm * s };
-}
-
-export function renderBackground(width: number, height: number): string {
-  const page = el('rect', { x: 0, y: 0, width, height, fill: PALETTE.page });
-  const rail = el('rect', { x: 0, y: 0, width: 8, height, fill: PALETTE.accent });
-  return page + rail;
 }
 
 export function renderTitle(title: string): string {
@@ -65,20 +63,6 @@ export function renderSubtitle(positionLabel: string, declared: number, captureL
 export function renderLegendBand(x: number, y: number, width: number, height: number, innerContent: string): string {
   const band = el('rect', { x, y, width, height, rx: 10, fill: PALETTE.panel });
   return band + innerContent;
-}
-
-/** §3 item 4: "position `both`: prone and standing colour dots with labels at x 1200." Only ever
- * called when `result.position === 'both'` (callers gate this); structure tests check the `legend-both`
- * class is present only for that position. */
-export function renderLegendBothDots(): string {
-  const x = 1200;
-  const dotR = 6;
-  const proneDot = el('circle', { cx: x, cy: 146, r: dotR, fill: PALETTE.shotProne });
-  const proneLabel = text(x + 12, 152, 17, 'Prone', { color: PALETTE.textPrimary });
-  const standingX = x + 96;
-  const standingDot = el('circle', { cx: standingX, cy: 146, r: dotR, fill: PALETTE.shotStanding });
-  const standingLabel = text(standingX + 12, 152, 17, 'Standing', { color: PALETTE.textPrimary });
-  return el('g', { class: 'legend-both' }, proneDot + proneLabel + standingDot + standingLabel);
 }
 
 function shotFillColor(shot: Shot, units: UnitResult[], override?: string): string {
@@ -134,21 +118,29 @@ function shotRadius(shot: Shot, radiusPx: number): number {
   return shot.multiplicity > 1 ? radiusPx * 1.25 : radiusPx;
 }
 
-/** §3 item 6: the group ellipse, drawn at its own centre (== the subset's MPI). */
+/** Group ellipse line widths (REV-137): wide enough to survive the coach image's and the cells' downscaling. */
+export const ELLIPSE_STROKE = { line: 4, halo: 8, haloOpacity: 0.55 } as const;
+
+/**
+ * §3 item 6: the group ellipse, drawn at its own centre (== the subset's MPI). REV-137 (issue #70): a bright blue line over a
+ * wider, translucent dark halo, so it stands out on the black disc (the blue) and on white paper (the halo's edges).
+ */
 export function renderGroupEllipse(ellipse: GroupEllipse | null, cx: number, cy: number, s: number): string {
   if (ellipse === null) return '';
   const { x, y } = projectMm(cx, cy, s, ellipse.cxMm, ellipse.cyMm);
-  return el('ellipse', {
+  const shape = {
     cx: x,
     cy: y,
     rx: ellipse.rxMm * s,
     ry: ellipse.ryMm * s,
-    stroke: PALETTE.ellipse,
-    'stroke-width': 2,
     fill: 'none',
     // negative: CCW target angle → clockwise SVG rotation (rendering-composite.md §3 item 6).
     transform: `rotate(${num(-ellipse.angleDeg)} ${num(x)} ${num(y)})`,
-  });
+  };
+  return (
+    el('ellipse', { ...shape, stroke: PALETTE.ellipseHalo, 'stroke-opacity': ELLIPSE_STROKE.haloOpacity, 'stroke-width': ELLIPSE_STROKE.halo }) +
+    el('ellipse', { ...shape, stroke: PALETTE.ellipse, 'stroke-width': ELLIPSE_STROKE.line, class: 'group-ellipse' })
+  );
 }
 
 /** §3 item 8: the `all`-subset MPI marker (a ±14px cross and a dot). Its label is drawn by `renderMarkerLabels`. */
@@ -226,84 +218,4 @@ export function renderFooterPanel(lines: string[]): string {
     y += 34;
   }
   return panel + body;
-}
-
-/** §4: chip `<TEMPLATE> <slot> · <POSITION>` (slot omitted when not given), sized to its own text. */
-export function renderCellChip(templateId: string, positionLabel: string, slotLabel?: string): string {
-  const head = slotLabel ? `${templateId} ${slotLabel}` : templateId;
-  // An empty slot (REV-51) has no position, so its chip reads just its label ("CONFIRM", "PRECISION 2").
-  const label = positionLabel === '' ? head : `${head} · ${positionLabel}`;
-  const upper = label.toUpperCase();
-  const width = 16 + 9 * upper.length;
-  const chip = el('rect', { x: 20, y: 20, width, height: 36, rx: 18, fill: PALETTE.panel });
-  const labelText = text(20 + width / 2, 44, 15, upper, { bold: true, anchor: 'middle', color: PALETTE.textPrimary });
-  return chip + labelText;
-}
-
-/** §4: the caption band rect plus centred caption text. */
-export function renderCellCaptionBand(captionText: string): string {
-  const band = el('rect', { x: 0, y: 668, width: 720, height: 52, fill: PALETTE.panel });
-  const label = text(360, 700, 17, captionText, { anchor: 'middle', color: PALETTE.textPrimary });
-  return band + label;
-}
-
-/** rendering-composite.md §4: where a cell's caption band starts; the drawing is clipped above it. */
-export const CELL_CAPTION_TOP = 668;
-
-/**
- * §4 (REV-58): the one scale every small target view is drawn at, both templates — the precision sheet's halo fills the 300 px
- * drawing radius, so a sighting target is drawn smaller than its panel. The same on a result card and in the shareable image, so
- * targets can be compared by eye. **Never zooms out for a stray shot** (it is clipped and counted instead).
- */
-export const CELL_SCALE = 300 / (PRECISION_TEMPLATE.haloDiameterMm / 2);
-
-/**
- * §3 (REV-58): the detail diagram's scale. One target, nothing to compare against, so it zooms out until every shot is shown:
- * `baseScale` while every shot is inside the printed halo, else the scale that puts the farthest shot on the halo's edge, never
- * below half of `baseScale`.
- */
-export function fitScale(baseScale: number, haloRadiusMm: number, shots: Array<{ xMm: number; yMm: number }>): number {
-  const reach = shots.reduce((max, shot) => Math.max(max, Math.hypot(shot.xMm, shot.yMm)), 0);
-  if (reach <= haloRadiusMm) return baseScale;
-  return Math.max(0.5 * baseScale, (baseScale * haloRadiusMm) / reach);
-}
-
-/** §4 (REV-58): how many shots (not units) a small view's clip leaves out. */
-export function offViewCount(shots: Array<{ xMm: number; yMm: number }>, cx: number, cy: number, s: number): number {
-  return shots.filter((shot) => {
-    const { x, y } = projectMm(cx, cy, s, shot.xMm, shot.yMm);
-    return x < 0 || x > 720 || y < 0 || y > CELL_CAPTION_TOP;
-  }).length;
-}
-
-/** §4 (REV-58): `+N off view`, just above the caption band and outside the clip; nothing when N is 0. */
-export function renderOffViewNote(count: number): string {
-  return count === 0 ? '' : text(704, 654, 13, `+${count} off view`, { anchor: 'end', color: PALETTE.textSecondary });
-}
-
-/**
- * §4 (REV-51): clips a cell's drawing to (0, 0, 720, CELL_CAPTION_TOP) so a scattered group's ellipse is
- * cut at the edge rather than drawn over the caption. `id` must be unique in the whole composite, where
- * several cells share one document.
- */
-export function clipCell(id: string, content: string): string {
-  const defs = el('defs', {}, el('clipPath', { id }, el('rect', { x: 0, y: 0, width: 720, height: CELL_CAPTION_TOP })));
-  return defs + el('g', { 'clip-path': `url(#${id})` }, content);
-}
-
-/** §5 (REV-51): how strongly an empty slot's blank template is drawn, so it reads as unused. */
-export const BLANK_CELL_OPACITY = 0.35;
-
-/** §5 (REV-51): an empty slot — the template alone, faded, with its chip and a "No target" caption. */
-export function renderBlankCell(label: string, target: string, mark?: 'sight-in' | 'confirm' | 'prone' | 'standing'): string {
-  const body =
-    renderBackground(720, 720) +
-    el('g', { opacity: BLANK_CELL_OPACITY }, target) +
-    (mark === undefined
-      ? renderCellChip(label, '')
-      : mark === 'prone' || mark === 'standing'
-        ? renderPositionSilhouette(mark)
-        : renderSightingRoleSymbol(mark)) +
-    renderCellCaptionBand('No target');
-  return svgRoot(720, 720, body);
 }

@@ -22,8 +22,8 @@ function clampRounds(raw: string): number | null {
  * position are shown (DESIGN.md "Selection UX"). */
 export function RoundsFields({ categorization, idPrefix, onChange }: RoundsFieldsProps) {
   const { position } = categorization;
-  const showProne = position === 'prone' || position === 'both';
-  const showStanding = position === 'standing' || position === 'both';
+  const showProne = position === 'prone';
+  const showStanding = position === 'standing';
 
   if (!showProne && !showStanding) return null;
 

@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const TemplateId = z.enum(['sighting', 'precision']);
 export type TemplateId = z.infer<typeof TemplateId>;
 
-export const Position = z.enum(['prone', 'standing', 'both']);
+/** REV-153 (issue #25): a target is shot prone or standing; the old `both` is read as prone (`Categorization`). */
+export const Position = z.enum(['prone', 'standing']);
 export type Position = z.infer<typeof Position>;
 
 export const ShotPosition = z.enum(['prone', 'standing']);
@@ -37,6 +38,8 @@ export const Reason = z.enum([
   'too-many-holes',
   'double-punch-assumed',
   'rounds-scored-as-miss',
+  // REV-144 (issue #65): the printed sheet's corner markers put the target somewhere else.
+  'sheet-markers-disagree',
 ]);
 export type Reason = z.infer<typeof Reason>;
 
@@ -50,6 +53,8 @@ export const Warning = z.enum([
   'alignment-uncertain',
   'image-blurry',
   'template-mismatch',
+  // REV-144 (issue #65): Stage A's own; cleared when the owner saves an alignment in Adjust.
+  'sheet-markers-disagree',
 ]);
 export type Warning = z.infer<typeof Warning>;
 
