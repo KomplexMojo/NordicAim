@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://komplexmojo.github.io/NordicAim/"><b>Open NordicAim</b></a>
   &nbsp;·&nbsp;
-  <a href="https://komplexmojo.github.io/NordicAim/#/demo">See it with a season of data</a>
+  <a href="https://komplexmojo.github.io/NordicAim/#/demo">🎯 <b>Try a Demo</b></a>
   &nbsp;·&nbsp;
   <a href="#install-on-your-iphone">Install</a>
   &nbsp;·&nbsp;
