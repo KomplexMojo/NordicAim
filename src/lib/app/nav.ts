@@ -16,6 +16,12 @@ export function inSettings(pathname: string): boolean {
   return /^\/(settings|diagnostics)(\/|$)/.test(pathname);
 }
 
+/** The demo data loader (`#/demo`): the header marks it with its own colour and a "DEMO" badge, so a visitor who lands
+ * there straight from a QR code or the README never mistakes the fake data for their own. */
+export function isDemoRoute(pathname: string): boolean {
+  return pathname === '/demo';
+}
+
 /**
  * The tab a hash-router pathname belongs to: Analysis, Patterns, Goals, Board, none on Settings and Diagnostics, else
  * Sessions (`/`, `/sessions/...`, `/review/...`).

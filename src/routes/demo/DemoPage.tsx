@@ -19,6 +19,10 @@ type Load = { status: 'loading' } | { status: 'error'; message: string } | { sta
  * until the visitor taps "Load demo data": this reuses the exact verify -> plan -> restore pipeline Settings ->
  * Backup uses for a real backup file, so a demo load is held to the same checks (schema, and every Board
  * submission's Ed25519 signature) as restoring any other file.
+ *
+ * Owner, 2026-10-05: amber throughout (page wash, card, button), matching the header's amber + "DEMO" badge
+ * (`AppHeader`, `isDemoRoute`) — obviously different from the app's own blue, so a visitor who lands here
+ * straight from a QR code never mistakes this loader for the live app.
  */
 export function DemoPage() {
   const { ctx, imageTools, renderTools } = useServices();
@@ -83,7 +87,7 @@ export function DemoPage() {
     load.plan.photos.different === 0;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-3xl">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 bg-amber-50 p-4 pb-8 lg:max-w-3xl dark:bg-amber-950/40">
       <h1 className="text-xl font-semibold">Demo data</h1>
       <p className="text-sm text-muted-foreground">
         This loads a made-up season into Nordic Aim on <strong>this device</strong> — fake sessions, a fake goals history and a fake Board
@@ -111,7 +115,10 @@ export function DemoPage() {
       )}
 
       {load.status === 'ready' && (
-        <section className="flex flex-col gap-3 rounded-lg border p-4" data-testid="demo-preview">
+        <section
+          className="flex flex-col gap-3 rounded-lg border border-amber-400 bg-white p-4 dark:border-amber-700 dark:bg-amber-950/60"
+          data-testid="demo-preview"
+        >
           {alreadyLoaded ? (
             <p className="text-sm">This demo data already looks loaded on this device. Loading again changes nothing that matches.</p>
           ) : (
@@ -122,7 +129,12 @@ export function DemoPage() {
             </p>
           )}
           <div className="flex gap-2">
-            <Button className="h-11 flex-1" disabled={busy} data-testid="demo-load" onClick={() => void onLoad()}>
+            <Button
+              className="h-11 flex-1 bg-amber-600 text-white hover:bg-amber-700"
+              disabled={busy}
+              data-testid="demo-load"
+              onClick={() => void onLoad()}
+            >
               {busy ? 'Loading…' : 'Load demo data'}
             </Button>
             <Button className="h-11" variant="outline" disabled={busy} onClick={() => navigate('/')}>

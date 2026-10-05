@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { MAIN_TABS, activeTab, inSettings, showsTabBar } from '@/lib/app/nav';
+import { MAIN_TABS, activeTab, inSettings, isDemoRoute, showsTabBar } from '@/lib/app/nav';
 
 describe('MAIN_TABS', () => {
   it('is Sessions, Analysis, Patterns, Goals, Board in that order (M27, issue #42)', () => {
@@ -46,6 +46,13 @@ describe('activeTab', () => {
       expect(inSettings(path)).toBe(true);
     }
     for (const path of ['/', '/analysis', '/patterns', '/sessions/abc', '/settingsx']) expect(inSettings(path)).toBe(false);
+  });
+});
+
+describe('isDemoRoute', () => {
+  it('is true only for the exact demo route, so the header badge never leaks onto other screens', () => {
+    expect(isDemoRoute('/demo')).toBe(true);
+    for (const path of ['/', '/demo/', '/demox', '/sessions/demo', '/settings']) expect(isDemoRoute(path)).toBe(false);
   });
 });
 

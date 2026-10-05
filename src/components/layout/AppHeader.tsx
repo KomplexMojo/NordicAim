@@ -1,7 +1,7 @@
 import { Settings } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 
-import { inSettings } from '@/lib/app/nav';
+import { inSettings, isDemoRoute } from '@/lib/app/nav';
 import { brandMotif } from '@/lib/render/brand-mark';
 
 /**
@@ -12,13 +12,19 @@ import { brandMotif } from '@/lib/render/brand-mark';
  *
  * It carried a Home link until 2026-09-19. With the Sessions tab always on screen that was a third way Home, alongside each page's own
  * "Home" link: Home is the tab; a screen's own link is now its parent ("All sessions", "Back to results").
+ *
+ * Owner, 2026-10-05: on `#/demo` the header turns amber with a "DEMO" badge beside the name, so a visitor who lands there
+ * straight from the README's QR code or a link never mistakes the loader screen for the live app (`isDemoRoute`).
  */
 export function AppHeader() {
   const { pathname } = useLocation();
   const onSettings = inSettings(pathname);
+  const onDemo = isDemoRoute(pathname);
   return (
     <header
-      className="sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 bg-[var(--header)] px-4 pt-[env(safe-area-inset-top)] text-white"
+      className={`sticky top-0 z-30 flex min-h-14 items-center justify-between gap-2 px-4 pt-[env(safe-area-inset-top)] text-white ${
+        onDemo ? 'bg-amber-600' : 'bg-[var(--header)]'
+      }`}
       data-testid="app-header"
     >
       <Link to="/" className="flex min-h-11 items-center gap-2 py-2" aria-label="NordicAim: back to sessions" data-testid="app-home-link">
@@ -30,6 +36,14 @@ export function AppHeader() {
           dangerouslySetInnerHTML={{ __html: brandMotif(0, 0, 100) }}
         />
         <span className="text-base font-semibold">NordicAim</span>
+        {onDemo && (
+          <span
+            className="rounded bg-white/25 px-1.5 py-0.5 text-xs font-bold tracking-wide text-white"
+            data-testid="demo-badge"
+          >
+            DEMO
+          </span>
+        )}
       </Link>
       <Link
         to="/settings"
