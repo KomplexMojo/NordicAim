@@ -5,8 +5,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useServices } from '@/lib/app/services';
 import type { RestorePlan } from '@/lib/backup/restore';
+import { writeReminderDismissal } from '@/lib/backup/reminder-dismissal-browser';
 import { verifyBackupFile, type VerifiedBackup } from '@/lib/backup/verify';
 import { planBackupRestore, restoreBackup } from '@/lib/services/backup';
+import { listSessions } from '@/lib/services/sessions';
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; backup: VerifiedBackup; plan: RestorePlan } | { status: 'done' };
 
@@ -55,6 +57,9 @@ export function DemoPage() {
         makeWorkingImages: imageTools.makeWorkingImages,
         svgToPng: renderTools.svgToPng,
       });
+      // The demo's fake sessions were never really backed up; don't nag a visitor to back them up.
+      const sessions = (await listSessions(ctx)).length;
+      writeReminderDismissal({ atMs: ctx.now().getTime(), sessions });
       setLoad({ status: 'done' });
       toast.success(
         `Demo data loaded: ${load.backup.file.manifest.counts.sessions} sessions` +
@@ -85,6 +90,14 @@ export function DemoPage() {
         full of other (fictional, signed) shooters and clubs — so you can see every screen populated. Nothing leaves this device and
         nothing happens until you tap the button below.
       </p>
+      <a
+        href="https://github.com/KomplexMojo/NordicAim"
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex h-11 w-fit items-center text-sm text-primary underline underline-offset-4"
+      >
+        Read more about Nordic Aim
+      </a>
 
       {load.status === 'loading' && <p className="text-sm text-muted-foreground" role="status">Checking the demo file…</p>}
 

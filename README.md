@@ -20,6 +20,11 @@
 </p>
 
 <p align="center">
+  <img src="docs/brand/demo-qr.svg" alt="QR code linking to the NordicAim demo" width="120"><br>
+  <sub>Scan to try the demo on your phone</sub>
+</p>
+
+<p align="center">
   <img src="docs/assets/hero-screens.png" alt="Four phone screens: the capture overlay lined up on a target, a single target read out with its score, the shot correction screen, and the Analysis screen's trend charts" width="900">
 </p>
 
