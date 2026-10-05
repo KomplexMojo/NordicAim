@@ -89,6 +89,8 @@ export interface RestoreReport {
   skipped: number;
   /** §2b: images made again from their source (working copies, thumbnails, diagram PNGs). */
   rebuilt: number;
+  /** Sessions whose `sessions`/`photos`/`analyses` record was actually written (new, or different under 'replace'). */
+  sessionIds: string[];
 }
 
 /** Everything is decoded first; the one transaction only awaits IndexedDB calls, and any failure aborts all of it. */
@@ -114,12 +116,18 @@ export async function applyRestore(
     blobs.push([entry.key, { bytes: bytes.slice().buffer, contentType: entry.contentType, sizeBytes: entry.sizeBytes, createdAt: entry.createdAt }]);
   }
   const records: Array<[(typeof RECORD_STORES)[number], unknown]> = [];
+  const sessionIds = new Set<string>();
   let skipped = 0;
   for (const store of RECORD_STORES) {
     for (const rec of backup.file.records[store]) {
       const k = keyOf(store, rec);
-      if (k !== null && wanted(`${store}:${k}`)) records.push([store, rec]);
-      else skipped += 1;
+      if (k !== null && wanted(`${store}:${k}`)) {
+        records.push([store, rec]);
+        // A session's summary image (docs/spec/rendering-composite.md §7) depends on its sessions AND photos
+        // records, not just the session's own row: a backup can add photos to an already-identical session.
+        if (store === 'sessions') sessionIds.add(k);
+        else if (store === 'photos') sessionIds.add((rec as { sessionId: string }).sessionId);
+      } else skipped += 1;
     }
   }
   skipped += backup.file.blobs.length - blobs.length;
@@ -147,5 +155,5 @@ export async function applyRestore(
     }
     throw err;
   }
-  return { written: records.length + blobs.length, skipped, rebuilt: wantedRebuild.length };
+  return { written: records.length + blobs.length, skipped, rebuilt: wantedRebuild.length, sessionIds: [...sessionIds] };
 }

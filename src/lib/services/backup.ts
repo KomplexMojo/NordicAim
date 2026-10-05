@@ -13,7 +13,7 @@ import { restoreGoals } from '@/lib/services/goals';
 import { removeStoredLocations } from '@/lib/services/location';
 import { isStampPassphrase, loadProvenanceKey, WrongPassphraseError } from '@/lib/services/provenance';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
-import { pipelineHooks } from '@/lib/pipeline/hooks';
+import { pipelineHooks, summaryHooks } from '@/lib/pipeline/hooks';
 import { getSettings, putSettings } from '@/lib/store/settings-repo';
 
 import type { ServiceContext } from './context';
@@ -89,6 +89,9 @@ export async function restoreBackup(
   tools: RebuildTools,
 ): Promise<RestoreReport & { preferences: number; needsUnlock: boolean; boardShooters: number; goals: number }> {
   const report = await applyRestore(ctx.db, backup, plan, policy, tools);
+  // A restored session (the demo dataset, or a real backup) arrives fully analyzed but with no composite of its
+  // own: nothing short of this ever built one (stage-b.ts only runs for Stage B's own capture pipeline).
+  for (const sessionId of report.sessionIds) summaryHooks.schedule(sessionId);
   const preferences = applyPreferences(backup.file.preferences ?? []);
   // leaderboard.md §8: received submissions are checked again and merged, newest per shooter winning.
   const boardShooters = await restoreBoard(ctx, backup.file.board);
