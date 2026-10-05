@@ -115,10 +115,13 @@ runtime network call — `AGENTS.md`'s no-network invariant is unchanged.
 - `tests/unit/store/coach-context-repo.test.ts`: put/get/delete by `sessionId`; the cross-session fingerprint scan
   finds a planted collision and misses a non-colliding record.
 - `tests/unit/services/coach-context.test.ts`: date matching for `MetalContext`/`WindContext`; the `at` → local-date
-  conversion around a UTC day boundary (the real sample's `2026-09-29T01:19Z` landing on local `2026-09-28` is the
-  motivating case — use an equivalent synthetic timestamp); fingerprint stability (same record parsed twice gives
-  the same fingerprint); Add refuses on a cross-session collision and writes nothing; Add to the same
-  already-attached session deletes then writes, never merges; Remove clears the entry.
+  conversion around a UTC day boundary (the real sample's zero clicks are `2026-09-29T01:19:12.231+00:00` etc. —
+  seconds, mixed fractional-digit counts, a numeric `+00:00` offset, not a bare `Z` — landing on local `2026-09-28`
+  is the motivating case; use an equivalent synthetic timestamp in the same shape, not a `Z`-suffixed stand-in,
+  since that shape is exactly what a first implementation pass got wrong and the parser refused the owner's real
+  file over); fingerprint stability (same record parsed twice gives the same fingerprint); Add refuses on a
+  cross-session collision and writes nothing; Add to the same already-attached session deletes then writes, never
+  merges; Remove clears the entry.
 - `tests/unit/render/condition-icons.test.ts`, `composite-band.test.ts`: windage badge for each strength band, with
   and without a known clock direction; one disc row per bout, grouped by `comboGroup` then position; a session with
   no attached context renders byte-identical to the pre-M29 output (regression guard, since composite output is
@@ -173,8 +176,13 @@ Raised while implementing (none blocks a later milestone):
   draws no badge (the preview says so). With several wind records on one date the badge uses the first with a known band.
   Revisit once a windy export is seen.
 - **Lenient reads of two unconfirmed forms.** `WindContext.direction` accepts a string or a number (§7: serialization
-  unconfirmed), and `ZeroAdjustment.at` / `source.exportedAt` accept a minute-precision UTC time (`2026-09-29T01:19Z`, as
-  this milestone quotes the real sample) as well as `UtcIso`, which on its own refuses that form.
+  unconfirmed), and `ZeroAdjustment.at` / `source.exportedAt` also accept a bare minute-precision UTC time
+  (`2026-09-29T01:19Z`) alongside `UtcIso`, which on its own refuses that form. **Correction (2026-10-05): this
+  milestone's own Tests section misquoted the real sample's `at` shape as `2026-09-29T01:19Z`** — the real values
+  (`2026-09-29T01:19:12.231+00:00`, `...12.748+00:00`, `...12.29+00:00`) carry seconds, fractional digits, and a
+  numeric `+00:00` offset, not a bare `Z`. The first implementation pass trusted the misquote and only added the
+  minute-precision-`Z` form, so `CoachUtc` refused every `at` in the owner's real upload with `Invalid Input`. See
+  *Completion notes* for the fix.
 - **Identical bouts within one file** (for example two clean prone bouts in the same combo group) have the same
   fingerprint by design (it hashes only the record's own fields). Both are kept; they only matter to the cross-session
   check, which is what the spec intends.
@@ -234,4 +242,18 @@ fixture is `tests/helpers/coach-context.ts` (hand-built; the real export is not 
   would make the backup reminder treat the session as changed. The summary rebuild that follows writes the session anyway.
 - Renderer version bumped although no-coach output is identical, per §6's "bump whenever this renderer's output changes".
   The only effect is a one-time rebuild of each summary when its results screen opens.
+
+**Post-ship fix, 2026-10-05.** The owner attached their real `coach-context-2026-09-28.json` on the device and got
+`zeroAdjustments.0.at: Invalid Input`. Root cause: this milestone's own Tests section (above) misquoted the real
+export's zero-click `at` values as `2026-09-29T01:19Z`; they are actually `2026-09-29T01:19:12.231+00:00` and
+siblings — seconds, a mixed number of fractional digits (3, 3, then 2 — `.231`, `.748`, `.29`), and a numeric
+`+00:00` offset, never a bare `Z`. `CoachUtc` (`src/lib/domain/coach-context.ts`) only accepted `UtcIso`
+(`z.string().datetime()`, which defaults to `offset: false`) plus a minute-precision-`Z` regex, so it refused every
+record in the real file. Fixed by switching the datetime half of the union to `z.string().datetime({ offset: true
+})`, which accepts both `Z` and a numeric offset at any fractional precision; the minute-precision-`Z` regex is kept
+as a defensive fallback. Verified `prepareCoachAttach`-equivalent parsing against the owner's actual file directly
+(not just a synthetic stand-in). Updated the misleading comments and the synthetic fixture's inaccurate claim
+(`tests/helpers/coach-context.ts`), and added a regression test using the real `at` shape
+(`tests/unit/domain/coach-context.test.ts`). `pnpm vitest run tests/unit/domain/coach-context.test.ts
+tests/unit/services/coach-context.test.ts tests/unit/composite/build.test.ts`: 64/64 pass.
 

@@ -59,7 +59,15 @@ describe('coach-context file (coach-context-import.md §4, §5 step 3)', () => {
     }
   });
 
-  it('reads a minute-precision UTC time and a numeric wind direction (both unconfirmed forms, §7)', () => {
+  it("reads the real export's actual `at` shape: seconds, mixed fractional-digit counts, and a +00:00 offset (not Z) — regression for the owner's 2026-10-05 upload, refused before this fix", () => {
+    const file = syntheticCoachFile();
+    for (const at of ['2026-09-29T01:19:12.231+00:00', '2026-09-29T01:22:12.748+00:00', '2026-09-29T01:24:12.29+00:00']) {
+      (file.zeroAdjustments as Array<Record<string, unknown>>)[0]!.at = at;
+      expect(parseCoachContextText(JSON.stringify(file)).ok).toBe(true);
+    }
+  });
+
+  it('also accepts a minute-precision Z time and a numeric wind direction (defensive; not seen in any real export so far, §7)', () => {
     const file = syntheticCoachFile();
     (file.zeroAdjustments as Array<Record<string, unknown>>)[0]!.at = '2026-09-29T01:19Z';
     (file.windConditions as Array<Record<string, unknown>>)[0]!.direction = 9;

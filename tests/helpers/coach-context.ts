@@ -35,7 +35,9 @@ export function syntheticCoachFile(opts: SyntheticCoachOptions = {}): Record<str
       { ...bout('prone', [false, false, false, false, false], 'g-9'), sessionDate: '2026-09-21' },
     ],
     zeroAdjustments: [
-      // 01:19 UTC on the 29th is still the 28th west of UTC (the real sample's motivating case, made up).
+      // 01:19 UTC on the 29th is still the 28th west of UTC — the day-boundary case that motivates matching by local
+      // date (same shape of case as the real sample, whose own `at` values are seconds+offset, e.g. `...12.231+00:00`,
+      // not this Z-suffixed made-up one; see coach-context.test.ts for a test against the real shape).
       { at: '2026-09-29T01:19:00.000Z', verticalClicks: 2, horizontalClicks: -1, note: 'after confirm' },
       { at: '2026-09-28T15:05:00.000Z', verticalClicks: 0, horizontalClicks: 1, note: null },
       { at: '2026-09-21T12:00:00.000Z', verticalClicks: -3, horizontalClicks: 0, note: null },

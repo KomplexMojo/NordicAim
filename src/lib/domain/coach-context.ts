@@ -9,10 +9,16 @@ export const COACH_CONTEXT_FORMAT = 'coach-context';
 export const COACH_CONTEXT_FORMAT_VERSION = 1;
 
 /**
- * §4 says `UtcIso`. The milestone quotes the real 2026-09-28 sample's zero click as `2026-09-29T01:19Z` (no seconds), which
- * `UtcIso` alone refuses, so a minute-precision UTC time is read too. Both still end in a literal `Z`.
+ * §4 says `UtcIso`. The real 2026-09-28 sample's zero clicks are actually `2026-09-29T01:19:12.231+00:00` — a numeric
+ * `+00:00` offset, not a literal `Z`, which `UtcIso` (`z.string().datetime()`, `offset: false` by default) refuses outright.
+ * `{ offset: true }` accepts both forms and any fractional-second length, matching the sample's own mixed precision
+ * (`.231`, `.748`, `.29`). A bare minute-precision `...T01:19Z` is also accepted defensively, though nothing seen so far
+ * actually uses it.
  */
-export const CoachUtc = z.union([UtcIso, z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$/)]);
+export const CoachUtc = z.union([
+  z.string().datetime({ offset: true }),
+  z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$/),
+]);
 
 /** §4: confirmed by the 545 Coach developer (2026-10-05): lower-case internal names, `null` for a normal range session. */
 export const CoachRace = z.enum(['sprint', 'individual', 'mass-start', 'pursuit']);
