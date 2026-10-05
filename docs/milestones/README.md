@@ -40,6 +40,7 @@ as shown (`<model> · <effort>`).
 | [M26](M26-template-reference-photos.md) | Template reference photos (blank-sheet differencing) | post-MVP · generate analysis | M16, M19 | opus · high | opus · high | yes | blocked: part 2 (detection uses the reference) — gain unproven on the production benchmark; part 1 (Settings, storage, defaults) done 2026-09-27 |
 | [M27](M27-goals-foundation.md) | Goals: append-only goal log, the Goals tab and chart screen, numeric goal entry (issue #97) | post-MVP · goals | M22 | sonnet · high | sonnet · high | no | done |
 | [M28](M28-goals-drag-star.md) | Goals: replace the numeric goal entry — shipped as up/down buttons, after a drag-a-star attempt (issue #97) | post-MVP · goals | M27 | sonnet · high | sonnet · high | no | done |
+| [M29](M29-coach-context-import.md) | Pull shooting context from 545 Coach: attach-to-session, duplicate detection, composite surfacing (backlog B15) | post-MVP · coach context | M14, M22 | opus · high | opus · high | yes | pending |
 
 ```mermaid
 flowchart TD
@@ -89,6 +90,8 @@ flowchart TD
   M23 --> M15
   M24 --> M15
   M25 --> M15
+  M14 --> M29
+  M22 --> M29
 ```
 
 **M16 and M17 are numbered after M15 but run before it** (M15 depends on them). They come from the owner's review of real
@@ -142,6 +145,26 @@ narrowing `GoalMetric` from five metrics to three; Analysis still shows both MPI
 Goals again: no date range and no goal history on screen. Each chart shows only the current goal and whether the
 sessions since it was set average out at or past it; changing the goal starts over (M28's follow-up note). Depends on M22 for the
 tab-bar shell; neither touches scoring, detection or storage the MVP milestones already shipped.
+
+**2026-10-05 M29 added (post-MVP, owner ideation → backlog B15 → `docs/spec/coach-context-import.md`).** 545 Coach
+is a separate app (a developer the owner knows) that already logs metal-bout hit/miss, sight/zero-click
+adjustments, and session wind — three record types NordicAim's own pipeline has no way to capture or derive. The
+spec was drafted, then validated against a real 545 Coach export the owner supplied (`coach-context-2026-09-28.json`):
+granularity, the click-sign convention, disc order, and the wind-as-strength-band model all confirmed directly from
+it, and the 545 Coach developer separately confirmed `race`'s shape (`null` for training, one of four lower-case
+race-type strings otherwise). The owner then decided the flow by hand, turn by turn, rather than it being guessed:
+attach is per-session (a button beside each session, not a Settings-wide import), a preview screen shows the
+matched records graphically before anything is written, Add is blocked by a named error when a record is already
+attached to a *different* session (detected by a content fingerprint, since 545 Coach assigns no cross-app id),
+re-attaching to the *same* session is a full delete-then-write (never a merge), and a separate Remove action clears
+a session's attached context outright. Surfacing lands on the shooting-analysis composite image, not a new Patterns
+panel: a windage badge beside the season/lighting icons, and one row of hit/miss discs per metal bout. M29 is
+`pending`, not `blocked` — `docs/spec/coach-context-import.md` §7 still lists real open items (wind field
+serialization unconfirmed on a non-calm export, whether `coachContext` joins the app's own backup, and splitting one
+day's export across two same-date NordicAim sessions, which this milestone explicitly leaves unsolved) — but none of
+them block building what M29 scopes. It is an **owner gate**: both the attach/duplicate/remove UX and the
+composite's new visual elements are new ground the owner should look at directly, the way Goals (M27/M28) was
+iterated after shipping.
 
 **Why these tiers:**
 - **Sonnet · medium**: well-specified plumbing and UI.
