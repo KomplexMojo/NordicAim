@@ -21,6 +21,8 @@ import { fileURLToPath } from 'node:url';
 import { BACKUP_FORMAT } from '../src/lib/backup/format.ts';
 import { TargetAnalysis, INITIAL_DETECTION } from '../src/lib/domain/analysis.ts';
 import type { Shot } from '../src/lib/domain/analysis.ts';
+import { AttachedCoachContext, fingerprintSource } from '../src/lib/domain/coach-context.ts';
+import type { MetalContext, WindContext, ZeroAdjustment } from '../src/lib/domain/coach-context.ts';
 import { GoalLogEntry } from '../src/lib/domain/goals.ts';
 import { TargetPhoto } from '../src/lib/domain/photo.ts';
 import type { Calibration, CaptureInfo, Categorization } from '../src/lib/domain/photo.ts';
@@ -376,6 +378,109 @@ for (let i = 0; i < SESSION_COUNT; i++) {
 }
 
 // ======================================================================================
+// Part 1.5: 545 Coach context (coach-context-import.md, M29) — a synthetic attached package per session
+// ======================================================================================
+// Demo-dataset-only: `coachContext.entries` is NOT part of `BackupFile` (format.ts) and is never read by
+// `verifyBackupFile`/`restoreBackup` — only `DemoPage.tsx` reads this key, parses it itself, and writes each
+// row directly with `putCoachContext`. Whether 545 Coach context belongs in a REAL backup is still an open
+// question (coach-context-import.md §7); this sidesteps it rather than deciding it as a side effect of demo data.
+
+/** The real 2026-09-28 export's own `conventions` text, reused verbatim for a realistic package. */
+const COACH_CONVENTIONS = {
+  discOrder: 'discHits[0..4] = alpha, beta, charlie, delta, echo — left to right downrange',
+  zeroClicks: 'Signed net clicks per logged adjustment, as movement of the point of impact: + up / + right, − down / − left',
+  windDirection: 'Clock position the wind blows FROM, facing the target: 12 headwind, 6 tailwind, 3 and 9 full crosswind',
+  windStrength: 'Strength band only (none, light, moderate, strong) — no speed is recorded',
+};
+const COACH_SOURCE_APP_VERSION = '0.4.2';
+const RACE_KINDS = ['sprint', 'individual', 'mass-start', 'pursuit'] as const;
+const ZERO_NOTES = ['after sight-in', 'after confirm', 'rifle felt high', 'cold-bore check'];
+
+async function coachSha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function fingerprintOf<T extends MetalContext | ZeroAdjustment | WindContext>(
+  kind: 'metal' | 'zero' | 'wind',
+  record: T,
+): Promise<{ fingerprint: string; record: T }> {
+  return { fingerprint: await coachSha256Hex(fingerprintSource(kind, record)), record };
+}
+
+/** One shared combo-group id for a run of bouts (a repeated ski-and-shoot round), or every bout ungrouped. */
+function comboGroupIds(count: number): Array<string | null> {
+  if (count === 0 || chance(0.3)) return Array.from({ length: count }, () => null);
+  const groupSize = Math.min(count, 1 + Math.floor(uniform(1, 3)));
+  const group = randomUUID();
+  return Array.from({ length: count }, (_, i) => (i < groupSize ? group : null));
+}
+
+/** Hit chance rises with `skillT` (0 = season start, 1 = season end), echoing the precision-group tightening above. */
+function randomDiscHits(skillT: number): boolean[] {
+  const hitChance = clamp(lerp(0.35, 0.8, skillT) * uniform(0.8, 1.15), 0.1, 0.98);
+  return Array.from({ length: 5 }, () => chance(hitChance));
+}
+
+function randomMetalBouts(session: BiathlonSession, skillT: number): MetalContext[] {
+  const bouts: MetalContext[] = [];
+  for (const position of ['prone', 'standing'] as const) {
+    const count = Math.floor(uniform(1, 4));
+    const groups = comboGroupIds(count);
+    for (let i = 0; i < count; i++) {
+      const discHits = randomDiscHits(skillT);
+      bouts.push({
+        sessionDate: session.sessionDate,
+        position,
+        discHits,
+        comboGroup: groups[i]!,
+        hitRate: round2(discHits.filter(Boolean).length / 5),
+        targetZone: position === 'standing' ? Math.floor(uniform(1, 4)) : null,
+        race: chance(0.05) ? pick(RACE_KINDS) : null,
+      });
+    }
+  }
+  return bouts;
+}
+
+function randomZeroAdjustments(session: BiathlonSession): ZeroAdjustment[] {
+  const count = Math.floor(uniform(0, 5));
+  const base = new Date(`${session.sessionDate}T12:00:00.000Z`);
+  return Array.from({ length: count }, (_, i) => ({
+    at: addMinutes(base, i * 3 + Math.floor(uniform(0, 3))).toISOString(),
+    verticalClicks: Math.round(uniform(-3, 3)),
+    horizontalClicks: Math.round(uniform(-3, 3)),
+    note: chance(0.3) ? pick(ZERO_NOTES) : null,
+  }));
+}
+
+/** Wind strength lives only in `note` (coach-preview.ts reads nothing else) per the one real export seen so far. */
+function randomWind(session: BiathlonSession): WindContext[] {
+  const band = weighted([
+    ['none', 35],
+    ['light', 30],
+    ['moderate', 25],
+    ['strong', 10],
+  ] as const);
+  return [{ sessionDate: session.sessionDate, speedKph: null, direction: band === 'none' ? null : Math.floor(uniform(1, 13)), note: band }];
+}
+
+async function buildCoachContext(session: BiathlonSession, skillT: number): Promise<AttachedCoachContext> {
+  const metal = await Promise.all(randomMetalBouts(session, skillT).map((r) => fingerprintOf('metal', r)));
+  const zero = await Promise.all(randomZeroAdjustments(session).map((r) => fingerprintOf('zero', r)));
+  const wind = await Promise.all(randomWind(session).map((r) => fingerprintOf('wind', r)));
+  return {
+    schemaVersion: 1,
+    sessionId: session.id,
+    attachedAt: session.updatedAt,
+    source: { app: '545-coach', appVersion: COACH_SOURCE_APP_VERSION, exportedAt: session.updatedAt },
+    conventions: COACH_CONVENTIONS,
+    metal,
+    zero,
+    wind,
+  };
+}
+
+// ======================================================================================
 // Part 2: the fake owner's identity, and their Goals history (Goals screen)
 // ======================================================================================
 
@@ -482,6 +587,9 @@ async function buildFakeSubmission(shooter: FakeShooter): Promise<SignedSubmissi
 
 async function main() {
   const fakeSubmissions = await Promise.all(FAKE_SHOOTERS.map(buildFakeSubmission));
+  // owner, 2026-10-05: every session gets a 545 Coach package (coach-context-import.md, M29); skill rises with
+  // the same `t` fraction the precision groups tighten by (session loop above), so the two arcs agree.
+  const coachContextEntries = await Promise.all(sessions.map((s, i) => buildCoachContext(s, SESSION_COUNT > 1 ? i / (SESSION_COUNT - 1) : 1)));
 
   for (const s of sessions) BiathlonSession.parse(s);
   for (const p of photos) TargetPhoto.parse(p);
@@ -489,6 +597,7 @@ async function main() {
   AppSettings.parse(settingsRow);
   for (const g of goalEntries) GoalLogEntry.parse(g);
   for (const s of fakeSubmissions) Submission.parse(s.submission);
+  for (const c of coachContextEntries) AttachedCoachContext.parse(c);
 
   const photosBySession = new Map<string, number>();
   for (const p of photos) photosBySession.set(p.sessionId, (photosBySession.get(p.sessionId) ?? 0) + 1);
@@ -511,12 +620,15 @@ async function main() {
     preferences: [] as unknown[],
     board: { submissions: fakeSubmissions.map((s) => s.submission), challenges: [] as unknown[] },
     goals: { entries: goalEntries },
+    // Demo-dataset-only key, not part of BackupFile — see the Part 1.5 comment above. DemoPage.tsx reads it directly.
+    coachContext: { entries: coachContextEntries },
   };
 
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(backupFile));
   console.log(
-    `Wrote ${sessions.length} sessions, ${photos.length} photos, ${analyses.length} analyses, ${goalEntries.length} goal entries, ${fakeSubmissions.length} board shooters -> ${OUT}`,
+    `Wrote ${sessions.length} sessions, ${photos.length} photos, ${analyses.length} analyses, ${goalEntries.length} goal entries, ` +
+      `${coachContextEntries.length} 545 Coach packages, ${fakeSubmissions.length} board shooters -> ${OUT}`,
   );
 }
 

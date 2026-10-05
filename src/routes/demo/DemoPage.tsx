@@ -3,14 +3,44 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { errorSummary } from '@/lib/app/log';
 import { useServices } from '@/lib/app/services';
+import { readBackupText } from '@/lib/backup/format';
 import type { RestorePlan } from '@/lib/backup/restore';
 import { writeReminderDismissal } from '@/lib/backup/reminder-dismissal-browser';
 import { verifyBackupFile, type VerifiedBackup } from '@/lib/backup/verify';
+import { AttachedCoachContext } from '@/lib/domain/coach-context';
 import { planBackupRestore, restoreBackup } from '@/lib/services/backup';
 import { listSessions } from '@/lib/services/sessions';
+import { putCoachContext } from '@/lib/store/coach-context-repo';
 
-type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; backup: VerifiedBackup; plan: RestorePlan } | { status: 'done' };
+type Load =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; backup: VerifiedBackup; plan: RestorePlan; coachContext: AttachedCoachContext[] }
+  | { status: 'done' };
+
+/**
+ * Demo-dataset-only key `coachContext.entries` (`scripts/generate-fake-dataset.ts`) — NOT part of `BackupFile`
+ * (`backup/format.ts`) and never read by `verifyBackupFile`/`restoreBackup`. Read straight off the raw JSON here
+ * and written with `putCoachContext` after a normal restore, so a real backup's format is untouched by this
+ * demo-only enrichment (coach-context-import.md §7 leaves whether 545 Coach context belongs in a real backup open).
+ */
+function readDemoCoachContext(text: string): AttachedCoachContext[] {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  if (raw === null || typeof raw !== 'object' || !('coachContext' in raw)) return [];
+  const entries = (raw as { coachContext?: { entries?: unknown } }).coachContext?.entries;
+  if (!Array.isArray(entries)) return [];
+  return entries.flatMap((e) => {
+    const parsed = AttachedCoachContext.safeParse(e);
+    return parsed.success ? [parsed.data] : [];
+  });
+}
 
 /**
  * Route `#/demo`: a link anyone can open to see Nordic Aim with its screens already full — fake sessions,
@@ -36,14 +66,16 @@ export function DemoPage() {
       try {
         const response = await fetch(`${import.meta.env.BASE_URL}demo/nordic-aim-fake-dataset.json`);
         if (!response.ok) throw new Error(`Could not load the demo file (${response.status}).`);
-        const result = await verifyBackupFile(await response.blob());
+        const blob = await response.blob();
+        const result = await verifyBackupFile(blob);
         if (cancelled) return;
         if (!result.ok) {
           setLoad({ status: 'error', message: result.problem });
           return;
         }
         const plan = await planBackupRestore(ctx, result.backup);
-        if (!cancelled) setLoad({ status: 'ready', backup: result.backup, plan });
+        const coachContext = readDemoCoachContext(await readBackupText(blob));
+        if (!cancelled) setLoad({ status: 'ready', backup: result.backup, plan, coachContext });
       } catch (err) {
         if (!cancelled) setLoad({ status: 'error', message: err instanceof Error ? err.message : String(err) });
       }
@@ -61,6 +93,17 @@ export function DemoPage() {
         makeWorkingImages: imageTools.makeWorkingImages,
         svgToPng: renderTools.svgToPng,
       });
+      // 545 Coach context isn't part of the backup pipeline (see readDemoCoachContext); written directly, one row
+      // per session, after the sessions themselves exist. A write a corrupt row fails is skipped, not fatal.
+      let coachAttached = 0;
+      for (const entry of load.coachContext) {
+        try {
+          await putCoachContext(ctx.db, entry);
+          coachAttached++;
+        } catch (err) {
+          console.warn(`Demo: could not write 545 Coach context for session ${entry.sessionId}`, errorSummary(err));
+        }
+      }
       // The demo's fake sessions were never really backed up; don't nag a visitor to back them up.
       const sessions = (await listSessions(ctx)).length;
       writeReminderDismissal({ atMs: ctx.now().getTime(), sessions });
@@ -69,6 +112,7 @@ export function DemoPage() {
         `Demo data loaded: ${load.backup.file.manifest.counts.sessions} sessions` +
           (report.goals > 0 ? `, a goals history` : '') +
           (report.boardShooters > 0 ? `, and ${report.boardShooters} Board shooters` : '') +
+          (coachAttached > 0 ? `, and 545 Coach context for ${coachAttached} of them` : '') +
           '.',
       );
       navigate('/');
@@ -90,9 +134,9 @@ export function DemoPage() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 bg-amber-50 p-4 pb-8 lg:max-w-3xl dark:bg-amber-950/40">
       <h1 className="text-xl font-semibold">Demo data</h1>
       <p className="text-sm text-muted-foreground">
-        This loads a made-up season into Nordic Aim on <strong>this device</strong> — fake sessions, a fake goals history and a fake Board
-        full of other (fictional, signed) shooters and clubs — so you can see every screen populated. Nothing leaves this device and
-        nothing happens until you tap the button below.
+        This loads a made-up season into Nordic Aim on <strong>this device</strong> — fake sessions each with a fake 545 Coach package
+        attached, a fake goals history and a fake Board full of other (fictional, signed) shooters and clubs — so you can see every
+        screen populated. Nothing leaves this device and nothing happens until you tap the button below.
       </p>
       <a
         href="https://github.com/KomplexMojo/NordicAim"
@@ -124,8 +168,8 @@ export function DemoPage() {
           ) : (
             <p className="text-sm">
               Adds <strong>{load.backup.file.manifest.counts.sessions}</strong> sessions and{' '}
-              <strong>{load.backup.file.manifest.counts.photos}</strong> target photos, a fake goals history, and a fake Board of other
-              shooters. Anything already on this device that matches is left as it is.
+              <strong>{load.backup.file.manifest.counts.photos}</strong> target photos, each with a 545 Coach package attached, a fake
+              goals history, and a fake Board of other shooters. Anything already on this device that matches is left as it is.
             </p>
           )}
           <div className="flex gap-2">
