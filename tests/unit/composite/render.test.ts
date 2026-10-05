@@ -426,7 +426,11 @@ describe('render/composite header carries the NordicAim mark (REV-104)', () => {
   it('draws the wordmark and the target mark once, and cuts a very long session title', () => {
     const slots = { sighting: [null, null], precision: [slotByRule('precision', [3.55, 7.05, 7.67]), null] } as const;
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
-    expect(svg).toContain('>NordicAim<');
+    // owner, 2026-10-04: N and A are drawn as line art (transparent tspans reserve their advance width; the word
+    // is still "NordicAim" when its tspans are read back in order).
+    const letters = [...svg.matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map((m) => m[1]).join('');
+    expect(letters).toContain('NordicAim');
+    expect((svg.match(/<tspan fill="transparent">N<\/tspan>/g) ?? []).length).toBe(1);
     expect((svg.match(/class="brand-mark"/g) ?? []).length).toBe(1);
     const long = renderComposite(baseInput({ slots: slots as never, session: { ...baseInput({}).session, name: 'x'.repeat(80) } })).svg;
     expect(long).toContain('…');
@@ -440,7 +444,7 @@ describe('render/composite header shows the season, then the lighting (REV-108)'
     const { svg } = renderComposite(baseInput({ slots: slots as never }));
     const season = svg.indexOf('data-season=');
     const lighting = svg.indexOf('data-lighting=');
-    const name = svg.indexOf('>NordicAim<');
+    const name = svg.indexOf('<tspan fill="transparent">N</tspan>');
     expect(season).toBeGreaterThan(-1);
     expect(lighting).toBeGreaterThan(season);
     expect(name).toBeGreaterThan(lighting);

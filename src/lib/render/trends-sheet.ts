@@ -7,8 +7,8 @@ import type { CoachTrends } from '../analysis/coach';
 import { PATTERN_VIEWS, PATTERN_VIEW_LABEL, type PatternPoint, type PatternView } from '../patterns/collect';
 import { patternsScorePercent, type PatternSummary } from '../patterns/summarize';
 
-import { brandMotif } from './brand-mark';
-import { APP_NAME, DEVELOPER_NAME, FOOTER_APP_NAME, provenanceLine } from './composite';
+import { appNameWordmark, brandMotif } from './brand-mark';
+import { DEVELOPER_NAME, FOOTER_APP_NAME, provenanceLine } from './composite';
 import { renderPatternViewMark } from './diagram-marks';
 import { PALETTE } from './palette';
 import { PATTERNS_SIZE, renderPatternsSvg } from './patterns';
@@ -45,7 +45,7 @@ function header(input: TrendsSheetInput): string {
   const title = text(40, 58, 36, 'Shooting trends', { bold: true, color: '#FFFFFF' });
   const subtitle = text(40, 94, 18, `${input.rangeLabel} · generated ${input.generatedAtLocal}`, { color: '#CFE6F3' });
   const mark = brandMotif(TRENDS_WIDTH - 40 - 76, 22, 76);
-  const name = text(TRENDS_WIDTH - 40 - 76 - 14, 71, 34, APP_NAME, { bold: true, anchor: 'end', color: '#FFFFFF' });
+  const name = appNameWordmark(TRENDS_WIDTH - 40 - 76 - 14, 71, 34, '#FFFFFF');
   return bg + title + subtitle + name + mark;
 }
 

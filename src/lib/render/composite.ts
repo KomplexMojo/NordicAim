@@ -11,7 +11,7 @@ import type { BiathlonSession } from '@/lib/domain/session';
 import { SCORING_RULE_LABEL, type ScoringRule } from '@/lib/domain/settings';
 
 import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagram';
-import { brandMotif } from './brand-mark';
+import { appNameWordmark, brandMotif } from './brand-mark';
 import { layoutBand, type BandModel, type BandRow } from './composite-band';
 import { goalBandRows, goalViewOf, renderGoalsSeal } from './composite-goals';
 import { renderLightingIcon, renderSeasonIcon } from './condition-icons';
@@ -20,7 +20,6 @@ import { el, num, text } from './svg';
 import { fmtMm, precisionFooterLines, sightingFooterLines } from './text-lines';
 
 import {
-  APP_NAME,
   COMPOSITE_CELLS,
   COMPOSITE_GRID_HEIGHT,
   type CompositeInput,
@@ -85,7 +84,7 @@ function renderHeader(session: BiathlonSession, lightingSummary: string, photos:
   const subtitle = text(40, 94, 18, `${session.sessionDate} · ${lightingSummary}`, { color: '#CFE6F3' });
   // REV-104: the NordicAim wordmark and mark at the right of the header.
   const mark = brandMotif(WIDTH - 40 - 76, 22, 76);
-  const name = text(WIDTH - 40 - 76 - 14, 71, 34, APP_NAME, { bold: true, anchor: 'end', color: '#FFFFFF' });
+  const name = appNameWordmark(WIDTH - 40 - 76 - 14, 71, 34, '#FFFFFF');
   // REV-108: season then lighting, left of the name.
   const season = seasonOf(photos, session.sessionDate);
   const lighting = lightingOf(photos);
