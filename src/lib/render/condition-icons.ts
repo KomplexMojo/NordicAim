@@ -1,6 +1,7 @@
 // REV-108: the season and lighting icons in the summary image's header. Small line pictograms in a circle, 44 px, drawn to read on the
 // dark header. Pure.
 
+import type { WindBadge, WindBand } from '../domain/coach-context-view';
 import type { Lighting, Season } from '../domain/enums';
 import { el } from './svg';
 
@@ -72,4 +73,43 @@ export function renderSeasonIcon(season: Season, x: number, y: number): string {
 export function renderLightingIcon(lighting: Lighting, x: number, y: number): string {
   if (lighting === 'unknown') return '';
   return badge('lighting', lighting, LIGHTING_LABEL[lighting], x, y, LIGHTING_GLYPH[lighting]);
+}
+
+const WIND_LABEL: Record<WindBand, string> = { none: 'none', light: 'light', moderate: 'moderate', strong: 'strong' };
+/** One streamline per step of strength: light 1, moderate 2, strong 3 (calm has none). */
+const STREAMLINE_OFFSETS: Record<Exclude<WindBand, 'none'>, readonly number[]> = { light: [0], moderate: [-5.5, 5.5], strong: [-9, 0, 9] };
+
+/**
+ * M29 (REV-159, coach-context-import.md §6): the windage glyph on a 44 × 44 box. Calm (`none`) is the weather map's calm sign, two
+ * rings. Otherwise one to three streamlines for the band; with a known clock position they point where the wind blows TO, on a
+ * plan view with the target up (12 o'clock = headwind, drawn blowing down the image; 3 o'clock blows to the left). With no known
+ * direction the lines lie flat and carry no arrowhead.
+ */
+export function renderWindGlyph(wind: WindBadge, line = LINE): string {
+  if (wind.band === 'none') return stroke('<circle cx="22" cy="22" r="4.5" /><circle cx="22" cy="22" r="10" />', line, 2);
+  const arrow = wind.clock !== null;
+  let lines = '';
+  for (const dy of STREAMLINE_OFFSETS[wind.band]) {
+    const y = 22 + dy;
+    lines += arrow
+      ? `<path d="M10 ${y} q5 -3 10 0 t10 0" /><path d="M26 ${y - 4} L31 ${y} L26 ${y + 4}" />`
+      : `<path d="M12 ${y} q5 -3 10 0 t10 0" />`;
+  }
+  // The streamlines are drawn blowing right (to 3 o'clock, 90° clockwise of up); from clock h the wind blows to h·30° + 180°.
+  const rotation = wind.clock === null ? 0 : (wind.clock * 30 + 90) % 360;
+  const inner = stroke(lines, line, 2);
+  return rotation === 0 ? inner : `<g transform="rotate(${rotation} 22 22)">${inner}</g>`;
+}
+
+/** The plain-words name of a windage badge: `Wind: light, from 3 o'clock`. */
+export function windLabel(wind: WindBadge): string {
+  if (wind.band === 'none') return 'Wind: none (calm)';
+  return `Wind: ${WIND_LABEL[wind.band]}, ${wind.clock === null ? 'direction not recorded' : `from ${wind.clock} o'clock`}`;
+}
+
+/** M29 (REV-159): the windage badge at (x, y), 44 px, in the same round frame as the season and lighting badges. */
+export function renderWindIcon(wind: WindBadge, x: number, y: number): string {
+  const disc = el('circle', { cx: 22, cy: 22, r: 20.5, fill: '#2B3644', stroke: LINE, 'stroke-width': 1.5 });
+  const attrs: Record<string, string> = { class: 'wind-icon', 'data-wind': wind.band, 'data-wind-clock': wind.clock === null ? 'unknown' : String(wind.clock), transform: `translate(${x} ${y})` };
+  return el('g', attrs, `<title>${windLabel(wind)}</title>` + disc + renderWindGlyph(wind));
 }

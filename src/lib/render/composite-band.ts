@@ -1,6 +1,8 @@
 // REV-118: the summary image's analysis band, laid out as a small table on the left and the session notes in a box on the right, instead
 // of one ragged list of lines. Pure: takes a model, returns its height and its SVG.
 
+import type { MetalBoutRow } from '../domain/coach-context-view';
+import { layoutMetalRows } from './coach-metal';
 import { crossPath, tickPath } from './composite-goals';
 import { PALETTE } from './palette';
 import { renderScoringIcon } from './scoring-icons';
@@ -39,6 +41,8 @@ export interface BandModel {
   extra: string[];
   /** REV-148: the session's goal checks; none when no goal was in effect. */
   goals: GoalBandRow[];
+  /** M29 (REV-159): one row per attached 545 Coach metal bout; omitted or empty with none, and the band is drawn as before. */
+  metal?: MetalBoutRow[];
   notes: string | null;
   athlete: string | null;
   footer: string;
@@ -131,6 +135,13 @@ export function layoutBand(model: BandModel, bandY: number): { height: number; s
             : text(markX + 4, y, 18, '—', soft);
       body += el('g', { class: 'goal-mark', 'data-met': String(row.met) }, mark);
     }
+  }
+  if (model.metal !== undefined && model.metal.length > 0) {
+    // M29 (REV-159, coach-context-import.md §6): each metal bout as its own row of five hit/miss discs, under everything else.
+    y += 46;
+    const metal = layoutMetalRows(model.metal, 40, y);
+    body += metal.svg;
+    y = metal.lastY;
   }
   const leftBottom = y + 16;
 

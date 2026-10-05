@@ -249,7 +249,7 @@ export const AppSettings = z.object({
 
 ## 6. IndexedDB schema (`src/lib/store/db.ts`)
 
-Database `asa`, version **3**, opened with `idb`'s `openDB`.
+Database `asa`, version **5**, opened with `idb`'s `openDB` (cascading `if (oldVersion < N)` upgrade blocks).
 
 | Store | Key | Indexes | Value |
 |---|---|---|---|
@@ -261,6 +261,7 @@ Database `asa`, version **3**, opened with `idb`'s `openDB`.
 | `settings` | keyPath `key` | — | `AppSettings` |
 | `goals` | keyPath `key` | — | `GoalsStore` — the append-only goal log (`goals.md` §2). Database version 3. |
 | `board` | keyPath `key` | — | `BoardStore` — submissions and challenges received from other shooters (`leaderboard.md` §8). Database version 4. |
+| `coachContext` | keyPath `sessionId` | — | `AttachedCoachContext` (`domain/coach-context.ts`) — the 545 Coach metal bouts, zero clicks and wind attached to one session, each record kept as read beside a sha256 fingerprint of its own fields (`coach-context-import.md` §5, REV-159). Database version 5. Deleted with its session (`deleteSession`); not in a backup (open, `coach-context-import.md` §7). Never merged into `sessions` or `analyses`. |
 
 Blob keys (`src/lib/store/blob-keys.ts`):
 - `photo:<pid>:original`, `photo:<pid>:working` (JPEG ≤ 3000 px, oriented, no metadata), `photo:<pid>:thumb` (≤ 480 px)
@@ -300,6 +301,7 @@ export interface RenderTools { svgToPng(svg: string, widthPx: number, heightPx: 
 | `buildComposite(ctx, sessionId, renderTools)` · `loadArtifact` | `composite/build.ts` | M14 |
 | `recordShare(ctx, sessionId, artifactId, method)` | `services/shares.ts` | M14 |
 | `listGoals(ctx)` · `setGoal(ctx, { view, metric, value })` | `services/goals.ts` | M27 |
+| `prepareCoachAttach(ctx, sessionId, text)` (verify + match + fingerprint, writes nothing) · `addCoachContext(ctx, preview)` (duplicate check, then delete-then-write) · `removeCoachContext(ctx, sessionId)` · `getCoachContext` | `services/coach-context.ts` | M29 |
 
 Every mutating service updates `session.updatedAt` and recomputes `photo.status`/`reasons` with `photoStatus` in the same transaction.
 After committing, services call `pipelineHooks.notify()` (`src/lib/pipeline/hooks.ts`; a no-op until the runner is registered in M10).

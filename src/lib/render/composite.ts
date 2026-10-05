@@ -4,6 +4,7 @@
 
 import { EmptyCompositeError } from '@/lib/composite/artifact';
 import type { AnalysisResult, MpiOffset } from '@/lib/domain/analysis';
+import type { WindBadge } from '@/lib/domain/coach-context-view';
 import type { Lighting, Season } from '@/lib/domain/enums';
 import { suggestSeason } from '@/lib/domain/season';
 import type { TargetPhoto } from '@/lib/domain/photo';
@@ -14,7 +15,7 @@ import { renderBlankCellSvg, renderDiagramSvg, type DiagramInput } from './diagr
 import { appNameWordmark, brandMotif } from './brand-mark';
 import { layoutBand, type BandModel, type BandRow } from './composite-band';
 import { goalBandRows, goalViewOf, renderGoalsSeal } from './composite-goals';
-import { renderLightingIcon, renderSeasonIcon } from './condition-icons';
+import { renderLightingIcon, renderSeasonIcon, renderWindIcon } from './condition-icons';
 import { PALETTE } from './palette';
 import { el, num, text } from './svg';
 import { fmtMm, precisionFooterLines, sightingFooterLines } from './text-lines';
@@ -77,10 +78,20 @@ function nestCellSvg(svg: string, x: number, y: number, size: number): string {
     .replace(' width="720" height="720"', ` width="${num(size)}" height="${num(size)}"`);
 }
 
-function renderHeader(session: BiathlonSession, lightingSummary: string, photos: TargetPhoto[]): string {
+/**
+ * M29 (REV-159): the windage badge sits one badge-step (54 px) left of the season badge, since the 34 px between the lighting badge
+ * (ends at x 1108) and the wordmark (its N starts at x 1142) cannot hold a 44 px badge. It takes that much room from the title, which
+ * is then cut at 47 characters instead of 50 (about 19.5 px a character at 36 px bold, measured with resvg).
+ */
+const WIND_ICON_X = 956;
+const TITLE_CHARS = 50;
+const TITLE_CHARS_WITH_WIND = 47;
+
+function renderHeader(session: BiathlonSession, lightingSummary: string, photos: TargetPhoto[], wind: WindBadge | null): string {
   const bg = el('rect', { x: 0, y: 0, width: WIDTH, height: HEADER_HEIGHT, fill: PALETTE.header });
   // Kept clear of the wordmark on the right: about 50 characters fit at this size.
-  const title = text(40, 58, 36, truncate(`Shooting analysis — ${session.name}`, 50), { bold: true, color: '#FFFFFF' });
+  const titleChars = wind === null ? TITLE_CHARS : TITLE_CHARS_WITH_WIND;
+  const title = text(40, 58, 36, truncate(`Shooting analysis — ${session.name}`, titleChars), { bold: true, color: '#FFFFFF' });
   const subtitle = text(40, 94, 18, `${session.sessionDate} · ${lightingSummary}`, { color: '#CFE6F3' });
   // REV-104: the NordicAim wordmark and mark at the right of the header.
   const mark = brandMotif(WIDTH - 40 - 76, 22, 76);
@@ -89,7 +100,9 @@ function renderHeader(session: BiathlonSession, lightingSummary: string, photos:
   const season = seasonOf(photos, session.sessionDate);
   const lighting = lightingOf(photos);
   const icons =
-    (season === null ? '' : renderSeasonIcon(season, 1010, 38)) + (lighting === 'unknown' ? '' : renderLightingIcon(lighting, 1064, 38));
+    (wind === null ? '' : renderWindIcon(wind, WIND_ICON_X, 38)) +
+    (season === null ? '' : renderSeasonIcon(season, 1010, 38)) +
+    (lighting === 'unknown' ? '' : renderLightingIcon(lighting, 1064, 38));
   return bg + title + subtitle + icons + name + mark;
 }
 
@@ -205,6 +218,8 @@ function bandModel(input: CompositeInput, placed: Placed[]): BandModel {
     showRules,
     extra,
     goals: goalBandRows(input.goals),
+    // M29 (REV-159): only when bouts are attached, so a session without any draws its band exactly as before.
+    ...(input.coach !== undefined && input.coach.metal.length > 0 ? { metal: input.coach.metal } : {}),
     notes: input.session.notes.trim().length > 0 ? input.session.notes : null,
     // Never truncated: cutting the stamp would make it unverifiable.
     athlete: input.provenance === undefined ? null : provenanceLine(input.provenance),
@@ -231,7 +246,7 @@ export function renderComposite(input: CompositeInput): { svg: string; width: nu
   const height = bandY + band.height;
 
   let body = el('rect', { x: 0, y: 0, width: WIDTH, height, fill: PALETTE.panel });
-  body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)), placed.map((p) => p.slot.photo));
+  body += renderHeader(input.session, lightingSummary(placed.map((p) => p.slot.photo)), placed.map((p) => p.slot.photo), input.coach?.wind ?? null);
   for (const cell of COMPOSITE_CELLS) {
     const slot = input.slots[cell.template][cell.index];
     const label = positionName(cell.template, cell.index).toUpperCase();

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { Paperclip } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,13 +21,20 @@ interface SessionListProps {
   onDelete?: (session: BiathlonSession) => void;
   /** Issue #73: each session's target kinds; until they load (or for a session with none read), the row shows its count. */
   kinds?: Map<string, SessionKinds>;
+  /**
+   * M29 (REV-159, coach-context-import.md §5): when given, each row gets a **545 Coach data** control, which attaches an export to
+   * that session (and removes it). Only the Sessions screen passes it.
+   */
+  onCoach?: (session: BiathlonSession) => void;
+  /** The sessions that have 545 Coach data attached; their control is marked. */
+  coachAttached?: Set<string>;
 }
 
 /**
  * Sessions §1: name, date and time, and its targets: their kinds as marks (issue #73), else the count. REV-93: a search box
  * appears once there are many.
  */
-export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDelete, kinds }: SessionListProps) {
+export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDelete, kinds, onCoach, coachAttached }: SessionListProps) {
   const [query, setQuery] = useState('');
   if (sessions.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
@@ -61,6 +69,19 @@ export function SessionList({ sessions, emptyMessage = 'No sessions yet.', onDel
               </span>
               <RowTargets session={session} kinds={kinds?.get(session.id)} loaded={kinds !== undefined} />
             </Link>
+            {onCoach !== undefined && (
+              <Button
+                variant="ghost"
+                className={`h-auto min-h-11 min-w-11 px-3 ${coachAttached?.has(session.id) === true ? 'text-primary' : 'text-muted-foreground'}`}
+                onClick={() => onCoach(session)}
+                data-testid="session-coach"
+                data-session-id={session.id}
+                data-attached={String(coachAttached?.has(session.id) === true)}
+                aria-label={`545 Coach data for ${session.name}, ${session.sessionDate} ${sessionTimeLabel(session)}${coachAttached?.has(session.id) === true ? ' (attached)' : ''}`}
+              >
+                <Paperclip className="size-5" aria-hidden strokeWidth={coachAttached?.has(session.id) === true ? 2.6 : 1.8} />
+              </Button>
+            )}
             {onDelete !== undefined && (
               <Button
                 variant="ghost"

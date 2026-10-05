@@ -17,6 +17,7 @@ import {
   putSessionRecord,
   type UnreadableRecord,
 } from '@/lib/store/sessions-repo';
+import { deleteCoachContext } from '@/lib/store/coach-context-repo';
 import { emitPipelineChanged } from '@/lib/pipeline/events';
 import { pipelineHooks } from '@/lib/pipeline/hooks';
 
@@ -197,12 +198,12 @@ export async function previewSessionDeletion(ctx: ServiceContext, sessionId: str
 }
 
 /**
- * Cascade delete (issue #18): the session, its photos, their analyses, every `photo:<pid>:*` / `diagram:<pid>:*` blob and every
- * summary image (`artifact:<aid>:*`), in one transaction. **It works from raw records and parses nothing**, so a photo or a
+ * Cascade delete (issue #18): the session, its photos, their analyses, every `photo:<pid>:*` / `diagram:<pid>:*` blob, every
+ * summary image (`artifact:<aid>:*`) and its attached 545 Coach context (REV-159), in one transaction. **It works from raw records and parses nothing**, so a photo or a
  * session record the schema rejects is removed too — "everything attached" means everything. Returns what was removed.
  */
 export async function deleteSession(ctx: ServiceContext, sessionId: string): Promise<SessionDeletionReport> {
-  const tx = ctx.db.transaction(['sessions', 'photos', 'analyses', 'blobs'], 'readwrite');
+  const tx = ctx.db.transaction(['sessions', 'photos', 'analyses', 'blobs', 'coachContext'], 'readwrite');
   const raw = await getRawSessionRecord(tx, sessionId);
   if (raw === undefined || raw === null) throw new SessionNotFoundError(sessionId);
 
@@ -219,6 +220,8 @@ export async function deleteSession(ctx: ServiceContext, sessionId: string): Pro
   for (const artifactId of idsOf(raw, 'artifacts')) {
     await deleteByPrefix(tx, artifactPrefix(artifactId));
   }
+  // M29 (REV-159): its attached 545 Coach context goes with it, so those records are free to attach elsewhere.
+  await deleteCoachContext(tx, sessionId);
   await deleteSessionRecord(tx, sessionId);
   await tx.done;
   // Screens re-read on this event (analysis-pipeline §5); without it the session list would keep showing the row.

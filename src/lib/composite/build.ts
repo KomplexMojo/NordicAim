@@ -28,6 +28,9 @@ import { makeStamp } from '@/lib/provenance/stamp';
 import { loadProvenanceKey } from '@/lib/services/provenance';
 import { photoOriginalKey } from '@/lib/store/blob-keys';
 import { goalChecksFor } from '@/lib/services/goals';
+import { metalBoutRows, windBadgeOf } from '@/lib/domain/coach-context-view';
+import { getCoachContext } from '@/lib/store/coach-context-repo';
+import { CorruptRecordError } from '@/lib/store/errors';
 
 const WIDTH_PX = 1440;
 const KEEP_ARTIFACTS = 3;
@@ -131,6 +134,25 @@ async function buildProvenance(
 }
 
 /**
+ * M29 (REV-159, coach-context-import.md §6): the session's attached 545 Coach context as the image draws it, or null when none is
+ * attached (the image is then exactly as before). An unreadable entry is left out rather than stopping the summary being drawn.
+ */
+async function coachOf(ctx: ServiceContext, sessionId: string): Promise<CompositeInput['coach'] | null> {
+  let entry;
+  try {
+    entry = await getCoachContext(ctx.db, sessionId);
+  } catch (err) {
+    if (err instanceof CorruptRecordError) {
+      console.warn('[summary] 545 Coach context left out:', err.message);
+      return null;
+    }
+    throw err;
+  }
+  if (entry === null) return null;
+  return { wind: windBadgeOf(entry.wind.map((w) => w.record)), metal: metalBoutRows(entry.metal.map((m) => m.record)) };
+}
+
+/**
  * rendering-composite.md §6. Selects slots, renders and rasterises the SVG, hashes the PNG, and stores
  * it in one transaction, pruning to the newest 3 artifacts. Everything but the IDB writes happens
  * before the transaction (data-model §6).
@@ -194,6 +216,7 @@ export async function buildComposite(
   const provenance = await buildProvenance(ctx, session.sessionDate, settings, slots, rule, release, nowIso);
   // REV-148: the session's own values against the goals in effect when it was created.
   const goals = await goalChecksFor(ctx, session, photos, analyses, holeDiameterMm);
+  const coach = await coachOf(ctx, sessionId);
   const input: CompositeInput = {
     session,
     slots,
@@ -204,6 +227,7 @@ export async function buildComposite(
     moreCount,
     ...(provenance === null ? {} : { provenance: provenance.line }),
     ...(Object.keys(goals).length === 0 ? {} : { goals }),
+    ...(coach === null ? {} : { coach }),
   };
 
   // §5 (REV-51): the height depends on the count and on the band's content, so take it from the render.

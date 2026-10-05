@@ -23,6 +23,8 @@ import { openTestDb } from '../../helpers/db';
 import { makeTestContext } from '../../helpers/fixtures';
 import { makePhoto, makeSession } from '../../helpers/records';
 import { stubRenderTools } from '../../helpers/stub-render-tools';
+import { syntheticCoachText } from '../../helpers/coach-context';
+import { addCoachContext, prepareCoachAttach, removeCoachContext } from '@/lib/services/coach-context';
 
 interface ShotsFixture {
   template: 'sighting' | 'precision';
@@ -271,5 +273,37 @@ describe('composite/build records and prints the scoring rule (REV-59)', () => {
     expect(second.scoringRule).toBe('centre');
     const artifacts = (await getSessionRecord(ctx.db, sessionId))?.artifacts ?? [];
     expect(artifacts.map((a) => a.scoringRule)).toEqual(['gauge', 'centre']);
+  });
+});
+
+describe('composite/build reads the attached 545 Coach context (M29, REV-159)', () => {
+  it('draws the metal rows when context is attached, and exactly as before once it is removed', async () => {
+    const { ctx, sessionId } = await seedOneAnalyzed();
+    const session = (await getSessionRecord(ctx.db, sessionId))!;
+    const tools = stubRenderTools();
+    const plain = await buildComposite(ctx, sessionId, tools);
+
+    const text = syntheticCoachText({ day: session.sessionDate });
+    const prepared = await prepareCoachAttach(ctx, sessionId, text, (utc) => utc.slice(0, 10));
+    if (!prepared.ok) throw new Error(prepared.problem);
+    await addCoachContext(ctx, prepared.preview);
+    const withCoach = await buildComposite(ctx, sessionId, tools);
+    expect(withCoach.heightPx).toBe(plain.heightPx + 46 + prepared.preview.metal.length * 34);
+    expect(tools.calls[1]!.svg).toContain('class="metal-bout"');
+    // The synthetic day's wind is calm: the badge shows `none`.
+    expect(tools.calls[1]!.svg).toContain('data-wind="none"');
+
+    await removeCoachContext(ctx, sessionId);
+    const after = await buildComposite(ctx, sessionId, tools);
+    expect(after.heightPx).toBe(plain.heightPx);
+    expect(tools.calls[2]!.svg).toBe(tools.calls[0]!.svg);
+  });
+
+  it('an unreadable coach-context row is left out rather than stopping the summary', async () => {
+    const { ctx, sessionId } = await seedOneAnalyzed();
+    const plain = await buildComposite(ctx, sessionId, stubRenderTools());
+    await ctx.db.put('coachContext', { sessionId, schemaVersion: 1 } as never);
+    const built = await buildComposite(ctx, sessionId, stubRenderTools());
+    expect(built.heightPx).toBe(plain.heightPx);
   });
 });

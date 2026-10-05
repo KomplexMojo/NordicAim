@@ -7,6 +7,7 @@ import type { TargetPhoto } from '@/lib/domain/photo';
 import type { BiathlonSession } from '@/lib/domain/session';
 import type { ScoringRule } from '@/lib/domain/settings';
 import type { SessionGoalChecks } from '@/lib/goals/session';
+import type { MetalBoutRow, WindBadge } from '@/lib/domain/coach-context-view';
 
 export interface SlotData {
   photo: TargetPhoto;
@@ -40,6 +41,11 @@ export interface CompositeInput {
   provenance?: { name: string; club: string; stamp: string | null };
   /** REV-148: whether the session met the goals in effect when it was created (`sessionGoalChecks`); omitted for none. */
   goals?: SessionGoalChecks;
+  /**
+   * M29 (REV-159, coach-context-import.md §6): the session's attached 545 Coach context — the windage badge (null: none) and one
+   * row per metal bout. Omitted when nothing is attached, and the image is then byte-identical to one drawn before M29.
+   */
+  coach?: { wind: WindBadge | null; metal: MetalBoutRow[] };
 }
 
 /**
@@ -47,7 +53,7 @@ export interface CompositeInput {
  * scale, REV-53 position names, REV-54 the credit stamp, REV-58 one fixed scale, REV-59 the scoring method, REV-137 the brighter group ellipse). A stored artifact drawn by an older version is rebuilt when its session's
  * results screen is opened, so an app update is never invisible in the summary image.
  */
-export const COMPOSITE_RENDERER_VERSION = 21; // 21: REV-154 maple-leaf fall badge; 20: REV-148 goal seal and band rows
+export const COMPOSITE_RENDERER_VERSION = 22; // 22: REV-159 545 Coach windage badge and metal rows; 21: REV-154 maple-leaf fall badge; 20: REV-148 goal seal and band rows
 
 /** §5: the credit stamped on every shared image — the app, and who made it (owner, 2026-09-19). */
 export const APP_NAME = 'NordicAim';

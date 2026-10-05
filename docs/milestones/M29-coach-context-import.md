@@ -164,5 +164,74 @@ Carried from `docs/spec/coach-context-import.md` §7, still open after this mile
 - Splitting one day-file across two NordicAim sessions shot on the same date — explicitly out of scope here (see
   *Out of scope*); needs a deselect-before-Add design before it can be solved.
 
+Raised while implementing (none blocks a later milestone):
+- **Empty match** (`coach-context-import.md` §7, "default behaviour when a session's date has no 545 Coach records"): built
+  as the conservative choice. The preview says the export has nothing for that date and **Add** is disabled
+  (`addCoachContext` also refuses it with `CoachContextEmptyError`), so no empty entry is ever written. Owner to confirm.
+- **Windage band source.** §4 has no dedicated strength field, so the band is read from `note` only when it is exactly
+  `none`/`light`/`moderate`/`strong` (any case). No speed → band rule is invented. A wind record whose note is anything else
+  draws no badge (the preview says so). With several wind records on one date the badge uses the first with a known band.
+  Revisit once a windy export is seen.
+- **Lenient reads of two unconfirmed forms.** `WindContext.direction` accepts a string or a number (§7: serialization
+  unconfirmed), and `ZeroAdjustment.at` / `source.exportedAt` accept a minute-precision UTC time (`2026-09-29T01:19Z`, as
+  this milestone quotes the real sample) as well as `UtcIso`, which on its own refuses that form.
+- **Identical bouts within one file** (for example two clean prone bouts in the same combo group) have the same
+  fingerprint by design (it hashes only the record's own fields). Both are kept; they only matter to the cross-session
+  check, which is what the spec intends.
+
 ## Completion notes
-Not started.
+Implemented 2026-10-05 (not committed; the workflow's finalizer commits).
+
+**What was built**
+- `src/lib/domain/coach-context.ts`: zod schemas for the §4 file (`CoachContextFile`, `MetalContext`, `ZeroAdjustment`,
+  `WindContext`, `CoachConventions`, `CoachSource`, `CoachRace`) and the persisted `AttachedCoachContext`
+  (`{ schemaVersion: 1, sessionId, attachedAt, source, conventions, metal|zero|wind: [{ fingerprint, record }] }`);
+  `parseCoachContextText` (named refusals `not-json` / `wrong-format` / `wrong-version` / `bad-shape`), `matchCoachContext`,
+  and `fingerprintSource` (canonical, key-sorted JSON of `{ kind, record }`: only 545 Coach's own parsed fields).
+- `src/lib/domain/coach-context-view.ts`: `metalBoutRows` (grouped by combo group in first-appearance order, null last, then
+  prone before standing, file order within), `windBadgeOf` / `windBandOf` / `clockOf`, `zeroClicksLabel`.
+- `src/lib/store/db.ts` version **5**: `coachContext` store, keyPath `sessionId`, in a new `if (oldVersion < 5)` block.
+- `src/lib/store/coach-context-repo.ts`: get/put/delete by `sessionId` (zod-validated both ways), `listCoachContextSessionIds`,
+  `findFingerprintCollision` (reads raw rows, skips the target session, so one unreadable row elsewhere can't hide a duplicate).
+- `src/lib/services/coach-context.ts`: `prepareCoachAttach` (verify, match, sha256 fingerprints; writes nothing),
+  `addCoachContext` (empty refused; duplicate scan **before** the transaction; then one readwrite transaction does
+  delete-then-put, so a re-attach replaces and never merges; then `summaryHooks.schedule`), `removeCoachContext`,
+  `deviceLocalDate` (reuses `clientNow` from `media/capture-time.ts`, the phone's own timezone at attach time).
+- `deleteSession` (`services/sessions.ts`) now also deletes the session's `coachContext` row in its cascade transaction.
+  Without it, a deleted session's records would block attaching them anywhere else.
+- UI: a paperclip **545 Coach data** button on each row of the Sessions list (`SessionList.tsx`, `HomePage.tsx`; marked
+  when attached), opening `CoachContextDialog.tsx`: **Attach 545 Coach data** → file picker → `CoachPreview.tsx` (the same
+  windage badge and disc rows as the composite, drawn by `render/coach-preview.ts`, plus the zero-click list) → **Add** /
+  **Cancel**, and **Remove 545 Coach data** when something is attached. Errors (refused file, duplicate) show in the dialog.
+- Composite: `CompositeInput.coach` (optional). `condition-icons.ts` `renderWindIcon` at **x 956, y 38**, title cut at 47
+  characters when it shows (measured: the 34 px gap between the lighting badge and the wordmark can't hold a 44 px badge).
+  `coach-metal.ts` + `composite-band.ts`: one row of five discs per bout under the band's left column (+46 + 34 per bout).
+  `composite/build.ts` reads the row (an unreadable row is left out with a console warning, rather than breaking the summary).
+  `COMPOSITE_RENDERER_VERSION` 21 → 22.
+- Test hook `getCoachContext(sessionId)` in `src/lib/testing/test-hooks-browser.ts` (fake-camera builds only).
+- Docs: `data-model.md` §6 (version 5, the new store; §7 service row), `rendering-composite.md` (new "545 Coach context
+  (REV-159, M29)" section), `DESIGN-REVISIONS.md` REV-159.
+
+**Tests added:** `tests/unit/domain/coach-context.test.ts` (35), `tests/unit/store/coach-context-repo.test.ts` (5),
+`tests/unit/services/coach-context.test.ts` (14, including the UTC-day-boundary case with `TZ=America/Edmonton` and
+`Europe/Oslo` set at runtime), `tests/unit/render/composite-band.test.ts` (4), `tests/unit/render/composite-coach.test.ts`
+(6: byte-identical guard with sha256 values captured from the renderer **before** any M29 change, plus coach-present
+layout), windage cases in `tests/unit/render/condition-icons.test.ts`, two cases in `tests/unit/composite/build.test.ts`,
+a v4→v5 case in `tests/unit/store/db-migration.test.ts`, and `tests/e2e/coach-context-attach.spec.ts`. The synthetic
+fixture is `tests/helpers/coach-context.ts` (hand-built; the real export is not in the repo, and
+`fixtures/private/coach-context/` does not exist on this machine yet, so no private-file test was added).
+
+**Commands run**
+- `pnpm check`: pass (typecheck, lint with the 4 existing warnings and no errors, 154 files / 1422 unit tests, privacy).
+- `pnpm test:e2e --project=mobile-chromium tests/e2e/coach-context-attach.spec.ts`: pass. The owner's own `pnpm dev`
+  (no fake camera) was on port 3874, so it ran through a throwaway config on port 3875 with `VITE_FAKE_CAMERA=1` (deleted).
+- The same spec on `mobile-webkit`: pass (this machine has WebKit).
+- Regression e2e on mobile-chromium (a11y, delete-session, smoke, session-kinds, season-filter, summary, navigation,
+  session-date, backup): 30/30 pass.
+
+**For the reviewer**
+- `addCoachContext` and `removeCoachContext` don't change `session.updatedAt`. The context isn't in a backup, so bumping it
+  would make the backup reminder treat the session as changed. The summary rebuild that follows writes the session anyway.
+- Renderer version bumped although no-coach output is identical, per §6's "bump whenever this renderer's output changes".
+  The only effect is a one-time rebuild of each summary when its results screen opens.
+

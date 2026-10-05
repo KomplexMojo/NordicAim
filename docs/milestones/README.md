@@ -40,7 +40,7 @@ as shown (`<model> · <effort>`).
 | [M26](M26-template-reference-photos.md) | Template reference photos (blank-sheet differencing) | post-MVP · generate analysis | M16, M19 | opus · high | opus · high | yes | blocked: part 2 (detection uses the reference) — gain unproven on the production benchmark; part 1 (Settings, storage, defaults) done 2026-09-27 |
 | [M27](M27-goals-foundation.md) | Goals: append-only goal log, the Goals tab and chart screen, numeric goal entry (issue #97) | post-MVP · goals | M22 | sonnet · high | sonnet · high | no | done |
 | [M28](M28-goals-drag-star.md) | Goals: replace the numeric goal entry — shipped as up/down buttons, after a drag-a-star attempt (issue #97) | post-MVP · goals | M27 | sonnet · high | sonnet · high | no | done |
-| [M29](M29-coach-context-import.md) | Pull shooting context from 545 Coach: attach-to-session, duplicate detection, composite surfacing (backlog B15) | post-MVP · coach context | M14, M22 | opus · high | opus · high | yes | pending |
+| [M29](M29-coach-context-import.md) | Pull shooting context from 545 Coach: attach-to-session, duplicate detection, composite surfacing (backlog B15) | post-MVP · coach context | M14, M22 | opus · high | opus · high | yes | done |
 
 ```mermaid
 flowchart TD

@@ -329,3 +329,31 @@ export async function shareArtifact(png: Blob, fileName: string, title: string):
 
 The band (below the grid) is laid out by `render/composite-band.ts` from a model, in three parts. **Left:** `Session analysis` (24 bold), `Scoring: <method>` (REV-59), then a table when there is something to compare: a header row (`MPI offset` when any sighting target has one; the gauge, centre and visible icons and names when any target scores differently under the rules), a rule under it, and one row per filled target (label, MPI offset, then its score under each rule; a sighting's cells read `N hits`). A single target's footer lines and `+N more target(s) in the app` follow as plain lines. **Right:** when the session has notes, a rounded box at x 980, 420 wide, titled `Session notes`, holding the notes word-wrapped to 44 characters, at most 8 lines (the last ends `…`). **Bottom:** the athlete line (REV-100, never truncated) and the credit. The band's height is the taller of the two columns plus the bottom lines. This replaces the one-line-per-fact list and the `<label> by rule:` and `Notes:` lines described above.
 
+## 545 Coach context (REV-159, M29)
+
+`CompositeInput.coach` (`{ wind: WindBadge | null; metal: MetalBoutRow[] }`, omitted when the session has no attached
+`coachContext`) adds two things, from `coach-context-import.md` §6. `composite/build.ts` reads the session's `coachContext` row
+before rendering (an unreadable row is left out, not fatal). **With no coach context, or an attached one with no bout and no
+known wind band, the SVG is byte-identical to the image before M29** (`tests/unit/render/composite-coach.test.ts` pins the
+pre-M29 sha256 of three inputs).
+
+- **Windage badge** (`render/condition-icons.ts` `renderWindIcon`): a 44 px round badge like the season and lighting badges, at
+  **x 956, y 38**, one 54 px badge-step left of the season badge. It cannot go right of the lighting badge: that badge ends at
+  x 1108 and the wordmark's N starts at x 1142 (1310 − 168), 34 px. With the badge drawn, the title is cut at **47** characters
+  instead of 50 (about 19.5 px a character at 36 px bold, measured with resvg), so a long name stays clear of it. The glyph is
+  the band: `none` is the calm sign (two rings); `light`, `moderate`, `strong` are one, two, three streamlines. With a known clock
+  position (1–12, from `direction`) the streamlines carry arrowheads and point where the wind blows **to**, on a plan view with the
+  target up (rotation `clock × 30 + 90`°, so 12 o'clock blows down the image and 3 o'clock to the left); without one they lie flat
+  with no arrowheads. The band is read from the wind record's `note` when it is exactly a band name (the only export seen keeps it
+  there); the badge uses the first attached wind record (file order) whose band is known, and none is drawn when no band is known.
+  `<title>` reads e.g. `Wind: light, from 3 o'clock`.
+- **Metal rows** (`render/coach-metal.ts`, drawn by `composite-band.ts` at the bottom of the left column, under Goals): a
+  `Metal targets (545 Coach)` header row with `Hits` and a rule, then one 34 px row per bout: combo label (`Combo 1`, `Combo 2`…
+  by first appearance in the file, `No combo` for a null `comboGroup`; on the group's first row only), position (`Prone` /
+  `Standing`), five discs (r 11, 30 px apart, alpha..echo left to right; a hit is a filled `discPrecision` disc, a miss an open ring
+  on `page`), and `n/5`. Rows are grouped by `comboGroup`, then prone before standing, file order within (`metalBoutRows`). Adds
+  `46 + 34 × bouts` to the band.
+
+`COMPOSITE_RENDERER_VERSION` is **22**. Add and Remove ask for the session's summary to be drawn again (`summaryHooks.schedule`).
+The attach preview (`render/coach-preview.ts`) draws the same badge and rows on its own small SVG.
+

@@ -20,6 +20,8 @@ import { ingestPhoto } from '@/lib/services/ingest';
 import { requestAnalysis } from '@/lib/services/photos';
 import { keepBaseline } from '@/lib/leaderboard/baseline';
 import { listGoals } from '@/lib/services/goals';
+import { getCoachContext } from '@/lib/services/coach-context';
+import type { AttachedCoachContext } from '@/lib/domain/coach-context';
 import { createSession, getSession } from '@/lib/services/sessions';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { getPhotoRecord, listPhotosBySession, putPhotoRecord } from '@/lib/store/photos-repo';
@@ -51,6 +53,8 @@ export interface AsaTestHooks {
   getSession(sessionId: string): Promise<BiathlonSession | null>;
   /** M27: reads the raw goal log, so e2e specs can assert an append happened without relying on the chart's own step line. */
   listGoals(): Promise<GoalLogEntry[]>;
+  /** M29: reads a session's attached 545 Coach context (null when none), so e2e specs can assert what Add / Remove wrote. */
+  getCoachContext(sessionId: string): Promise<AttachedCoachContext | null>;
 }
 
 declare global {
@@ -293,6 +297,10 @@ export function installTestHooks(): void {
     async listGoals() {
       const { ctx } = await loadAppServices();
       return listGoals(ctx);
+    },
+    async getCoachContext(sessionId) {
+      const { ctx } = await loadAppServices();
+      return getCoachContext(ctx, sessionId);
     },
   };
 }

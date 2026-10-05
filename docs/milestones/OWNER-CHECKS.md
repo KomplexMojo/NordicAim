@@ -274,3 +274,12 @@ during M10/M11 work._
 - [ ] On the phone: Settings → Back up now → confirm the GPS warning → save to Files or iCloud Drive. Note the size and seconds the app reports (for your ~43 MB of data) and compare with `analysis-pipeline.md` §9's budget.
 - [ ] Restore that file on the phone (or another device) and confirm sessions, photos, scores and summary images are back.
 - [ ] Confirm the Web Share sheet accepts a file that size; if it refuses, the app downloads it instead.
+
+## M29 — Pull shooting context from 545 Coach: attach-to-session, duplicate detection, composite surfacing (backlog B15)
+
+- [ ] On the iPhone, attach a real 545 Coach export (e.g. `coach-context-2026-09-28.json`, kept in gitignored `fixtures/private/coach-context/`, never committed) to the matching session via each Sessions row's paperclip "545 Coach data" button; confirm the dialog's preview, Add/Cancel and Remove work, and that attaching the same day's file to a second session shows the named "already attached to …" error.
+- [ ] Confirm the real export is accepted rather than refused — in particular the zero-click `at` time format (e.g. a minute-precision UTC value like `2026-09-29T01:19Z`, which should land on the 28th in your phone's timezone) and the wind `direction` format (numeric or string clock value); if refused, the dialog names the field. Confirm all 8 bouts across both combo groups appear.
+- [ ] Open that session's results and confirm the summary image reads clearly: the windage badge at x 956 (left of the season icon) and the "Metal targets (545 Coach)" disc rows (bottom of the Session analysis band), and that a long session title (cut at 47 characters when the badge shows) stays clear of the badge.
+- [ ] Once you have an export from a windy (not calm) session, attach it and confirm the windage badge shows a strength (1–3 streamlines, read only from `note` when exactly none/light/moderate/strong) and, if a direction is recorded, arrows pointing where the wind blows.
+- [ ] Confirm the implementer's decisions are acceptable: (a) a date with no records shows "no records" in the preview with Add disabled; (b) deleting a session also deletes its attached coachContext; (c) Add/Remove don't bump `session.updatedAt`; (d) `COMPOSITE_RENDERER_VERSION` is now 22, so each stored summary rebuilds once.
+- [ ] Run `pnpm test:e2e --project=mobile-webkit tests/e2e/coach-context-attach.spec.ts` yourself with nothing else on port 3874 (the implementer ran it on a temporary port because `pnpm dev` was already using 3874).

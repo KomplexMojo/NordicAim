@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router';
 import { UpdateBanner } from '@/components/UpdateBanner';
 import { BUILD_SHA } from '@/lib/app/build-info';
 import { SeasonFilter } from '@/components/patterns/SeasonFilter';
+import { CoachContextDialog } from '@/components/sessions/CoachContextDialog';
 import { DeleteSessionDialog } from '@/components/sessions/DeleteSessionDialog';
 import { SessionList } from '@/components/sessions/SessionList';
 import { QuickStartButton } from '@/components/sessions/QuickStartButton';
@@ -14,6 +15,7 @@ import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { parseSeasonFilter, SEASON_LABEL, type SeasonFilter as SeasonFilterValue } from '@/lib/domain/season';
 import { listSessionKinds, listSessionSeasons, listSessionsWithProblems } from '@/lib/services/sessions';
+import { listCoachContextSessions } from '@/lib/services/coach-context';
 import { sortSessions, type SessionSortDirection } from '@/lib/sessions/list-view';
 import { sessionInSeason } from '@/lib/sessions/seasons';
 
@@ -31,6 +33,9 @@ export function HomePage() {
   const season = parseSeasonFilter(params.get('season'));
   const setSeason = (s: SeasonFilterValue) => setParams(s === 'all' ? {} : { season: s }, { replace: true });
   const [deleting, setDeleting] = useState<string | null>(null);
+  // M29 (REV-159): the session whose 545 Coach data is open, and which sessions have some attached.
+  const [coachFor, setCoachFor] = useState<string | null>(null);
+  const { value: coachAttached } = useLiveQuery(() => listCoachContextSessions(ctx), [ctx]);
   // Newest session date first by default; the toggle beside the heading flips it.
   const [sortDirection, setSortDirection] = useState<SessionSortDirection>('desc');
   const sessions = value?.sessions;
@@ -84,6 +89,8 @@ export function HomePage() {
                 : 'No sessions yet. Quick start to take your first photo.'
             }
             onDelete={(session) => setDeleting(session.id)}
+            onCoach={(session) => setCoachFor(session.id)}
+            coachAttached={coachAttached}
           />
         )}
       </section>
@@ -122,6 +129,7 @@ export function HomePage() {
       )}
 
       <DeleteSessionDialog key={deleting ?? 'none'} sessionId={deleting} onClose={() => setDeleting(null)} />
+      <CoachContextDialog key={`coach-${coachFor ?? 'none'}`} sessionId={coachFor} onClose={() => setCoachFor(null)} />
 
       <p className="mt-auto text-center text-xs text-muted-foreground">
         Results are stored only on this phone. Version{' '}
