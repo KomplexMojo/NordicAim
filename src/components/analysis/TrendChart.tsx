@@ -40,10 +40,12 @@ export function TrendChart({ metric, trend, from }: TrendChartProps) {
 
   const latest = g.points.at(-1) ?? null;
   const readout = selected !== null ? g.points.find((p) => p.index === selected) ?? null : latest;
-  // Unselected, the header reads the trend's current average rather than the latest session's own value, which is
-  // just one noisy point. Tapping a point still reads that session's own value (no "Average" tag).
+  // Unselected, a trend-bearing chart's header reads the plain mean of the sessions shown (the same figure the Board
+  // leaderboard calls "Average") rather than the latest session's own value, which is just one noisy point. Tapping a
+  // point still reads that session's own value (no "Average" tag).
   const showAverage = selected === null && fit !== null;
-  const readoutValue = showAverage ? fit.current : readout?.value ?? null;
+  const average = showAverage ? g.points.reduce((sum, p) => sum + p.value, 0) / g.points.length : null;
+  const readoutValue = showAverage ? average : readout?.value ?? null;
 
   return (
     <Card data-testid={`trend-${metric.id}`} data-points={g.points.length}>
@@ -57,8 +59,9 @@ export function TrendChart({ metric, trend, from }: TrendChartProps) {
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           {metric.note}
-          {readout !== null &&
-            ` · ${showAverage ? 'as of ' : selected !== null ? '' : 'latest, '}${shortDate(trend[readout.index]!.sessionDate)}`}
+          {showAverage
+            ? ` · over ${g.points.length} sessions` // showAverage implies MIN_TREND_SESSIONS (3) or more
+            : readout !== null && ` · ${selected !== null ? '' : 'latest, '}${shortDate(trend[readout.index]!.sessionDate)}`}
         </p>
         {fit !== null && (
           <p className="text-xs text-muted-foreground" data-testid={`trend-${metric.id}-slope`}>
