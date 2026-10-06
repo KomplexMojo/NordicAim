@@ -53,8 +53,11 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
 - The y axis covers every value, rounded out to 1/2/5 × 10ⁿ ticks (`niceStep`, about four intervals), with hairline
   gridlines. The MPI charts always include 0 and draw a **zero line** (0 = centred).
 - A 2 px line, and points of r 4 with a 2 px ring in the card colour. A session with no value breaks the line.
-- The chart's header shows the **latest** value. Tapping a point, or focusing it and pressing Enter, reads that
-  session's date and value there instead. Every point also carries a native tooltip.
+- The chart's header shows the **latest** value, unless a trend line (§4a) exists, in which case it shows the trend's
+  **current average** instead — the fitted value at the most recent session, tagged `Average` ahead of the number
+  (the chart's own smoothed read, steadier than one session's noise; `as of <date>` names the session the fit runs
+  through). Tapping a point, or focusing it and pressing Enter, reads that session's own date and value there
+  instead, untagged. Every point also carries a native tooltip.
 - **Show data** opens a table of every session and value as text: the accessible view of the same numbers.
 - With one session in the range, the charts still draw that point, and the screen says a trend needs at least two.
 

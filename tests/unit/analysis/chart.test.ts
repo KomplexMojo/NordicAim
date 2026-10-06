@@ -111,6 +111,12 @@ describe('trend line (analysis.md §4a, REV-129)', () => {
     expect(g.trend!.slope).toBe(0);
     expect(g.trend!.y1).toBeCloseTo(g.trend!.y2, 12);
   });
+
+  it('`current` is the fitted value at the last session with a value, unclipped', () => {
+    expect(chartGeometry([1, 3, null, 7, 9], box, false).trend!.current).toBeCloseTo(9, 12); // v = 2i + 1, last i = 4
+    // 0, 0, 0, 10: slope 3, intercept −2, fitted at i = 3 is 7, inside the domain so not clipped either way.
+    expect(chartGeometry([0, 0, 0, 10], box, false).trend!.current).toBeCloseTo(7, 9);
+  });
 });
 
 describe('valueToY (goals.md §5 / M28: placing a marker at a value chartGeometry never plotted)', () => {

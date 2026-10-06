@@ -40,19 +40,25 @@ export function TrendChart({ metric, trend, from }: TrendChartProps) {
 
   const latest = g.points.at(-1) ?? null;
   const readout = selected !== null ? g.points.find((p) => p.index === selected) ?? null : latest;
+  // Unselected, the header reads the trend's current average rather than the latest session's own value, which is
+  // just one noisy point. Tapping a point still reads that session's own value (no "Average" tag).
+  const showAverage = selected === null && fit !== null;
+  const readoutValue = showAverage ? fit.current : readout?.value ?? null;
 
   return (
     <Card data-testid={`trend-${metric.id}`} data-points={g.points.length}>
       <CardHeader>
         <CardTitle className="flex items-baseline justify-between gap-2 text-base">
           <span>{metric.title}</span>
-          <span className="text-sm font-medium tabular-nums" aria-live="polite" data-testid={`trend-${metric.id}-readout`}>
-            {readout === null ? '—' : metric.format(readout.value)}
+          <span className="flex items-baseline gap-1 text-sm font-medium tabular-nums" aria-live="polite" data-testid={`trend-${metric.id}-readout`}>
+            {showAverage && <span className="text-xs font-normal text-muted-foreground">Average</span>}
+            {readoutValue === null ? '—' : metric.format(readoutValue)}
           </span>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           {metric.note}
-          {readout !== null && ` · ${selected !== null ? '' : 'latest, '}${shortDate(trend[readout.index]!.sessionDate)}`}
+          {readout !== null &&
+            ` · ${showAverage ? 'as of ' : selected !== null ? '' : 'latest, '}${shortDate(trend[readout.index]!.sessionDate)}`}
         </p>
         {fit !== null && (
           <p className="text-xs text-muted-foreground" data-testid={`trend-${metric.id}-slope`}>

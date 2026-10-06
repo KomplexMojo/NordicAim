@@ -37,6 +37,8 @@ export interface TrendSegment {
   y2: number;
   /** Change per session, in the metric's own unit. */
   slope: number;
+  /** The fitted value at the most recent session with a value: the trend's current average, unclipped. */
+  current: number;
 }
 
 /** §4a: two points only restate the line between them, so a trend needs three sessions with a value. */
@@ -138,7 +140,7 @@ export function chartGeometry(
       if (outside(i1)) i1 = Math.max(i1, Math.min(i2, iAt));
       if (outside(i2)) i2 = Math.min(i2, Math.max(i1, iAt));
     }
-    trend = { x1: xAt(i1), y1: yAt(at(i1)), x2: xAt(i2), y2: yAt(at(i2)), slope: fit.slope };
+    trend = { x1: xAt(i1), y1: yAt(at(i1)), x2: xAt(i2), y2: yAt(at(i2)), slope: fit.slope, current: at(fit.last) };
   }
   return { points, path, yTicks, zeroY, domain, trend };
 }

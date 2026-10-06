@@ -75,6 +75,36 @@ test('two demo sessions give one point per session on each chart, the ranges fil
   await expect(page.getByTestId('analysis-table').locator('tbody tr')).toHaveCount(2);
 });
 
+test('with 3+ sessions, a trend-bearing chart reads the trend\'s current average, tagged; the MPI charts still read the latest', async ({ page }) => {
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+    await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  }
+  await page.getByTestId('tab-analysis').click();
+  await page.getByTestId('analysis-range-all').click();
+  await page.getByTestId('analysis-view-sight-in').click();
+  for (const id of ['score', 'group', 'rms', 'mpiX', 'mpiY']) {
+    await expect(page.getByTestId(`trend-${id}`)).toHaveAttribute('data-points', '3');
+  }
+
+  // A chart with a trend line (§4a) reads its current average in the header, tagged, "as of" the latest session.
+  await expect(page.getByTestId('trend-score-slope')).toBeVisible();
+  const scoreReadout = page.getByTestId('trend-score-readout');
+  await expect(scoreReadout).toContainText('Average');
+  await expect(page.getByTestId('trend-score')).toContainText('as of');
+
+  // Tapping a point reads that session's own value instead, untagged.
+  await page.getByTestId('trend-score-point').first().click();
+  await expect(scoreReadout).not.toContainText('Average');
+
+  // The MPI charts never draw a trend line (REV-133), so their header still reads the latest value, untagged.
+  const mpiReadout = page.getByTestId('trend-mpiX-readout');
+  await expect(mpiReadout).not.toContainText('Average');
+  await expect(page.getByTestId('trend-mpiX')).toContainText('latest,');
+});
+
 test('the coach image: made from the range, previewed, then shared as one PNG', async ({ page }) => {
   // The download branch of shareArtifact, as in summary.spec.ts: no share sheet to dismiss in an automated run.
   await page.addInitScript(() => {
