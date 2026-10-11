@@ -103,6 +103,12 @@ export function ImageStage(props: ImageStageProps) {
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (base === null) return;
+    // Issue #104: a primary press means no other finger is down, so drop any pointer iOS took away without a pointerup;
+    // otherwise this one tap would read as a pinch.
+    if (e.isPrimary) {
+      pointers.current.clear();
+      gesture.current = null;
+    }
     const p = localPoint(e);
     pointers.current.set(e.pointerId, p);
     containerRef.current?.setPointerCapture(e.pointerId);
@@ -242,7 +248,7 @@ export function ImageStage(props: ImageStageProps) {
         data-offset-x={offsetX}
         data-offset-y={offsetY}
         data-zoom={zoom}
-        className="relative w-full touch-none select-none overflow-hidden rounded-lg bg-black"
+        className="relative w-full touch-none select-none overflow-hidden rounded-lg bg-black [-webkit-touch-callout:none]"
         style={{ aspectRatio: `${image.w} / ${image.h}`, maxHeight: '60vh' }}
         tabIndex={0}
         aria-label="Photo of the target. Plus and minus zoom, 0 fits the whole photo."
@@ -251,6 +257,7 @@ export function ImageStage(props: ImageStageProps) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {base !== null && (
           <div
