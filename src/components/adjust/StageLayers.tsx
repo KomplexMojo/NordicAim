@@ -60,7 +60,8 @@ export function StageLayers({
         <img
           src={imageUrl}
           alt="The photo of this target"
-          className="block size-full"
+          // Issue #104: the stage takes every touch, so a long press never opens iOS's enlarged image preview.
+          className="pointer-events-none block size-full [-webkit-touch-callout:none]"
           data-testid="compare-photo"
           draggable={false}
         />

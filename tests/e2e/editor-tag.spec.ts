@@ -121,3 +121,34 @@ test('nudge buttons move the selected shot by 0.1 mm (+y is up)', async ({ page 
   expect(b.y - a.y).toBeGreaterThan(0.1);
   expect(await page.getByTestId('save-state').textContent()).toBe('Unsaved changes');
 });
+
+test('a long press never opens the photo preview, and a lost finger never turns the next tap into a pinch (#104)', async ({ page }) => {
+  await openTarget(page);
+  const stage = page.getByTestId('image-stage');
+  const box = (await stage.boundingBox())!;
+  const before = await view(page);
+
+  // The photo takes no touches of its own, and the stage swallows the long-press menu.
+  await expect(page.getByTestId('compare-photo')).toHaveCSS('pointer-events', 'none');
+  const prevented = await stage.evaluate((el) => {
+    const e = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    el.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(prevented).toBe(true);
+
+  // A touch iOS took away (no pointerup ever arrives), then an ordinary tap on bare paper.
+  await stage.evaluate((el, at) => {
+    const opts = { bubbles: true, pointerId: 77, pointerType: 'touch', isPrimary: true, clientX: at.x, clientY: at.y };
+    try {
+      el.dispatchEvent(new PointerEvent('pointerdown', opts));
+    } catch {
+      // setPointerCapture rejects the made-up pointer id; the stale pointer is recorded before that.
+    }
+  }, { x: box.x + box.width - 50, y: box.y + box.height - 50 });
+  const shots = page.locator('[data-testid="shot"]');
+  const n = await shots.count();
+  await page.mouse.click(box.x + 40, box.y + 40);
+  await expect(shots).toHaveCount(n + 1);
+  expect(await view(page)).toEqual(before);
+});
