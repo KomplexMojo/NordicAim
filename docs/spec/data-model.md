@@ -295,6 +295,7 @@ export interface RenderTools { svgToPng(svg: string, widthPx: number, heightPx: 
 | `updatePhotoMetadata(ctx, photoId, { categorization?, lighting?, notes? })` · `deletePhoto` | `services/photos.ts` | M09 |
 | `requestAnalysis(ctx, sessionId)` (sets `analyzeRequestedAt`, confirms lighting on all photos) | `services/photos.ts` | M09 |
 | `quickStart(ctx, navigate)` · `quickStartLabel(sessions, now)` | `services/quick-start.ts` | M09 |
+| `createNewSession(ctx)` · `newSessionName(sessions, sessionDate)` | `services/quick-start.ts` | REV-160 |
 | `runStageA(ctx, photoId, cvApi, imageTools)` | `pipeline/stage-a.ts` | M10, M11 |
 | `runStageB(ctx, photoId, renderTools)` | `pipeline/stage-b.ts` | M12 |
 | `saveAdjustments(ctx, photoId, { calibration?, shots? })` · `redetectShots(ctx, photoId, cvApi)` | `services/adjust.ts` | M13 |

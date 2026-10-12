@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createSession, listSessions } from '@/lib/services/sessions';
-import { quickStart, quickStartLabel } from '@/lib/services/quick-start';
+import { createNewSession, newSessionName, quickStart, quickStartLabel } from '@/lib/services/quick-start';
 
 import { openTestDb } from '../../helpers/db';
 import { makeTestContext } from '../../helpers/fixtures';
@@ -63,5 +63,31 @@ describe('quickStart', () => {
 
     expect(todaySession.id).not.toBe(yesterdaySession.id);
     db.close();
+  });
+});
+
+describe('newSessionName / createNewSession (issue #107)', () => {
+  it('numbers a second and third session on the same day', () => {
+    const named = (name: string) => ({ name }) as Parameters<typeof newSessionName>[0][number];
+    expect(newSessionName([], '2026-10-12')).toBe('Session 2026-10-12');
+    expect(newSessionName([named('Session 2026-10-12')], '2026-10-12')).toBe('Session 2026-10-12 (2)');
+    expect(newSessionName([named('Session 2026-10-12'), named('Session 2026-10-12 (2)')], '2026-10-12')).toBe(
+      'Session 2026-10-12 (3)',
+    );
+    expect(newSessionName([named('Session 2026-10-11')], '2026-10-12')).toBe('Session 2026-10-12');
+  });
+
+  it('always creates a fresh session, even when today already has one; quick start then opens the newest', async () => {
+    const db = await openTestDb();
+    const ctx = makeTestContext(db, { nowIso: '2026-09-06T15:00:00.000Z' });
+    const first = await quickStart(ctx, () => {});
+    const later = makeTestContext(db, { nowIso: '2026-09-06T16:00:00.000Z' });
+    const fresh = await createNewSession(later);
+
+    expect(fresh.id).not.toBe(first.id);
+    expect(fresh.sessionDate).toBe(first.sessionDate);
+    expect(fresh.name).toBe(`${first.name} (2)`);
+    expect(await listSessions(ctx)).toHaveLength(2);
+    expect((await quickStart(later, () => {})).id).toBe(fresh.id);
   });
 });
