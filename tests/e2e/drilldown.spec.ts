@@ -62,7 +62,10 @@ test('a target opened from its session still goes back to the results', async ({
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   const sid = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+  // REV-161: cards are one click below the summary.
   await page.goto(`/#/sessions/${sid}/results`);
+  await page.getByTestId('targets-link').click();
+  await page.waitForURL(/\/targets$/);
   await page.locator(`a[href*="/sessions/${sid}/photos/"]`).first().click();
   await expect(page.getByTestId('target-back')).toHaveText('Back to results');
 });

@@ -122,7 +122,8 @@ test('summary: a target added later joins the summary, including after it is fix
     { pid: sighting.id },
   );
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
-  // The summary now says it is leaving that target out, instead of looking stale.
+  // REV-161: the left-out note lives on the summary Results screen, not on Targets.
+  await page.goto(`/#/sessions/${sessionId}/results`);
   await expect(page.getByTestId('summary-left-out')).toContainText('1 target needs attention', { timeout: 30_000 });
 
   // 4. The owner checks it in Adjust and saves. That confirms the capped set, so it joins the summary.
