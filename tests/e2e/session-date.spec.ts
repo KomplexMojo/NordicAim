@@ -1,5 +1,5 @@
-// REV-141: Start & capture gives a new session today's date; the metadata screen changes it to an earlier day, and the
-// results screen puts Edit metadata beside Review session.
+// REV-141 / REV-161: Start & capture gives a new session today's date; the metadata screen changes it to an earlier day,
+// and the results screen puts Edit details beside Re-check photos.
 
 import { expect, test } from '@playwright/test';
 
@@ -43,7 +43,7 @@ test('a new session is dated today, and the metadata screen moves it to an earli
   await expect(page.getByTestId('session-date')).toHaveValue('2026-09-01');
 });
 
-test('results: Edit metadata sits beside Review session, both with icons', async ({ page }) => {
+test('results: Edit details sits beside Re-check photos, both with icons', async ({ page }) => {
   await page.goto('/#/');
   await page.waitForFunction(() => (window as Window & { __asaTest?: unknown }).__asaTest !== undefined);
   const sid = await page.evaluate(() =>
@@ -54,7 +54,8 @@ test('results: Edit metadata sits beside Review session, both with icons', async
   const review = page.getByTestId('review-session-link');
   const edit = page.getByTestId('edit-metadata-link');
   await expect(review).toBeVisible();
-  await expect(edit).toHaveText('Edit metadata');
+  await expect(edit).toHaveText('Edit details');
+  await expect(review).toHaveText(/Re-check photos/);
   await expect(review.locator('svg').first()).toBeVisible();
   await expect(edit.locator('svg')).toBeVisible();
   // Side by side: the same row, each at least 44 px tall. Issue #85 put the row below the summary image, which can still be
@@ -72,4 +73,5 @@ test('results: Edit metadata sits beside Review session, both with icons', async
 
   await edit.click();
   await expect(page).toHaveURL(new RegExp(`#/sessions/${sid}/metadata$`));
+  await expect(page.getByRole('heading', { name: 'Edit details' })).toBeVisible();
 });

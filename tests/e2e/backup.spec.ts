@@ -103,7 +103,7 @@ test('back up, wipe the database, restore: the session and its scores come back;
   expect(rebuilt.length).toBeGreaterThan(0);
   for (const r of rebuilt) expect(r).toEqual({ want: r.want, got: r.want, thumb: true });
 
-  await page.goto(`/#/sessions/${sid}/results`);
+  await page.goto(`/#/sessions/${sid}/targets`);
   await expect(page.getByTestId('target-card').first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('target-card').first().getByTestId('target-headline')).toBeVisible();
 

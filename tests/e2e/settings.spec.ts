@@ -88,7 +88,7 @@ test('no tab bar on the capture screens; Shooting is active on a session screen'
   await expect(page.getByTestId('tab-bar')).toHaveCount(0);
 
   await page.goto(`/#/sessions/${sessionId}/metadata`);
-  await expect(page.getByRole('heading', { name: 'Add metadata' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Edit details' })).toBeVisible();
   await expectActive(page, 'shooting');
 
   // Settings → Photograph backing card is full screen too.
@@ -104,7 +104,7 @@ test('no tab bar on the capture screens; Shooting is active on a session screen'
 
 test('backing sheet: a card photo sets the colour for every session, and Clear removes it', async ({ page }) => {
   await page.goto('/#/settings');
-  await expect(page.getByTestId('backing-mode-trigger')).toHaveText('Auto');
+  await expect(page.getByTestId('backing-mode-trigger')).toHaveText('Coloured backing');
   await expect(page.getByTestId('backing-source')).toHaveText('No colour measured yet');
 
   await page.getByTestId('card-photo-input').setInputFiles('fixtures/reference/backing-card-orange.png');

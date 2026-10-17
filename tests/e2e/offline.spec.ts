@@ -55,8 +55,9 @@ test('offline: the app installs a service worker and still runs fully offline', 
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
 
   await page.goto(`/#/sessions/${sessionId}/results`);
-  await expect(page.getByTestId('target-headline').first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByTestId('summary-image')).toBeVisible({ timeout: 60_000 });
+  await page.goto(`/#/sessions/${sessionId}/targets`);
+  await expect(page.getByTestId('target-headline').first()).toBeVisible({ timeout: 60_000 });
 
   // 4. the diagnostics cv-worker check passes offline.
   await page.goto('/#/diagnostics');

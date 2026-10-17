@@ -51,7 +51,7 @@ async function precisionPhotoId(page: Page, sessionId: string): Promise<string> 
 
 /** Opens the precision target's detail screen (M12 step 4's route, unchanged by M17). */
 async function openPrecisionTarget(page: Page, sessionId: string): Promise<void> {
-  await page.goto(`/#/sessions/${sessionId}/results`);
+  await page.goto(`/#/sessions/${sessionId}/targets`);
   const precisionCard = page.getByTestId('target-card').filter({ hasText: '72 / 100 · X 1' });
   await expect(precisionCard).toHaveCount(1, { timeout: 30_000 });
   await precisionCard.getByTestId('view-target').click();

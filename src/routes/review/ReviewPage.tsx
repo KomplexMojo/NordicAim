@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import { AdjustSurface } from '@/components/adjust/AdjustSurface';
 import { UnsavedGuard } from '@/components/adjust/UnsavedGuard';
 import { loadAdjust, useAdjustDraft } from '@/components/adjust/useAdjustDraft';
+import { EpisodeSteps } from '@/components/session/EpisodeSteps';
 import { Button } from '@/components/ui/button';
 import { useServices } from '@/lib/app/services';
 import type { TargetPhoto } from '@/lib/domain/photo';
 import { targetHeadline } from '@/lib/render/text-lines';
-import { saveAdjustments } from '@/lib/services/adjust';
-import { loadReviewPhotos } from '@/lib/services/review';
+import { reanalyze, saveAdjustments } from '@/lib/services/adjust';
+import { requestAnalysis } from '@/lib/services/photos';
+import { loadReviewPhotos, type AdjustPassMode } from '@/lib/services/review';
+import { getCvClient } from '@/workers/cv-client';
 
 /** What happened to one photo during the pass. */
 type Outcome = 'saved' | 'unchanged' | 'skipped';
@@ -35,8 +38,8 @@ interface StepProps {
 }
 
 /**
- * One photo of the review: the Adjust editor itself (not a copy), a "Photo 3 of 8" header with the live
- * headline score, and Confirm / Skip. Confirm saves through `saveAdjustments` only when something changed.
+ * One photo of the adjust pass: the Adjust editor, progress, and Confirm / Skip.
+ * REV-161: Confirm saves (re-detecting when the alignment moved) and always advances.
  */
 function ReviewStep({ photo, index, total, onDone }: StepProps) {
   const draft = useAdjustDraft(photo.id);
@@ -51,7 +54,8 @@ function ReviewStep({ photo, index, total, onDone }: StepProps) {
     }
     setBusy(true);
     try {
-      await saveAdjustments(ctx, photo.id, patch);
+      if (draft.alignmentMoved) await reanalyze(ctx, photo.id, patch, getCvClient());
+      else await saveAdjustments(ctx, photo.id, patch);
       draft.setData(await loadAdjust(ctx, photo.id));
       onDone('saved');
     } catch (err) {
@@ -61,6 +65,7 @@ function ReviewStep({ photo, index, total, onDone }: StepProps) {
   }
 
   const headline = preview?.result ? targetHeadline(preview.result) : 'No score yet';
+  const savingLabel = draft.alignmentMoved ? 'Updating holes…' : 'Saving…';
 
   return (
     <>
@@ -83,9 +88,14 @@ function ReviewStep({ photo, index, total, onDone }: StepProps) {
       )}
 
       <UnsavedGuard modified={draft.modified} />
+      {draft.alignmentMoved && draft.modified && (
+        <p className="text-sm text-muted-foreground" data-testid="review-redetect-hint">
+          Saving will update the holes for the new rings.
+        </p>
+      )}
       <div className="flex gap-2">
         <Button className="h-11 flex-1" data-testid="review-confirm" disabled={busy || !data} onClick={() => void onConfirm()}>
-          {busy ? 'Saving…' : 'Confirm'}
+          {busy ? savingLabel : 'Confirm'}
         </Button>
         <Button variant="outline" className="h-11 flex-1" data-testid="review-skip" disabled={busy} onClick={() => onDone('skipped')}>
           {draft.modified ? 'Discard changes and skip' : 'Skip'}
@@ -96,21 +106,24 @@ function ReviewStep({ photo, index, total, onDone }: StepProps) {
 }
 
 /**
- * Route `#/review/:sessionId` (M21 step 4, REV-42): a single pass over a session's photos — needing
- * attention first, then the rest, each by capture time — with the Adjust editor embedded. Each Confirm
- * saves as it goes, so leaving part-way loses nothing. The order is fixed when the pass starts, so a
- * photo whose status changes after a save does not jump around.
+ * Route `#/review/:sessionId` (M21 / REV-42 / REV-161): adjust-all pass.
+ * `?pass=first` after capture Done (kind order); otherwise Re-check (needs-attention first).
+ * Finishing a first pass requests analysis and opens Results.
  */
 export function ReviewPage() {
   const { sessionId = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { ctx } = useServices();
+  const passMode: AdjustPassMode = searchParams.get('pass') === 'first' ? 'first' : 'recheck';
   const [photos, setPhotos] = useState<TargetPhoto[] | null | undefined>(undefined);
   const [index, setIndex] = useState(0);
   const [outcomes, setOutcomes] = useState<Outcome[]>([]);
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    loadReviewPhotos(ctx, sessionId).then(
+    loadReviewPhotos(ctx, sessionId, passMode).then(
       (next) => {
         if (!cancelled) setPhotos(next);
       },
@@ -123,35 +136,55 @@ export function ReviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [ctx, sessionId]);
+  }, [ctx, sessionId, passMode]);
 
-  const resultsLink = (
-    <Link
-      to={`/sessions/${sessionId}/results`}
-      className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
-      data-testid="review-back"
-    >
-      Back to results
-    </Link>
-  );
+  const backLink =
+    passMode === 'first' ? (
+      <Link
+        to={`/sessions/${sessionId}/capture`}
+        className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
+        data-testid="review-back"
+      >
+        Back to capture
+      </Link>
+    ) : (
+      <Link
+        to={`/sessions/${sessionId}/results`}
+        className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
+        data-testid="review-back"
+      >
+        Back to results
+      </Link>
+    );
 
   if (photos === undefined) return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
   if (photos === null) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
         <p>Session not found.</p>
-        {resultsLink}
+        {backLink}
       </main>
     );
   }
 
   const current = photos[index];
   if (current === undefined) {
-    // The final step: what changed, and the way back.
+    async function onSeeResults() {
+      setFinishing(true);
+      try {
+        if (passMode === 'first') await requestAnalysis(ctx, sessionId);
+        navigate(`/sessions/${sessionId}/results`);
+      } catch (err) {
+        toast.error(`Could not start analysis: ${err instanceof Error ? err.message : String(err)}`);
+        setFinishing(false);
+      }
+    }
+
     return (
       <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl" data-testid="review-summary">
-        <header className="flex items-center justify-between gap-2">{resultsLink}</header>
-        <h1 className="text-xl font-semibold">Review finished</h1>
+        <header className="flex items-center justify-between gap-2">{backLink}</header>
+        {passMode === 'first' && <EpisodeSteps current={2} />}
+        <h1 className="text-xl font-semibold">{passMode === 'first' ? 'Adjust finished' : 'Review finished'}</h1>
         {photos.length === 0 ? (
           <p className="text-sm text-muted-foreground">No targets in this session to review.</p>
         ) : (
@@ -177,13 +210,14 @@ export function ReviewPage() {
             })}
           </ol>
         )}
-        <Link
-          to={`/sessions/${sessionId}/results`}
-          className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
+        <Button
+          className="h-11"
           data-testid="review-done"
+          disabled={finishing}
+          onClick={() => void onSeeResults()}
         >
-          See results
-        </Link>
+          {finishing ? 'Opening results…' : 'See results'}
+        </Button>
       </main>
     );
   }
@@ -200,7 +234,8 @@ export function ReviewPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4 pb-8 lg:max-w-5xl">
-      <div className="flex items-center justify-between gap-2">{resultsLink}</div>
+      <div className="flex items-center justify-between gap-2">{backLink}</div>
+      {passMode === 'first' && <EpisodeSteps current={2} />}
       <ReviewStep key={current.id} photo={current} index={index} total={photos.length} onDone={onDone} />
     </main>
   );

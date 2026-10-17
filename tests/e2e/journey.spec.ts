@@ -69,32 +69,34 @@ async function captureWithFakeCamera(
   await expect(page.getByTestId('capture-review')).toBeHidden();
 }
 
-test('journey: capture two targets, add metadata, analyze, and reach a shareable summary (M15 step 5)', async ({
+test('journey: capture two targets, adjust-all, and reach a shareable summary (M15 / REV-161)', async ({
   page,
 }) => {
   const sessionId = await createSessionViaHome(page);
 
-  // 1. Start & capture → fake precision (Prone) and fake sighting (Both 5/5).
+  // 1. Start & capture → fake precision (Prone) and fake sighting.
   await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
   await captureWithFakeCamera(page, sessionId, 'sighting', 'Sight in');
   await expect(page.getByTestId('capture-count')).toHaveText('2 captured', { timeout: 15000 });
 
-  // 2. Done → metadata → Analyze → waitForIdle.
+  // 2. Done → adjust-all (Confirm ×2) → See results → waitForIdle.
   await page.getByRole('button', { name: 'Done' }).click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
-  await expect(page.getByTestId('metadata-photo-count')).toHaveText('2 photos');
-
-  const analyzeButton = page.getByRole('button', { name: /^Analyze \d+ targets?$/ });
-  await expect(analyzeButton).toBeEnabled({ timeout: 60_000 });
-  await analyzeButton.click();
+  await page.waitForURL(new RegExp(`#/review/${sessionId}\\?pass=first`));
+  await expect(page.getByTestId('review-confirm')).toBeEnabled({ timeout: 180_000 });
+  await page.getByTestId('review-confirm').click();
+  await expect(page.getByTestId('review-confirm')).toBeEnabled({ timeout: 180_000 });
+  await page.getByTestId('review-confirm').click();
+  await expect(page.getByTestId('review-done')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('review-done').click();
 
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
 
   // 3. Both cards reach a terminal status (not still needs-metadata/processing/ready).
+  await page.goto(`/#/sessions/${sessionId}/targets`);
   const cards = page.getByTestId('target-card');
   await expect(cards).toHaveCount(2);
   for (const status of await cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-status')))) {
@@ -119,6 +121,7 @@ test('journey: capture two targets, add metadata, analyze, and reach a shareable
   // 5. Summary image visible → Share → download event.
   // Force the download branch (see summary.spec.ts): WebKit's real `navigator.share` opens the OS
   // share sheet even under Playwright, which has no UI to dismiss in an automated run.
+  await page.goto(`/#/sessions/${sessionId}/results`);
   await page.evaluate(() => {
     Object.defineProperty(window.navigator, 'canShare', { value: undefined, configurable: true });
   });

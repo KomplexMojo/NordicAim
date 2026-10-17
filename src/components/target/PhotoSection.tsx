@@ -35,21 +35,22 @@ function EditView({ photo }: { photo: TargetPhoto }) {
   const pid = photo.id;
 
   /**
-   * REV-94: one Save. When the alignment was moved it also re-runs detection against it (REV-46: the manual shots are kept);
-   * `Save only` skips the re-run. Shots-only edits just save.
+   * REV-94 / REV-161: one Save. When the alignment was moved it also re-runs detection against it
+   * (REV-46: the manual shots are kept) with quiet progress — never labeled "re-analyze".
    */
-  async function onSave(rerun: boolean) {
+  async function onSave() {
     // §8: a manual calibration stops Stage A re-aligning this photo, so only send one the user moved.
     const patch = draft.patch();
     if (patch === null || !draft.canSave) return;
+    const rerun = draft.alignmentMoved;
     setBusy(true);
     try {
       if (rerun) await reanalyze(ctx, pid, patch, getCvClient());
       else await saveAdjustments(ctx, pid, patch);
       draft.setData(await loadAdjust(ctx, pid));
-      toast.success(rerun ? 'Saved and re-analyzed with your alignment and shots.' : 'Saved.');
+      toast.success(rerun ? 'Saved. Holes updated for the new rings.' : 'Saved.');
     } catch (err) {
-      toast.error(`Could not ${rerun ? 'save and re-analyze' : 'save'}: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(false);
     }
@@ -84,15 +85,20 @@ function EditView({ photo }: { photo: TargetPhoto }) {
       >
         {draft.modified ? 'Unsaved changes' : 'No unsaved changes'}
       </p>
+      {rerun && draft.modified && (
+        <p className="text-sm text-muted-foreground" data-testid="redetect-hint">
+          Saving will update the holes for the new rings.
+        </p>
+      )}
       <div className="flex gap-2">
-        <Button className="h-11 flex-1" data-testid="save-adjustments" disabled={busy || !draft.canSave} onClick={() => void onSave(rerun)}>
-          {busy ? 'Saving…' : rerun ? 'Save and re-analyze' : 'Save'}
+        <Button
+          className="h-11 flex-1"
+          data-testid="save-adjustments"
+          disabled={busy || !draft.canSave}
+          onClick={() => void onSave()}
+        >
+          {busy ? (rerun ? 'Updating holes…' : 'Saving…') : 'Save'}
         </Button>
-        {rerun && (
-          <Button variant="outline" className="h-11 flex-1" data-testid="save-only" disabled={busy} onClick={() => void onSave(false)}>
-            Save only
-          </Button>
-        )}
       </div>
       <Dialog>
         <DialogTrigger asChild>

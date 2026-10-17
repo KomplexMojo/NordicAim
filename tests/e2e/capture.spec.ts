@@ -89,8 +89,8 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
   expect(['pending', 'running', 'done']).toContain(analysis?.pipeline.stageA);
 
   await page.getByRole('button', { name: 'Done' }).click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
-  await expect(page.getByTestId('metadata-photo-count')).toHaveText('1 photo');
+  await page.waitForURL(new RegExp(`#/review/${sessionId}\\?pass=first`));
+  await expect(page.getByTestId('review-progress')).toBeVisible();
 });
 
 test('the phone camera and Photos import sit behind More options, and show at once when there is no camera (issue #82)', async ({ page }) => {

@@ -37,7 +37,7 @@ test('choosing a scoring rule in Settings re-scores a stored session, and choosi
   await page.evaluate(({ id, shots }) => (window as HookWindow).__asaTest!.setShots(id, shots), { id: precisionPhoto.id, shots });
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
 
-  await page.goto(`/#/sessions/${sessionId}/results`);
+  await page.goto(`/#/sessions/${sessionId}/targets`);
   await expect(precisionHeadline()).toBeVisible({ timeout: 30_000 });
   const gaugeScore = (await precisionHeadline().textContent())!; // gauge, the default
 
@@ -48,7 +48,7 @@ test('choosing a scoring rule in Settings re-scores a stored session, and choosi
   await expect(page.getByText(/Re-scored \d+ targets? in 1 session/)).toBeVisible({ timeout: 30_000 });
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
 
-  await page.goto(`/#/sessions/${sessionId}/results`);
+  await page.goto(`/#/sessions/${sessionId}/targets`);
   await expect.poll(async () => precisionHeadline().textContent(), { timeout: 30_000 }).not.toBe(gaugeScore);
 
   // The choice sticks across a reload, and gauge puts the score back.
@@ -56,7 +56,7 @@ test('choosing a scoring rule in Settings re-scores a stored session, and choosi
   await expect(page.getByTestId('scoring-rule-centre')).toBeChecked();
   await page.getByTestId('scoring-rule-gauge').check();
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
-  await page.goto(`/#/sessions/${sessionId}/results`);
+  await page.goto(`/#/sessions/${sessionId}/targets`);
   await expect(precisionHeadline()).toHaveText(gaugeScore, { timeout: 30_000 });
 });
 

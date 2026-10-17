@@ -21,6 +21,9 @@ test('the result card picture opens the target, where the photo is editable on t
   const { sessionId } = await demoSession(page);
 
   await page.goto(`/#/sessions/${sessionId}/results`);
+  // REV-161: target cards are one click below the summary.
+  await page.getByTestId('targets-link').click();
+  await page.waitForURL(/\/targets$/);
   // No View / Adjust buttons: the picture is the link.
   await expect(page.getByTestId('adjust-shots')).toHaveCount(0);
   await page.getByTestId('view-target').first().click();
@@ -93,7 +96,7 @@ test('the NordicAim mark and name in the header take you to the sessions screen 
 
 test('the empty Home states the three steps in one line, and drops it once a session exists (issue #93)', async ({ page }) => {
   await page.goto('/#/');
-  await expect(page.getByTestId('home-promise')).toHaveText('Photograph your targets, confirm what you shot, then read the analysis.');
+  await expect(page.getByTestId('home-promise')).toHaveText('Photograph your targets, adjust each one, then read the analysis.');
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
   await page.reload();
