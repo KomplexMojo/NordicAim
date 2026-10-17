@@ -4,7 +4,7 @@ This guide is for any coding agent implementing this repo, including lower-reaso
 fully before touching code.
 
 **What we're building (MVP):** a Vite + React web app that runs **entirely on the iPhone**, with no backend. The user
-experience is three steps: **take picture(s) → add metadata → receive analysis**. Behind the scenes an automatic
+experience is three steps: **take picture(s) → adjust all → receive analysis** (REV-161; metadata is an edit screen). Behind the scenes an automatic
 pipeline reviews the image, overlays it on the target template, pulls photo metadata, incorporates the user's metadata,
 and generates the analysis. **Scoring is the core of the analysis** (`docs/spec/geometry-scoring.md`) and is never optional.
 Code is hosted on GitHub Pages.

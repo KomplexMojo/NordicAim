@@ -1,20 +1,24 @@
+import { PaintBucket } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import type { CameraErrorCode } from '@/lib/capture/camera';
 import { cameraErrorMessage, ingestErrorMessage } from '@/lib/capture/messages';
 import { calibrationPriorFromOverlay, type Size } from '@/lib/capture/overlay';
 import { loadCapturePrefs, saveCapturePrefs, type CapturePrefs } from '@/lib/capture/prefs-browser';
 import { emptyCategorization } from '@/lib/domain/categorization';
+import { swatchCss } from '@/lib/domain/backing';
 import { categorizationForKind, kindTemplate, type TargetKind } from '@/lib/domain/target-kind';
 import type { TemplateId } from '@/lib/domain/enums';
 import type { Calibration } from '@/lib/domain/photo';
 import { clientNow } from '@/lib/media/capture-time';
 import { ingestPhoto } from '@/lib/services/ingest';
+import { getSettings } from '@/lib/store/settings-repo';
 import { maybeRequestPersistence } from '@/lib/store/persistence-browser';
 import { cn } from '@/lib/utils';
 
@@ -42,7 +46,7 @@ interface CaptureScreenProps {
   debug: boolean;
 }
 
-/** capture-overlay.md §1: pick template/position → align → shutter → review → Use photo → next target → Done. */
+/** capture-overlay.md §1 / REV-161: pick template/position → align → shutter → review → Use photo → next → Done → adjust-all. */
 export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: CaptureScreenProps) {
   const { ctx, imageTools } = useServices();
   const navigate = useNavigate();
@@ -53,6 +57,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
   const [cameraError, setCameraError] = useState<CameraErrorCode | null>(null);
   const [review, setReview] = useState<Review | null>(null);
   const [busy, setBusy] = useState(false);
+  const { value: backingColour } = useLiveQuery(async () => (await getSettings(ctx.db)).backing?.colour ?? null, [ctx]);
 
   // Revoke the review image URL when the review is replaced or the screen unmounts.
   useEffect(() => {
@@ -148,20 +153,48 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
           {count} captured
         </Badge>
         {/* Issue #83: with nothing captured, Done is a quiet outline so the shutter is the one strong action; it stays
-            tappable (leaving for the metadata screen is never blocked). From the first photo on it is the solid primary. */}
+            tappable. From the first photo on it is the solid primary. REV-161: Done opens the adjust-all pass. */}
         <Button
           variant={count === 0 ? 'outline' : 'default'}
           className={cn('h-11 px-5 text-base', count === 0 && 'text-muted-foreground')}
           data-testid="capture-done"
           data-emphasis={count === 0 ? 'quiet' : 'primary'}
-          onClick={() => navigate(`/sessions/${sessionId}/metadata`)}
+          onClick={() => navigate(`/review/${sessionId}?pass=first`)}
         >
           Done
         </Button>
       </header>
 
-      <div className="px-2 pb-2">
-        <TargetKindPicker kind={kind} onChange={(k) => updatePrefs({ kind: k })} />
+      <div className="flex items-center gap-2 px-2 pb-2">
+        <div className="min-w-0 flex-1">
+          <TargetKindPicker kind={kind} onChange={(k) => updatePrefs({ kind: k })} />
+        </div>
+        {/* REV-161: Update backing on the camera — sample in the same light as the targets. */}
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11 shrink-0 gap-2 px-3"
+          data-testid="update-backing"
+          aria-label="Update backing"
+          title="Update backing — photograph the card in this light"
+          onClick={() => {
+            const returnPath = `/sessions/${sessionId}/capture`;
+            const q = new URLSearchParams({ return: returnPath });
+            if (fakeCamera) q.set('fakeCamera', fakeCamera);
+            navigate(`/settings/backing-card?${q.toString()}`);
+          }}
+        >
+          <span
+            className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-white/40"
+            style={backingColour ? { backgroundColor: swatchCss(backingColour) } : undefined}
+            data-testid="update-backing-swatch"
+            data-has-colour={backingColour !== null}
+            aria-hidden="true"
+          >
+            {backingColour === null && <PaintBucket className="size-3.5 text-muted-foreground" />}
+          </span>
+          <span className="text-sm">Update backing</span>
+        </Button>
       </div>
 
       <div className="relative min-h-0 flex-1">

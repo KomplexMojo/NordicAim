@@ -9,7 +9,7 @@ import { TargetAnalysis, type Shot } from '@/lib/domain/analysis';
 import type { Calibration, TargetPhoto } from '@/lib/domain/photo';
 import { saveAdjustments, type DetectShotsApi } from '@/lib/services/adjust';
 import { loadDetectionAids } from '@/lib/services/detection-aids';
-import { adjustSavePatch, hasAdjustEdits, loadReviewPhotos, reviewOrder } from '@/lib/services/review';
+import { adjustPassOrder, adjustSavePatch, hasAdjustEdits, loadReviewPhotos, reviewOrder } from '@/lib/services/review';
 import { initialAnalysis } from '@/lib/domain/analysis';
 import { getAnalysisRecord, putAnalysisRecord } from '@/lib/store/analyses-repo';
 import { photoWorkingKey } from '@/lib/store/blob-keys';
@@ -40,6 +40,23 @@ function at(id: string, utc: string | null, status: TargetPhoto['status'], impor
 function shot(id: string, xMm: number, yMm: number, source: Shot['source'] = 'auto'): Shot {
   return { id, xMm, yMm, multiplicity: 1, positionOverrides: null, source, confidence: source === 'auto' ? 0.9 : null, cluster: false, possibleOverlap: false };
 }
+
+describe('adjustPassOrder (REV-161)', () => {
+  it('first pass uses kind order; recheck puts needs-attention first', () => {
+    const kind = (id: string, utc: string, status: TargetPhoto['status'], template: 'sighting' | 'precision', position: 'prone' | 'standing', role?: 'sight-in' | 'confirm') => {
+      const p = at(id, utc, status);
+      return { ...p, categorization: { ...p.categorization, template, position, ...(role ? { sightingRole: role } : {}) } };
+    };
+    const photos = [
+      kind('stand', '2026-09-05T08:00:00.000Z', 'analyzed', 'precision', 'standing'),
+      kind('prone', '2026-09-05T09:00:00.000Z', 'needs-attention', 'precision', 'prone'),
+      kind('confirm', '2026-09-05T10:00:00.000Z', 'analyzed', 'sighting', 'prone', 'confirm'),
+      kind('sight', '2026-09-05T11:00:00.000Z', 'analyzed', 'sighting', 'prone', 'sight-in'),
+    ];
+    expect(adjustPassOrder(photos, 'first').map((p) => p.id)).toEqual(['sight', 'confirm', 'prone', 'stand']);
+    expect(adjustPassOrder(photos, 'recheck').map((p) => p.id)).toEqual(['prone', 'sight', 'confirm', 'stand']);
+  });
+});
 
 describe('reviewOrder (M21 step 4)', () => {
   it('puts the one needs-attention photo first', () => {

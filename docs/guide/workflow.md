@@ -46,7 +46,7 @@ You need two cheap things:
 - **A sheet of coloured backing paper.** Put it behind the target. Every hole then shows the bright colour, which makes the holes far easier for NordicAim to find. Pick a colour that stands out from the black and white target, such as orange.
 - **A clipboard.** It holds the target and the backing paper flat and together, and gives you something firm to photograph against.
 
-In **Settings**, tap **Photograph backing card** and photograph a scrap of the same colour once, so NordicAim knows what your backing looks like. The card photo is not kept.
+On the camera screen, tap **Update backing** and photograph a scrap of the same colour in the light you will use for the targets. Retake it whenever the light changes. The card photo is not kept — only its colour. Settings still holds the mode if you shoot without a backing.
 
 ## 4. Shoot your session
 
@@ -59,7 +59,8 @@ Photograph **one target at a time**, on the backing paper, on the clipboard.
 1. On the Sessions screen, tap **Start & capture**.
 2. Choose the target type: **Sight in**, **Confirm**, **Precision prone** or **Precision standing**.
 3. Line the overlay up with the target: match it to the sheet with the **Size** slider, and line up the black aiming mark with the thick circle.
-4. Tap the shutter, check the photo, then tap **Use photo**. Repeat for the next target, then tap **Done** and add the session details (name, rounds fired, lighting), then tap **Analyze**.
+4. Tap **Update backing** if the light has changed, photograph a scrap of the same coloured paper, then return to the camera.
+5. Tap the shutter, check the photo, then tap **Use photo**. Repeat for the next target, then tap **Done**. Walk each photo and tap **Confirm** (or **Save** after edits); the last photo opens **See results**.
 
 Tips for photos you can compare:
 
@@ -69,15 +70,15 @@ Tips for photos you can compare:
 
 ## 6. Review the photos and adjust
 
-On the results screen, tap a target's picture. Its screen shows the holes NordicAim found drawn on your photo. Look at each one:
+From Results, open **Targets**, then a target. Its screen shows the holes NordicAim found drawn on your photo. Look at each one:
 
 - **A hole was missed or is wrong:** in **Shots**, tap the photo to add a shot, drag a shot to move it, or select it and tap **Delete this shot**.
 - **Two shots through one hole:** select it and tap **Looks like 2 shots**.
 - **The rings do not sit on the printed rings:** switch to **Alignment** and drag the handles.
 
-Then tap **Save** (or **Save and re-analyze** after moving the rings).
+Then tap **Save**. If you moved the rings, NordicAim updates the holes quietly and advances to the next photo in an adjust pass.
 
-To step through the whole session in order, tap **Review session**. Targets that need attention come first.
+To step through the whole session again, tap **Re-check photos** on Results. Targets that need attention come first.
 
 <p align="center">
   <img src="../assets/screens/adjust.jpg" width="300" alt="The shot correction screen with Shots and Alignment modes and the shots drawn on the photo">
@@ -85,11 +86,11 @@ To step through the whole session in order, tap **Review session**. Targets that
 
 Anything you place or move by hand is kept. NordicAim never overwrites your corrections.
 
-## 7. Generate the analysis
+## 7. Read the results
 
-When the photos look right, go to the session results. NordicAim scores each target, measures the group and the mean point of impact, and builds **one summary image**: the session name, your name and logo, the shooting and lighting conditions, every target and the session analysis.
+After the adjust pass, NordicAim scores each target, measures the group and the mean point of impact, and builds **one summary image**: the session name, your name and logo, the shooting and lighting conditions, every target and the session analysis.
 
-Tap **Update summary** if you changed anything, then **Share** to send the image from the iPhone share sheet. That image is your brag sheet: post it to a Strava or Garmin Connect activity as a photo, or send it to a coach. NordicAim does not connect to either service and posts nothing for you. The image leaves your phone only when you share it, and your photos never do.
+Tap **Share** to send the image from the iPhone share sheet. Open individual sheets from **Targets (N)**. That image is your brag sheet: post it to a Strava or Garmin Connect activity as a photo, or send it to a coach. NordicAim does not connect to either service and posts nothing for you. The image leaves your phone only when you share it, and your photos never do.
 
 <p align="center">
   <img src="../assets/screens/results.png" width="300" alt="The results screen with the session summary image">

@@ -62,8 +62,9 @@ test('an alignment nudge is Modified, and undoing it returns to unmodified witho
   await page.getByTestId('mode-alignment').click();
   await page.getByTestId('cal-cx').fill(String(Math.round(cx + 9)));
   await expect(page.getByTestId('live-status')).toHaveAttribute('data-status', 'modified');
-  await expect(page.getByTestId('save-adjustments')).toHaveText('Save and re-analyze');
-  await expect(page.getByTestId('save-only')).toBeVisible();
+  await expect(page.getByTestId('save-adjustments')).toHaveText('Save');
+  await expect(page.getByTestId('redetect-hint')).toBeVisible();
+  await expect(page.getByTestId('save-only')).toHaveCount(0);
 
   await page.getByTestId('cal-cx').fill(String(cx));
   await expect(page.getByTestId('save-state')).toHaveText('No unsaved changes');
@@ -99,7 +100,7 @@ test('one click after an alignment change saves and re-detects', async ({ page }
   await page.getByTestId('mode-alignment').click();
   await page.getByTestId('cal-cx').fill(String(Math.round(cx + 7)));
   await page.getByTestId('save-adjustments').click();
-  await expect(page.getByText('Saved and re-analyzed with your alignment and shots.')).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText('Saved. Holes updated for the new rings.')).toBeVisible({ timeout: 120_000 });
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
   const after = await page.evaluate((pid) => (window as HookWindow).__asaTest!.getAnalysis(pid), photoId);
   expect(after!.calibration!.source).toBe('manual');

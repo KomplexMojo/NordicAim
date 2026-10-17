@@ -46,27 +46,34 @@ inside the 5.6 mm merge distance. Tuned on both orange photos together:
 
 Two photos of one sheet type on one backing is still thin evidence; §7's photo set is what sets the constants.
 
-**It is optional and out of the way.** The three-step flow does not change. A shooter who never uses a backing never meets it: it
-lives on the Settings screen (REV-47, REV-48), not in the capture → metadata → analysis flow.
+**Best results use a coloured backing.** The colour is lighting-sensitive (holes see shaded backing vs an open card — §1 third
+test), so the shooter is expected to **update the card sample in the same light** as the targets, often every session
+(REV-161). A shooter who never uses a backing can set mode to `None` in Settings.
 
 ## 2. Where the option lives
 
 > REV-38 first placed this per session, in a collapsed **Session options** row on the metadata screen. **Superseded by REV-48**
 > (issue #2): the backing is a **Settings** choice that applies to every session, and Session options is removed.
+> **REV-161:** the primary control is **Update backing** on the capture screen; Settings remains the fallback for mode,
+> clear, and choose-from-library. Default mode is **`coloured`**.
 
-- **Settings screen (`#/settings`), section Backing sheet:** a select **`Auto` (default)** / `None` / `Coloured backing`
-  (owner, 2026-09-17). `Auto` decides per photo whether a coloured backing is present (§4a); `None` never uses colour;
-  `Coloured backing` always does.
-- **Photograph backing card** opens the capture screen in card mode (`#/settings/backing-card`, full screen, no tab bar) and,
-  on *Use photo*, measures the card's colour (§4). A card with a clear colour stores that colour and returns to Settings, which
-  shows it as a swatch; a card without one stores nothing and shows the §4.3 message. **Choose card photo** does the same from
-  an imported photo. **The card photo itself is not kept** (issue #2 default): the colour signature is all detection uses, and
-  the swatch is drawn from it. **Clear** removes the measured colour.
+- **Capture screen (`#/sessions/:sid/capture`):** an **Update backing** control opens card-capture (`#/settings/backing-card?return=…`)
+  and returns to the camera when a colour is stored or on Cancel. A swatch shows when a colour is set. Hint: sample in the
+  same light as the targets.
+- **Settings screen (`#/settings`), section Backing sheet:** a select **`Coloured backing` (default)** / `Auto` / `None`
+  (REV-161). `Coloured backing` always uses colour; `Auto` decides per photo whether a coloured backing is present (§4a);
+  `None` never uses colour.
+- **Photograph backing card** (Settings or capture) opens the capture screen in card mode (`#/settings/backing-card`, full screen,
+  no tab bar) and, on *Use photo*, measures the card's colour (§4). A card with a clear colour stores that colour and returns to
+  the caller (Settings, or capture when `?return=` is set), which shows it as a swatch; a card without one stores nothing and
+  shows the §4.3 message. **Choose card photo** (Settings) does the same from an imported photo. **The card photo itself is not
+  kept** (issue #2 default): the colour signature is all detection uses, and the swatch is drawn from it. **Clear** removes the
+  measured colour.
 - The mode and colour apply to every session. **Changing them re-runs nothing** (issue #2 default): the setting applies to new
   photos and to any photo the user re-analyzes in Adjust, so a finished session's numbers never change behind the user's back.
   Each analysis records which backing it used (`pipeline.detection`, §3).
-- No other screen shows it. The results screen and target detail do **not** show which detection path found the holes (REV-68): it
-  is a core part of the program, not something to announce on every card. The choice is still recorded on the analysis (§3).
+- The results screen and target detail do **not** show which detection path found the holes (REV-68): it is a core part of the
+  program, not something to announce on every card. The choice is still recorded on the analysis (§3).
 
 ## 3. Data model
 
@@ -87,7 +94,7 @@ export const BackingSheet = z.object({
 });
 ```
 
-- **`AppSettings.backingMode: 'auto' | 'none' | 'coloured'`** (default `'auto'`) and **`AppSettings.backing: BackingSheet | null`**
+- **`AppSettings.backingMode: 'auto' | 'none' | 'coloured'`** (default `'coloured'`, REV-161) and **`AppSettings.backing: BackingSheet | null`**
   are the setting itself (data-model §5). They replace REV-38's `lastBackingMode` / `lastBacking`.
 - **`BiathlonSession` has no backing fields** (schema version **3**, REV-48). REV-38's `backingMode` / `backing` on the session
   (schema version 2) are removed by the migration in §3a.

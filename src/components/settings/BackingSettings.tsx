@@ -71,8 +71,9 @@ export function BackingSettings({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          A brightly coloured sheet behind the target shows through every hole. Auto decides per photo. Applies to
-          every session; photos already analyzed keep their results until you re-analyze them.
+          A brightly coloured sheet behind the target shows through every hole — update the card from the camera in
+          the same light as your targets. Coloured is the default; Auto decides per photo. Applies to every session;
+          photos already analyzed keep their results until you save them again with a moved alignment.
         </p>
       </div>
 

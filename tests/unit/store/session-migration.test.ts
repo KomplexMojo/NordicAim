@@ -105,14 +105,14 @@ describe('settings migration (data-model §5, backing-sheet.md §3a step 1)', ()
     db.close();
   });
 
-  it('reads a row from before REV-38 as Auto with no backing', async () => {
+  it('reads a row from before REV-38 as the default mode with no backing', async () => {
     const db = await openTestDb();
     const { backingMode, backing, ...old } = defaultAppSettings();
     void backingMode;
     void backing;
     await putRaw(db, 'settings', old);
     const settings = await getSettings(db);
-    expect(settings.backingMode).toBe('auto');
+    expect(settings.backingMode).toBe('coloured');
     expect(settings.backing).toBeNull();
     db.close();
   });

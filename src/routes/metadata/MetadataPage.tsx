@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { EpisodeSteps } from '@/components/session/EpisodeSteps';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -191,15 +190,14 @@ export function MetadataPage() {
           className="inline-flex h-11 items-center text-sm text-primary underline underline-offset-4"
           data-testid="metadata-back"
         >
-          Back to session
+          Back to results
         </Link>
         <span className="text-sm text-muted-foreground" data-testid="metadata-photo-count">
           {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
         </span>
       </header>
 
-      <EpisodeSteps current={2} />
-      <h1 className="text-xl font-semibold">Add metadata</h1>
+      <h1 className="text-xl font-semibold">Edit details</h1>
 
       <div className="flex flex-col gap-1">
         <Label htmlFor="session-name">Session name</Label>

@@ -99,12 +99,30 @@ export function hasAdjustEdits(
   return draft.shots.some((shot, i) => !sameShot(start.shots[i] as Shot, shot));
 }
 
+/**
+ * REV-161: how the adjust pass orders photos.
+ * - `first` — after capture Done: kind/capture order (Sight in → Confirm → …).
+ * - `recheck` — from Results: needs-attention first (REV-42), then the rest.
+ */
+export type AdjustPassMode = 'first' | 'recheck';
+
+export function adjustPassOrder<T extends ReviewOrderable>(photos: T[], mode: AdjustPassMode): T[] {
+  return mode === 'first' ? orderedByKind(photos) : reviewOrder(photos);
+}
+
 /** The session's target photos in review order, or `null` when the session does not exist. */
-export async function loadReviewPhotos(ctx: ServiceContext, sessionId: string): Promise<TargetPhoto[] | null> {
+export async function loadReviewPhotos(
+  ctx: ServiceContext,
+  sessionId: string,
+  mode: AdjustPassMode = 'recheck',
+): Promise<TargetPhoto[] | null> {
   const session = await getSessionRecord(ctx.db, sessionId);
   if (session === null) return null;
   const photos = await listPhotosBySession(ctx.db, sessionId);
   const inSession = new Set(session.photoIds);
   // backing-sheet.md §3: card photos are not targets and are never reviewed.
-  return reviewOrder(photos.filter((p) => inSession.has(p.id) && isTargetPhoto(p)));
+  return adjustPassOrder(
+    photos.filter((p) => inSession.has(p.id) && isTargetPhoto(p)),
+    mode,
+  );
 }

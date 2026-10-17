@@ -2,12 +2,13 @@ import { Check } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-const STEPS = ['Photograph', 'Confirm', 'Results'] as const;
+/** REV-161: Photograph → Adjust → Results (was Photograph · Confirm · Results under REV-15). */
+const STEPS = ['Photograph', 'Adjust', 'Results'] as const;
 
 /**
- * Issue #78 (REV-15's three steps): where this screen sits in a session — Photograph → Confirm → Results. Shown on the metadata
- * (step 2) and results (step 3) screens; capture stays full-screen without it. Steps before the current one read as done. Not
- * interactive: each screen keeps its own way back and forward.
+ * Issue #78 / REV-161: where this screen sits in a session. Shown on the adjust (step 2) and results
+ * (step 3) screens; capture stays full-screen without it. Steps before the current one read as done.
+ * Not interactive: each screen keeps its own way back and forward.
  */
 export function EpisodeSteps({ current }: { current: 2 | 3 }) {
   return (

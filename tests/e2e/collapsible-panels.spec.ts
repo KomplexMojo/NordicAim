@@ -11,7 +11,7 @@ test('collapsing the metrics keeps the group size in the label, survives a reloa
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   const sid = await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
-  await page.goto(`/#/sessions/${sid}/results`);
+  await page.goto(`/#/sessions/${sid}/targets`);
 
   const card = page.getByTestId('target-card').first();
   const toggle = card.getByTestId('panel-toggle-metrics');
