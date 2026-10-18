@@ -11,6 +11,7 @@ import { DiagnosticsPage } from '@/routes/diagnostics/DiagnosticsPage';
 import { HomePage } from '@/routes/home/HomePage';
 import { MetadataPage } from '@/routes/metadata/MetadataPage';
 import { ResultsPage } from '@/routes/results/ResultsPage';
+import { TargetsPage } from '@/routes/results/TargetsPage';
 import { ReviewPage } from '@/routes/review/ReviewPage';
 import { PatternsPage } from '@/routes/patterns/PatternsPage';
 import { AnalysisPage } from '@/routes/analysis/AnalysisPage';
@@ -79,6 +80,8 @@ const router = createHashRouter([
           { path: '/sessions/:sid/capture', element: <CapturePage /> },
           { path: '/sessions/:sid/metadata', element: <MetadataPage /> },
           { path: '/sessions/:sid/results', element: <ResultsPage /> },
+          // REV-161: per-target cards one click below the summary.
+          { path: '/sessions/:sid/targets', element: <TargetsPage /> },
           { path: '/sessions/:sid/photos/:pid', element: <TargetPage /> },
           // REV-73: view and adjust are one screen; an old adjust address goes to the target.
           { path: '/sessions/:sid/photos/:pid/adjust', element: <AdjustRedirect /> },

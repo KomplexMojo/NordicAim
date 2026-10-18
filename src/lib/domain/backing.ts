@@ -33,8 +33,8 @@ export type BackingSheet = z.infer<typeof BackingSheet>;
 export const BackingMode = z.enum(['auto', 'none', 'coloured']);
 export type BackingMode = z.infer<typeof BackingMode>;
 
-/** backing-sheet.md §2: the default for a shooter who has never chosen. */
-export const DEFAULT_BACKING_MODE: BackingMode = 'auto';
+/** backing-sheet.md §2 / REV-161: the default for a shooter who has never chosen — coloured backing. */
+export const DEFAULT_BACKING_MODE: BackingMode = 'coloured';
 
 /**
  * backing-sheet.md §3: `PhotoOrigin` for a backing-card photo — never a target. Since REV-48 nothing new

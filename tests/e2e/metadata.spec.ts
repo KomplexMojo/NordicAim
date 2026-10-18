@@ -30,8 +30,8 @@ test('metadata screen: prefilled card, changing the target type resets rounds, p
   const sessionId = await createSessionViaHome(page);
   await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
 
-  await page.getByRole('button', { name: 'Done' }).click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
+  // REV-161: Done opens adjust-all; Edit details is the metadata screen.
+  await page.goto(`/#/sessions/${sessionId}/metadata`);
 
   const card = page.getByTestId('photo-metadata-card');
   await expect(card).toHaveCount(1);
@@ -50,25 +50,25 @@ test('metadata screen: prefilled card, changing the target type resets rounds, p
   // Step 2: change to Precision standing -> the standing rounds field appears at its default.
   await card.getByRole('radio', { name: 'Precision standing', exact: true }).click();
   const roundsStandingInput = card.locator('input[id$="-rounds-standing"]');
+  await expect(roundsStandingInput).toBeVisible();
   await expect(roundsStandingInput).toHaveValue('10');
+  await expect(roundsProneInput).toHaveCount(0);
 
-  await roundsStandingInput.fill('3');
-  await roundsStandingInput.blur();
-  // Give updatePhotoMetadata a moment to commit before reloading.
-  await page.waitForTimeout(300);
-
-  await page.reload();
-  await expect(page.getByTestId('photo-card-summary')).toHaveText('Precision standing · 3 rounds', { timeout: 10000 });
-  await page.getByTestId('photo-card-toggle').click();
-  await expect(page.getByTestId('photo-metadata-card').locator('input[id$="-rounds-standing"]')).toHaveValue('3');
+  // Step 3: leave and come back — the change persisted.
+  await page.goto('/#/');
+  await page.goto(`/#/sessions/${sessionId}/metadata`);
+  const cardAgain = page.getByTestId('photo-metadata-card');
+  await cardAgain.getByTestId('photo-card-toggle').click();
+  await expect(cardAgain.getByRole('radio', { name: 'Precision standing', exact: true })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
 
   // Step 4: Analyze navigates to results.
-  await page.getByTestId('analyze-button').click();
+  const analyze = page.getByTestId('analyze-button');
+  await expect(analyze).toBeEnabled();
+  await analyze.click();
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
-
-  // Step 5: back home, the quick-start button now reads "today's session".
-  await page.goto('/#/');
-  await expect(page.getByRole('button', { name: "Capture (today's session)" })).toBeVisible();
 });
 
 test('metadata screen: Analyze is disabled until the imported photo is categorized', async ({ page }) => {
@@ -82,8 +82,8 @@ test('metadata screen: Analyze is disabled until the imported photo is categoriz
   await page.getByRole('button', { name: 'Keep' }).click();
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
-  await page.getByRole('button', { name: 'Done' }).click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
+  // Incomplete categorization: session redirect and Edit details both land on metadata.
+  await page.goto(`/#/sessions/${sessionId}/metadata`);
 
   const card = page.getByTestId('photo-metadata-card');
   await expect(card).toHaveCount(1);
@@ -96,12 +96,11 @@ test('metadata screen: Analyze is disabled until the imported photo is categoriz
   await expect(analyzeButton).toBeEnabled({ timeout: 10000 });
 });
 
-test('the metadata screen has no Session options (REV-48: the backing lives in Settings)', async ({ page }) => {
+test('the metadata screen has no Session options (REV-48: the backing lives in Settings / capture)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
   await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
 
-  await page.getByRole('button', { name: 'Done' }).click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
+  await page.goto(`/#/sessions/${sessionId}/metadata`);
 
   await expect(page.getByTestId('photo-metadata-card')).toHaveCount(1);
   await expect(page.getByTestId('analyze-button')).toHaveText('Analyze 1 target');

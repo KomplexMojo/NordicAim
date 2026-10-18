@@ -120,8 +120,9 @@ export function SummaryCard({ sessionId, sessionName, leftOut }: SummaryCardProp
             {leftOut > 0 && (
               <p className="text-sm text-muted-foreground" data-testid="summary-left-out">
                 {leftOut === 1 ? '1 target needs' : `${leftOut} targets need`} attention and{' '}
-                {leftOut === 1 ? "isn't" : "aren't"} in the summary yet. Check {leftOut === 1 ? 'it' : 'them'} below — once
-                saved in Adjust, {leftOut === 1 ? 'it joins' : 'they join'} the summary.
+                {leftOut === 1 ? "isn't" : "aren't"} in the summary yet. Open Targets to check{' '}
+                {leftOut === 1 ? 'it' : 'them'} — once saved in Adjust,{' '}
+                {leftOut === 1 ? 'it joins' : 'they join'} the summary.
               </p>
             )}
             {/* Issue #85: Share is the payoff and comes first; rebuilding by hand is a quiet secondary action. */}

@@ -1,30 +1,31 @@
 # Spec: MVP user flow and the automatic analysis pipeline
 
-Implements REV-15, REV-16, REV-18. Code: `src/lib/pipeline/*`, `src/lib/domain/status.ts`, the CV worker, and the
+Implements REV-15, REV-16, REV-18, REV-161. Code: `src/lib/pipeline/*`, `src/lib/domain/status.ts`, the CV worker, and the
 screens listed in §1.
 
 ## 1. User flow and routes
 
-**Navigation (REV-55, 2026-09-19).** Home is the Sessions tab (REV-111, was Shooting); no screen carries its own Home link (the app header
-does not either). Each screen's back link is its parent: results → `All sessions`, metadata → `Back to session`,
-target → `Back to results` (REV-73: there is no separate Adjust screen; the target's photo section edits in place). The target screen
-carries the photo section, and results carries **Add photos** (`/sessions/:sid/capture`).
+**Navigation (REV-55, 2026-09-19; REV-161).** Home is the Sessions tab (REV-111, was Shooting); no screen carries its own Home link (the app header
+does not either). Each screen's back link is its parent: results → `All sessions`, targets list → `Back to results`, metadata → `Back to results`,
+target → `Back to results` or `Back to targets` (REV-73: there is no separate Adjust screen; the target's photo section edits in place). Results carries
+**Targets (N)** and **Add photos** (`/sessions/:sid/capture`).
 
-The user experience is three steps: **take picture(s) → add metadata → receive analysis**.
+The user experience is three steps: **take picture(s) → adjust all → receive analysis** (REV-161; metadata is an edit screen, not a required stop).
 
 | Route (hash) | Screen | Milestone |
 |---|---|---|
-| `#/` | Home: quick-start (**Capture**) and **New** buttons (REV-160) + **every** session (REV-72), with the season row above the list (REV-154, `patterns.md` §3a; `?season=`). With no sessions yet, one line under the button: "Photograph your targets, confirm what you shot, then read the analysis." (issue #93) | M09 |
+| `#/` | Home: quick-start (**Capture**) and **New** buttons (REV-160) + **every** session (REV-72), with the season row above the list (REV-154, `patterns.md` §3a; `?season=`). With no sessions yet, one line under the button: "Photograph your targets, adjust each one, then read the analysis." (issue #93, REV-161) | M09 |
 | `#/sessions` | Redirects to `#/` (REV-72). Home lists **every** session (name, date, and its targets' kinds as marks, REV-139) and is the one place a session is deleted | M09 |
-| `#/sessions/:sid` | Redirect: to `metadata` if any photo is `needs-metadata`, else to `results` | M09 |
-| `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay | M07 |
-| `#/sessions/:sid/metadata` | **Step 2: add metadata** | M09 |
-| `#/sessions/:sid/results` | **Step 3: receive analysis** (summary image + target cards) | M12, M14 |
-| `#/sessions/:sid/photos/:pid` | Target: full diagram, all metrics, and the photo section — the M13 editor in place (Save / Re-analyze) with the diagram↔photo slider and the wipe/fade switch built in (REV-73, REV-78) | M12, M13 |
+| `#/sessions/:sid` | Redirect: to `metadata` if any photo is `needs-metadata` or the session has no target photos; else to `review?pass=first` when analysis has not been requested yet; else to `results` (REV-161) | M09 |
+| `#/sessions/:sid/capture` | **Step 1: take picture(s)** with template overlay; **Update backing** opens card-capture and returns here (REV-161) | M07 |
+| `#/sessions/:sid/metadata` | Edit session / photo details (no longer a required episode step; imports that need type/rounds still land here) | M09 |
+| `#/sessions/:sid/results` | **Step 3: receive analysis** (summary image + Share + goals; target cards one click down) | M12, M14, REV-161 |
+| `#/sessions/:sid/targets` | Target cards for the session (diagram, score, status); each opens the target screen (REV-161) | REV-161 |
+| `#/sessions/:sid/photos/:pid` | Target: full diagram, all metrics, and the photo section — the M13 editor in place (Save) with the diagram↔photo slider and the wipe/fade switch built in (REV-73, REV-78) | M12, M13 |
 | `#/sessions/:sid/photos/:pid/adjust` | Redirects to the target screen (REV-73): viewing and adjusting are one screen | M13 |
-| `#/review/:sessionId` | Optional: review the session's photos one at a time (needs attention first) with the photo editor embedded (REV-73/78) | M21 |
-| `#/settings` | **Settings**: backing sheet (mode, card colour), hole size, about (REV-47, REV-48) | M22 |
-| `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar) | M22 |
+| `#/review/:sessionId` | **Step 2: adjust all** — walk photos one at a time with the photo editor embedded. `?pass=first` (from capture Done) uses kind/capture order; without it (Re-check from Results) needs-attention first (REV-42, REV-161). Save/Confirm advances to the next photo; finishing a first pass requests analysis and opens Results | M21 |
+| `#/settings` | **Settings**: backing sheet (mode, card colour — fallback; primary Update backing is on capture), hole size, about (REV-47, REV-48, REV-161) | M22 |
+| `#/settings/backing-card` | Capture in card mode: photograph the backing card (full screen, no tab bar). Optional `?return=` returns to that path (capture) instead of Settings | M22 |
 | `#/settings/template-sheet/:template` | Capture in sheet mode: photograph a blank sheet as that template's reference (full screen, no tab bar; `template-reference.md` §2) | M26 |
 | `#/analysis` | Analysis: trends over time, one data point per session, with the Patterns views and date ranges (`analysis.md`, REV-123). The view and range are in the query, `?view=<view>&range=<range>` (REV-140; `#/patterns` too), so Back from a target opened there returns to them | — |
 | `#/goals` | Goals: a target value per (view, metric), drawn on the same charts as Analysis (`goals.md`) | M27 |
@@ -38,51 +39,47 @@ right of the header, marked on `#/settings` and `#/diagnostics`, where no tab is
 capture screens** (`#/sessions/:sid/capture`, `#/settings/backing-card`, `#/settings/template-sheet/:template`). Scrolling content is padded by the bar's height plus
 the safe-area inset so the bar never covers it.
 
-**Step 1: take picture(s)** (spec/capture-overlay.md): quick start → pick Sighting/Precision and position → overlay →
-capture → Use photo (Stage A starts in the background) → next target → **Done** → metadata screen.
+**Step 1: take picture(s)** (spec/capture-overlay.md, REV-161): quick start → optional **Update backing** (same light as
+the range) → pick Sighting/Precision and position → overlay → capture → Use photo (Stage A starts in the background) →
+next target → **Done** → adjust-all (`#/review/:sid?pass=first`).
 
-**Step 2: add metadata** (`MetadataPage`):
-- Session name (default `Session <YYYY-MM-DD>`), **session date** and optional session notes. REV-141: the date is today's local
-  date for a session made by Start & capture, and a date picker (not after today, not before 2000; `isValidSessionDate`,
-  `src/lib/domain/session-date.ts`) moves it to an earlier day, saved at once. A default name follows the new date; a typed
-  name is kept. `updateSession` refuses a date that is not a real day or is in the future. On the results screen, **Edit
-  metadata** is a button beside **Review session** (REV-141), each with its icon (lucide `PencilLine`, `ListChecks`).
-- One card per photo: thumbnail, a small Stage A progress indicator, and these fields. The indicator maps Stage A's stored
-  state (no sub-steps are stored, issue #81): `pending` "Queued…", `running` "Aligning and finding shots…", `done` "Ready",
-  `error` "Couldn't process this photo: <error>". The fields:
-  - **Target type** (prefilled from capture; REV-79): Sight in, Confirm, Precision prone or Precision standing, which sets the template and position
-  - **Rounds** for prone and/or standing (defaults from `categorizationForKind`, REV-79)
-  - **Lighting**: select, prefilled with the suggestion and a hint `Suggested from photo: <label>`, with **Season** (Winter | Spring | Summer | Fall) beside it
-  - **Notes** (optional)
-  - **Remove photo**.
-- **Collapsed when complete (issue #79).** A card whose type and rounds are already set (capture sets both) starts collapsed
-  to its header row: thumbnail, Stage A status, a summary (`Precision prone · 10 rounds`) and an **Edit** toggle that opens
-  the fields above. An incomplete card is always open. Opened from a target's screen (`?photo=<id>`), that target's card
-  starts open.
-- **Add more photos** → capture screen.
-- Primary button **Analyze N targets**: enabled when every photo's categorization is complete. Tapping it confirms
-  lighting on every photo, sets `session.analyzeRequestedAt`, and navigates to results.
+**Step 2: adjust all** (`ReviewPage`, REV-161): walk every target photo with the Adjust editor embedded. First pass
+(`?pass=first`) is kind/capture order (REV-90); Re-check from Results is needs-attention first (REV-42). Progress reads
+`Photo N of M`. **Save** / **Confirm** always advances to the next photo (alignment moves still re-detect per REV-46, with
+quiet progress — never labeled "re-analyze"). Skip discards unsaved edits and advances. The last photo's **See results**
+confirms lighting, sets `session.analyzeRequestedAt`, and navigates to results.
 
-**Episode steps (issue #78).** The metadata (step 2) and results (step 3) screens open with a small, non-interactive strip,
-**Photograph · Confirm · Results** (`EpisodeSteps`): earlier steps ticked, the current one filled. Capture stays full-screen
-without it.
+**Edit details** (`MetadataPage`, no longer a required step): session name (default `Session <YYYY-MM-DD>`), **session date**
+and optional session notes (REV-141). One card per photo with Stage A status and type / rounds / lighting / season / notes /
+remove. Collapsed when complete (issue #79). Opened from a target (`?photo=<id>`), that card starts open. **Add more photos**
+→ capture. **Analyze N targets** remains for the import path when the owner is already on this screen: confirms lighting, sets
+`analyzeRequestedAt`, navigates to results. From Results, **Edit details** opens this screen.
 
-**Step 3: receive analysis** (`ResultsPage`):
-- Top: **Session summary** card with the summary image, **Share**, then a quiet **Update summary**, and the "Attach in Garmin
-  Connect" steps (M14). Issue #85: the payoff leads. On a healthy session the **Review session** / **Edit metadata** row
-  (both outline) and the backup reminder follow the summary and the Goals card. When a target needs attention, the row sits
-  above the summary with **Review session** as the starred primary.
-- Then one **target card** per photo in capture order:
-  - the `cell` diagram
-  - headline (precision: `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses; sighting:
-    `9/10 hits @ 45 mm`). The score is definite — no range (REV-39)
-  - a plain-language line under the headline (issue #86, `plainLine` in `render/text-lines.ts`, also on the target
-    screen): `7 of 10 in the 45 mm zone · group 4.7 MOA across · centre 2 mm high, 3 mm left`, or for precision
-    `Average ring 8.9 · group 2.9 MOA across · centred` (a centre within 3 mm). It never mentions shots found (REV-49)
-  - key metrics (group size mm · MOA · MRAD; MPI offset)
-  - a **rejected** target (`too-many-holes`) shows the photo and its reason instead of a diagram, headline and metrics
-  - status chip plus reason messages (§4)
-  - no buttons (REV-73): the cell diagram is the link to the target screen, where the photo is editable in place.
+**Episode steps (issue #78, REV-161).** The adjust (step 2) and results (step 3) screens open with a small, non-interactive strip,
+**Photograph · Adjust · Results** (`EpisodeSteps`): earlier steps ticked, the current one filled. Capture stays full-screen
+without it. Metadata (edit details) does not show the strip.
+
+**Step 3: receive analysis** (`ResultsPage`, REV-161):
+- Top: **Session summary** card with the summary image (static — not a link into targets), **Share**, then a quiet
+  **Update summary**. Issue #85: the payoff leads.
+- Goals card (REV-148).
+- One clear row **Targets (N) ›** to `#/sessions/:sid/targets`, plus overflow actions: **Re-check photos** (`#/review/:sid`),
+  **Edit details** (`metadata`), **Add photos** (`capture`). When a target needs attention, Re-check is the starred primary
+  and may sit above the summary.
+- Backup reminder.
+- Per-target cards are **not** on this screen.
+
+**Targets list** (`#/sessions/:sid/targets`): one **target card** per photo in kind/capture order:
+- the `cell` diagram
+- headline (precision: `72 / 100 · X 1`, or `68 / 100 · 1 miss · X 1` when rounds were scored as misses; sighting:
+  `9/10 hits @ 45 mm`). The score is definite — no range (REV-39)
+- a plain-language line under the headline (issue #86, `plainLine` in `render/text-lines.ts`, also on the target
+  screen): `7 of 10 in the 45 mm zone · group 4.7 MOA across · centre 2 mm high, 3 mm left`, or for precision
+  `Average ring 8.9 · group 2.9 MOA across · centred` (a centre within 3 mm). It never mentions shots found (REV-49)
+- key metrics (group size mm · MOA · MRAD; MPI offset)
+- a **rejected** target (`too-many-holes`) shows the photo and its reason instead of a diagram, headline and metrics
+- status chip plus reason messages (§4)
+- no buttons (REV-73): the cell diagram is the link to the target screen, where the photo is editable in place.
 - While a target is processing, its card shows a spinner with the current stage.
 
 ## 2. Pipeline stages (per photo)
@@ -333,7 +330,7 @@ template is already set is aligned against the right disc size.
 
 - If the user saves a calibration in Adjust, its `source` is `'manual'` and `pipeline.alignment.method = 'manual'`.
 - Stage A never runs A4 when `calibration?.source === 'manual'`, and never runs A5 when any shot has `source === 'manual'`.
-- Adjust offers **Re-analyze** (explicit; REV-46, formerly *Re-detect shots*): it first **saves what is on screen** — **REV-94:** there is no separate Re-analyze button: when the alignment was moved, the editor's one **Save** reads *Save and re-analyze* and does this (with *Save only* to skip it); shots-only edits just save.
+- Adjust offers re-detect after an alignment change (explicit; REV-46, formerly *Re-detect shots*): it first **saves what is on screen** — **REV-94 / REV-161:** there is no separate Re-analyze button: when the alignment was moved, the editor's one **Save** still re-detects (quiet progress; never labeled *re-analyze*); shots-only edits just save. In the session adjust pass, Save/Confirm always advances to the next photo.
   the alignment and every shot, exactly as Save does — then runs detection against **that** alignment, with the **Settings**
   backing and hole size as they are now (REV-48; changing a setting never re-runs anything by itself), replaces `auto`
   shots with what it finds, keeps `manual` ones, and re-scores. Nothing the user has on screen is discarded.

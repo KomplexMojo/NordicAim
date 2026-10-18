@@ -107,7 +107,7 @@ test('a session is deleted only from the one delete screen, by sliding; cancelli
   await page.goto('/#/');
   await page.reload();
   await expect(page.getByTestId('session-list').locator('a[href*="' + doomedId + '"]')).toHaveCount(0);
-  await page.goto(`/#/sessions/${keptId}/results`);
+  await page.goto(`/#/sessions/${keptId}/targets`);
   await expect(page.getByTestId('target-card').first()).toBeVisible({ timeout: 30_000 });
 });
 

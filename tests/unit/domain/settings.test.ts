@@ -37,8 +37,8 @@ describe('defaultAppSettings', () => {
       profileOverrides: { holeDiameterMm: 5.6 },
       persistRequested: false,
       persisted: null,
-      // REV-48 (data-model §5): the backing setting for every session.
-      backingMode: 'auto',
+      // REV-48 / REV-161 (data-model §5): the backing setting for every session; coloured is the default.
+      backingMode: 'coloured',
       backing: null,
       // REV-56 (data-model §5): gauge touch is today's rule, so the default changes no score; 4.5 mm is provisional.
       scoringRule: 'gauge',
@@ -75,12 +75,12 @@ describe('upgradeSettings (REV-48, data-model §5 migration)', () => {
     expect(upgraded.persistRequested).toBe(true);
   });
 
-  it('reads a row from before REV-38 as Auto with no backing', () => {
+  it('reads a row from before REV-38 as the default mode with no backing', () => {
     const { lastBackingMode, lastBacking, ...old } = storedRev38();
     void lastBackingMode;
     void lastBacking;
     const upgraded = AppSettings.parse(upgradeSettings(old));
-    expect(upgraded.backingMode).toBe('auto');
+    expect(upgraded.backingMode).toBe('coloured');
     expect(upgraded.backing).toBeNull();
   });
 
@@ -110,7 +110,7 @@ describe('backingInputFromSettings (backing-sheet.md §5, REV-48)', () => {
       mode: 'coloured',
       colour: ORANGE,
     });
-    expect(backingInputFromSettings(defaultAppSettings())).toEqual({ mode: 'auto', colour: null });
+    expect(backingInputFromSettings(defaultAppSettings())).toEqual({ mode: 'coloured', colour: null });
   });
 });
 

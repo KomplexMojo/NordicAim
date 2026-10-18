@@ -276,7 +276,6 @@ test('a session is stamped against the goals set when it was created: results, t
 
   // No goal existed when the first session was created: no Goals card.
   await page.goto(`/#/sessions/${first}/results`);
-  await expect(page.getByTestId('target-card').first()).toBeVisible();
   await expect(page.getByTestId('results-goals')).toHaveCount(0);
 
   // Set a score goal just below the demo's score and a group goal just above its group size: both reachable.
@@ -300,6 +299,7 @@ test('a session is stamped against the goals set when it was created: results, t
   await expect(page.getByTestId('goal-check-precision-prone-group')).toHaveAttribute('data-met', 'true');
 
   // The precision target's own screen shows its position's checks.
+  await page.goto(`/#/sessions/${second}/targets`);
   const precisionCard = page.getByTestId('target-card').filter({ hasText: 'Precision' }).first();
   await precisionCard.getByTestId('view-target').click();
   await expect(page.getByTestId('target-goals')).toBeVisible();
@@ -307,7 +307,6 @@ test('a session is stamped against the goals set when it was created: results, t
 
   // The earlier session still has no checks: goals set later never reach back.
   await page.goto(`/#/sessions/${first}/results`);
-  await expect(page.getByTestId('target-card').first()).toBeVisible();
   await expect(page.getByTestId('results-goals')).toHaveCount(0);
 
   // On the Goals chart, only the second session's dot is ringed — and raising the goal now doesn't change that.

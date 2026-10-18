@@ -57,7 +57,7 @@ test('a11y: metadata, results, target detail, adjust', async ({ page }) => {
   await expect(page.getByTestId('metadata-photo-count')).toBeVisible();
   await assertNoSevereViolations(page);
 
-  await page.goto(`/#/sessions/${sessionId}/results`);
+  await page.goto(`/#/sessions/${sessionId}/targets`);
   await expect(page.getByTestId('target-card').first()).toBeVisible({ timeout: 30_000 });
   await assertNoSevereViolations(page);
 

@@ -71,12 +71,21 @@ async function latestArtifactId(page: Page, sessionId: string): Promise<string |
   return s?.artifacts.at(-1)?.id ?? null;
 }
 
+/** REV-161: Done → adjust-all Confirm(s) → See results (requests analysis). */
 async function analyzeFromMetadata(page: Page, sessionId: string): Promise<void> {
   await page.getByRole('button', { name: 'Done' }).click();
-  await page.waitForURL(new RegExp(`#/sessions/${sessionId}/metadata`));
-  const analyze = page.getByTestId('analyze-button');
-  await expect(analyze).toBeEnabled({ timeout: 60_000 });
-  await analyze.click();
+  await page.waitForURL(new RegExp(`#/review/${sessionId}\\?pass=first`));
+  // Confirm every photo in the pass (Stage A may still be running on the first open).
+  for (;;) {
+    const done = page.getByTestId('review-done');
+    if (await done.isVisible().catch(() => false)) {
+      await done.click();
+      break;
+    }
+    const confirm = page.getByTestId('review-confirm');
+    await expect(confirm).toBeEnabled({ timeout: 180_000 });
+    await confirm.click();
+  }
   await page.waitForURL(new RegExp(`#/sessions/${sessionId}/results`));
   await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
@@ -100,6 +109,7 @@ test('summary: a target added later joins the summary, including after it is fix
   await captureWithFakeCamera(page, sessionId, 'sighting', 'Sight in');
   await expect(page.getByTestId('capture-count')).toHaveText('2 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
+  await page.goto(`/#/sessions/${sessionId}/targets`);
   await expect(page.getByTestId('target-card')).toHaveCount(2);
   await expect.poll(() => latestArtifactId(page, sessionId), { timeout: 30_000 }).not.toBe(first);
   const second = await latestArtifactId(page, sessionId);
@@ -112,7 +122,8 @@ test('summary: a target added later joins the summary, including after it is fix
     { pid: sighting.id },
   );
   await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
-  // The summary now says it is leaving that target out, instead of looking stale.
+  // REV-161: the left-out note lives on the summary Results screen, not on Targets.
+  await page.goto(`/#/sessions/${sessionId}/results`);
   await expect(page.getByTestId('summary-left-out')).toContainText('1 target needs attention', { timeout: 30_000 });
 
   // 4. The owner checks it in Adjust and saves. That confirms the capped set, so it joins the summary.

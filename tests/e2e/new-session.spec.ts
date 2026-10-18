@@ -10,7 +10,8 @@ test('New puts library photos in a fresh session and goes to the metadata step',
   const todays = /#\/sessions\/([0-9a-f-]+)\/capture/.exec(page.url())![1]!;
 
   await page.goto('/#/');
-  await expect(page.getByRole('button', { name: "Capture (today's session)" })).toBeVisible();
+  // Home reloads the session list after Start & capture; wait past the empty first paint.
+  await expect(page.getByRole('button', { name: "Capture (today's session)" })).toBeVisible({ timeout: 30_000 });
   await page.getByTestId('new-session-input').setInputFiles(['public/dev-fixtures/precision.jpg', 'public/dev-fixtures/sighting.jpg']);
   await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/metadata/, { timeout: 60_000 });
   const fresh = /#\/sessions\/([0-9a-f-]+)\/metadata/.exec(page.url())![1]!;

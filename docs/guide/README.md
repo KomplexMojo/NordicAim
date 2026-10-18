@@ -76,7 +76,7 @@ Photos taken with the iPhone camera may be in HEIC format. Those open in Safari 
 
 ## 4. Add the details
 
-After you tap **Done**, the **Add metadata** screen lists each photo.
+After you tap **Done**, you walk each photo to adjust it. **Edit details** (from Results) still lists session name, date, lighting and rounds.
 
 | Field | What to put |
 |---|---|
@@ -156,7 +156,7 @@ Under the photo, the **Swipe** and **Fade** sliders compare the drawing with you
   <img src="../assets/screens/adjust.jpg" width="300" alt="A target's screen with the Shots and Alignment modes and the shots drawn on the photo">
 </p>
 
-When you are done, tap **Save** (or **Save and re-analyze** after you moved the rings). NordicAim keeps every shot you placed by hand, looks again with the alignment you set, and re-scores. Shots stay on their holes when you move the rings.
+When you are done, tap **Save**. If you moved the rings, NordicAim updates the holes for the new alignment and re-scores. Shots stay on their holes when you move the rings.
 
 The first time you correct a precision target by hand, NordicAim keeps the score it found on its own. From then on, the target's screen shows an **Edited by hand** note with both scores, for example *automatic 70% → yours 82% (+12)*. A correction that moves the score by more than 10 points, either way, is **flagged** on the Board (see [section 13](#13-the-board)). It still counts: the flag only says the score rests on your corrections. A target corrected before NordicAim kept automatic scores says so, as there is nothing to compare it with.
 
@@ -324,7 +324,7 @@ A backup file contains your photos, but not where they were taken: NordicAim tak
 
 ## 16. If something looks wrong
 
-- **Rings are off the printed rings.** Open the target (tap its picture), choose **Alignment** and drag the handles, then **Save and re-analyze**.
+- **Rings are off the printed rings.** Open the target (tap its picture), choose **Alignment** and drag the handles, then **Save**.
 - **A hole was missed.** In **Shots**, tap the hole to add it.
 - **You fired two shots through one hole.** In **Shots**, select the hole and tap **Looks like 2 shots**. If you entered fewer rounds than holes, NordicAim may assume a double punch for you. Set the hole back to 1 shot to score the extra round as a miss instead.
 - **A shot scores lower than you expect on the paper.** Check the scoring rule in **Settings**. Official gauge touch and centre in ring can differ by a ring on a line.
