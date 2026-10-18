@@ -22,5 +22,6 @@ test("a session's row shows one mark per target kind, in the fixed kind order", 
   await expect(marks).toHaveCount(2);
   await expect(marks.first()).toHaveAttribute('data-kind', 'sight-in');
   await expect(marks.nth(1)).toHaveAttribute('data-kind', /^precision-(prone|standing)$/);
-  await expect(row.getByTestId('session-kinds')).toHaveAttribute('aria-label', /^2 targets: sight in, precision (prone|standing)$/);
+  // REV-162: kind labels dropped the "precision" prefix (Prone / Standing).
+  await expect(row.getByTestId('session-kinds')).toHaveAttribute('aria-label', /^2 targets: sight in, (prone|standing)$/);
 });
