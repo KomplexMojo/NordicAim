@@ -10,7 +10,7 @@ interface TargetKindPickerProps {
 }
 
 /**
- * REV-79: the one choice that says what is being shot: Sight in, Confirm, Precision prone or Precision standing. It replaces
+ * REV-79 / REV-162: the one choice that says what is being shot: Sight in, Confirm, Prone or Standing. It replaces
  * the separate template and position toggles (and "Both"), on the capture screen and on the metadata screen. Tap targets ≥ 44 px.
  */
 export function TargetKindPicker({ kind, onChange, className }: TargetKindPickerProps) {

@@ -15,7 +15,7 @@ import { maybeRequestPersistence } from '@/lib/store/persistence-browser';
 import { cn } from '@/lib/utils';
 
 /**
- * Issue #107: the New button — opens the photo library straight away (no camera overlay), then puts the picked photos in a
+ * Issue #107 / REV-162: Import — opens the photo library straight away (no camera overlay), then puts the picked photos in a
  * fresh session and goes on to the metadata step. Cancelling the picker creates nothing.
  */
 export function NewSessionButton({ className }: { className?: string }) {
@@ -80,11 +80,11 @@ export function NewSessionButton({ className }: { className?: string }) {
         disabled={progress !== null}
         // The picker must open inside the tap itself, or iOS blocks it.
         onClick={() => inputRef.current?.click()}
-        aria-label="New session from photos in your library"
+        aria-label="Import photos from your library into a new session"
         data-testid="new-session"
       >
         <Plus className="size-6 shrink-0" aria-hidden="true" />
-        {progress === null ? 'New' : `Adding ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…`}
+        {progress === null ? 'Import' : `Adding ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…`}
       </Button>
       <input
         ref={inputRef}

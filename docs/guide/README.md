@@ -48,13 +48,13 @@ A session is one visit to the range: a sight in, a confirm, one or two precision
   <img src="../assets/screens/home.png" width="300" alt="The Sessions screen: Start and capture, the season row, and four sessions, each with the marks of its sight in, confirm, prone and standing targets">
 </p>
 
-1. On the Sessions screen, tap **Start & capture** (or **Capture (today's session)** if you already started one today).
-2. Choose what you are photographing: **Sight in**, **Confirm**, **Precision prone** or **Precision standing**. Each button carries the mark that kind of target has everywhere in the app: a scatter for sight in, a scope sight for confirm, a flat bar for prone and an upright bar for standing.
+1. On the Sessions screen, tap **Capture** (always starts a fresh session for today; a second one the same day is named with `(2)`). Or tap **Import** to add photos from your library without the camera.
+2. Choose what you are photographing: **Sight in**, **Confirm**, **Prone** or **Standing**. Each button carries the mark that kind of target has everywhere in the app: a scatter for sight in, a scope sight for confirm, a flat bar for prone and an upright bar for standing.
 3. Line the overlay up with the target (see the next section) and tap the round shutter button.
 4. Check the photo, then tap **Use photo**. Repeat for each target, choosing its type each time.
 5. Tap **Done**.
 
-Already have a photo? Tap **Import from Photos** instead of the shutter. If you would rather use the iPhone's own camera, tap **Native camera**.
+Already have photos in your library? Use **Import** on Home instead of Capture.
 
 <p align="center">
   <img src="../assets/screens/capture.jpg" width="300" alt="The capture screen with the target overlay lined up on a Precision target and Precision prone selected">

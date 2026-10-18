@@ -41,7 +41,7 @@ test.setTimeout(240_000);
 
 async function createSessionViaHome(page: Page): Promise<string> {
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'Start & capture' }).click();
+  await page.getByRole('button', { name: 'Capture' }).click();
   await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/capture/);
   const match = /#\/sessions\/([0-9a-f-]+)\/capture/.exec(page.url());
   if (!match?.[1]) throw new Error(`no session id in ${page.url()}`);
@@ -95,7 +95,7 @@ test('summary: a target added later joins the summary, including after it is fix
   const sessionId = await createSessionViaHome(page);
 
   // 1. One target, analyzed, summary built.
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
   await expect(page.getByTestId('summary-image')).toBeVisible({ timeout: 30_000 });
@@ -152,7 +152,7 @@ test('summary: a target added later joins the summary, including after it is fix
 
 test('adjust: saving shots without moving the rings confirms an overlay-guess alignment (rule 9)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
 
@@ -185,7 +185,7 @@ test('adjust: saving shots without moving the rings confirms an overlay-guess al
 
 test('summary: Update summary rebuilds on demand (owner report 2026-09-19)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
   await analyzeFromMetadata(page, sessionId);
   await expect(page.getByTestId('summary-image')).toBeVisible({ timeout: 30_000 });
@@ -197,7 +197,7 @@ test('summary: Update summary rebuilds on demand (owner report 2026-09-19)', asy
 
 test('diagnostics: Your data reports what is stored and exports it (owner report 2026-09-19)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
   await page.goto('/#/diagnostics');

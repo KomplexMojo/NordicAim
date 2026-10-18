@@ -56,8 +56,8 @@ Shoot as you normally do: a sight in, a confirm, one or two precision targets. T
 
 Photograph **one target at a time**, on the backing paper, on the clipboard.
 
-1. On the Sessions screen, tap **Start & capture**.
-2. Choose the target type: **Sight in**, **Confirm**, **Precision prone** or **Precision standing**.
+1. On the Sessions screen, tap **Capture** (or **Import** for library photos).
+2. Choose the target type: **Sight in**, **Confirm**, **Prone** or **Standing**.
 3. Line the overlay up with the target: match it to the sheet with the **Size** slider, and line up the black aiming mark with the thick circle.
 4. Tap **Update backing** if the light has changed, photograph a scrap of the same coloured paper, then return to the camera.
 5. Tap the shutter, check the photo, then tap **Use photo**. Repeat for the next target, then tap **Done**. Walk each photo and tap **Confirm** (or **Save** after edits); the last photo opens **See results**.

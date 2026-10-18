@@ -84,9 +84,9 @@ describe('rowMarks', () => {
 describe('kindsLabel', () => {
   it('reads the count, then each kind', () => {
     expect(kindsLabel(kinds({ 'sight-in': 1, confirm: 1, 'precision-prone': 1, 'precision-standing': 1 }), 4)).toBe(
-      '4 targets: sight in, confirm, precision prone, precision standing',
+      '4 targets: sight in, confirm, prone, standing',
     );
-    expect(kindsLabel(kinds({ 'precision-prone': 2 }, 1), 3)).toBe('3 targets: 2 precision prone, 1 not categorized');
+    expect(kindsLabel(kinds({ 'precision-prone': 2 }, 1), 3)).toBe('3 targets: 2 prone, 1 not categorized');
     expect(kindsLabel(kinds({ confirm: 1 }), 1)).toBe('1 target: confirm');
     expect(kindsLabel(kinds({}), 0)).toBe('0 targets');
   });

@@ -145,6 +145,22 @@ export function calibrationPriorFromOverlay(
 const HALO_COLOR = '#0B1220';
 const LINE_COLOR = '#FFFFFF';
 
+/**
+ * template-reference.md §10: AprilTag centres in target mm (+y up). Drawn as faint open squares on the live
+ * align chrome so the printed registration marks stay in frame (REV-162) — not as readable tags.
+ */
+export const SHEET_MARKER_CENTRES_MM: ReadonlyArray<{ xMm: number; yMm: number }> = [
+  { xMm: -85, yMm: 105 },
+  { xMm: 85, yMm: 105 },
+  { xMm: -85, yMm: -105 },
+  { xMm: 85, yMm: -105 },
+];
+/** Printed AprilTag size including the 1-cell border (template-reference.md §10). */
+export const SHEET_MARKER_SIZE_MM = 20;
+
+/** `full` = every ring (import review). `align` = live viewfinder chrome (REV-162). */
+export type OverlayRenderMode = 'full' | 'align';
+
 function styleAttrs(style: OverlayStyle): { haloWidth: number; lineWidth: number; opacity: number; dasharray: string | null } {
   switch (style) {
     case 'anchor':
@@ -156,13 +172,53 @@ function styleAttrs(style: OverlayStyle): { haloWidth: number; lineWidth: number
   }
 }
 
-/** capture-overlay.md §4. Pure SVG string; `pointer-events: none`, viewBox `0 0 W H`. */
-export function renderOverlaySvg(layout: OverlayLayout, template: TemplateId, size: Size): string {
+function drawCircle(
+  parts: string[],
+  cx: number,
+  cy: number,
+  rCss: number,
+  style: OverlayStyle,
+  className: string,
+): void {
+  const { haloWidth, lineWidth, opacity, dasharray } = styleAttrs(style);
+  parts.push(
+    `<circle class="overlay-halo" cx="${cx}" cy="${cy}" r="${rCss}" fill="none" stroke="${HALO_COLOR}" stroke-width="${haloWidth}" />`,
+  );
+  const dash = dasharray ? ` stroke-dasharray="${dasharray}"` : '';
+  parts.push(
+    `<circle class="overlay-${className}" cx="${cx}" cy="${cy}" r="${rCss}" fill="none" stroke="${LINE_COLOR}" stroke-width="${lineWidth}" opacity="${opacity}"${dash} />`,
+  );
+}
+
+/** Faint open squares at the printed AprilTag centres (mm → css; +y up → css +y down). */
+function drawRegistrationMarks(parts: string[], layout: OverlayLayout): void {
+  const { x: cx, y: cy } = layout.centerCss;
+  const half = (SHEET_MARKER_SIZE_MM / 2) * layout.mmToCss;
+  for (const mark of SHEET_MARKER_CENTRES_MM) {
+    const mx = cx + mark.xMm * layout.mmToCss;
+    const my = cy - mark.yMm * layout.mmToCss;
+    parts.push(
+      `<rect class="overlay-marker" x="${mx - half}" y="${my - half}" width="${half * 2}" height="${half * 2}" fill="none" stroke="${LINE_COLOR}" stroke-width="1.5" opacity="0.45" />`,
+    );
+  }
+}
+
+/**
+ * capture-overlay.md §4. Pure SVG string; `pointer-events: none`, viewBox `0 0 W H`.
+ * REV-162 `align`: precision shows only the outer print ring + centre cross + registration squares;
+ * sighting keeps its full rings and adds the registration squares.
+ */
+export function renderOverlaySvg(
+  layout: OverlayLayout,
+  template: TemplateId,
+  size: Size,
+  mode: OverlayRenderMode = 'full',
+): string {
   const { x: cx, y: cy } = layout.centerCss;
   const parts: string[] = [];
 
   parts.push(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size.w} ${size.h}" style="pointer-events: none" data-overlay-template="${template}">`
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size.w} ${size.h}" style="pointer-events: none" data-overlay-template="${template}" data-overlay-mode="${mode}">`,
   );
 
   // 1. Mask with a circular hole cut out via evenodd fill-rule.
@@ -174,41 +230,46 @@ export function renderOverlaySvg(layout: OverlayLayout, template: TemplateId, si
     `A${holeR},${holeR} 0 1,0 ${cx + holeR},${cy} Z`;
   parts.push(`<path class="overlay-mask" fill="rgba(8,12,18,0.35)" fill-rule="evenodd" d="${maskD}" />`);
 
-  // 2. Each circle: halo, then the styled line.
-  for (const circle of layout.circles) {
-    const { haloWidth, lineWidth, opacity, dasharray } = styleAttrs(circle.style);
-    parts.push(
-      `<circle class="overlay-halo" cx="${cx}" cy="${cy}" r="${circle.rCss}" fill="none" stroke="${HALO_COLOR}" stroke-width="${haloWidth}" />`
-    );
-    const dash = dasharray ? ` stroke-dasharray="${dasharray}"` : '';
-    parts.push(
-      `<circle class="overlay-${circle.style}" cx="${cx}" cy="${cy}" r="${circle.rCss}" fill="none" stroke="${LINE_COLOR}" stroke-width="${lineWidth}" opacity="${opacity}"${dash} />`
-    );
+  const alignPrecision = mode === 'align' && template === 'precision';
+  if (alignPrecision) {
+    // Outer print ring only, drawn thick (anchor weight) so it is the one edge to match.
+    drawCircle(parts, cx, cy, layout.outerRadiusCss, 'anchor', 'ring');
+  } else {
+    for (const circle of layout.circles) {
+      drawCircle(parts, cx, cy, circle.rCss, circle.style, circle.style);
+    }
   }
 
-  // 3. Centre cross: two white 1.5 px lines, half-length anchorRadiusCss * 0.15.
-  const crossLen = layout.anchorRadiusCss * 0.15;
+  // Centre cross: half-length from the circle the shooter is matching.
+  const crossBase = alignPrecision ? layout.outerRadiusCss : layout.anchorRadiusCss;
+  const crossLen = crossBase * 0.15;
   parts.push(
-    `<line class="overlay-cross" x1="${cx - crossLen}" y1="${cy}" x2="${cx + crossLen}" y2="${cy}" stroke="${LINE_COLOR}" stroke-width="1.5" />`
+    `<line class="overlay-cross" x1="${cx - crossLen}" y1="${cy}" x2="${cx + crossLen}" y2="${cy}" stroke="${LINE_COLOR}" stroke-width="1.5" />`,
   );
   parts.push(
-    `<line class="overlay-cross" x1="${cx}" y1="${cy - crossLen}" x2="${cx}" y2="${cy + crossLen}" stroke="${LINE_COLOR}" stroke-width="1.5" />`
+    `<line class="overlay-cross" x1="${cx}" y1="${cy - crossLen}" x2="${cx}" y2="${cy + crossLen}" stroke="${LINE_COLOR}" stroke-width="1.5" />`,
   );
 
-  // 4. Four 12 px outward ticks on the anchor circle at 0deg, 90deg, 180deg, 270deg.
-  const ar = layout.anchorRadiusCss;
-  const tickLen = 12;
-  for (const deg of [0, 90, 180, 270]) {
-    const theta = (deg * Math.PI) / 180;
-    const cosT = Math.cos(theta);
-    const sinT = Math.sin(theta);
-    const x1 = cx + ar * cosT;
-    const y1 = cy + ar * sinT;
-    const x2 = cx + (ar + tickLen) * cosT;
-    const y2 = cy + (ar + tickLen) * sinT;
-    parts.push(
-      `<line class="overlay-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${LINE_COLOR}" stroke-width="2" />`
-    );
+  if (!alignPrecision) {
+    // Four 12 px outward ticks on the anchor circle at 0deg, 90deg, 180deg, 270deg.
+    const ar = layout.anchorRadiusCss;
+    const tickLen = 12;
+    for (const deg of [0, 90, 180, 270]) {
+      const theta = (deg * Math.PI) / 180;
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      const x1 = cx + ar * cosT;
+      const y1 = cy + ar * sinT;
+      const x2 = cx + (ar + tickLen) * cosT;
+      const y2 = cy + (ar + tickLen) * sinT;
+      parts.push(
+        `<line class="overlay-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${LINE_COLOR}" stroke-width="2" />`,
+      );
+    }
+  }
+
+  if (mode === 'align') {
+    drawRegistrationMarks(parts, layout);
   }
 
   parts.push('</svg>');

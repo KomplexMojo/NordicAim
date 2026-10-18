@@ -44,7 +44,7 @@ const precisionFixture = JSON.parse(
 
 async function createSessionViaHome(page: Page): Promise<string> {
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'Start & capture' }).click();
+  await page.getByRole('button', { name: 'Capture' }).click();
   await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/capture/);
   const match = /#\/sessions\/([0-9a-f-]+)\/capture/.exec(page.url());
   if (!match?.[1]) throw new Error(`no session id in ${page.url()}`);
@@ -75,7 +75,7 @@ test('journey: capture two targets, adjust-all, and reach a shareable summary (M
   const sessionId = await createSessionViaHome(page);
 
   // 1. Start & capture → fake precision (Prone) and fake sighting.
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Prone');
   await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
 
   await captureWithFakeCamera(page, sessionId, 'sighting', 'Sight in');

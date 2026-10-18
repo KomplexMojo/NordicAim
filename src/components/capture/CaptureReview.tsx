@@ -106,7 +106,12 @@ export function CaptureReview({
           </svg>
         )}
         {loaded && container && overlay?.kind === 'template' && (
-          <OverlaySvg size={container} template={overlay.template} outerDiameterFraction={overlay.outerDiameterFraction} />
+          <OverlaySvg
+            size={container}
+            template={overlay.template}
+            outerDiameterFraction={overlay.outerDiameterFraction}
+            mode="full"
+          />
         )}
         {header && (
           <div className="pointer-events-none absolute inset-x-2 top-2 flex flex-col items-center gap-1.5">

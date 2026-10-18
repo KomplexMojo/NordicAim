@@ -5,36 +5,27 @@ Implements REV-5, REV-8, REV-15 step 1. Pure math: `src/lib/capture/overlay.ts`.
 
 ## 1. User flow
 
-1. **Quick start** (home and `#/sessions`): if a session with `sessionDate` = today (local) exists, the button reads
-   **Capture (today's session)** and opens its capture screen. Otherwise it reads **Start & capture**, creates
-   `Session <YYYY-MM-DD>`, and opens its capture screen. It carries a camera icon. With several sessions dated today it opens
-   the one created last.
-   **New** (REV-160, beside quick start on home, plus icon) always creates a fresh session dated today and opens the photo
-   library at once, skipping the camera and the review screen: the picked photos are imported (`origin: import`, empty
-   categorization) and the app goes to `#/sessions/:sid/metadata`. Cancelling the picker creates nothing; if no photo could
-   be imported the session is removed. A second same-day session is named `Session <YYYY-MM-DD> (2)`, then `(3)`, and so on.
-2. Pick the **target type** (REV-79): `Sight in` | `Confirm` | `Precision prone` | `Precision standing`, which sets the template and position (`Both` is no longer offered), remembered per session in
-   `localStorage` `asa.capture.<sessionId>` (try/catch).
-3. The camera shows the template's overlay, with a label chip:
-   - sighting: **"Align the dark disc with the thick circle"**
-   - precision: **"Align the black aiming mark with the thick circle"**
+1. **Capture** and **Import** on home (REV-162; was REV-160's Capture/New): each always creates a fresh session dated today
+   (`Session <YYYY-MM-DD>`, then `(2)`, `(3)`, … when that day already has a session) and never reuses one. **Capture**
+   (camera icon) opens the new session's capture screen. **Import** (plus icon) opens the photo library at once, skips the
+   camera and review screen, imports the picked photos (`origin: import`, empty categorization), and goes to
+   `#/sessions/:sid/metadata`. Cancelling the picker creates nothing; if no photo could be imported the session is removed.
+   Continue an existing session from the Sessions list.
+2. Pick the **target type** (REV-79 / REV-162): `Sight in` | `Confirm` | `Prone` | `Standing`, which sets the template and
+   position (`Both` is no longer offered), remembered per session in `localStorage` `asa.capture.<sessionId>` (try/catch).
+   **Update backing** is an icon-only control in the capture header (colour swatch).
+3. The camera shows the template's **align** overlay (REV-162), with a label chip:
+   - sighting: **"Align the dark disc with the thick circle"** (full rings + registration squares)
+   - precision: **"Line the paper's outer ring up with this circle."** (outer print ring only, thick, + centre cross +
+     registration squares). Scoring rings are not drawn while aiming.
 4. Optional **size slider** (0.50–0.95 of the viewfinder's short side, default 0.85).
 5. **Shutter** (72 px) → **review screen** (captured image + overlay where it was) → **Retake** / **Use photo**. The overlay is
    the anchor circle placed from the shot's calibration prior (frame-space, contain-fit onto the review image).
 6. **Use photo** → `ingestPhoto` (§5) → Stage A starts in the background → back to the live camera; badge "N captured".
-7. **Done** → `#/sessions/:sessionId/metadata` (step 2). With nothing captured yet it is a quiet outline button (muted text)
+7. **Done** → `#/review/:sessionId?pass=first` (REV-161). With nothing captured yet it is a quiet outline button (muted text)
    so the shutter is the one strong action; it stays tappable. From the first photo on it is the solid primary (issue #83).
-8. Fallbacks (issue #82: behind a **More options** toggle under the shutter, collapsed by default and shown open, with no
-   toggle, when the live camera can't start; the Size slider stays visible): native camera (`<input type="file" accept="image/*" capture="environment">`, `origin: 'camera-native'`) and
-   **Import from Photos** (`accept="image/*,.heic,.heif"`, `multiple`, `origin: 'import'`). REV-50 (issue #1): each picked
-   file — from either fallback — steps through the **same review screen** in turn, showing the chosen template's full
-   overlay (`overlayLayout` + `renderOverlaySvg`, §3–§4) fitted to the review container, not to any frame-space prior — an
-   import's framing is unknown, so this is informational only and never becomes a calibration prior
-   (`capture: null`, `calibrationPriorFramePx` stays absent). The header reads "Imported photo *N* of *M*" when more than
-   one file was picked (just "Imported photo" for one), or "Native photo" for the native-camera fallback. A "Loaded"
-   badge and the overlay itself appear only once the picked image has rendered; **Keep** ingests it exactly as before
-   (`origin: 'import'` or `'camera-native'`, no prior) and **Discard** drops it without storing anything. Cancelling the
-   OS picker partway (or discarding some of a multi-file pick) keeps whatever was already kept.
+8. No Phone camera / Import fallbacks on the capture screen (REV-162). When the live camera cannot start, the alert points
+   to **Import** on Home (and allowing camera access for the site). Library import is only via Home **Import**.
 
 ## 2. Camera and wake lock
 
@@ -116,18 +107,27 @@ Container `390 × 844`, frame `1080 × 1920`, fraction `0.85`:
 | `scaleCalibration({cx 540, cy 960, radiusPx 274.493}, 0.5)` | cx 270, cy 480, radiusPx 137.2465 |
 | `overlayLayout(sighting, 0.5)` | outerRadiusCss 97.5 |
 
-## 4. Overlay rendering (`renderOverlaySvg(layout, template, size): string`, pure)
+## 4. Overlay rendering (`renderOverlaySvg(layout, template, size, mode = 'full'): string`, pure)
 
-`pointer-events: none`, viewBox `0 0 W H`:
+`mode`: `'full'` (default; informational import/template review) or `'align'` (live viewfinder, REV-162).
+
+`pointer-events: none`, viewBox `0 0 W H`, `data-overlay-mode`:
 1. `<path class="overlay-mask" fill="rgba(8,12,18,0.35)" fill-rule="evenodd">`: the container rect plus a circle of radius `maskHoleRadiusCss`.
-2. Each circle is drawn twice: a halo (class `overlay-halo`, stroke `#0B1220`), then a line with class `overlay-<style>`:
+2. Circles — each drawn twice: a halo (class `overlay-halo`, stroke `#0B1220`), then a line with class `overlay-<style>`:
    - `anchor`: halo 5, line `#FFFFFF` 3, opacity 0.9
    - `ring`: halo 3.5, line 1.5, opacity 0.8
    - `guide`: halo 3.5, line 1.5, dasharray `6 6`, opacity 0.7
-3. `overlay-cross`: two white 1.5 px lines through the centre, half-length `anchorRadiusCss × 0.15`.
-4. `overlay-tick`: four 12 px outward ticks on the anchor circle at 0°, 90°, 180°, 270°.
+   - **`align` + precision:** only the outer print ring, drawn with **anchor** stroke weights (class still `overlay-ring`).
+   - **`full`**, or **`align` + sighting:** every circle from §3.1.
+3. `overlay-cross`: two white 1.5 px lines through the centre; half-length is `outerRadiusCss × 0.15` for align-precision,
+   else `anchorRadiusCss × 0.15`.
+4. `overlay-tick`: four 12 px outward ticks on the anchor circle at 0°, 90°, 180°, 270° — omitted for align-precision.
+5. **`align` only:** four open squares (`overlay-marker`, stroke 1.5, opacity 0.45) at the printed AprilTag centres
+   (`SHEET_MARKER_CENTRES_MM` (±85, ±105) mm, size `SHEET_MARKER_SIZE_MM` = 20 mm; template-reference.md §10). Not readable
+   tags — framing cues so the registration marks stay in the photo.
 
-Counts: precision 1 `overlay-anchor`, 4 `overlay-ring`; sighting 1 `overlay-anchor`, 1 `overlay-ring`, 2 `overlay-guide`.
+Counts (`full`): precision 1 `overlay-anchor`, 4 `overlay-ring`; sighting 1 `overlay-anchor`, 1 `overlay-ring`, 2 `overlay-guide`.
+Counts (`align` precision): 1 `overlay-ring`, 0 `overlay-anchor`, 4 `overlay-marker`.
 
 ## 5. From capture to storage
 

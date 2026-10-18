@@ -11,8 +11,9 @@ export type TargetKind = (typeof TARGET_KINDS)[number];
 export const TARGET_KIND_LABEL: Record<TargetKind, string> = {
   'sight-in': 'Sight in',
   confirm: 'Confirm',
-  'precision-prone': 'Precision prone',
-  'precision-standing': 'Precision standing',
+  // REV-162: capture chips say Prone / Standing — the icons already mark precision.
+  'precision-prone': 'Prone',
+  'precision-standing': 'Standing',
 };
 
 export function isTargetKind(value: unknown): value is TargetKind {

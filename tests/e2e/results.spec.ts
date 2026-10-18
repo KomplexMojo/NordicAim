@@ -27,7 +27,7 @@ async function waitForIdle(page: Page): Promise<void> {
 
 async function createSessionViaHome(page: Page): Promise<string> {
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'Start & capture' }).click();
+  await page.getByRole('button', { name: 'Capture' }).click();
   await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/capture/);
   const match = /#\/sessions\/([0-9a-f-]+)\/capture/.exec(page.url());
   if (!match?.[1]) throw new Error(`no session id in ${page.url()}`);
@@ -120,7 +120,7 @@ test('results: capture → adjust-all → See results reaches a terminal status'
 
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
-  await page.getByRole('radio', { name: 'Precision prone', exact: true }).click();
+  await page.getByRole('radio', { name: 'Prone', exact: true }).click();
 
   const shutter = page.getByRole('button', { name: 'Shutter' });
   await expect(shutter).toBeEnabled({ timeout: 15_000 });

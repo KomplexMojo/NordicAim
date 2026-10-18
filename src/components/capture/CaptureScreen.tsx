@@ -11,7 +11,6 @@ import type { CameraErrorCode } from '@/lib/capture/camera';
 import { cameraErrorMessage, ingestErrorMessage } from '@/lib/capture/messages';
 import { calibrationPriorFromOverlay, type Size } from '@/lib/capture/overlay';
 import { loadCapturePrefs, saveCapturePrefs, type CapturePrefs } from '@/lib/capture/prefs-browser';
-import { emptyCategorization } from '@/lib/domain/categorization';
 import { swatchCss } from '@/lib/domain/backing';
 import { categorizationForKind, kindTemplate, type TargetKind } from '@/lib/domain/target-kind';
 import type { TemplateId } from '@/lib/domain/enums';
@@ -23,7 +22,6 @@ import { maybeRequestPersistence } from '@/lib/store/persistence-browser';
 import { cn } from '@/lib/utils';
 
 import { CameraView, type CameraHandle } from './CameraView';
-import { CaptureFallbacks } from './CaptureFallbacks';
 import { CaptureReview } from './CaptureReview';
 import { SizeSlider } from './SizeSlider';
 import { TargetKindPicker } from './TargetKindPicker';
@@ -46,7 +44,7 @@ interface CaptureScreenProps {
   debug: boolean;
 }
 
-/** capture-overlay.md §1 / REV-161: pick template/position → align → shutter → review → Use photo → next → Done → adjust-all. */
+/** capture-overlay.md §1 / REV-161 / REV-162: pick type → align → shutter → review → Use photo → Done → adjust-all. */
 export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: CaptureScreenProps) {
   const { ctx, imageTools } = useServices();
   const navigate = useNavigate();
@@ -126,7 +124,7 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
     } catch (err) {
       toast.error(ingestErrorMessage(err));
       setBusy(false);
-      return; // keep the review so the owner can retry
+      return;
     }
     try {
       await maybeRequestPersistence(ctx);
@@ -141,7 +139,13 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
   const { kind, outerDiameterFraction } = prefs;
   const template = kind === null ? null : kindTemplate(kind);
   const canShoot = ready && kind !== null && !busy;
-  const importCategorization = kind === null ? emptyCategorization() : categorizationForKind(kind);
+
+  function openBackingCard() {
+    const returnPath = `/sessions/${sessionId}/capture`;
+    const q = new URLSearchParams({ return: returnPath });
+    if (fakeCamera) q.set('fakeCamera', fakeCamera);
+    navigate(`/settings/backing-card?${q.toString()}`);
+  }
 
   return (
     <main className="dark flex h-dvh flex-col bg-background text-foreground">
@@ -149,9 +153,32 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
         <Link to="/" className="inline-flex h-11 items-center px-2 text-sm underline underline-offset-4">
           Home
         </Link>
-        <Badge variant="secondary" className="h-7 px-3 text-sm" data-testid="capture-count">
-          {count} captured
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="h-7 px-3 text-sm" data-testid="capture-count">
+            {count} captured
+          </Badge>
+          {/* REV-162: icon-only Update backing — keeps the kind grid clear. */}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-11 shrink-0"
+            data-testid="update-backing"
+            aria-label="Update backing — photograph the card in this light"
+            title="Update backing"
+            onClick={openBackingCard}
+          >
+            <span
+              className="inline-flex size-5 items-center justify-center rounded-full border border-white/40"
+              style={backingColour ? { backgroundColor: swatchCss(backingColour) } : undefined}
+              data-testid="update-backing-swatch"
+              data-has-colour={backingColour !== null}
+              aria-hidden="true"
+            >
+              {backingColour === null && <PaintBucket className="size-3.5 text-muted-foreground" />}
+            </span>
+          </Button>
+        </div>
         {/* Issue #83: with nothing captured, Done is a quiet outline so the shutter is the one strong action; it stays
             tappable. From the first photo on it is the solid primary. REV-161: Done opens the adjust-all pass. */}
         <Button
@@ -165,36 +192,8 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
         </Button>
       </header>
 
-      <div className="flex items-center gap-2 px-2 pb-2">
-        <div className="min-w-0 flex-1">
-          <TargetKindPicker kind={kind} onChange={(k) => updatePrefs({ kind: k })} />
-        </div>
-        {/* REV-161: Update backing on the camera — sample in the same light as the targets. */}
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 shrink-0 gap-2 px-3"
-          data-testid="update-backing"
-          aria-label="Update backing"
-          title="Update backing — photograph the card in this light"
-          onClick={() => {
-            const returnPath = `/sessions/${sessionId}/capture`;
-            const q = new URLSearchParams({ return: returnPath });
-            if (fakeCamera) q.set('fakeCamera', fakeCamera);
-            navigate(`/settings/backing-card?${q.toString()}`);
-          }}
-        >
-          <span
-            className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-white/40"
-            style={backingColour ? { backgroundColor: swatchCss(backingColour) } : undefined}
-            data-testid="update-backing-swatch"
-            data-has-colour={backingColour !== null}
-            aria-hidden="true"
-          >
-            {backingColour === null && <PaintBucket className="size-3.5 text-muted-foreground" />}
-          </span>
-          <span className="text-sm">Update backing</span>
-        </Button>
+      <div className="px-2 pb-2">
+        <TargetKindPicker kind={kind} onChange={(k) => updatePrefs({ kind: k })} />
       </div>
 
       <div className="relative min-h-0 flex-1">
@@ -209,7 +208,10 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
         />
         {cameraError && (
           <div className="absolute inset-x-4 top-1/3 rounded-lg bg-black/85 p-4 text-center text-sm text-white" role="alert">
-            {cameraErrorMessage(cameraError)}
+            <p>{cameraErrorMessage(cameraError)}</p>
+            <Link to="/" className="mt-3 inline-flex h-11 items-center text-sm font-medium underline underline-offset-4">
+              Back to Home
+            </Link>
           </div>
         )}
         {!cameraError && kind === null && (
@@ -230,14 +232,6 @@ export function CaptureScreen({ sessionId, initialCount, fakeCamera, debug }: Ca
             onClick={() => void onShutter()}
           />
         </div>
-        <CaptureFallbacks
-          sessionId={sessionId}
-          categorization={importCategorization}
-          template={template}
-          outerDiameterFraction={outerDiameterFraction}
-          onImported={() => setCount((c) => c + 1)}
-          forceOpen={cameraError !== null}
-        />
       </footer>
 
       {review && (
