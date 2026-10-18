@@ -13,7 +13,7 @@ async function localToday(page: import('@playwright/test').Page): Promise<string
 
 test('a new session is dated today, and the metadata screen moves it to an earlier day', async ({ page }) => {
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'Start & capture' }).click();
+  await page.getByRole('button', { name: 'Capture' }).click();
   await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/capture/);
   const sid = /#\/sessions\/([0-9a-f-]+)\/capture/.exec(page.url())![1]!;
   const today = await localToday(page);
@@ -36,7 +36,7 @@ test('a new session is dated today, and the metadata screen moves it to an earli
   const row = page.getByTestId('session-list').locator(`a[href*="${sid}"]`);
   await expect(row).toContainText('Session 2026-09-01');
   await expect(row.getByTestId('session-when')).toContainText('2026-09-01');
-  await expect(page.getByRole('button', { name: 'Start & capture' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Capture' })).toBeVisible();
 
   // It survives a reload.
   await page.goto(`/#/sessions/${sid}/metadata`);

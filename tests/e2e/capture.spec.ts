@@ -28,7 +28,7 @@ type HookWindow = Window & {
 
 async function createSessionViaHome(page: Page): Promise<string> {
   await page.goto('/#/');
-  await page.getByRole('button', { name: 'Start & capture' }).click();
+  await page.getByRole('button', { name: 'Capture' }).click();
   await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/capture/);
   const match = /#\/sessions\/([0-9a-f-]+)\/capture/.exec(page.url());
   if (!match?.[1]) throw new Error(`no session id in ${page.url()}`);
@@ -48,7 +48,13 @@ async function captureWithFakeCamera(page: Page, sessionId: string, fake: 'preci
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=${fake}`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
   await page.getByRole('radio', { name: kind, exact: true }).click();
-  await expect(page.locator('.overlay-anchor')).toBeVisible();
+  // REV-162: precision align chrome is outer ring only; sighting still has the anchor disc.
+  if (fake === 'precision') {
+    await expect(page.locator('.overlay-ring')).toBeVisible();
+    await expect(page.locator('.overlay-marker')).toHaveCount(4);
+  } else {
+    await expect(page.locator('.overlay-anchor')).toBeVisible();
+  }
 
   const shutter = page.getByRole('button', { name: 'Shutter' });
   await expect(shutter).toBeEnabled({ timeout: 15000 });
@@ -64,7 +70,7 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
   // Issue #83: with nothing captured Done is quiet (the shutter is the strong action), but it still works.
   await expect(page.getByTestId('capture-done')).toHaveAttribute('data-emphasis', 'quiet');
   await expect(page.getByTestId('capture-done')).toBeEnabled();
-  await captureWithFakeCamera(page, sessionId, 'precision', 'Precision prone');
+  await captureWithFakeCamera(page, sessionId, 'precision', 'Prone');
   await expect(page.getByTestId('capture-done')).toHaveAttribute('data-emphasis', 'primary');
 
   const photos = await listPhotos(page, sessionId);
@@ -93,27 +99,17 @@ test('precision + prone: fake camera capture is stored with its overlay prior, t
   await expect(page.getByTestId('review-progress')).toBeVisible();
 });
 
-test('the phone camera and Photos import sit behind More options, and show at once when there is no camera (issue #82)', async ({ page }) => {
+test('without a camera, capture points to Import on Home (REV-162)', async ({ page }) => {
   const sessionId = await createSessionViaHome(page);
-  // No camera here: the options are the only way in, so they show open with no toggle. The engines word it differently
-  // (Chromium: no camera found; WebKit: access denied), and both point to the options below.
-  await expect(page.getByRole('alert')).toContainText(/Photos import below/);
-  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText(/Import on Home/);
+  await expect(page.getByRole('link', { name: 'Back to Home' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Phone camera' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'More options' })).toHaveCount(0);
 
-  // With a working camera they are tucked away; the Size slider stays visible.
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
   await expect(page.getByText('FAKE CAMERA')).toBeVisible();
   await expect(page.getByRole('slider', { name: 'Size' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeHidden();
-  const more = page.getByRole('button', { name: 'More options' });
-  await expect(more).toHaveAttribute('aria-expanded', 'false');
-  await more.click();
-  await expect(more).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('button', { name: 'Phone camera' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Import from Photos' })).toBeVisible();
-  await more.click();
-  await expect(page.getByRole('button', { name: 'Import from Photos' })).toBeHidden();
+  await expect(page.getByTestId('update-backing')).toBeVisible();
 });
 
 test('sight in: prone, ten rounds, role stored; confirm: five rounds (REV-79)', async ({ page }) => {
@@ -140,47 +136,16 @@ test('sight in: prone, ten rounds, role stored; confirm: five rounds (REV-79)', 
   expect(both.find((p) => p.categorization.sightingRole === 'confirm')!.categorization.roundsProne).toBe(5);
 });
 
-test('import from Photos shows the overlay review screen, then Keep stores it with origin import', async ({ page }) => {
-  const sessionId = await createSessionViaHome(page);
-  await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=sighting`);
-  await page.getByRole('radio', { name: 'Sight in', exact: true }).click();
-
-  await page.getByTestId('import-input').setInputFiles(path.resolve('docs/reference/IMG_5057-sighting.jpg'));
-  await expect(page.getByTestId('capture-review')).toBeVisible();
-  await expect(page.getByTestId('review-header')).toHaveText('Imported photo');
-  await expect(page.getByTestId('review-loaded')).toHaveText('Loaded');
-  await expect(page.getByTestId('capture-review').locator('.overlay-anchor')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Keep' }).click();
-  await expect(page.getByTestId('capture-review')).toBeHidden();
-  await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
-
-  const photos = await listPhotos(page, sessionId);
+test('Home Import puts library photos in a fresh session and goes to metadata (REV-162)', async ({ page }) => {
+  await page.goto('/#/');
+  await page.getByTestId('new-session-input').setInputFiles([
+    path.resolve('docs/reference/IMG_5057-sighting.jpg'),
+  ]);
+  await page.waitForURL(/#\/sessions\/[0-9a-f-]+\/metadata/, { timeout: 60_000 });
+  const sessionId = /#\/sessions\/([0-9a-f-]+)\/metadata/.exec(page.url())![1]!;
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  const photos = await page.evaluate((sid) => (window as HookWindow).__asaTest!.listPhotos(sid), sessionId);
   expect(photos).toHaveLength(1);
   expect(photos[0]!.origin).toBe('import');
   expect(photos[0]!.capture).toBeNull();
-});
-
-test('import two: "Imported photo 1 of 2", Discard the first, Keep the second → exactly one stored', async ({ page }) => {
-  const sessionId = await createSessionViaHome(page);
-  await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=sighting`);
-  await page.getByRole('radio', { name: 'Sight in', exact: true }).click();
-
-  await page.getByTestId('import-input').setInputFiles([
-    path.resolve('docs/reference/IMG_5057-sighting.jpg'),
-    path.resolve('docs/reference/IMG_5057-sighting.jpg'),
-  ]);
-  await expect(page.getByTestId('review-header')).toHaveText('Imported photo 1 of 2');
-  await expect(page.getByTestId('review-loaded')).toHaveText('Loaded');
-  await page.getByRole('button', { name: 'Discard' }).click();
-
-  await expect(page.getByTestId('review-header')).toHaveText('Imported photo 2 of 2');
-  await expect(page.getByTestId('review-loaded')).toHaveText('Loaded');
-  await page.getByRole('button', { name: 'Keep' }).click();
-
-  await expect(page.getByTestId('capture-review')).toBeHidden();
-  await expect(page.getByTestId('capture-count')).toHaveText('1 captured', { timeout: 15000 });
-  const photos = await listPhotos(page, sessionId);
-  expect(photos).toHaveLength(1);
-  expect(photos[0]!.origin).toBe('import');
 });

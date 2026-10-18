@@ -170,9 +170,9 @@ describe('capture/overlay: renderOverlaySvg (capture-overlay.md §4)', () => {
     return (svg.match(re) ?? []).length;
   }
 
-  it('precision: 1 overlay-anchor, 4 overlay-ring, 1 overlay-mask', () => {
+  it('precision full: 1 overlay-anchor, 4 overlay-ring, 1 overlay-mask', () => {
     const layout = overlayLayout(container, 'precision', FRACTION);
-    const svg = renderOverlaySvg(layout, 'precision', container);
+    const svg = renderOverlaySvg(layout, 'precision', container, 'full');
     expect(countClass(svg, 'overlay-anchor')).toBe(1);
     expect(countClass(svg, 'overlay-ring')).toBe(4);
     expect(countClass(svg, 'overlay-guide')).toBe(0);
@@ -180,11 +180,23 @@ describe('capture/overlay: renderOverlaySvg (capture-overlay.md §4)', () => {
     expect(countClass(svg, 'overlay-tick')).toBe(4);
     expect(countClass(svg, 'overlay-cross')).toBe(2);
     expect(countClass(svg, 'overlay-halo')).toBe(5);
+    expect(countClass(svg, 'overlay-marker')).toBe(0);
+  });
+
+  it('precision align: outer ring only, cross, four registration squares (REV-162)', () => {
+    const layout = overlayLayout(container, 'precision', FRACTION);
+    const svg = renderOverlaySvg(layout, 'precision', container, 'align');
+    expect(countClass(svg, 'overlay-anchor')).toBe(0);
+    expect(countClass(svg, 'overlay-ring')).toBe(1);
+    expect(countClass(svg, 'overlay-tick')).toBe(0);
+    expect(countClass(svg, 'overlay-cross')).toBe(2);
+    expect(countClass(svg, 'overlay-marker')).toBe(4);
+    expect(svg).toContain('data-overlay-mode="align"');
   });
 
   it('sighting: 1 overlay-anchor, 1 overlay-ring, 2 overlay-guide', () => {
     const layout = overlayLayout(container, 'sighting', FRACTION);
-    const svg = renderOverlaySvg(layout, 'sighting', container);
+    const svg = renderOverlaySvg(layout, 'sighting', container, 'full');
     expect(countClass(svg, 'overlay-anchor')).toBe(1);
     expect(countClass(svg, 'overlay-ring')).toBe(1);
     expect(countClass(svg, 'overlay-guide')).toBe(2);
@@ -193,15 +205,22 @@ describe('capture/overlay: renderOverlaySvg (capture-overlay.md §4)', () => {
     expect(countClass(svg, 'overlay-halo')).toBe(4);
   });
 
-  it('snapshot at 390x844, fraction 0.85 (precision)', () => {
+  it('sighting align adds registration squares', () => {
+    const layout = overlayLayout(container, 'sighting', FRACTION);
+    const svg = renderOverlaySvg(layout, 'sighting', container, 'align');
+    expect(countClass(svg, 'overlay-anchor')).toBe(1);
+    expect(countClass(svg, 'overlay-marker')).toBe(4);
+  });
+
+  it('snapshot at 390x844, fraction 0.85 (precision full)', () => {
     const layout = overlayLayout(container, 'precision', FRACTION);
-    const svg = renderOverlaySvg(layout, 'precision', container);
+    const svg = renderOverlaySvg(layout, 'precision', container, 'full');
     expect(svg).toMatchSnapshot();
   });
 
-  it('snapshot at 390x844, fraction 0.85 (sighting)', () => {
+  it('snapshot at 390x844, fraction 0.85 (sighting full)', () => {
     const layout = overlayLayout(container, 'sighting', FRACTION);
-    const svg = renderOverlaySvg(layout, 'sighting', container);
+    const svg = renderOverlaySvg(layout, 'sighting', container, 'full');
     expect(svg).toMatchSnapshot();
   });
 });

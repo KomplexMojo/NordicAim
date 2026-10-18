@@ -12,8 +12,7 @@ interface QuickStartButtonProps {
   className?: string;
 }
 
-/** capture-overlay.md §1.1: opens today's local session (creating it once), reading "Start & capture" or
- * "Capture (today's session)". */
+/** capture-overlay.md §1.1 / REV-162: always starts a fresh session for today and opens its camera ("Capture"). */
 export function QuickStartButton({ sessions, className }: QuickStartButtonProps) {
   const { ctx } = useServices();
   const navigate = useNavigate();

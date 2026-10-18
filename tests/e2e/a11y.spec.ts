@@ -87,6 +87,6 @@ test('a11y: settings, patterns, review, capture (M-B #27)', async ({ page }) => 
   await assertNoSevereViolations(page);
 
   await page.goto(`/#/sessions/${sessionId}/capture?fakeCamera=precision`);
-  await expect(page.getByRole('radio', { name: 'Precision prone', exact: true })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('radio', { name: 'Prone', exact: true })).toBeVisible({ timeout: 15000 });
   await assertNoSevereViolations(page);
 });

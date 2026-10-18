@@ -7,14 +7,9 @@ import { openTestDb } from '../../helpers/db';
 import { makeTestContext } from '../../helpers/fixtures';
 
 describe('quickStartLabel', () => {
-  it('reads "Start & capture" when no session has today\'s local date', () => {
+  it('always reads "Capture" (REV-162)', () => {
     const now = new Date('2026-09-06T12:00:00.000Z');
-    const label = quickStartLabel([], now);
-    expect(label).toBe('Start & capture');
-  });
-
-  it('reads "Capture (today\'s session)" when a session with sessionDate = today already exists', () => {
-    const now = new Date('2026-09-06T12:00:00.000Z');
+    expect(quickStartLabel([], now)).toBe('Capture');
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const sessions = [
       {
@@ -31,12 +26,12 @@ describe('quickStartLabel', () => {
         notes: '',
       },
     ];
-    expect(quickStartLabel(sessions, now)).toBe("Capture (today's session)");
+    expect(quickStartLabel(sessions, now)).toBe('Capture');
   });
 });
 
 describe('quickStart', () => {
-  it('creates a session on the first call, then reuses it on later calls the same day', async () => {
+  it('creates a new session every call, with (2) when today already has one (REV-162)', async () => {
     const db = await openTestDb();
     const ctx = makeTestContext(db, { nowIso: '2026-09-06T15:00:00.000Z' });
     const paths: string[] = [];
@@ -45,10 +40,11 @@ describe('quickStart', () => {
     const first = await quickStart(ctx, navigate);
     const second = await quickStart(ctx, navigate);
 
-    expect(second.id).toBe(first.id);
+    expect(second.id).not.toBe(first.id);
+    expect(second.name).toBe(`${first.name} (2)`);
     const all = await listSessions(ctx);
-    expect(all).toHaveLength(1);
-    expect(paths).toEqual([`/sessions/${first.id}/capture`, `/sessions/${first.id}/capture`]);
+    expect(all).toHaveLength(2);
+    expect(paths).toEqual([`/sessions/${first.id}/capture`, `/sessions/${second.id}/capture`]);
     db.close();
   });
 
@@ -77,7 +73,7 @@ describe('newSessionName / createNewSession (issue #107)', () => {
     expect(newSessionName([named('Session 2026-10-11')], '2026-10-12')).toBe('Session 2026-10-12');
   });
 
-  it('always creates a fresh session, even when today already has one; quick start then opens the newest', async () => {
+  it('always creates a fresh session, even when today already has one', async () => {
     const db = await openTestDb();
     const ctx = makeTestContext(db, { nowIso: '2026-09-06T15:00:00.000Z' });
     const first = await quickStart(ctx, () => {});
@@ -88,6 +84,9 @@ describe('newSessionName / createNewSession (issue #107)', () => {
     expect(fresh.sessionDate).toBe(first.sessionDate);
     expect(fresh.name).toBe(`${first.name} (2)`);
     expect(await listSessions(ctx)).toHaveLength(2);
-    expect((await quickStart(later, () => {})).id).toBe(fresh.id);
+    const third = await quickStart(later, () => {});
+    expect(third.id).not.toBe(fresh.id);
+    expect(third.name).toBe(`${first.name} (3)`);
+    db.close();
   });
 });

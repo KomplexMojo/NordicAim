@@ -53,7 +53,7 @@ export function HomePage() {
 
       <UpdateBanner />
 
-      {/* Issue #107: Capture opens today's session on the camera; New always starts a fresh session from the photo library. */}
+      {/* REV-162: Capture and Import each mint a fresh session for today (with (2)/(3) when needed). */}
       <div className="flex gap-2">
         <QuickStartButton sessions={sessions ?? []} className="h-14 min-w-0 flex-1 text-base" />
         <NewSessionButton className="h-14 shrink-0" />

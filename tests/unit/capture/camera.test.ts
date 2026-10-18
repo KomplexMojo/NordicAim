@@ -125,11 +125,13 @@ describe('acquireWakeLock', () => {
 describe('messages', () => {
   it('uses the spec label chips (capture-overlay §1.3)', () => {
     expect(OVERLAY_LABELS.sighting).toBe('Align the dark disc with the thick circle');
-    expect(OVERLAY_LABELS.precision).toBe('Align the black aiming mark with the thick circle');
+    expect(OVERLAY_LABELS.precision).toBe("Line the paper's outer ring up with this circle.");
   });
-  it('has a message for every camera error', () => {
+  it('has a message for every camera error pointing at Home Import (REV-162)', () => {
     for (const code of ['insecure_context', 'permission_denied', 'no_camera', 'camera_error'] as const) {
-      expect(cameraErrorMessage(code).length).toBeGreaterThan(0);
+      const message = cameraErrorMessage(code);
+      expect(message.length).toBeGreaterThan(0);
+      expect(message).toMatch(/Import on Home|HTTPS/);
     }
   });
 });
