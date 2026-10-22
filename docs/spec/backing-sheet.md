@@ -224,9 +224,11 @@ one (hue test), otherwise the neutral-chroma test of §4. A5 and Adjust's **Re-a
 moment they run (REV-48):
 1. **Colour mask:** a pixel is backing-coloured when its circular hue distance to `hueDeg` is ≤ `hueSpreadDeg + BACKING_HUE_MARGIN_DEG`
    (start **25°** — backing seen through a hole is shaded, and shaded orange reads redder than the card; 12° missed a shaded hole
-   on IMG_5193). **No minimum brightness** is applied: a shaded hole's backing measured value 0.19 at saturation 0.86 and `sat ≥ max(0.25, 0.7 × satP10)`, within the searched sheet area (REV-36). Then apply a **3×3 morphological
-   opening** to the mask: printed-edge colour fringes are 1–2 px thin and vanish, while the coloured core of a hole survives
-   (measured on IMG_5191: 1,517 components → exactly 8).
+   on IMG_5193), `sat ≥ max(0.25, 0.7 × satP10)`, and **`val ≥ BACKING_VAL_FLOOR` (0.25, same as the card's `CARD_VAL_MIN`)**
+   (REV-163 / issue #106: without the value floor, warm-lit black ink saturates as a dark olive and floods Adjust with false
+   shots; the owner's 2026-10-11 backup's real holes stayed well above 0.25). Within the searched sheet area (REV-36). Then apply a
+   **3×3 morphological opening** to the mask: printed-edge colour fringes are 1–2 px thin and vanish, while the coloured core of a
+   hole survives (measured on IMG_5191: 1,517 components → exactly 8).
 2. **Components** (8-neighbour), dropped below `BACKING_MIN_AREA_FRACTION × hole area` (start 0.08; the smallest real hole was
    0.11 of a hole's area on IMG_5189 and 0.11 on IMG_5191). After the opening this is a guard, not the main filter.
 3. **Merge** components whose centroids are within `BACKING_MERGE_FRACTION × hole diameter` (start **0.6**, i.e. 3.4 mm for .22 LR);
@@ -243,7 +245,8 @@ moment they run (REV-48):
 6. **Fallback:** if the colour path yields **zero** blobs, run the standard detector (M16) instead and add warning
    `backing-colour-not-found`. The analysis records `pipeline.detection = { method: 'colour' | 'standard', fallbackReason: string | null }`.
 7. Reconciliation to the declared rounds (REV-39, geometry-scoring §8.3 — every colour-path hole is confident, so extra holes
-   reject the target rather than being capped) and manual-shot protection (analysis-pipeline §8) apply.
+   reject the target rather than being capped; REV-164 clears auto shots on that reject) and manual-shot protection
+   (analysis-pipeline §8) apply.
 
 **Changing the backing** (mode, card or colour) in Settings **re-runs nothing** (REV-48, issue #2 default). It applies to photos
 analyzed from then on and to any photo the user re-analyzes. REV-38's rule — changing a session's backing set its photos' Stage A

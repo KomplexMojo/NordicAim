@@ -270,7 +270,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
     await runStageB(ctx, photoId, stubRenderTools());
 
     const analysis = await getAnalysisRecord(ctx.db, photoId);
-    expect(analysis?.shots).toHaveLength(11);
+    expect(analysis?.shots).toEqual([]);
     expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
     const photo = await getPhotoRecord(ctx.db, photoId);
     expect(photo?.status).toBe('needs-attention');
@@ -428,7 +428,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
         overlapRatio: ratioOf(i + 1),
       }));
 
-    it('15 clear holes on 10 rounds: rejected — no score, no diagrams, needs-attention, every shot kept', async () => {
+    it('15 clear holes on 10 rounds: rejected — no score, no diagrams, needs-attention, auto shots cleared (REV-164)', async () => {
       const { ctx, photoId } = await seed({ shots: holes(15), detection: COLOUR });
       await putBlob(ctx.db, diagramCellSvgKey(photoId), {
         bytes: new ArrayBuffer(1),
@@ -442,7 +442,7 @@ describe('runStageB (analysis-pipeline §2 Stage B, §4, §5)', () => {
       const analysis = await getAnalysisRecord(ctx.db, photoId);
       expect(analysis?.pipeline.stageB).toBe('done');
       expect(analysis?.computed).toBeNull();
-      expect(analysis?.shots).toHaveLength(15);
+      expect(analysis?.shots).toEqual([]);
       expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
       expect(await getBlob(ctx.db, diagramCellSvgKey(photoId))).toBeNull();
 

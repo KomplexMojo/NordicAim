@@ -1,7 +1,7 @@
 // REV-39 (M20): declared rounds are fact. `reconcileRounds` reconciles the holes detection found in
 // one subset against the rounds the shooter declared for it, before anything is scored:
 //
-//   * clearly more holes than rounds  -> the subset is REJECTED (no score; the shots are kept);
+//   * clearly more holes than rounds  -> the subset is REJECTED (no score; auto shots cleared, REV-164);
 //   * a few low-confidence extras     -> REV-28's cap (keep the confident ones, fill with the best);
 //   * fewer holes than rounds         -> double punches first, then the rest are MISSES;
 //   * exactly the declared rounds     -> nothing inferred, overlap evidence ignored.
@@ -80,7 +80,10 @@ export interface Reconciliation {
   outcome: ReconcileOutcome;
   /** How many found holes are confident (step 2). */
   confident: number;
-  /** The holes that are scored, in input order. On `rejected` every hole is kept (for Adjust). */
+  /**
+   * The holes that are scored, in input order. On `rejected` every found hole is listed here for the
+   * `holesFound` count; `reconcileShots` clears the stored auto shots (REV-164).
+   */
   kept: FoundHole[];
   /** Step 4: holes dropped by the cap. */
   dropped: FoundHole[];
@@ -126,7 +129,7 @@ export function reconcileRounds(found: FoundHole[], declared: number, evidence: 
   const confident = found.filter((hole) => hole.confident).length;
   const base = { confident, dropped: [] as FoundHole[], extraShots: {} as Record<string, number>, missesAssumed: 0 };
 
-  // Step 3: clearly more holes than rounds. Nothing is scored, nothing is discarded.
+  // Step 3: clearly more holes than rounds. Nothing is scored; `reconcileShots` clears auto shots (REV-164).
   if (confident > budget + REJECT_MARGIN) return { ...base, outcome: 'rejected', kept: [...found] };
 
   // Step 4: a few low-confidence extras. Keep every confident hole, fill with the best of the rest.

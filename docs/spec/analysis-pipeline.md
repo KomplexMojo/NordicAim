@@ -240,7 +240,7 @@ Rules, first match sets the status. Pipeline warnings are **always appended** to
 | `image-blurry` | This photo looks blurry, so results may be less accurate. |
 | `template-mismatch` | This looks like a `<sighting/precision>` target — check the template. |
 | `backing-colour-not-found` | No backing colour showed through the holes, so standard detection was used. Check the backing card or lighting. |
-| `too-many-holes` | Found `<N>` clear holes but you entered `<D>` rounds. This may be the wrong target or the wrong round count. |
+| `too-many-holes` | When `N` is known: Found `<N>` clear holes but you entered `<D>` rounds. Automatic shots were cleared — add the real ones in Adjust. This may be the wrong target or the wrong round count. After REV-164 clears auto shots, a later read often has `N = 0` and says: Detection disagreed with your round count (too many clear holes, or none). Automatic shots were cleared — add the real ones in Adjust. |
 | `double-punch-assumed` | `<N>` hole(s) look like two shots through the same hole. |
 | `rounds-scored-as-miss` | `<N>` round(s) weren't found and are scored as misses. |
 | `sheet-markers-disagree` | The sheet's corner markers don't match the alignment — check the rings line up in Adjust. |
