@@ -43,7 +43,11 @@ export interface RejectedSubset {
 }
 
 export interface ShotsReconciliation {
-  /** The shots to store and score. On a rejection, every shot, with nothing inferred. */
+  /**
+   * The shots to store and score. On a rejection (REV-164), auto shots are cleared and only the
+   * owner's manual shots remain — better to place a few real holes than to delete dozens of garbage
+   * markers in Adjust.
+   */
   shots: Shot[];
   /** Non-empty when the target is rejected (step 3); one entry per rejected subset. */
   rejected: RejectedSubset[];
@@ -55,6 +59,11 @@ export interface ShotsReconciliation {
   missesAssumed: number;
   /** Reconciliation's pipeline warnings, in analysis-pipeline §4 order. */
   warnings: ReconcileWarning[];
+}
+
+/** REV-164: keep the owner's manual shots; drop every auto candidate on a `too-many-holes` reject. */
+function withoutAutoShots(shots: Shot[]): Shot[] {
+  return shots.filter((shot) => shot.source === 'manual');
 }
 
 export interface ReconcileShotsInput {
@@ -122,6 +131,7 @@ export function reconcileShots(input: ReconcileShotsInput): ShotsReconciliation 
   // detector level; flagged as-is per the owner's instruction rather than guessed around. Checked
   // independently of any subset's declared rounds, and only while every shot is still `auto`: a manual
   // edit is the owner's own confirmed count and is never overridden (analysis-pipeline §8).
+  // REV-164: clear the auto flood so Adjust starts empty (add real holes) instead of deleting dozens.
   if (!ownerEdited && (shots.length === 0 || shots.length > maxPlausibleHoles)) {
     const positionedRaw = assignPositions(expandUnits(shots), categorization);
     const rejected: RejectedSubset[] = subsetKeys(categorization).map((key) => ({
@@ -129,7 +139,14 @@ export function reconcileShots(input: ReconcileShotsInput): ShotsReconciliation 
       holesFound: positionedRaw.filter((u) => u.position === key).length,
       declared: declaredFor(categorization),
     }));
-    return { shots, rejected, dropped: [], doublePunches: 0, missesAssumed: 0, warnings: ['too-many-holes'] };
+    return {
+      shots: withoutAutoShots(shots),
+      rejected,
+      dropped: [],
+      doublePunches: 0,
+      missesAssumed: 0,
+      warnings: ['too-many-holes'],
+    };
   }
 
   // Which subset each unit falls in (§7), before anything is inferred.
@@ -166,8 +183,16 @@ export function reconcileShots(input: ReconcileShotsInput): ShotsReconciliation 
     .filter((s) => s.result.outcome === 'rejected')
     .map((s) => ({ position: s.key, holesFound: s.result.confident + s.fixed, declared: s.declared }));
   if (rejected.length > 0) {
-    // Step 3: withhold the score, keep every shot so the owner can inspect them in Adjust.
-    return { shots, rejected, dropped: [], doublePunches: 0, missesAssumed: 0, warnings: ['too-many-holes'] };
+    // Step 3 / REV-164: withhold the score; clear auto shots so Adjust is not buried in garbage.
+    // Manual shots stay (analysis-pipeline §8). `holesFound` above still names what detection produced.
+    return {
+      shots: withoutAutoShots(shots),
+      rejected,
+      dropped: [],
+      doublePunches: 0,
+      missesAssumed: 0,
+      warnings: ['too-many-holes'],
+    };
   }
 
   const droppedIds = new Set(perSubset.flatMap((s) => s.result.dropped.map((hole) => hole.id)));

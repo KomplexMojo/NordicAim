@@ -45,9 +45,15 @@ describe('reasonMessage', () => {
 });
 
 describe('reasonMessage: REV-39 reasons (M20, analysis-pipeline §4)', () => {
-  it('too-many-holes names the clear holes and the declared rounds', () => {
+  it('too-many-holes names the clear holes and the declared rounds when known (REV-164)', () => {
     expect(reasonMessage('too-many-holes', { holesFound: 15, rejectedDeclared: 10 })).toBe(
-      'Found 15 clear holes but you entered 10 rounds. This may be the wrong target or the wrong round count.',
+      'Found 15 clear holes but you entered 10 rounds. Automatic shots were cleared — add the real ones in Adjust. This may be the wrong target or the wrong round count.',
+    );
+  });
+
+  it('too-many-holes without a count (shots already cleared) still points at Adjust', () => {
+    expect(reasonMessage('too-many-holes', { holesFound: 0, rejectedDeclared: 10 })).toBe(
+      'Detection disagreed with your round count (too many clear holes, or none). Automatic shots were cleared — add the real ones in Adjust.',
     );
   });
 

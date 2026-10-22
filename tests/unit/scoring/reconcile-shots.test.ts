@@ -58,11 +58,11 @@ function run(shots: Shot[], categorization = PRONE_10, method: DetectionMethod =
 }
 
 describe('reconcileShots: the three outcomes on stored shots', () => {
-  it('rejected: every shot kept as detected, nothing inferred, warning too-many-holes, no score', () => {
+  it('rejected: auto shots cleared (REV-164), holesFound still names the flood, warning too-many-holes, no score', () => {
     const shots = autos(15);
     const r = run(shots);
     expect(r.rejected).toEqual([{ position: 'prone', holesFound: 15, declared: 10 }]);
-    expect(r.shots).toEqual(shots);
+    expect(r.shots).toEqual([]);
     expect(r.warnings).toEqual(['too-many-holes']);
     expect(r.missesAssumed).toBe(0);
   });
@@ -154,8 +154,12 @@ describe('reconcileShots: owner overrides win (analysis-pipeline §8, M20 step 8
   });
 
   it("the owner's own units count toward rejection: 9 manual + 2 confident auto on 10 rounds is too many", () => {
-    const shots = [...Array.from({ length: 9 }, (_, i) => manual(`m-${i}`, -i * 3)), ...autos(2)];
-    expect(run(shots).rejected).toEqual([{ position: 'prone', holesFound: 11, declared: 10 }]);
+    const manuals = Array.from({ length: 9 }, (_, i) => manual(`m-${i}`, -i * 3));
+    const shots = [...manuals, ...autos(2)];
+    const r = run(shots);
+    expect(r.rejected).toEqual([{ position: 'prone', holesFound: 11, declared: 10 }]);
+    // REV-164: auto extras are cleared; the owner's manuals stay.
+    expect(r.shots).toEqual(manuals);
   });
 
   it("the owner's over-count alone is not a rejection (it is `too-many-shots`, §4 rule 7)", () => {
@@ -210,7 +214,7 @@ describe('reconcileShots: maxPlausibleHoles safety net (owner instruction, 2026-
     const shots = autos(6);
     const r = reconcileShots({ shots, categorization: PRONE_10, method: 'colour', maxPlausibleHoles: 5 });
     expect(r.rejected).toEqual([{ position: 'prone', holesFound: 6, declared: 10 }]);
-    expect(r.shots).toEqual(shots);
+    expect(r.shots).toEqual([]);
     expect(r.warnings).toEqual(['too-many-holes']);
   });
 

@@ -43,10 +43,17 @@ export function reasonMessage(reason: Reason, ctx: ReasonMessageContext = {}): s
     case 'backing-colour-not-found':
       return 'No backing colour showed through the holes, so standard detection was used. Check the backing card or lighting.';
     case 'too-many-holes': {
-      return (
-        `Found ${ctx.holesFound ?? 0} clear holes but you entered ${ctx.rejectedDeclared ?? ctx.declared ?? 0} rounds. ` +
-        'This may be the wrong target or the wrong round count.'
-      );
+      // REV-164 clears auto shots on reject, so `holesFound` is often 0 when the message is shown
+      // later from stored shots — still name N when the count is known (same reconcile pass / tests).
+      const n = ctx.holesFound ?? 0;
+      const d = ctx.rejectedDeclared ?? ctx.declared ?? 0;
+      if (n > 0) {
+        return (
+          `Found ${n} clear holes but you entered ${d} rounds. ` +
+          'Automatic shots were cleared — add the real ones in Adjust. This may be the wrong target or the wrong round count.'
+        );
+      }
+      return 'Detection disagreed with your round count (too many clear holes, or none). Automatic shots were cleared — add the real ones in Adjust.';
     }
     case 'double-punch-assumed':
       return `${ctx.doublePunches ?? 0} hole(s) look like two shots through the same hole.`;

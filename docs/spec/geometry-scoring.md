@@ -279,8 +279,9 @@ inferred rounds are removed and re-decided); once any shot is `manual`, nothing 
 | `DOUBLE_PUNCH_MIN_RATIO` | 1.8 | colour path: coloured area / the photo's median hole area |
 | `DOUBLE_PUNCH_MIN_RATIO_STANDARD` | none | measured, M20: the blob area does not separate doubles, so the standard path infers none |
 
-1. `confident > declared + REJECT_MARGIN` → **rejected**: nothing is scored (`computed` null), every shot is kept, warning
-   `too-many-holes`.
+1. `confident > declared + REJECT_MARGIN` → **rejected**: nothing is scored (`computed` null), **auto shots are cleared** and
+   manual shots kept (REV-164 — prefer adding real holes in Adjust over deleting a detector flood), warning `too-many-holes`.
+   The same clear applies when raw holes exceed Settings' `maxPlausibleHoles` (default 10).
 2. else `found > declared` → **cap**: keep every confident hole, fill up to `declared` with the best others (REV-28's ranking), drop
    the rest, warning `extra-candidates-dropped`.
 3. `found = declared` → nothing inferred; overlap evidence is ignored.

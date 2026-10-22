@@ -107,8 +107,9 @@ export function isValidHoleDiameterMm(mm: number): boolean {
 /**
  * Owner instruction, 2026-09-26: a precision target is always 10 shots, so more raw holes than this on
  * one target is a detector malfunction (a hole-size or calibration bug flooding it with false
- * candidates), not a shooting result — reject the whole target outright rather than score it. Editable
- * in Settings so a discipline whose round count differs isn't stuck with the precision default.
+ * candidates), not a shooting result — reject the whole target outright rather than score it. REV-164:
+ * auto shots are cleared on that reject (Adjust starts empty). Editable in Settings so a discipline
+ * whose round count differs isn't stuck with the precision default.
  */
 export const DEFAULT_MAX_PLAUSIBLE_HOLES = 10;
 export const MIN_MAX_PLAUSIBLE_HOLES = 5;

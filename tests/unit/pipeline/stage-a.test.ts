@@ -406,7 +406,8 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     await runStageA(ctx, photoId, api, imageTools);
 
     const analysis = await getAnalysisRecord(ctx.db, photoId);
-    expect(analysis?.shots).toHaveLength(12);
+    // REV-164: the flood is not stored for Adjust to delete one by one.
+    expect(analysis?.shots).toEqual([]);
     expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
   });
 
@@ -432,7 +433,7 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     expect(analysis?.pipeline.warnings).toEqual(['rounds-scored-as-miss']);
   });
 
-  it('rejects clearly more holes than rounds on the colour path, keeping every shot (REV-39)', async () => {
+  it('rejects clearly more holes than rounds on the colour path, clearing auto shots (REV-39 / REV-164)', async () => {
     const { ctx, photoId } = await seed();
     const fifteen: Shot[] = Array.from({ length: 15 }, (_, i) => ({ ...DETECTED, id: `auto-${i + 1}`, xMm: i * 3, confidence: null }));
     const { api } = stubCv(review({ detection }), fifteen, { method: 'colour', backing: 'forced', fallbackReason: null });
@@ -440,7 +441,7 @@ describe('runStageA A5: shot detection (analysis-pipeline §2 A5, §8)', () => {
     await runStageA(ctx, photoId, api, imageTools);
 
     const analysis = await getAnalysisRecord(ctx.db, photoId);
-    expect(analysis?.shots).toHaveLength(15);
+    expect(analysis?.shots).toEqual([]);
     expect(analysis?.pipeline.warnings).toEqual(['too-many-holes']);
   });
 
