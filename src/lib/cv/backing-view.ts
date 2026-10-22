@@ -11,6 +11,7 @@ import {
   BACKING_HUE_MARGIN_DEG,
   BACKING_SAT_FLOOR,
   BACKING_SAT_P10_FACTOR,
+  BACKING_VAL_FLOOR,
   DETECTION_PX_PER_MM,
   NEUTRAL_CHROMA_MIN,
   SHEET_SEARCH_CAP_MM,
@@ -22,6 +23,21 @@ import { findSheet } from './sheet';
 
 import { type BackingColourReport, type BackingDetectOptions, blobsFromMask } from './backing-blobs';
 import { hueDistance, quantile, rgbToHsv, whiteBalanceGains } from './backing-hue';
+
+/** HSV of one pixel, as {@link rgbToHsv} returns it. */
+export type HsvPixel = { hueDeg: number; sat: number; val: number };
+
+/**
+ * backing-sheet.md §5.1 / REV-163: a pixel matches the card's hue rule (hue window, sat floor, value
+ * floor). Exported so unit tests can pin the dark-ink rejection without an OpenCV warp.
+ */
+export function matchesBackingHue(hsv: HsvPixel, colour: ColourSignature): boolean {
+  const limit = colour.hueSpreadDeg + BACKING_HUE_MARGIN_DEG;
+  const satMin = Math.max(BACKING_SAT_FLOOR, BACKING_SAT_P10_FACTOR * colour.satP10);
+  if (hsv.val < BACKING_VAL_FLOOR) return false;
+  if (hsv.sat < satMin) return false;
+  return hueDistance(hsv.hueDeg, colour.hueDeg) <= limit;
+}
 
 /** The rectified colour view plus the searched sheet area (REV-36) both §4a and §5 work over. */
 interface BackingView {
@@ -75,16 +91,13 @@ export function withBackingView<T>(
   }
 }
 
-/** §5.1: the hue rule, from a card's signature. No minimum brightness is applied. */
+/** §5.1 / REV-163: the hue rule from a card's signature, including the value floor. */
 function hueMask(rgb: Uint8Array, searchable: Uint8Array, colour: ColourSignature): Uint8Array {
-  const limit = colour.hueSpreadDeg + BACKING_HUE_MARGIN_DEG;
-  const satMin = Math.max(BACKING_SAT_FLOOR, BACKING_SAT_P10_FACTOR * colour.satP10);
   const mask = new Uint8Array(searchable.length);
   for (let i = 0; i < searchable.length; i += 1) {
     if (searchable[i] !== 1) continue;
     const hsv = rgbToHsv(rgb[i * 3] as number, rgb[i * 3 + 1] as number, rgb[i * 3 + 2] as number);
-    if (hsv.sat < satMin) continue;
-    if (hueDistance(hsv.hueDeg, colour.hueDeg) > limit) continue;
+    if (!matchesBackingHue(hsv, colour)) continue;
     mask[i] = 1;
   }
   return mask;

@@ -165,8 +165,15 @@ export const NEUTRAL_CHROMA_MIN = 40;
 export const BACKING_HUE_MARGIN_DEG = 25;
 /** §5.1: and at this saturation or above — the floor... */
 export const BACKING_SAT_FLOOR = 0.25;
-/** ...or this multiple of the card's `satP10`, whichever is larger. No minimum brightness is applied. */
+/** ...or this multiple of the card's `satP10`, whichever is larger. */
 export const BACKING_SAT_P10_FACTOR = 0.7;
+/**
+ * §5.1 / REV-163 (issue #106): HSV value floor on the hue mask — the same floor the card measurement
+ * uses (`CARD_VAL_MIN`). Without it, warm-lit black ink saturates as a dark olive and passes as
+ * backing. Real holes on the owner's 2026-10-11 backup stayed well above this; the production gate
+ * (`pnpm cv:eval`) must still pass on the owner's Mac.
+ */
+export const BACKING_VAL_FLOOR = CARD_VAL_MIN;
 /** §5.1: the morphological opening (px, on the rectified square) that removes printed-edge fringes. */
 export const BACKING_OPEN_PX = 3;
 /** §5.2: a component below this fraction of one hole's area is dropped. */

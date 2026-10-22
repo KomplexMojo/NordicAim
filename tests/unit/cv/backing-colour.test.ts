@@ -23,9 +23,10 @@ import {
   detectShotsWithBacking,
   estimateBackingColour,
   hueDistance,
+  matchesBackingHue,
   rgbToHsv,
 } from '@/lib/cv/backing-colour';
-import { AUTO_MIN_CHROMA } from '@/lib/cv/constants';
+import { AUTO_MIN_CHROMA, BACKING_VAL_FLOOR } from '@/lib/cv/constants';
 import { detectShotCandidates } from '@/lib/cv/holes';
 import type { OpenCv } from '@/lib/cv/opencv';
 import { outerRadiusMm } from '@/lib/cv/rectify';
@@ -120,9 +121,34 @@ describe('backingColourFromCard (backing-sheet.md §4)', () => {
     const signature = backingColourFromCard(shadowed);
     expect(signature).not.toBeNull();
     expect(hueDistance(signature!.hueDeg, PINK_HUE)).toBeLessThanOrEqual(5);
-    // The shadowed half drags the 10th-percentile brightness down, which is why §5.1 applies no
-    // minimum brightness to the photo.
+    // The shadowed half drags the 10th-percentile brightness down; §5.1 still applies BACKING_VAL_FLOOR
+    // per pixel (REV-163) so warm-lit black ink does not pass as backing.
     expect(signature!.valP10).toBeLessThan(0.7);
+  });
+});
+
+describe('matchesBackingHue (backing-sheet.md §5.1 / REV-163, issue #106)', () => {
+  /** Lime card signature from the owner's 2026-10-11 backup (issue #106). */
+  const LIME: ColourSignature = {
+    hueDeg: 75.6,
+    hueSpreadDeg: 5.6,
+    satP10: 0.59,
+    valP10: 0.6,
+    samples: 10_000,
+  };
+
+  it('keeps a bright lime hole that matches the card', () => {
+    // Issue #106 sample: real hole RGB (160, 204, 67) → val ~0.80.
+    expect(matchesBackingHue(rgbToHsv(160, 204, 67), LIME)).toBe(true);
+  });
+
+  it('rejects a dark warm-tinted blob whose hue is inside the window (black ink under warm light)', () => {
+    // Issue #106 sample: false hole RGB (17, 20, 3) → hue ~71°, sat ~0.85, val ~0.08.
+    const dark = rgbToHsv(17, 20, 3);
+    expect(dark.val).toBeLessThan(BACKING_VAL_FLOOR);
+    expect(matchesBackingHue(dark, LIME)).toBe(false);
+    expect(matchesBackingHue(rgbToHsv(43, 37, 10), LIME)).toBe(false);
+    expect(matchesBackingHue(rgbToHsv(57, 53, 17), LIME)).toBe(false);
   });
 });
 

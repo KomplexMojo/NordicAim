@@ -29,7 +29,8 @@ import { chromaMask, detectByBackingColour, reportFromView, withBackingView } fr
 export { rgbToHsv, hueDelta, hueDistance, hueStatistics, backingColourFromCard, whiteBalanceGains } from './backing-hue';
 export type { Hsv } from './backing-hue';
 export type { BackingBlob, BackingRule, BackingColourReport, BackingDetectOptions } from './backing-blobs';
-export { detectByBackingColour } from './backing-view';
+export { detectByBackingColour, matchesBackingHue } from './backing-view';
+export type { HsvPixel } from './backing-view';
 
 /**
  * backing-sheet.md §5.4: each merged blob is one shot with `multiplicity: 1` (REV-28 still holds).
