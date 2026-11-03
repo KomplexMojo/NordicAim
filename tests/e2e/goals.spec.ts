@@ -318,3 +318,27 @@ test('a session is stamped against the goals set when it was created: results, t
   await expect(page.getByTestId('goal-score-status')).toHaveAttribute('data-hit', 'pending');
   await expect(page.getByTestId('goal-score-met')).toHaveCount(1);
 });
+
+test('the coach image (REV-163): shown once a goal is set, previewed, then shared as one PNG', async ({ page }) => {
+  // The download branch of shareArtifact, as in analysis.spec.ts: no share sheet to dismiss in an automated run.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'canShare', { value: undefined, configurable: true });
+  });
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  await page.goto('/#/goals');
+  await expect(page.getByTestId('goals-image-card')).toHaveCount(0);
+  await page.getByTestId('goal-score-down').click();
+  await expect(page.getByTestId('goal-score-value')).toHaveText(/^Goal: \d+%$/);
+
+  await page.getByTestId('make-goals-image').click();
+  const preview = page.getByTestId('goals-image-preview');
+  await expect(preview).toBeVisible({ timeout: 60_000 });
+  expect(await preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1440);
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share-goals-image').click()]);
+  expect(download.suggestedFilename()).toMatch(/^nordicaim-goals-\d{4}-\d{2}-\d{2}\.png$/);
+});

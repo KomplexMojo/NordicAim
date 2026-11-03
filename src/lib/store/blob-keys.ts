@@ -52,3 +52,19 @@ export function trendsPrefix(id: string): string {
   return `trends:${id}:`;
 }
 export const TRENDS_KEY_PREFIX = 'trends:';
+
+/**
+ * REV-163: the three coach images, each kind under its own prefix so each keeps its own newest three: the Analysis one
+ * (`trends:`, above), the Patterns one (patterns.md §7) and the Goals one (goals.md §9).
+ */
+export type CoachImageKind = 'trends' | 'patterns' | 'goals';
+export const COACH_KEY_PREFIX: Record<CoachImageKind, string> = { trends: TRENDS_KEY_PREFIX, patterns: 'patterns-coach:', goals: 'goals-coach:' };
+export function coachPngKey(kind: CoachImageKind, id: string): string {
+  return `${COACH_KEY_PREFIX[kind]}${id}:png`;
+}
+export function coachJsonKey(kind: CoachImageKind, id: string): string {
+  return `${COACH_KEY_PREFIX[kind]}${id}:json`;
+}
+export function coachPrefix(kind: CoachImageKind, id: string): string {
+  return `${COACH_KEY_PREFIX[kind]}${id}:`;
+}

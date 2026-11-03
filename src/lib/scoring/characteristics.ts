@@ -84,6 +84,27 @@ function elongatedShape(axisDeg: number): ElongatedShape {
   return 'elongated (rising to the sling side)';
 }
 
+/** Every issue rule's id, in the order the rules run (shooting-issues.md §3), so a list of findings can be kept in rule order. */
+export const ISSUE_IDS = [
+  'tight',
+  'scattered',
+  'zero-off',
+  'fundamentals',
+  'sight-alignment',
+  'position-change',
+  'wind-light',
+  'sling-elbow-in',
+  'trigger-elbow-out',
+  'sling-tight',
+  'trigger-finger',
+  'sling-loose',
+  'breath-timing',
+  'butt-low',
+  'drift-down',
+  'natural-alignment',
+  'flinch',
+] as const;
+
 export interface IssueFinding {
   id: string;
   /** Role-named, never left/right. */
