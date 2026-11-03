@@ -135,7 +135,8 @@ always better. It uses every shot, not just the widest two, so it is steadier fr
 - **Stored** as blobs `trends:<id>:png` and `trends:<id>:json`. The sidecar holds the range, session count, renderer
   version, sha256 and the stamped payload; it has no image data and no GPS. The newest **3** are kept
   (`KEEP_TRENDS_IMAGES`), and backups copy them like every blob. `TrendsArtifact` is branded only in
-  `composite/trends-build.ts`.
+  `composite/coach-store.ts` (REV-163), which also stores the Patterns and Goals coach images (`patterns.md` §7,
+  `goals.md` §9) under their own prefixes, each kind keeping its own newest 3. The header and foot are `render/coach-frame.ts`.
 - **Stamp:** with a key set, the image is stamped over `buildTrendsPayload` (`provenance/payload-trends.ts`): the
   athlete, the range, the release, the time, and every session value per view and metric (REV-131: the image draws their
   averages, which follow from them). `#/verify` does not yet recognise

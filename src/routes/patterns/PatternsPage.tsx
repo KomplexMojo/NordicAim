@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 
 import { ObservedPatterns } from '@/components/results/ObservedPatterns';
 import { PatternHeader } from '@/components/patterns/PatternHeader';
+import { PatternsImageCard } from '@/components/patterns/PatternsImageCard';
 import { RangeShowing } from '@/components/patterns/RangeShowing';
 import { TargetLinks } from '@/components/patterns/TargetLinks';
 import { SeasonFilter } from '@/components/patterns/SeasonFilter';
@@ -174,6 +175,10 @@ export function PatternsPage() {
               </p>
             )}
           </section>
+          {/* REV-163: a new card per range and season, so a preview never outlives the filters it was made for. */}
+          {value !== undefined && Object.values(value.data.points).some((p) => p.length > 0) && (
+            <PatternsImageCard key={`${range}-${season}`} range={range} season={season} />
+          )}
           </div>
         </div>
       )}

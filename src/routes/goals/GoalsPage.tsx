@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { GoalChart } from '@/components/goals/GoalChart';
+import { GoalsImageCard } from '@/components/goals/GoalsImageCard';
 import { SeasonFilter } from '@/components/patterns/SeasonFilter';
 import { ViewSwitch } from '@/components/patterns/ViewRangeControls';
 import { useLiveQuery } from '@/lib/app/use-live-query';
 import { useServices } from '@/lib/app/services';
 import { GoalView } from '@/lib/domain/goals';
+import { hasAnyGoal } from '@/lib/goals/coach';
 import { goalMetrics, goalTrend } from '@/lib/goals/metrics';
 import { parseSeasonFilter, SEASON_LABEL, type SeasonFilter as SeasonFilterValue } from '@/lib/domain/season';
 import { PATTERN_VIEW_LABEL, filterBySeason } from '@/lib/patterns/collect';
@@ -82,6 +84,8 @@ export function GoalsPage() {
               ))}
             </div>
           )}
+          {/* REV-163: the coach image covers both positions; a new card per season, so a preview never outlives its filter. */}
+          {entries !== undefined && hasAnyGoal(entries) && <GoalsImageCard key={`${season}-${refreshKey}`} season={season} />}
         </>
       )}
     </main>

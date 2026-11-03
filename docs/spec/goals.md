@@ -236,3 +236,38 @@ session".
 - Nothing is stored: the checks are worked out on read, and the summary image is rebuilt like any other change
   (`COMPOSITE_RENDERER_VERSION` 20).
 
+## 9. The coach image: *Goal progress* (REV-163, owner 2026-11-03)
+
+> "The "Coach Image" for goals should assess overall progress towards meeting goals."
+
+- **From:** a **Coach image** card under the charts (`components/goals/GoalsImageCard.tsx`), shown once any goal is set for a
+  view and metric the screen offers (`hasAnyGoal`; entries from before the narrowing don't count). Two taps, as on Analysis.
+  The card resets when the season changes or a goal is set.
+- **Covers:** **both** goal views whichever is selected, narrowed by the screen's **season** (§3), as the charts and averages
+  are. When the single-load filter (issue #112) lands, it applies here too and the header names it.
+- **Numbers** (`goalsCoach`, `src/lib/goals/coach.ts`, pure), every one by this spec's own rules:
+  - per (view, metric): the current goal (§2), §4's progress (sessions since set, their average, Hit), the sessions since set
+    with their value and whether each met the goal, the **gap** still to go while not hit (the distance from the average to
+    the goal, in the metric's unit), and the trend arrow over the sessions since set (`trendOf`, `analysis.md` §5 REV-132;
+    Biathlon hits reads like the score);
+  - per view and in all: goals **set**, **judged** (at least one session since set) and **hit**;
+  - **sessions that met every goal in effect** (§8, `sessionGoalChecks`), out of the sessions that had one; and the
+    **latest** such session's checks per view.
+- **Layout** (`render/goals-coach.ts`, `render/goals-coach-row.ts`), 1440 wide:
+  - **Header** (120): `Goal progress`, the season and the time.
+  - **Scoreboard** (250): a ring of judged goals hit and `N of M goals hit`, how many goals are still waiting for a session,
+    one box per view (`Prone 2 of 3 hit`, or `No goals set` / `No sessions yet`), and on the right the sessions that met every
+    goal and the latest session (`Met Prone 3 of 4 · Standing 2 of 4`, green when it met them all).
+  - **One section per view** (heading 70, sessions and goals set): one row per goal-able metric in `goalMetrics` order. With a
+    goal (170): the metric, `Goal <value> or more|less · set <date>`, a **Hit** / **Not yet** / **No sessions yet** pill, the
+    average since set and its session count, `M of N sessions met it`, `<gap> to go` (one decimal finer than the metric's own
+    format, so a small gap never reads 0), a small chart of the sessions since set with the goal line (sky blue, as on the
+    screen) and a green ring on each session that met it, and the trend arrow. Without a goal (90): a dashed grey row,
+    `No goal set`. No projections or "goal by" dates.
+  - **Footer** (110): the athlete line and the credit.
+- **Stored** as blobs `goals-coach:<id>:png` and `:json` (the season, the totals, renderer version
+  `GOALS_COACH_RENDERER_VERSION`, sha256 and the stamped payload; no image data, no GPS), the newest **3** kept. It is a
+  `TrendsArtifact` of kind `goals` with no range, shared under the same rule. Backups copy it like every blob.
+- **Stamp:** with a key set, over `buildGoalsCoachPayload` (`provenance/payload-coach.ts`): the athlete, season, release,
+  time, the totals and per goal its value, set time, average, Hit and every session value since set.
+

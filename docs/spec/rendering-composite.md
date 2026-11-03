@@ -266,8 +266,9 @@ It adds `46 + 34 × rows` to the band.
 
 ## 6. `CompositeArtifact` and the share rule
 
-> **REV-124:** the share rule now allows a second image, the coach image (`TrendsArtifact`, `analysis.md` §5). Everything
-> below about the session summary is unchanged.
+> **REV-124:** the share rule now allows a second image, the coach image (`TrendsArtifact`, `analysis.md` §5). **REV-163:**
+> `TrendsArtifact` has a `kind` (`trends`, `patterns`, `goals`), so the Patterns and Goals coach images (`patterns.md` §7,
+> `goals.md` §9) are shared under the same rule. Everything below about the session summary is unchanged.
 
 ```ts
 declare const artifactBrand: unique symbol;

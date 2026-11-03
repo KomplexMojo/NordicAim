@@ -81,7 +81,8 @@ points the dots are drawn as one path per 500 (still SVG; a canvas fallback is n
 
 `#/patterns`, the **Patterns** tab on the bottom bar (REV-136). A view switch (four buttons), a range
 switch (a six-stop slider, §3), the drawing, the summary, and the left-out count. The drawing can be zoomed. Empty and thin states are
-plain sentences. Not shareable on its own; its four drawings are part of the coach image (`analysis.md` §5, REV-124).
+plain sentences. Not shareable on its own; its four drawings are part of the Analysis coach image (`analysis.md` §5, REV-124) and the
+Patterns coach image (§7, REV-163).
 
 **From a dot to its target (REV-140, issue #72).** The view and range are in the address (`#/patterns?view=confirm&range=90`,
 `src/lib/patterns/url.ts`). A tap on the drawing lists, under it, every target with a shot within 22 CSS px of the tap (a 44 px
@@ -89,3 +90,42 @@ target at any zoom), nearest first (`pickTargets`, `src/lib/patterns/pick.ts`): 
 shots are there, and **Open target** (`#/sessions/:sid/photos/:pid`). A tap with no shot near says so. Nothing opens on the
 tap itself. The target screen's back link then reads **Back to Patterns** and returns to the same view and range; opened any
 other way it is **Back to results**, as before (`backToFrom`, `src/lib/app/nav.ts`). The coach image has no links.
+
+## 7. The coach image: *Group patterns* (REV-163, owner 2026-11-03)
+
+> "the analysis screen has "Coach Image" that generates an overview. Create the equivalent for patterns and goals … The
+> "Coach Image" for groups should assess groupings and provide information related to groups."
+
+- **From:** a **Coach image** card under the summary (`components/patterns/PatternsImageCard.tsx`), shown when any view has
+  shots. Two taps, as on Analysis (`analysis.md` §5): **Make coach image** builds, stores and previews it; **Share** hands the
+  stored PNG to the share sheet. Nothing leaves the phone until Share. The card resets when the range or season changes.
+- **Covers:** the screen's **season, then range** (§3, §3a), for **all four views** whichever is selected. The drawings use
+  every recorded shot's size factor, as on the screen. When the single-load filter (issue #112) lands, it applies here too and
+  the header names it.
+- **Numbers** (`patternsCoach`, `src/lib/patterns/coach.ts`, pure), per view over the shots shown:
+  - the §4 summary and REV-88's characteristics of **all the shots as one group** (as the Observed patterns panel);
+  - **typical single target**: the median of each target's own group size (extreme spread, MOA at 50 m) over targets with two
+    distinct shots, beside all the shots together. The words stay neutral: the gap is how far the group moves from target to
+    target;
+  - **issue counts**: each target with at least `THRESHOLDS.minShots` shots is characterised on its own; each issue gives how
+    many of those targets show it, and whether the whole set does. Most targets first, ties in rule order (`ISSUE_IDS`); an
+    issue only the whole set shows reads `all shots together`.
+- **Layout** (`render/patterns-coach.ts`, `render/patterns-coach-row.ts`), 1440 wide, drawn at the size it is rasterised:
+  - **Header** (120, `render/coach-frame.ts`): `Group patterns`, the range, the season and the time.
+  - **Key** (100): sizes are at 50 m and group size is the widest spread; issue rules are provisional, a starting point to
+    talk through with a coach.
+  - **One row per view** (600), in the order Sight in, Confirm, Precision prone, Precision standing: the Patterns drawing
+    (520 px) on the left, with `Patterns need more shots (at least 10)` under it when thin; on the right the view's mark,
+    name and totals (score or hit rate, shots, targets, sessions), then four boxes: **Group size** (MOA, and mm widest
+    spread), **Mean radius** (MOA, and mm from its centre), **Centre (MPI)** in words, **Shape** and its flyer count; then
+    **Target to target**, **Where the shots land** (precision: a bar of the share in each ring, the average ring and the
+    share that would miss the position's hit zone; sighting: the share in the target's hit zone) and **Potential issues**
+    (up to four chips, the last reading `+N more on the Patterns screen` when there are more). A view with no shots is a
+    short row (140): `No shots in this range`.
+  - **Footer** (110): the athlete line and the credit, as on the Analysis image.
+- **Stored** as blobs `patterns-coach:<id>:png` and `:json` (the range, season, session count, renderer version
+  `PATTERNS_COACH_RENDERER_VERSION`, sha256 and the stamped payload; no image data, no GPS), the newest **3** kept. It is a
+  `TrendsArtifact` of kind `patterns` (`composite/coach-store.ts`), shared under the same rule. Backups copy it like every blob.
+- **Stamp:** with a key set, over `buildPatternsCoachPayload` (`provenance/payload-coach.ts`): the athlete, filters, release,
+  time, and per view its sessions and every number the image prints. `#/verify` does not yet recognise it.
+

@@ -65,3 +65,28 @@ test('two demo sessions overlay on the right views, the range filter and the dra
   await page.getByTestId('frame-zoom-fit').click();
   await expect(page.getByTestId('zoom-frame')).toHaveAttribute('data-zoom', '1');
 });
+
+test('the coach image (REV-163): made from the range and season, previewed, then shared as one PNG', async ({ page }) => {
+  // The download branch of shareArtifact, as in analysis.spec.ts: no share sheet to dismiss in an automated run.
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'canShare', { value: undefined, configurable: true });
+  });
+  await page.goto('/#/');
+  await page.waitForFunction(() => (window as HookWindow).__asaTest !== undefined);
+  await page.evaluate(() => (window as HookWindow).__asaTest!.loadDemo());
+  await page.evaluate(() => (window as HookWindow).__asaTest!.waitForIdle());
+
+  await page.goto('/#/patterns');
+  await expect(page.getByTestId('share-patterns-image')).toHaveCount(0);
+  await page.getByTestId('make-patterns-image').click();
+  const preview = page.getByTestId('patterns-image-preview');
+  await expect(preview).toBeVisible({ timeout: 60_000 });
+  expect(await preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1440);
+
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share-patterns-image').click()]);
+  expect(download.suggestedFilename()).toMatch(/^nordicaim-patterns-\d{4}-\d{2}-\d{2}\.png$/);
+
+  // A different range starts a fresh card: the old preview does not carry over.
+  await page.getByTestId('pattern-range-all').click();
+  await expect(page.getByTestId('patterns-image-preview')).toHaveCount(0);
+});

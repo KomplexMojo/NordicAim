@@ -3,7 +3,7 @@
 // average shot lands on a simulated bullseye. Every MPI box shares one scale. The trends over time stay on the Analysis screen.
 // Pure SVG.
 
-import { coachAverages, type AverageBox, type CoachAverages, type CoachTrends } from '../analysis/coach';
+import { coachAverages, type AverageBox, type CoachAverages, type CoachTrend, type CoachTrends } from '../analysis/coach';
 import { trendMetrics, type TrendMetricId } from '../analysis/trend';
 import { PATTERN_VIEW_LABEL, type PatternView } from '../patterns/collect';
 
@@ -41,7 +41,11 @@ const TREND_ANGLE = { up: -30, flat: 0, down: 30 } as const;
 
 /** A small arrow, pointing right and tilted up, level or down, centred on (x, y). Nothing below three sessions. */
 function trendArrow(avg: CoachAverages, box: AverageBox, x: number, y: number): string {
-  const trend = avg.trends[box];
+  return trendArrowSvg(avg.trends[box], x, y);
+}
+
+/** REV-132: one trend's arrow centred on (x, y), coloured by whether it is an improvement; '' for no trend. Also on the Goals coach image. */
+export function trendArrowSvg(trend: CoachTrend | null, x: number, y: number): string {
   if (trend === null) return '';
   const colour = trend.improving === null ? TREND_COLOUR.flat : trend.improving ? TREND_COLOUR.improving : TREND_COLOUR.worsening;
   const word = trend.direction === 'flat' ? 'steady' : `trending ${trend.direction}, ${trend.improving ? 'improving' : 'worsening'}`;

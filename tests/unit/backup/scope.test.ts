@@ -28,6 +28,9 @@ describe('blobInScope', () => {
     expect(blobInScope('artifact:a1:png', photos, artifacts)).toBe(true);
     expect(blobInScope('reference:precision:image', photos, artifacts)).toBe(true);
     expect(blobInScope('trends:t1:png', photos, artifacts)).toBe(true);
+    // REV-163: the Patterns and Goals coach images, like the Analysis one, go in every backup.
+    expect(blobInScope('patterns-coach:t2:png', photos, artifacts)).toBe(true);
+    expect(blobInScope('goals-coach:t3:json', photos, artifacts)).toBe(true);
   });
   it("leaves out another session's", () => {
     expect(blobInScope('photo:p2:original', photos, artifacts)).toBe(false);
