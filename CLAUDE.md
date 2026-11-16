@@ -11,3 +11,13 @@
   container's Chromium. WebKit isn't available there, so run e2e with `pnpm test:e2e --project=mobile-chromium`.
   If the private `KomplexMojo/NordicAim-fixtures` repo is attached to the session, the hook also clones it into
   `fixtures/private/` (it may land a minute or two after the session starts). Never copy its contents into this repo.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `KomplexMojo/NordicAim` (uses the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root (none yet; created when terms or decisions are resolved). See `docs/agents/domain.md`.
