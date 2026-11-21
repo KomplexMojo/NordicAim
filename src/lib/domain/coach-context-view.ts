@@ -55,6 +55,8 @@ export interface MetalBoutRow {
   position: 'prone' | 'standing';
   discHits: boolean[];
   hits: number;
+  /** REV-164: the bout's range time in seconds, or null when it was not timed (or the export predates timing). */
+  rangeTimeSeconds: number | null;
 }
 
 const POSITION_ORDER = { prone: 0, standing: 1 } as const;
@@ -75,7 +77,13 @@ export function metalBoutRows(metal: readonly MetalContext[]): MetalBoutRow[] {
     const first = m.comboGroup !== previous;
     previous = m.comboGroup;
     const label = m.comboGroup === null ? 'No combo' : `Combo ${rank(m.comboGroup) + 1}`;
-    return { group: first ? label : '', position: m.position, discHits: [...m.discHits], hits: m.discHits.filter(Boolean).length };
+    return {
+      group: first ? label : '',
+      position: m.position,
+      discHits: [...m.discHits],
+      hits: m.discHits.filter(Boolean).length,
+      rangeTimeSeconds: m.rangeTimeSeconds ?? null,
+    };
   });
 }
 
@@ -85,4 +93,16 @@ export function zeroClicksLabel(z: Pick<ZeroAdjustment, 'verticalClicks' | 'hori
   if (z.verticalClicks !== 0) parts.push(`${Math.abs(z.verticalClicks)} ${z.verticalClicks > 0 ? 'up' : 'down'}`);
   if (z.horizontalClicks !== 0) parts.push(`${Math.abs(z.horizontalClicks)} ${z.horizontalClicks > 0 ? 'right' : 'left'}`);
   return parts.length === 0 ? 'no change' : parts.join(' · ');
+}
+
+/**
+ * REV-164: a range time to 0.1 s, `42.3 s` under a minute and `1:05.0` from a minute up. Rounded to tenths first, so 59.96 s
+ * reads `1:00.0`, never `60.0 s`.
+ */
+export function rangeTimeLabel(seconds: number): string {
+  const tenths = Math.round(seconds * 10);
+  if (tenths < 600) return `${(tenths / 10).toFixed(1)} s`;
+  const minutes = Math.floor(tenths / 600);
+  const rest = (tenths - minutes * 600) / 10;
+  return `${minutes}:${rest.toFixed(1).padStart(4, '0')}`;
 }

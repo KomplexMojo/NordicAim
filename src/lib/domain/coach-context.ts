@@ -35,6 +35,11 @@ export const MetalContext = z.object({
   targetZone: z.number().nullable(),
   /** Stored, never shown (§6 renders nothing for it yet). */
   race: CoachRace.nullable(),
+  /**
+   * REV-164 (§4a): seconds on the range for the bout (set-up, shooting and exit, to 0.1 s), `null` when the bout was not timed.
+   * Absent from exports made before 545 Coach added timing, which still read; absent and `null` mean the same thing.
+   */
+  rangeTimeSeconds: z.number().nonnegative().nullable().optional(),
 });
 export type MetalContext = z.infer<typeof MetalContext>;
 
@@ -67,6 +72,8 @@ export const CoachConventions = z.object({
   zeroClicks: z.string(),
   windDirection: z.string(),
   windStrength: z.string(),
+  /** REV-164 (§4a): how `rangeTimeSeconds` is measured. Absent from exports made before timing. */
+  rangeTime: z.string().optional(),
 });
 export type CoachConventions = z.infer<typeof CoachConventions>;
 
@@ -127,8 +134,17 @@ export function canonicalJson(value: unknown): string {
 /**
  * The text a record's fingerprint hashes: its kind and its own §4 fields (as parsed, so unknown extra fields never count), and
  * nothing NordicAim assigns. The kind keeps a metal bout and a wind record from ever sharing a fingerprint.
+ *
+ * REV-164: a metal bout's `rangeTimeSeconds` is left out, so the same bout read from an export made before 545 Coach added
+ * timing and from one made after has the same fingerprint (the duplicate check still catches it), and fingerprints stored
+ * before timing stay valid.
  */
 export function fingerprintSource(kind: CoachRecordKind, record: MetalContext | ZeroAdjustment | WindContext): string {
+  if (kind === 'metal' && 'rangeTimeSeconds' in record) {
+    const rest: Record<string, unknown> = { ...record };
+    delete rest.rangeTimeSeconds;
+    return canonicalJson({ kind, record: rest });
+  }
   return canonicalJson({ kind, record });
 }
 

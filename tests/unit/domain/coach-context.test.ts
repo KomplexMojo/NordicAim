@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { canonicalJson, fingerprintSource, matchCoachContext, parseCoachContextText, type CoachContextFile } from '@/lib/domain/coach-context';
-import { clockOf, metalBoutRows, windBadgeOf, windBandOf, zeroClicksLabel } from '@/lib/domain/coach-context-view';
+import { clockOf, metalBoutRows, rangeTimeLabel, windBadgeOf, windBandOf, zeroClicksLabel } from '@/lib/domain/coach-context-view';
 
 import { COACH_DAY, syntheticCoachFile, syntheticCoachText } from '../../helpers/coach-context';
 
@@ -177,5 +177,60 @@ describe('what the image shows (§6)', () => {
     expect(zeroClicksLabel({ verticalClicks: 2, horizontalClicks: -1 })).toBe('2 up · 1 left');
     expect(zeroClicksLabel({ verticalClicks: -3, horizontalClicks: 0 })).toBe('3 down');
     expect(zeroClicksLabel({ verticalClicks: 0, horizontalClicks: 0 })).toBe('no change');
+  });
+});
+
+describe('range time (REV-164, 545 Coach timing export)', () => {
+  /** The export shape 545 Coach 0.1.0 writes since it added timing: `rangeTimeSeconds` per bout and `conventions.rangeTime`. */
+  function timedFile(times: Array<number | null>): string {
+    const file = syntheticCoachFile();
+    const metal = (file.metalSessions as Array<Record<string, unknown>>).map((m, i) => ({ ...m, rangeTimeSeconds: times[i] ?? null }));
+    const conventions = { ...(file.conventions as object), rangeTime: 'rangeTimeSeconds: seconds on the range for the bout' };
+    return JSON.stringify({ ...file, metalSessions: metal, conventions });
+  }
+
+  it('reads rangeTimeSeconds and conventions.rangeTime from a timed export', () => {
+    const file = parsed(timedFile([42.3, null, 61.25, 0]));
+    expect(file.metalSessions.map((m) => m.rangeTimeSeconds)).toEqual([42.3, null, 61.25, 0, null]);
+    expect(file.conventions.rangeTime).toContain('rangeTimeSeconds');
+  });
+
+  it('still reads an export made before timing (no field at all), as untimed', () => {
+    const file = parsed();
+    expect(file.metalSessions[0]).not.toHaveProperty('rangeTimeSeconds');
+    expect(file.conventions.rangeTime).toBeUndefined();
+    expect(metalBoutRows(file.metalSessions).every((r) => r.rangeTimeSeconds === null)).toBe(true);
+  });
+
+  it('refuses a negative or non-numeric range time', () => {
+    expect(parseCoachContextText(timedFile([-1]))).toMatchObject({ ok: false, reason: 'bad-shape' });
+    const file = JSON.parse(timedFile([])) as { metalSessions: Array<Record<string, unknown>> };
+    file.metalSessions[0]!.rangeTimeSeconds = '42.3';
+    expect(parseCoachContextText(JSON.stringify(file))).toMatchObject({ ok: false, reason: 'bad-shape' });
+  });
+
+  it('leaves range time out of the fingerprint, so the same bout matches across old and new exports', () => {
+    const before = parsed().metalSessions[0]!;
+    const timed = parsed(timedFile([42.3])).metalSessions[0]!;
+    const untimed = parsed(timedFile([null])).metalSessions[0]!;
+    expect(fingerprintSource('metal', timed)).toBe(fingerprintSource('metal', before));
+    expect(fingerprintSource('metal', untimed)).toBe(fingerprintSource('metal', before));
+  });
+
+  it('carries each bout\'s range time onto its image row', () => {
+    const rows = metalBoutRows(parsed(timedFile([42.3, null])).metalSessions.slice(0, 2));
+    expect(rows.map((r) => r.rangeTimeSeconds)).toEqual([42.3, null]);
+  });
+
+  it.each([
+    [0, '0.0 s'],
+    [42.3, '42.3 s'],
+    [9.04, '9.0 s'],
+    [59.94, '59.9 s'],
+    [59.96, '1:00.0'],
+    [65, '1:05.0'],
+    [125.47, '2:05.5'],
+  ])('labels %s seconds as %s', (seconds, label) => {
+    expect(rangeTimeLabel(seconds)).toBe(label);
   });
 });

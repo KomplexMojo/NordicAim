@@ -107,6 +107,24 @@ interface WindContext {
 }
 ```
 
+### 4a. Range time (REV-164, 2026-11-21)
+
+545 Coach added bout timing to its export without changing `formatVersion` (still 1). Read from 545 Coach's own export code
+(app version `0.1.0`):
+
+```ts
+interface MetalContext {
+  // ...every field above, unchanged...
+  rangeTimeSeconds?: number | null;  // seconds on the range for the bout — set-up, shooting and exit — to 0.1 s, with any
+                                     // phone-reach allowance already taken off; null when the bout was not timed.
+                                     // Absent from exports made before timing: read the same as null.
+}
+// conventions gains: rangeTime?: string   — 545 Coach's own description of the field above
+```
+
+`rangeTimeSeconds` is not part of a bout's fingerprint (§5 step 6), so the same bout read from an export made before timing and
+from one made after is still one record. It is shown on the summary image's metal rows (§6).
+
 Matching is by `sessionDate`, not id — the two apps have no shared identifier, and date is the only thing both
 already agree on. Precision scoring, shots, calibration, and photos are never part of this file.
 
