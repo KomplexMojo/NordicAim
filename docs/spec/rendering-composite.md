@@ -354,6 +354,10 @@ pre-M29 sha256 of three inputs).
   `Standing`), five discs (r 11, 30 px apart, alpha..echo left to right; a hit is a filled `discPrecision` disc, a miss an open ring
   on `page`), and `n/5`. Rows are grouped by `comboGroup`, then prone before standing, file order within (`metalBoutRows`). Adds
   `46 + 34 × bouts` to the band.
+- **Shooting time (REV-164)**: when any bout has a `rangeTimeSeconds`, a `Shooting time` header follows `Hits` 70 px to its right and
+  the rule extends to the column's end; each timed bout shows its time there (`42.3 s` under a minute, `1:05.0` from a minute up,
+  `shootingTimeLabel`), an untimed one leaves the cell blank. No row height changes. With no timed bout the section is drawn exactly
+  as before. The attach preview widens from 560 to 640 px when the column is shown.
 
 `COMPOSITE_RENDERER_VERSION` is **22**. Add and Remove ask for the session's summary to be drawn again (`summaryHooks.schedule`).
 The attach preview (`render/coach-preview.ts`) draws the same badge and rows on its own small SVG.

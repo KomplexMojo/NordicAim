@@ -95,8 +95,8 @@ describe('render/composite with no coach context is byte-identical to before M29
 
 describe('render/composite with 545 Coach context attached (REV-159)', () => {
   const metal = [
-    { group: 'Combo 1', position: 'prone' as const, discHits: [true, true, false, true, true], hits: 4 },
-    { group: '', position: 'standing' as const, discHits: [false, true, false, true, false], hits: 2 },
+    { group: 'Combo 1', position: 'prone' as const, discHits: [true, true, false, true, true], hits: 4, rangeTimeSeconds: null },
+    { group: '', position: 'standing' as const, discHits: [false, true, false, true, false], hits: 2, rangeTimeSeconds: null },
   ];
 
   it('an attached context with nothing to draw is still byte-identical', () => {
@@ -124,5 +124,22 @@ describe('render/composite with 545 Coach context attached (REV-159)', () => {
     expect((withMetal.svg.match(/class="metal-bout"/g) ?? []).length).toBe(2);
     expect(withMetal.height).toBe(plain.height + 46 + 2 * 34);
     expect(withMetal.svg).not.toContain('wind-icon');
+  });
+
+  it('untimed bouts draw no Shooting time column (exports from before REV-164 look the same)', () => {
+    const svg = renderComposite(baseInput({ coach: { wind: null, metal } })).svg;
+    expect(svg).not.toContain('Shooting time');
+    expect(svg).not.toContain('data-range-time');
+  });
+
+  it('REV-164: timed bouts get a Shooting time column; an untimed bout leaves its cell blank, and the band does not grow', () => {
+    const timed = [{ ...metal[0]!, rangeTimeSeconds: 42.3 }, { ...metal[1]!, rangeTimeSeconds: null }];
+    const plain = renderComposite(baseInput({ coach: { wind: null, metal } }));
+    const out = renderComposite(baseInput({ coach: { wind: null, metal: timed } }));
+    expect(out.svg).toContain('>Shooting time<');
+    expect(out.svg).toContain('data-range-time="42.3"');
+    expect(out.svg).toContain('>42.3 s<');
+    expect((out.svg.match(/data-range-time=/g) ?? []).length).toBe(1);
+    expect(out.height).toBe(plain.height);
   });
 });
