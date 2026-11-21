@@ -1,7 +1,7 @@
 // M29 (REV-159, coach-context-import.md §6): 545 Coach metal bouts as rows of five hit/miss discs, for the summary image's analysis
 // band and the attach preview. Pure.
 
-import { rangeTimeLabel, type MetalBoutRow } from '../domain/coach-context-view';
+import { shootingTimeLabel, type MetalBoutRow } from '../domain/coach-context-view';
 import { PALETTE } from './palette';
 import { el, text, type ElAttrs } from './svg';
 
@@ -38,7 +38,7 @@ export function renderMetalDiscs(discHits: readonly boolean[], x0: number, cy: n
  * The metal section: a `Metal targets (545 Coach)` header row with a rule, then one 34 px row per bout (combo on its first row,
  * position, the five discs, `n/5`). Starts with the header baseline at `y`; returns the last row's baseline.
  *
- * REV-164: when any bout carries a range time, a `Range time` column follows `Hits` (an untimed bout leaves its cell blank). With
+ * REV-164: when any bout carries a range time, a `Shooting time` column follows `Hits` (an untimed bout leaves its cell blank). With
  * no timed bout the section is drawn exactly as before, so exports made before 545 Coach added timing render unchanged.
  */
 export function layoutMetalRows(rows: readonly MetalBoutRow[], x: number, y: number): { svg: string; lastY: number } {
@@ -47,8 +47,8 @@ export function layoutMetalRows(rows: readonly MetalBoutRow[], x: number, y: num
   let svg = text(x + COL.group, y, 16, 'Metal targets (545 Coach)', { bold: true, ...soft });
   svg += text(x + COL.hits, y, 16, 'Hits', { bold: true, ...soft });
   const timed = rows.some((r) => r.rangeTimeSeconds !== null);
-  if (timed) svg += text(x + COL.time, y, 16, 'Range time', { bold: true, ...soft });
-  const ruleEnd = timed ? COL.time + 90 : COL.hits + 50;
+  if (timed) svg += text(x + COL.time, y, 16, 'Shooting time', { bold: true, ...soft });
+  const ruleEnd = timed ? COL.time + 110 : COL.hits + 50;
   svg += el('line', { x1: x, y1: y + 12, x2: x + ruleEnd, y2: y + 12, stroke: PALETTE.panelBorder, 'stroke-width': 1.5 });
   let rowY = y;
   for (const row of rows) {
@@ -58,7 +58,7 @@ export function layoutMetalRows(rows: readonly MetalBoutRow[], x: number, y: num
     inner += text(x + COL.position, rowY, 18, POSITION_LABEL[row.position], ink);
     inner += renderMetalDiscs(row.discHits, x + COL.discs, rowY - 6);
     inner += text(x + COL.hits, rowY, 18, `${row.hits}/${row.discHits.length}`, ink);
-    if (row.rangeTimeSeconds !== null) inner += text(x + COL.time, rowY, 18, rangeTimeLabel(row.rangeTimeSeconds), ink);
+    if (row.rangeTimeSeconds !== null) inner += text(x + COL.time, rowY, 18, shootingTimeLabel(row.rangeTimeSeconds), ink);
     const attrs: ElAttrs = { class: 'metal-bout', 'data-position': row.position, 'data-hits': row.hits };
     if (row.rangeTimeSeconds !== null) attrs['data-range-time'] = row.rangeTimeSeconds;
     svg += el('g', attrs, inner);

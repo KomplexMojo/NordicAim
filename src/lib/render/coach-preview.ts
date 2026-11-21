@@ -8,8 +8,8 @@ import { PALETTE } from './palette';
 import { el, text } from './svg';
 
 const WIDTH = 560;
-/** REV-164: wide enough for the metal rows' `Range time` column, used only when a bout is timed. */
-const WIDTH_TIMED = 620;
+/** REV-164: wide enough for the metal rows' `Shooting time` column, used only when a bout is timed. */
+const WIDTH_TIMED = 640;
 const STRIP = 60;
 
 /** A standalone SVG of the windage badge and the metal rows, or null when there is neither to draw. */

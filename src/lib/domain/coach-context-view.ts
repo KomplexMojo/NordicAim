@@ -99,7 +99,7 @@ export function zeroClicksLabel(z: Pick<ZeroAdjustment, 'verticalClicks' | 'hori
  * REV-164: a range time to 0.1 s, `42.3 s` under a minute and `1:05.0` from a minute up. Rounded to tenths first, so 59.96 s
  * reads `1:00.0`, never `60.0 s`.
  */
-export function rangeTimeLabel(seconds: number): string {
+export function shootingTimeLabel(seconds: number): string {
   const tenths = Math.round(seconds * 10);
   if (tenths < 600) return `${(tenths / 10).toFixed(1)} s`;
   const minutes = Math.floor(tenths / 600);

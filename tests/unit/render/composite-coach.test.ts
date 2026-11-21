@@ -126,17 +126,17 @@ describe('render/composite with 545 Coach context attached (REV-159)', () => {
     expect(withMetal.svg).not.toContain('wind-icon');
   });
 
-  it('untimed bouts draw no Range time column (exports from before REV-164 look the same)', () => {
+  it('untimed bouts draw no Shooting time column (exports from before REV-164 look the same)', () => {
     const svg = renderComposite(baseInput({ coach: { wind: null, metal } })).svg;
-    expect(svg).not.toContain('Range time');
+    expect(svg).not.toContain('Shooting time');
     expect(svg).not.toContain('data-range-time');
   });
 
-  it('REV-164: timed bouts get a Range time column; an untimed bout leaves its cell blank, and the band does not grow', () => {
+  it('REV-164: timed bouts get a Shooting time column; an untimed bout leaves its cell blank, and the band does not grow', () => {
     const timed = [{ ...metal[0]!, rangeTimeSeconds: 42.3 }, { ...metal[1]!, rangeTimeSeconds: null }];
     const plain = renderComposite(baseInput({ coach: { wind: null, metal } }));
     const out = renderComposite(baseInput({ coach: { wind: null, metal: timed } }));
-    expect(out.svg).toContain('>Range time<');
+    expect(out.svg).toContain('>Shooting time<');
     expect(out.svg).toContain('data-range-time="42.3"');
     expect(out.svg).toContain('>42.3 s<');
     expect((out.svg.match(/data-range-time=/g) ?? []).length).toBe(1);

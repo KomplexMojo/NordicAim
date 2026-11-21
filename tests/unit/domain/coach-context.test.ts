@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { canonicalJson, fingerprintSource, matchCoachContext, parseCoachContextText, type CoachContextFile } from '@/lib/domain/coach-context';
-import { clockOf, metalBoutRows, rangeTimeLabel, windBadgeOf, windBandOf, zeroClicksLabel } from '@/lib/domain/coach-context-view';
+import { clockOf, metalBoutRows, shootingTimeLabel, windBadgeOf, windBandOf, zeroClicksLabel } from '@/lib/domain/coach-context-view';
 
 import { COACH_DAY, syntheticCoachFile, syntheticCoachText } from '../../helpers/coach-context';
 
@@ -231,6 +231,6 @@ describe('range time (REV-164, 545 Coach timing export)', () => {
     [65, '1:05.0'],
     [125.47, '2:05.5'],
   ])('labels %s seconds as %s', (seconds, label) => {
-    expect(rangeTimeLabel(seconds)).toBe(label);
+    expect(shootingTimeLabel(seconds)).toBe(label);
   });
 });
